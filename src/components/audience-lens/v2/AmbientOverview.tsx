@@ -127,8 +127,9 @@ export const AMBIENT_PANEL_HEIGHT = 800;
 
 /**
  * How a v2 surface is mounted.
- *  - `rail` (default) — the ≥xl right column: fills top-to-bottom, capped at 440, its own left
- *    hairline divides it from the thread, paints its own #181817 ground.
+ *  - `rail` (default) — the ≥xl right column: fills top-to-bottom, capped at 560 (the rail's
+ *    resize ceiling), its own left hairline divides it from the thread, paints its own #181817
+ *    ground.
  *  - `sheet` — the <xl mobile header sheet: full-bleed inside a host that already owns the ground,
  *    the rounding and the height cap, so the surface drops its width cap, hairline and background
  *    and simply flexes to the space the sheet gives it. Tighter gutters for a ~390px viewport.
@@ -443,7 +444,9 @@ function SealedRow({
               road, not a door. Saying so costs one tag and removes an inert click. */}
           {r.noDepth ? <KindTag>verdict only</KindTag> : null}
           <span className="flex-none tabular-nums text-[14px] font-semibold" style={{ color: TONE.cream }}>
-            {r.stopPct.toFixed(1)}%
+            {/* One decimal only when the rate carries one (the population projection's does). An
+                integer prints bare — "50.0" is a fake decimal, the same lie as a fake round number. */}
+            {Number.isInteger(r.stopPct) ? r.stopPct : r.stopPct.toFixed(1)}%
           </span>
         </span>
 
@@ -493,13 +496,19 @@ function QueuedRow({
       <button
         type="button"
         onClick={() => onSimulate?.(r.id)}
+        // The full stimulus as a native tooltip: queued titles truncate to ~30 chars in a 400px
+        // rail and a queue of generated variants shares its opening words, so without this the
+        // rows were indistinguishable ("I fed 10 million viral videos in…" × 3).
+        title={r.stimulus}
         className="group flex w-full cursor-pointer items-center gap-2.5 rounded-[8px] px-0.5 py-[13px] text-left transition-colors"
         onMouseEnter={(e) => (e.currentTarget.style.background = TONE.hover)}
         onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
       >
         <span
           className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[14px]"
-          style={{ color: "rgba(236,231,222,.66)" }}
+          // A step under a sealed row's cream (the hierarchy is real: un-run work reads quieter),
+          // but .66 was two steps — a page that is ALL queued rows rendered as a grey wall.
+          style={{ color: "rgba(236,231,222,.74)" }}
         >
           {r.stimulus}
         </span>
@@ -568,9 +577,12 @@ function SegmentRow({ s, index }: { s: RoomSegment; index: number }) {
           </span>
         </div>
         {/* Never invented: a segment stored before the field existed carries no frame and prints
-            none, rather than a plausible sentence nobody briefed the model with. */}
+            none, rather than a plausible sentence nobody briefed the model with.
+            Read-grade contrast, not `faint`: the frame IS this row's payload (the 2026-08-12
+            ruling kept it precisely because it is the brief the sim runs on) — setting the one
+            thing worth reading at .38 alpha buried it under its own label. */}
         {s.repaint ? (
-          <p className="mt-[3px] text-[12px] leading-[1.45]" style={{ color: TONE.faint }}>
+          <p className="mt-[3px] text-[12px] leading-[1.5]" style={{ color: "rgba(236,231,222,.52)" }}>
             {s.repaint}
           </p>
         ) : null}
@@ -652,7 +664,9 @@ export function AmbientOverview({
           ? // Sheet: the host bar owns the ground, the rounding and the height cap; the surface just
             // flexes into it (min-h-0 so its scroll region can shrink below content height).
             "flex min-h-0 w-full flex-1 flex-col"
-          : "flex w-full max-w-[440px] flex-col") + ` ${className ?? ""}`
+          : // 560 tracks the rail's resize ceiling (home-page-layout RAIL_MAX) — the aside is the
+            // real constraint at every width below it; a 440 cap left dead margin in a widened rail.
+            "flex w-full max-w-[560px] flex-col") + ` ${className ?? ""}`
       }
       style={{
         // Connected rail — fills its column top-to-bottom (part of the thread page, NOT a floating

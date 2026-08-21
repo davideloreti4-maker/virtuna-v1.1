@@ -694,10 +694,15 @@ describe("POST /api/tools/react", () => {
     expect(update).not.toHaveBeenCalled();
   });
 
-  it("omitting the segment is unchanged — the room's fraction seals, with no slice", async () => {
+  it("omitting the segment records no slice — and with NO projection, the room's fraction seals", async () => {
     const { createClient } = await import("@/lib/supabase/server");
     const { createOpenThreadLazy } = await import("@/lib/threads/threads");
     const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { characterizeContent } = await import("@/lib/audience/characterize-content");
+    // No content vector ⇒ no population ⇒ the seal falls back to the honest 10-vote fraction.
+    // (Set explicitly: an earlier test's mockResolvedValue would otherwise leak a vector in and
+    // this test would silently measure the projection path instead of the fallback.)
+    (characterizeContent as ReturnType<typeof vi.fn>).mockResolvedValue(null);
 
     const eq = vi.fn().mockResolvedValue({ error: null });
     const update = vi.fn().mockReturnValue({ eq });
@@ -733,6 +738,64 @@ describe("POST /api/tools/react", () => {
     expect(payload.sim_seals["a hook"]!.pct).toBe(60); // the room's 6/10
     expect(payload.sim_seals["a hook"]!.band).toBe("Strong");
     expect(payload.sim_seals["a hook"]!.slice).toBeUndefined();
+  });
+
+  it("a run WITH a population seals the projection's one-decimal rate, not the 10-vote's clean multiple of ten", async () => {
+    // The flash fraction is a real 10-persona vote, but as a percentage it is always 10/20/…/60 —
+    // and a board of clean multiples of ten reads as fabricated (owner ask 2026-08-16). Every run
+    // that projected a population must seal the projection's own stop rate instead.
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+    const { getAudience } = await import("@/lib/audience/audience-repo");
+    const { runFlashTextMode } = await import("@/lib/engine/flash/run-flash-text-mode");
+    const { characterizeContent } = await import("@/lib/audience/characterize-content");
+
+    const eq = vi.fn().mockResolvedValue({ error: null });
+    const update = vi.fn().mockReturnValue({ eq });
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-123" } } }) },
+      from: vi.fn((table: string) =>
+        table === "threads"
+          ? { update }
+          : {
+              select: () => ({
+                eq: () => ({ maybeSingle: () => Promise.resolve({ data: { niche_primary: "fitness" }, error: null }) }),
+              }),
+            },
+      ),
+    });
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue({
+      id: "thread-1",
+      active_audience_id: "aud-calibrated",
+    });
+    (getAudience as ReturnType<typeof vi.fn>).mockResolvedValue(makeAudienceWithAxes());
+    // 6/10 → the flash fraction is exactly 60%. The seal must NOT be this number.
+    (runFlashTextMode as ReturnType<typeof vi.fn>).mockResolvedValue({
+      result: { personas: makePersonas(6) },
+      warnings: [],
+    });
+    (characterizeContent as ReturnType<typeof vi.fn>).mockResolvedValue({
+      topics: { craft: 0.95 },
+      hookStrength: 0.9,
+      novelty: 0.5,
+      hype: 0.1,
+      slowness: 0.1,
+    });
+
+    const { POST } = await import("@/app/api/tools/react/route");
+    const res = await POST(makeRequest({ text: "a hook with depth", persist: true }));
+
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.population).toBeTruthy();
+    const payload = update.mock.calls[0]![0] as {
+      sim_seals: Record<string, { pct: number; band: string | null }>;
+    };
+    const seal = payload.sim_seals["a hook with depth"]!;
+    // The projection's rate, at the projection's own resolution — not the vote's 60.
+    expect(seal.pct).toBe(json.population.stopPct);
+    // The rate is stop/total to ONE decimal; asserting the arithmetic pins the resolution.
+    expect(seal.pct).toBe(Math.round((1000 * json.population.stop) / json.population.total) / 10);
   });
 
   it("omitting persist writes NO seal — type-to-room leaves the thread untouched", async () => {

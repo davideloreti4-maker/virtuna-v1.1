@@ -458,8 +458,9 @@ export async function POST(request: Request): Promise<Response> {
   // A DELIBERATE Overview sim (persist:true) writes its sealed verdict (pct + band) AND the depth
   // payload (the Stage-2 `population` projection + the exemplar `personas` + `scrollQuote`) to the
   // open thread's `sim_seals`, keyed by the trimmed stimulus, so BOTH the Overview seal and the
-  // audience-depth drill survive a reload. pct is the honest "N/10 stop" fraction as a percentage; an
-  // unparseable fraction writes nothing (never fabricate a seal). Runs AFTER the population compute so
+  // audience-depth drill survive a reload. pct is the population projection's one-decimal stop rate
+  // when the projection ran, else the honest "N/10 stop" flash fraction as a percentage; neither
+  // available writes nothing (never fabricate a seal). Runs AFTER the population compute so
   // the depth rides along. `population` is now non-null for General too (the generic baseline
   // projection) → its seal carries the Population depth like a calibrated one; only presets stay
   // verdict-only. Non-fatal (writeSimSeal swallows failures) — never blocks the reaction.
@@ -471,10 +472,16 @@ export async function POST(request: Request): Promise<Response> {
   // seals NOTHING: there is no verdict to record, and the room's number is not a stand-in for it.
   if (wantPersist) {
     const m = /(\d+)\s*\/\s*(\d+)/.exec(fraction);
-    const roomPct =
+    const flashPct =
       m && Number(m[2]) > 0
         ? Math.max(0, Math.min(100, Math.round((Number(m[1]) / Number(m[2])) * 100)))
         : null;
+    // The room's verdict is the POPULATION's stop rate when the projection ran (one decimal over
+    // ~1,000 real individual verdicts — the "1,001 simulated" the surface already claims). The
+    // 10-persona flash fraction is the fallback for a run with no projection — it is a real vote,
+    // but as a percentage it is always a clean multiple of ten, and a board of 50/60/70s reads as
+    // fabricated (owner ask, 2026-08-16: a simulation's verdict must never land on a clean number).
+    const roomPct = population ? population.stopPct : flashPct;
     const pct = slice ? (slice.honored ? slice.stopPct! : null) : roomPct;
     if (pct !== null) {
       await writeSimSeal(supabase, openThread, text, {

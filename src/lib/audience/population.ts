@@ -70,7 +70,9 @@ export interface PopulationIndividual {
 export interface SegmentReaction {
   /** Engine archetype slug — keys the swarm anchors + the legacy breakdown. */
   archetype: string;
-  /** Creator-specific label (from `display_name`), falling back to the archetype label. */
+  /** The CURATED archetype display name (archetype-names.ts) — never the generator's
+   *  `display_name`, whose "The Tech Trend Hunter"-style labels the owner ruled say nothing
+   *  (2026-08-12, extended to this projection 2026-08-16). */
   displayName: string;
   /** This segment's share of the audience (0..1). */
   share: number;
@@ -78,7 +80,8 @@ export interface SegmentReaction {
   total: number;
   /** How many of them stopped. */
   stop: number;
-  /** stop / total × 100. */
+  /** stop / total × 100, to one decimal (see `pct1` — a projection over real counts almost never
+   *  lands on a clean multiple of ten, and rounding it to one made it look like it always did). */
   stopPct: number;
 }
 
@@ -95,7 +98,9 @@ export interface PopulationAggregate {
   stop: number;
   /** Individuals who scrolled (total − stop). */
   scroll: number;
-  /** stop / total × 100, rounded. */
+  /** stop / total × 100, to one decimal (`pct1`). The counts are the source of truth; this is
+   *  their display-grade rate. Whole-percent rounding here made every verdict read as a clean
+   *   50/60/70 — which is what a fabricated number looks like, on top of a real distribution. */
   stopPct: number;
   /** Per-segment split, weightiest share first. */
   segments: SegmentReaction[];
@@ -138,6 +143,13 @@ function gauss(rand: () => number): number {
 }
 
 const clamp01 = (x: number): number => Math.min(1, Math.max(0, x));
+
+/** stop/total as a percentage at ONE decimal. The projection's counts are real, so their rate
+ *  deserves real resolution: whole-percent rounding collapsed 502/1004 and 497/1004 into the same
+ *  "50%", and a verdict surface full of clean multiples of ten reads as invented. One decimal is
+ *  as far as ~1,000 samples honestly resolve — never print more. */
+export const pct1 = (stop: number, total: number): number =>
+  total > 0 ? Math.round((1000 * stop) / total) / 10 : 0;
 
 // ─── Guard: does this signature carry the v2 axes the population math needs? ──
 
@@ -267,10 +279,15 @@ export function reactPopulation(
   opts: { N?: number; seed?: number } = {},
 ): PopulationAggregate {
   const people = expandSignature(signature, opts);
+  // The CURATED archetype name, never the generator's `display_name` (2026-08-12 owner ruling,
+  // extended off the resting board 2026-08-16): calibration's own labels name a mechanism or a
+  // marketing persona ("The Tech Trend Hunter") and say nothing to that person's creator, while
+  // archetype-names.ts exists precisely to translate the slug into a plain human noun. It also
+  // keeps the audience tab and the rail's "In the room" list speaking one set of names.
   const labelByArchetype = new Map<string, { displayName: string; share: number }>(
     signature.audience.personas.map((p) => [
       p.archetype as string,
-      { displayName: p.display_name ?? archetypeDisplayName(p.archetype), share: p.share || 0 },
+      { displayName: archetypeDisplayName(p.archetype), share: p.share || 0 },
     ]),
   );
 
@@ -301,7 +318,7 @@ export function reactPopulation(
         share: meta?.share ?? v.total / (total || 1),
         total: v.total,
         stop: v.stop,
-        stopPct: v.total > 0 ? Math.round((100 * v.stop) / v.total) : 0,
+        stopPct: pct1(v.stop, v.total),
       };
     })
     .sort((a, b) => b.share - a.share);
@@ -310,7 +327,7 @@ export function reactPopulation(
     total,
     stop,
     scroll: total - stop,
-    stopPct: total > 0 ? Math.round((100 * stop) / total) : 0,
+    stopPct: pct1(stop, total),
     segments,
     reasons: [...reasons.entries()]
       .map(([reason, count]) => ({ reason, count }))

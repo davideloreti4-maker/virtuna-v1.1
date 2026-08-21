@@ -377,7 +377,8 @@ export function AmbientDetail({
       className={
         (presentation === "sheet"
           ? "flex min-h-0 w-full flex-1 flex-col"
-          : "flex w-full max-w-[440px] flex-col") + ` ${className ?? ""}`
+          : // 560 tracks the rail's resize ceiling (home-page-layout RAIL_MAX) — see AmbientOverview.
+            "flex w-full max-w-[560px] flex-col") + ` ${className ?? ""}`
       }
       style={{
         // Connected rail — mirrors AmbientOverview's root exactly: fills its column top-to-bottom (part

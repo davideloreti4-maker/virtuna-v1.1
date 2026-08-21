@@ -143,8 +143,8 @@ describe("AmbientOverviewRail", () => {
         persistedSeals={{ "I quit my 9-5 with $400…": { pct: 80, band: "Strong", at: "" } }}
       />,
     );
-    // the persisted verdict shows as a sealed 80.0% row without any network call
-    expect(screen.getByText(/80\.0%/)).toBeTruthy();
+    // the persisted verdict shows as a sealed 80% row without any network call
+    expect(screen.getByText(/80%/)).toBeTruthy();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -154,16 +154,18 @@ describe("AmbientOverviewRail", () => {
       stop: 800,
       scroll: 200,
       stopPct: 80,
+      // Real engine slugs with the generator's baked marketing names — the display layer must
+      // translate to the curated nouns at render (the 2026-08-16 naming change).
       segments: [
-        { archetype: "builder", displayName: "builders", share: 0.6, total: 600, stop: 540, stopPct: 90 },
-        { archetype: "skeptic", displayName: "skeptics", share: 0.4, total: 400, stop: 260, stopPct: 65 },
+        { archetype: "niche_deep_buyer", displayName: "The Deep Domain Devotee", share: 0.6, total: 600, stop: 540, stopPct: 90 },
+        { archetype: "tough_crowd", displayName: "The Skeptical Realist", share: 0.4, total: 400, stop: 260, stopPct: 65 },
       ],
       reasons: [
         { reason: "strong-hook", count: 520 },
         { reason: "too-slow", count: 120 },
       ],
     };
-    const personas = [{ archetype: "builder", verdict: "stop" as const, quote: "that detail made me stay" }];
+    const personas = [{ archetype: "niche_deep_buyer", verdict: "stop" as const, quote: "that detail made me stay" }];
     render(
       <AmbientOverviewRail
         audience={audience}
@@ -191,9 +193,11 @@ describe("AmbientOverviewRail", () => {
     // while every creator reads it as the loss. One verb, two polarities — so it is gone.
     expect(screen.queryByText(/would stop/i)).toBeNull();
     expect(screen.queryByText(/text concept sim/i)).toBeNull(); // never the unavailable fallback
-    // the Population tab is still reachable — the same sim's REAL districts render there
+    // the Population tab is still reachable — the same sim's REAL districts render there, under
+    // their CURATED names (never the seal's baked "The …" marketing personas)
     fireEvent.click(screen.getByRole("button", { name: "Audience" }));
-    expect(screen.getAllByText(/builders/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Deep Fans/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/The Deep Domain Devotee/)).toBeNull();
   });
 
   it("a tested VIDEO shows its viral score + Simulate; a tap reveals the % then drills into Brain depth", () => {
@@ -223,11 +227,11 @@ describe("AmbientOverviewRail", () => {
     expect(row).toBeTruthy();
     expect(screen.getByText(/84/)).toBeTruthy();
     expect(screen.getByText(/viral/)).toBeTruthy();
-    expect(screen.queryByText(/62\.0%/)).toBeNull(); // withheld until Simulate
+    expect(screen.queryByText(/62%/)).toBeNull(); // withheld until Simulate
 
     // tap 1 → reveal the already-measured attention % (no network — the Test analysis produced it)
     fireEvent.click(row);
-    expect(screen.getByText(/62\.0%/)).toBeTruthy();
+    expect(screen.getByText(/62%/)).toBeTruthy();
     expect(screen.getByText(/viral 84/)).toBeTruthy(); // native score stays in view
 
     // tap 2 → drill into the real Brain depth (brain-first for a video)
@@ -461,8 +465,8 @@ describe("AmbientOverviewRail", () => {
     expect(sentBody.text).toMatch(/I quit my 9-5/);
     expect(sentBody.pin).toBe(true); // a deliberate sim captures the flywheel vector (Phase D)
 
-    // 8/10 stop → a sealed 80.0% would-stop row (measured, not the projection)
-    expect(await screen.findByText(/80\.0%/)).toBeTruthy();
+    // 8/10 stop → a sealed 80% would-stop row (measured; integer prints bare — no fake decimal)
+    expect(await screen.findByText(/80%/)).toBeTruthy();
   });
 
   it("does NOT seal the row when the react route (fired from the ARM panel) fails — queued state holds", async () => {
