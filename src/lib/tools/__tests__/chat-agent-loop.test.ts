@@ -15,6 +15,7 @@ import {
   type ChatAgentStreamDeps,
 } from "@/lib/tools/chat-agent-loop";
 import type { SkillTool, SkillToolArgs } from "@/lib/tools/skill-dispatch";
+import { MAX_RECORD_LENGTH } from "@/lib/tools/on-screen";
 
 const CTX = { platform: "tiktok" as const, profileRow: null, audience: null };
 
@@ -1086,6 +1087,40 @@ describe("runChatAgentStream [billing]", () => {
     expect(JSON.parse(dataLine!.trim())).toEqual({
       remix_sheets: [{ blueprintId: "bp1", variant: 2, hook: "Everyone lied about mornings" }],
     });
+  });
+
+  it("the data block survives past MAX_RECORD_LENGTH — that cap is for record PROSE, not this line", async () => {
+    // `recordLineOf` clips every prose record to MAX_RECORD_LENGTH (650). This block is built
+    // separately with JSON.stringify and appended AFTER that clip runs, so it must never be cut —
+    // a truncated JSON line would fail to parse and hand the revise_remix tool a corrupt address.
+    const remixSheets = Array.from({ length: 6 }, (_, i) => ({
+      blueprintId: `bp-${i}-${"a".repeat(20)}`,
+      variant: i,
+      hook: "x".repeat(120), // the collector's own per-hook cap (chat-prior-turns.ts)
+    }));
+    const serialized = JSON.stringify({ remix_sheets: remixSheets });
+    // Prove the fixture actually exercises the cap before trusting anything downstream of it.
+    expect(serialized.length).toBeGreaterThan(MAX_RECORD_LENGTH);
+
+    const stream = mockStream([[textChunk("ok")]]);
+    await runChatAgentStream(
+      baseInput({
+        priorTurns: [
+          { role: "assistant", text: "", skillRecords: ["Remix — adapted hook: \"x\""], remixSheets },
+        ],
+      }),
+      DEPS(stream, { skills: [] }),
+    );
+
+    const { messages } = (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
+      messages: Array<Record<string, unknown>>;
+    };
+    const note = messages[1] as { role: string; content: string };
+    const [, dataLine] = note.content.split(REMIX_SHEETS_MARKER + "\n");
+    expect(dataLine).toBeDefined();
+    expect(dataLine!.length).toBeGreaterThan(MAX_RECORD_LENGTH); // un-truncated
+    // …and still parses cleanly, with EVERY sheet intact — not just long enough, but whole.
+    expect(JSON.parse(dataLine!.trim())).toEqual({ remix_sheets: remixSheets });
   });
 });
 
