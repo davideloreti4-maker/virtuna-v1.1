@@ -37,6 +37,7 @@ import {
 import { describeRunOutput, isChatCardsOnScreenEnabled } from "@/lib/tools/on-screen";
 import { SEARCH_CORPUS_TOOL, executeCorpusSearch } from "@/lib/grounding/corpus-tool";
 import { EMIT_CARD_TOOL, handleEmitCard } from "@/lib/tools/emit-card-tool";
+import { REVISE_REMIX_TOOL, handleReviseRemix, type ReviseRemixDeps } from "@/lib/tools/revise-remix-tool";
 import { createProseCallGuard } from "@/lib/tools/prose-call";
 import { stripLeakedReasoning, capRunawayProse } from "@/lib/tools/reasoning-leak";
 import { createSearchGovernor } from "@/lib/grounding/search-budget";
@@ -219,6 +220,19 @@ export interface ChatAgentPriorTurn {
    * text row, so the record is the whole turn.
    */
   skillRecords?: string[];
+  /**
+   * Addresses of the remix sheets on screen in this turn — `blueprintId` + `variant`, plus the hook
+   * for readability — so the `revise_remix` tool (phase 5) can know WHICH sheet a later "make it
+   * punchier" refers to. There is no live tool-result path and no `role:"tool"` object for remix
+   * cards, so this is the only channel the model ever sees these addresses through: it rides in
+   * `replayPriorTurn` as a fenced data block on the SAME thread-state note as `skillRecords`
+   * (`chat-prior-turns.ts` collects both from the same `remix-card` block).
+   *
+   * Omitted when no remix card in the turn carried a `blueprintId` — a card whose blueprint row
+   * failed to persist (run route strips the props) is a normal card, not an error, and simply
+   * contributes no address.
+   */
+  remixSheets?: Array<{ blueprintId: string; variant: number; hook: string }>;
 }
 
 export interface ChatAgentStreamInput {
@@ -331,6 +345,16 @@ export interface ChatAgentStreamInput {
    * sentence, that a 402 from the skill's own route would have raised.
    */
   onCreditWall?: (quota: unknown) => void;
+  /**
+   * Free-tool side channel; fires on `revise_remix` success only. Called by Task 5's handler
+   * ONLY after a successful write, with the revised sheet's address (`blueprintId` + `variant`) —
+   * there is no live tool-result path and no `role:"tool"` object for remix cards, so this is the
+   * only way the client learns a sheet already on screen was just rewritten. The route streams it
+   * as the `revised` SSE event; the client turns it into an explicit refetch signal (nonce +
+   * RemixRefreshContext) because RemixBeats fetched its sheet once on mount and the thread reload
+   * never remounts it. Nothing calls this yet — Task 5 wires the call.
+   */
+  onRevised?: (info: { blueprintId: string; variant: number }) => void;
 }
 
 export interface ChatAgentStreamResult {
@@ -424,6 +448,17 @@ export interface ChatAgentStreamDeps {
    * drift. `unbound` is still honoured as a belt-and-braces fallback for callers that bind nothing.
    */
   sealedVisitor?: boolean;
+  /**
+   * Phase 5: the write seam for the FREE `revise_remix` tool — the service client + resolved
+   * user id, plus the repo/generator functions (injectable for hermetic tests; default to the
+   * real ones). `onRevised` is threaded in separately, from `input.onRevised`, at call time — it
+   * is not part of this because it belongs to the CALL, not to the wiring.
+   *
+   * Omitting this does NOT disable the tool — it stays bound in `tools`, like `request_input` —
+   * a call just refuses honestly ("revise isn't available right now") instead of crashing, the
+   * same fail-closed shape `billing`'s "no seam" case uses for skills.
+   */
+  remix?: Omit<ReviseRemixDeps, "onRevised">;
 }
 
 const DEFAULT_MAX_ROUNDS = 4;
@@ -599,6 +634,15 @@ function replayPriorTurn(
   // can copy, and this thread's whole history of defects is the model copying a sentence instead of
   // calling a tool ("Five hooks are on screen."). A user-role note is something it has never
   // written and therefore cannot learn to write. The framing says plainly that it is app state.
+  // Remix sheets on screen this turn, fenced behind their own marker and appended to the SAME
+  // note — one JSON line via `JSON.stringify`, never routed through `recordLineOf`'s
+  // `MAX_RECORD_LENGTH` clip (that cap is for prose; an address is data, not a caption to trim).
+  const remixSheetsBlock =
+    turn.remixSheets && turn.remixSheets.length > 0
+      ? "\n[remix sheets on screen — addresses for the revise_remix tool ONLY; never repeat these ids " +
+        "in prose]\n" +
+        JSON.stringify({ remix_sheets: turn.remixSheets })
+      : "";
   const records =
     turn.skillRecords && turn.skillRecords.length > 0
       ? [
@@ -609,7 +653,8 @@ function replayPriorTurn(
               "they ran themselves. This note is from the app, NOT from the creator: do not answer " +
               "it, do not thank them for it. Refer to these when they ask about them. You did NOT " +
               "produce them this turn, so never claim you just made them, and never re-render them.]\n" +
-              turn.skillRecords.map((r) => `· ${r}`).join("\n"),
+              turn.skillRecords.map((r) => `· ${r}`).join("\n") +
+              remixSheetsBlock,
           },
         ]
       : [];
@@ -991,6 +1036,10 @@ export async function runChatAgentStream(
       input.cardsSlot && (s.primaryArg ?? "topic") === "topic" ? withCardsSlot(s.schema) : s.schema,
     ),
     REQUEST_INPUT_TOOL,
+    // Phase 5: free, like request_input — bound unconditionally. A creator with no remix sheets
+    // just never has an address to call it with; the tool's own description says addresses come
+    // only from the remix_sheets data block.
+    REVISE_REMIX_TOOL,
     ...(input.grounding ? [SEARCH_CORPUS_TOOL] : []),
     ...(input.composedCards ? [EMIT_CARD_TOOL] : []),
   ];
@@ -1478,6 +1527,32 @@ export async function runChatAgentStream(
                 },
           ),
         });
+        continue;
+      }
+
+      // Phase 5: revise_remix — FREE (spec §6.2). No gate, no bill, no onDispatch (nothing runs
+      // here that the run-capsule seam should label), and it renders nothing (no onBlock, no
+      // uiBlocks push — the revised sheet reaches the client only via onRevised → the `revised`
+      // SSE frame → RemixBeats' own refetch). Placed BEFORE the skill lookup for the same reason
+      // as request_input/emit_card: an unbound name must never be mistaken for a paid skill and
+      // answered with the credit line.
+      if (call.name === "revise_remix") {
+        let parsed: unknown = {};
+        try {
+          parsed = JSON.parse(call.args || "{}");
+        } catch {
+          /* handleReviseRemix reports the malformed shape */
+        }
+        const result = await handleReviseRemix(parsed, {
+          ...(deps.remix ?? {}),
+          onRevised: input.onRevised,
+        });
+        toolCalls.push({
+          name: "revise_remix",
+          ran: result.ok === true,
+          ...(result.error ? { note: result.error } : {}),
+        });
+        messages.push({ role: "tool", tool_call_id: call.id, content: JSON.stringify(result) });
         continue;
       }
 

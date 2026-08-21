@@ -24,6 +24,7 @@ import { SECTION_LABEL } from "./card-primitives";
 import { CoverFill } from "@/components/primitives/CoverFill";
 import { RemixSourceViewer } from "./remix-source-viewer";
 import { RemixSourceEmbed } from "./remix-source-embed";
+import { useRemixRefresh } from "@/lib/remix-refresh-context";
 
 interface Payload {
   script: AdaptedBeat[][];
@@ -100,8 +101,17 @@ export function RemixBeats({
   // Identity-stable so the viewer's onActiveBeatChange effect does not re-fire every render.
   const onActiveBeatChange = useCallback((i: number | null) => setActiveBeat(i), []);
 
+  // Phase 5 (Task 2): the refresh channel. This card fetches once on mount and the thread reload
+  // never remounts it (positional keys), so a `revise_remix` write nobody re-fetches for didn't
+  // happen on screen. `bump` is this sheet's latest nonce — 0 when it has never been revised, and
+  // it belongs in the fetch effect's deps so a later bump is an explicit "refetch me" signal.
+  const { counters } = useRemixRefresh();
+  const bump = counters[blueprintId] ?? 0;
+
   useEffect(() => {
-    if (initialData) return; // injected — never touch the network
+    // injected (/dev/cards) — never touch the network UNLESS a revise bumped this sheet, so a
+    // gallery-injected card also refetches after a revise instead of showing the stale fixture.
+    if (initialData && bump === 0) return;
     let alive = true;
     void (async () => {
       try {
@@ -116,9 +126,14 @@ export function RemixBeats({
     return () => {
       alive = false;
     };
-  }, [blueprintId, initialData]);
+  }, [blueprintId, initialData, bump]);
 
-  const data = initialData ?? fetched;
+  // `fetched` wins once it exists, not `initialData` — a bump-triggered refetch must not stay
+  // shadowed by the fixture it was told is now stale (phase 5, the refresh channel). Behavior-
+  // identical for every OTHER path: with bump 0 and initialData present the fetch effect never
+  // runs, so `fetched` stays null and initialData still shows through the `??`; production never
+  // sets initialData, so this side is always null and `fetched` was already the only source.
+  const data = fetched ?? initialData;
   if (!data) return null;
 
   const { blueprint } = data;

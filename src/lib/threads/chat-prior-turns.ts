@@ -86,14 +86,24 @@ export function openChatPriorTurns(hydratedMessages: HydratedMessage[]): ChatAge
   // the transcript at the moment they actually happened — and, crucially, still emits them when no
   // text turn ever follows (a skill run from the pill persists only its card).
   let pendingRecords: string[] = [];
+  // Addresses of remix sheets recorded alongside `pendingRecords` in the SAME loop below — the
+  // model's only channel to `blueprintId` + `variant` (phase 5's `revise_remix` tool). Flushed onto
+  // the identical turn as the record lines, never as a turn of its own.
+  let pendingSheets: Array<{ blueprintId: string; variant: number; hook: string }> = [];
   // The creator's last ask, replayed as the reconstructed tool arguments (the real args were never
   // persisted; this is what the run was actually about).
   let lastUserText = "";
 
   const flushRecords = () => {
     if (pendingRecords.length === 0) return;
-    turns.push({ role: "assistant", text: "", skillRecords: pendingRecords.slice(0, MAX_RECORDS) });
+    turns.push({
+      role: "assistant",
+      text: "",
+      skillRecords: pendingRecords.slice(0, MAX_RECORDS),
+      ...(pendingSheets.length > 0 ? { remixSheets: pendingSheets } : {}),
+    });
     pendingRecords = [];
+    pendingSheets = [];
   };
 
   for (const msg of hydratedMessages) {
@@ -104,6 +114,32 @@ export function openChatPriorTurns(hydratedMessages: HydratedMessage[]): ChatAge
         // take the anchor down with it), so both this path and the live tool result degrade alike.
         const line = recordLineOf(block.type, block.props);
         if (line) pendingRecords.push(line);
+        // A remix card ALSO carries an address, when its blueprint row actually persisted. A card
+        // whose write failed had its `blueprintId`/`blueprintVariant` stripped by the run route
+        // (api/tools/remix/run/route.ts:259-262) — that is a normal card, not an error, and simply
+        // contributes no address here.
+        if (block.type === "remix-card") {
+          const props = (block.props ?? {}) as {
+            blueprintId?: unknown;
+            blueprintVariant?: unknown;
+            adaptedHook?: unknown;
+          };
+          const blueprintId =
+            typeof props.blueprintId === "string" && props.blueprintId.trim() ? props.blueprintId : null;
+          const variant =
+            typeof props.blueprintVariant === "number" &&
+            Number.isInteger(props.blueprintVariant) &&
+            props.blueprintVariant >= 0
+              ? props.blueprintVariant
+              : null;
+          if (blueprintId !== null && variant !== null) {
+            const hook =
+              typeof props.adaptedHook === "string" && props.adaptedHook.trim()
+                ? props.adaptedHook.trim().slice(0, 120)
+                : "";
+            pendingSheets.push({ blueprintId, variant, hook });
+          }
+        }
         continue;
       }
       const tool = CARD_BLOCK_TOOL[block.type];

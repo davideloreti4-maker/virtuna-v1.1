@@ -95,6 +95,19 @@ export interface UseChatStreamReturn {
    */
   preGuess: string | null;
   /**
+   * Phase 5 (Task 2) — the refresh channel. Each `revised` SSE frame (revise_remix's free-tool
+   * side channel, event: revised) becomes one entry here, in arrival order, with a per-blueprintId
+   * incrementing `nonce` — the focusVideo (composer.tsx) nonce trick, so a SECOND revision of the
+   * same sheet is still a distinct signal even though blueprintId hasn't changed. Composer folds
+   * this into RemixRefreshContext's `counters` map; RemixBeats reads its own blueprintId's counter
+   * to know it must refetch, since the thread reload never remounts it.
+   *
+   * Deliberately NOT reset by start()/reset() — mirrors nudgeShown. A revision is a durable fact
+   * about a card already on screen, not this-turn's live render state; clearing it on the next
+   * send would make an unrelated later turn silently drop the counter RemixBeats depends on.
+   */
+  revisedSheets: Array<{ blueprintId: string; variant: number; nonce: number }>;
+  /**
    * Start the chat stream. Call from the composer chat send.
    * ask: the user's question/message (required — server enforces).
    * platform: current platform selection ("tiktok" | "instagram" | "youtube").
@@ -144,6 +157,11 @@ export function useChatStream(): UseChatStreamReturn {
   const [warnings, setWarnings] = useState<string[]>([]);
   const [dispatchedSkill, setDispatchedSkill] = useState<string | null>(null);
   const [preGuess, setPreGuess] = useState<string | null>(null);
+  // Phase 5 (Task 2): the refresh channel. NOT reset by start()/reset() (see the return-type
+  // docstring) — a revision is a durable fact, not this-turn's live render state.
+  const [revisedSheets, setRevisedSheets] = useState<
+    Array<{ blueprintId: string; variant: number; nonce: number }>
+  >([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDone, setIsDone] = useState(false);
@@ -156,6 +174,11 @@ export function useChatStream(): UseChatStreamReturn {
   // Ref copies so block/stage events patch without a stale closure (mirrors use-ideas-stream).
   const blocksRef = useRef<unknown[]>([]);
   const stagesRef = useRef<StageState[]>([]);
+  // Phase 5 (Task 2): revisedSheets accumulator + the per-blueprintId nonce counter. Both persist
+  // for the life of the hook instance — never reset by start()/reset() — so a nonce keeps
+  // incrementing correctly even across turns, and the append-only log never loses an earlier bump.
+  const revisedSheetsRef = useRef<Array<{ blueprintId: string; variant: number; nonce: number }>>([]);
+  const revisedNonceRef = useRef<Record<string, number>>({});
 
   // WR-05: set isMountedRef = false on unmount so stream callbacks don't setState
   // on an unmounted component. Without this the useRef(true) guard is permanently
@@ -342,6 +365,21 @@ export function useChatStream(): UseChatStreamReturn {
               setPreGuess(null); // the real commitment replaces the hint
             }
 
+          } else if (eventType === 'revised') {
+            // Phase 5 (Task 2): revise_remix's free-tool side channel. A missing/non-string
+            // blueprintId means a malformed frame — never turned into a signal (nothing to refetch).
+            const blueprintId = typeof data.blueprintId === 'string' ? data.blueprintId : '';
+            const variant = typeof data.variant === 'number' ? data.variant : 0;
+            if (blueprintId) {
+              const nextNonce = (revisedNonceRef.current[blueprintId] ?? 0) + 1;
+              revisedNonceRef.current = { ...revisedNonceRef.current, [blueprintId]: nextNonce };
+              revisedSheetsRef.current = [
+                ...revisedSheetsRef.current,
+                { blueprintId, variant, nonce: nextNonce },
+              ];
+              if (isMountedRef.current) setRevisedSheets([...revisedSheetsRef.current]);
+            }
+
           } else if (eventType === 'warning') {
             // The dispatched runners' real warnings (Stage A) — same event shape the
             // dedicated skill routes emit ({ warnings: string[] }).
@@ -418,6 +456,7 @@ export function useChatStream(): UseChatStreamReturn {
     warnings,
     dispatchedSkill,
     preGuess,
+    revisedSheets,
     isStreaming,
     error,
     isDone,

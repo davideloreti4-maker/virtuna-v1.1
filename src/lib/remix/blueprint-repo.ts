@@ -15,6 +15,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SourceBlueprint } from "@/lib/engine/remix/blueprint";
 import type { AdaptedBeat } from "@/lib/engine/remix/decode-types";
+import { createLogger } from "@/lib/logger";
+
+const log = createLogger({ module: "remix.blueprint-repo" });
 
 /**
  * The columns `BlueprintRow` declares, as PostgREST wants them.
@@ -91,4 +94,45 @@ export async function getBlueprint(
   }
 
   return data ? (data as unknown as BlueprintRow) : null;
+}
+
+/**
+ * Rewrite ONE variant's script, atomically, via `jsonb_set` inside a single UPDATE
+ * (`remix_blueprint_set_variant_script`) — never a select-then-rewrite of the whole `script`
+ * array, which would race a sibling variant's write and clobber it (same lost-update class the
+ * RPC in `20260706130000_atomic_variants_merge.sql` fixes for `analysis_results.variants`).
+ *
+ * `jsonb_set` on an out-of-range array index is a silent no-op on the row — callers MUST
+ * validate `variant` against the row's actual variant count (via `getBlueprint`) before calling
+ * this; that range check does not belong here because it needs the row this function never reads.
+ *
+ * Never throws: a write here is a revision, not the original run, so the tool that calls this
+ * relays an honest failure to the user instead of a 500. Errors are logged so a swallowed
+ * failure is still visible in the logs even though it doesn't surface as an exception.
+ */
+export async function updateVariantScript(
+  service: SupabaseClient,
+  id: string,
+  userId: string,
+  variant: number,
+  script: AdaptedBeat[],
+): Promise<boolean> {
+  const { error } = await service.rpc("remix_blueprint_set_variant_script", {
+    p_id: id,
+    p_user_id: userId,
+    p_variant: variant,
+    p_script: script,
+  });
+
+  if (error) {
+    log.error("remix_blueprints variant script write failed", {
+      id,
+      userId,
+      variant,
+      error: error.message,
+    });
+    return false;
+  }
+
+  return true;
 }

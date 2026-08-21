@@ -29,6 +29,7 @@
  */
 
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { createOpenThreadLazy, getOpenThread, setThreadTitleIfEmpty } from "@/lib/threads/threads";
 import { insertMessage, loadMessages } from "@/lib/threads/messages";
@@ -638,6 +639,9 @@ export async function POST(request: Request): Promise<Response> {
               // A streaming turn cannot answer 402, so the refusal body rides its own frame and the
               // client raises the same paywall dialog every other refused skill raises.
               onCreditWall: (quota) => send("credit-wall", { quota }),
+              // Phase 5: revise_remix's free-tool side channel. Fires only after a successful
+              // write, so the client's refetch signal never fires on a no-op or a failed revise.
+              onRevised: (r) => send("revised", r),
             },
             {
               // THE TRIAL WALL, on chat's back door. This route is free BY DECISION (the glue of the
@@ -662,6 +666,10 @@ export async function POST(request: Request): Promise<Response> {
               // from the skill pill. Same price, same helpers, same refusal copy as the dedicated routes,
               // so the two doors into the engine cannot drift apart.
               billing: skillBilling(supabase, user),
+              // Phase 5: the write seam for the FREE revise_remix tool — the service client (bypasses
+              // RLS, same client `getBlueprint`/`updateVariantScript` already expect) + the resolved
+              // user id, mirroring how `getBlueprint` is called on the dedicated blueprint route.
+              remix: { service: createServiceClient(), userId: user.id },
             }
           );
 

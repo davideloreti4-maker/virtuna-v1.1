@@ -15,6 +15,8 @@ import {
   type ChatAgentStreamDeps,
 } from "@/lib/tools/chat-agent-loop";
 import type { SkillTool, SkillToolArgs } from "@/lib/tools/skill-dispatch";
+import { MAX_RECORD_LENGTH } from "@/lib/tools/on-screen";
+import type { BlueprintRow } from "@/lib/remix/blueprint-repo";
 
 const CTX = { platform: "tiktok" as const, profileRow: null, audience: null };
 
@@ -689,6 +691,155 @@ describe("runChatAgentStream [tools]", () => {
   });
 });
 
+// ── PHASE 5: revise_remix — FREE, always bound ────────────────────────────────
+// The handler's own contract (ownership, variant range, the merge-by-index write) is pinned in
+// revise-remix-tool.test.ts. What belongs HERE is the loop-level free-tool invariant: the branch
+// sits BEFORE byName.get, so it can never reach deps.billing.gate or fire onDispatch — the same
+// property request_input and emit_card already have.
+
+describe("runChatAgentStream [revise_remix]", () => {
+  /** Ownership-refusal deps — the simplest path through the handler, enough to prove the loop's shape. */
+  const refusingRemixDeps = () => ({
+    service: {} as never,
+    userId: "u1",
+    getBlueprint: vi.fn(async () => null),
+    updateVariantScript: vi.fn(),
+    reviseBeats: vi.fn(),
+  });
+
+  const REVISE_ARGS = '{"blueprintId":"bp1","variant":0,"beats":[1],"note":"beat 2 is too soft"}';
+
+  it("is bound in `tools` unconditionally — even with no skills, no grounding, no composed cards", async () => {
+    const stream = mockStream([[textChunk("ok")]]);
+
+    await runChatAgentStream(baseInput(), DEPS(stream, { skills: [] }));
+
+    const names = (
+      (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
+        tools: Array<{ function: { name: string } }>;
+      }
+    ).tools.map((t) => t.function.name);
+    expect(names).toContain("revise_remix");
+  });
+
+  it("never reaches the billing gate and never announces a dispatch (free, like request_input)", async () => {
+    const billing = mkBilling();
+    const onDispatch = vi.fn();
+    const stream = mockStream([
+      [toolName(0, "c1", "revise_remix"), toolArgs(0, REVISE_ARGS)],
+      [textChunk("done")],
+    ]);
+
+    await runChatAgentStream(
+      baseInput({ onDispatch }),
+      DEPS(stream, { skills: [], billing, remix: refusingRemixDeps() }),
+    );
+
+    expect(billing.gate).not.toHaveBeenCalled();
+    expect(onDispatch).not.toHaveBeenCalled();
+  });
+
+  it("the tool result lands in the NEXT round's messages as role:tool, keyed to the call id", async () => {
+    const stream = mockStream([
+      [toolName(0, "c1", "revise_remix"), toolArgs(0, REVISE_ARGS)],
+      [textChunk("done")],
+    ]);
+
+    await runChatAgentStream(baseInput(), DEPS(stream, { skills: [], remix: refusingRemixDeps() }));
+
+    const secondRound = (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[1]![0] as {
+      messages: Array<{ role: string; tool_call_id?: string; content?: string }>;
+    };
+    const toolResult = secondRound.messages.find((m) => m.tool_call_id === "c1");
+    expect(toolResult?.role).toBe("tool");
+    expect(() => JSON.parse(toolResult!.content!)).not.toThrow();
+    expect(JSON.parse(toolResult!.content!)).toMatchObject({ ok: false });
+  });
+
+  it("renders nothing — no onBlock call, nothing added to uiBlocks", async () => {
+    const onBlock = vi.fn();
+    const stream = mockStream([
+      [toolName(0, "c1", "revise_remix"), toolArgs(0, REVISE_ARGS)],
+      [textChunk("done")],
+    ]);
+
+    const res = await runChatAgentStream(
+      baseInput({ onBlock }),
+      DEPS(stream, { skills: [], remix: refusingRemixDeps() }),
+    );
+
+    expect(onBlock).not.toHaveBeenCalled();
+    expect(res.uiBlocks).toHaveLength(0);
+  });
+
+  it("an unrelated billable skill call in the SAME round still gates and bills normally", async () => {
+    const billing = mkBilling();
+    const ideas = mkSkill("generate_ideas");
+    const onDispatch = vi.fn();
+    const stream = mockStream([
+      [
+        toolName(0, "c1", "revise_remix"),
+        toolArgs(0, REVISE_ARGS),
+        toolName(1, "c2", "generate_ideas"),
+        toolArgs(1, '{"topic": "a"}'),
+      ],
+      [textChunk("done")],
+    ]);
+
+    const res = await runChatAgentStream(
+      baseInput({ onDispatch }),
+      DEPS(stream, { skills: [ideas], billing, remix: refusingRemixDeps() }),
+    );
+
+    expect(billing.gate).toHaveBeenCalledTimes(1);
+    expect(billing.gate).toHaveBeenCalledWith("ideas");
+    expect(billing.bill).toHaveBeenCalledWith("ideas", "pro");
+    expect(onDispatch).toHaveBeenCalledTimes(1);
+    expect(onDispatch).toHaveBeenCalledWith("ideas");
+    expect(res.skillRuns).toHaveLength(1);
+  });
+
+  it("fires input.onRevised only after a real successful write, with the address", async () => {
+    const onRevised = vi.fn();
+    const stream = mockStream([
+      [toolName(0, "c1", "revise_remix"), toolArgs(0, REVISE_ARGS)],
+      [textChunk("done")],
+    ]);
+    const writingDeps = {
+      service: {} as never,
+      userId: "u1",
+      getBlueprint: vi.fn(async (): Promise<BlueprintRow | null> => ({
+        id: "bp1",
+        user_id: "u1",
+        thread_id: null,
+        source_video_id: null,
+        blueprint: {
+          duration_s: 10,
+          words_per_second: 3,
+          has_speech: true,
+          from_fixed_buckets: false,
+          beats: [
+            { index: 0, t_start: 0, t_end: 1, duration_s: 1, spoken_span_s: null, role: "hook", spoken: "s0", on_screen_text: null, visual_event: "v0", audio_event: "a0", cuts: 1, weakness: null },
+            { index: 1, t_start: 1, t_end: 2, duration_s: 1, spoken_span_s: null, role: "setup", spoken: "s1", on_screen_text: null, visual_event: "v1", audio_event: "a1", cuts: 1, weakness: null },
+          ],
+        },
+        script: [[
+          { index: 0, spoken: "a", on_screen_text: "A", shot: "s" },
+          { index: 1, spoken: "b", on_screen_text: "B", shot: "s" },
+        ]],
+        clip_uris: [],
+      })),
+      updateVariantScript: vi.fn(async () => true),
+      reviseBeats: vi.fn(async () => [{ index: 1, spoken: "new", on_screen_text: "N", shot: "s" }]),
+    };
+
+    await runChatAgentStream(baseInput({ onRevised }), DEPS(stream, { skills: [], remix: writingDeps }));
+
+    expect(onRevised).toHaveBeenCalledTimes(1);
+    expect(onRevised).toHaveBeenCalledWith({ blueprintId: "bp1", variant: 0 });
+  });
+});
+
 // ── THE MONEY SEAM ────────────────────────────────────────────────────────────
 // A skill reached through the pill went to its own gated, billed route; the same skill reached
 // through the agent came through this loop, which charged nothing. These lock the two doors to the
@@ -1012,6 +1163,114 @@ describe("runChatAgentStream [billing]", () => {
       { role: "user", content: "why do my videos flop?" },
       { role: "assistant", content: "no stakes in the first beat" },
     ]);
+  });
+
+  // ── Remix sheets: the address channel (phase 5, task 1) ────────────────────────────────────
+  //
+  // Remix cards reach the model only through this note — there is no live tool-result path and no
+  // `role:"tool"` object for them. The `revise_remix` tool needs `blueprintId` + `variant` to know
+  // WHICH sheet a later "make it punchier" refers to, so those addresses ride on the SAME
+  // thread-state note as the `· record` lines, fenced behind a marker that tells the model never to
+  // repeat them in prose.
+  const RECORD_NOTE_PREFIX =
+    "[Thread state — results already on the creator's screen in this thread, from skills " +
+    "they ran themselves. This note is from the app, NOT from the creator: do not answer " +
+    "it, do not thank them for it. Refer to these when they ask about them. You did NOT " +
+    "produce them this turn, so never claim you just made them, and never re-render them.]\n";
+  const REMIX_SHEETS_MARKER =
+    "[remix sheets on screen — addresses for the revise_remix tool ONLY; never repeat these ids in prose]";
+
+  it("a prior turn WITHOUT remixSheets renders byte-identical to before — pinned fixture", async () => {
+    const stream = mockStream([[textChunk("ok")]]);
+
+    await runChatAgentStream(
+      baseInput({
+        priorTurns: [{ role: "assistant", text: "", skillRecords: ["Video Test — craft 61/100"] }],
+      }),
+      DEPS(stream, { skills: [] }),
+    );
+
+    const { messages } = (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
+      messages: Array<Record<string, unknown>>;
+    };
+    expect(messages[1]).toEqual({
+      role: "user",
+      content: RECORD_NOTE_PREFIX + "· Video Test — craft 61/100",
+    });
+  });
+
+  it("a prior turn with remixSheets appends a fenced JSON data block to the SAME note", async () => {
+    const stream = mockStream([[textChunk("ok")]]);
+
+    await runChatAgentStream(
+      baseInput({
+        priorTurns: [
+          {
+            role: "assistant",
+            text: "",
+            skillRecords: ['Remix — adapted hook: "Everyone lied about mornings"'],
+            remixSheets: [{ blueprintId: "bp1", variant: 2, hook: "Everyone lied about mornings" }],
+          },
+        ],
+      }),
+      DEPS(stream, { skills: [] }),
+    );
+
+    const { messages } = (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
+      messages: Array<Record<string, unknown>>;
+    };
+    // ONE role:"user" note carries both the record line and the data block — not two messages.
+    // NB the loop pushes its own round message onto this same array afterwards, so assert
+    // POSITIONS, never the length (see the tool-call replay test above).
+    expect(messages[2]).toEqual({ role: "user", content: "x" }); // this turn's ask, right after the note
+    const note = messages[1] as { role: string; content: string };
+    expect(note.role).toBe("user");
+    expect(note.content).toContain(REMIX_SHEETS_MARKER);
+
+    const [prose, dataLine] = note.content.split(REMIX_SHEETS_MARKER + "\n");
+    // The record line is still there, unchanged…
+    expect(prose).toBe(RECORD_NOTE_PREFIX + '· Remix — adapted hook: "Everyone lied about mornings"\n');
+    // …and the address itself never leaks into the prose the model might echo back.
+    expect(prose).not.toContain("bp1");
+    expect(prose).not.toContain("blueprintId");
+    // The data line round-trips through JSON.parse, with the exact shape the tool needs.
+    expect(JSON.parse(dataLine!.trim())).toEqual({
+      remix_sheets: [{ blueprintId: "bp1", variant: 2, hook: "Everyone lied about mornings" }],
+    });
+  });
+
+  it("the data block survives past MAX_RECORD_LENGTH — that cap is for record PROSE, not this line", async () => {
+    // `recordLineOf` clips every prose record to MAX_RECORD_LENGTH (650). This block is built
+    // separately with JSON.stringify and appended AFTER that clip runs, so it must never be cut —
+    // a truncated JSON line would fail to parse and hand the revise_remix tool a corrupt address.
+    const remixSheets = Array.from({ length: 6 }, (_, i) => ({
+      blueprintId: `bp-${i}-${"a".repeat(20)}`,
+      variant: i,
+      hook: "x".repeat(120), // the collector's own per-hook cap (chat-prior-turns.ts)
+    }));
+    const serialized = JSON.stringify({ remix_sheets: remixSheets });
+    // Prove the fixture actually exercises the cap before trusting anything downstream of it.
+    expect(serialized.length).toBeGreaterThan(MAX_RECORD_LENGTH);
+
+    const stream = mockStream([[textChunk("ok")]]);
+    await runChatAgentStream(
+      baseInput({
+        priorTurns: [
+          { role: "assistant", text: "", skillRecords: ["Remix — adapted hook: \"x\""], remixSheets },
+        ],
+      }),
+      DEPS(stream, { skills: [] }),
+    );
+
+    const { messages } = (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
+      messages: Array<Record<string, unknown>>;
+    };
+    const note = messages[1] as { role: string; content: string };
+    const [, dataLine] = note.content.split(REMIX_SHEETS_MARKER + "\n");
+    expect(dataLine).toBeDefined();
+    expect(dataLine!.length).toBeGreaterThan(MAX_RECORD_LENGTH); // un-truncated
+    // …and still parses cleanly, with EVERY sheet intact — not just long enough, but whole.
+    expect(JSON.parse(dataLine!.trim())).toEqual({ remix_sheets: remixSheets });
   });
 });
 
