@@ -9,7 +9,9 @@
  *  - SIMULATED — audiences built from a handle the user doesn't own, or a description.
  *
  * Each audience is a matte card whose FACE is its composition signature (temperature
- * encoded as brightness, never hue). The card is deliberately quiet — four tiers, one
+ * encoded as brightness, never hue). Cards sit on one unified hairline panel per zone
+ * (Apple-grammar pass, 2026-08-21 — the Library shelf's approved shape), not as
+ * individually-bordered floating tiles. The card is deliberately quiet — four tiers, one
  * fact each:
  *   • name + platform   — who this is
  *   • composition face  — the signature (temperature as brightness)
@@ -155,11 +157,15 @@ function CompositionFace({ audience }: { audience: Audience }) {
 
 function ProvLine({ audience }: { audience: Audience }) {
   const built = getBuiltFrom(audience);
-  // Status dot: sage = read from a real account, grey = described, amber = nothing yet.
+  // Status dot: bright = read from a real account, dim = described, amber = nothing yet.
+  // The read rung wore sage-green — a positive worn at rest, which the dosage rule reads as
+  // decoration ("colour only on Weak", the approved Library ruling). Provenance strength is
+  // now brightness, the same encoding the composition face already uses for temperature;
+  // amber stays because needs-action is the one state that genuinely warns.
   const dotClass = built.needsAction
     ? "bg-[color:var(--color-warning-raw)]"
     : getRung(audience) === "read"
-      ? "bg-[color:var(--color-positive)]"
+      ? "bg-foreground"
       : "bg-foreground-muted";
   return (
     <p
@@ -187,11 +193,10 @@ function ProvLine({ audience }: { audience: Audience }) {
 interface CardShellProps {
   ariaLabel: string;
   onClick: () => void;
-  empty?: boolean;
   children: React.ReactNode;
 }
 
-function CardShell({ ariaLabel, onClick, empty, children }: CardShellProps) {
+function CardShell({ ariaLabel, onClick, children }: CardShellProps) {
   return (
     <div
       role="button"
@@ -204,13 +209,14 @@ function CardShell({ ariaLabel, onClick, empty, children }: CardShellProps) {
           onClick();
         }
       }}
+      // Border/radius removed (Apple-grammar pass): cards sit inside the zone's unified panel,
+      // which owns the outer border and clips the square hover fill at its own corners. The
+      // empty state lost its dashed outline with the border — the dashed composition face and
+      // "Nothing yet" line carry it. Ring inset so the panel's overflow clip can't eat it.
       className={cn(
-        "group relative flex min-h-[172px] cursor-pointer flex-col gap-3.5 rounded-2xl px-4 pt-4",
-        "border transition-colors duration-150",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)]",
-        empty
-          ? "border-dashed border-white/[0.10] bg-transparent hover:border-white/[0.16]"
-          : "border-border bg-surface-elevated hover:border-border-hover",
+        "group relative flex cursor-pointer flex-col gap-3.5 px-4 pt-4",
+        "transition-colors duration-150 hover:bg-surface-thread",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[color:var(--focus-ring)]",
       )}
     >
       {children}
@@ -253,8 +259,10 @@ function CardHead({
 
 function DefaultPill() {
   return (
+    // The dot was positive-green; the word "Default" already carries the fact, so the green
+    // was decoration by the dosage rule. A bright neutral dot keeps the pill's rhythm.
     <span className="inline-flex items-center gap-1.5 rounded-full border border-border-hover px-2.5 py-1 text-caption font-semibold text-foreground-secondary">
-      <span aria-hidden="true" className="h-[5px] w-[5px] rounded-full bg-[color:var(--color-positive)]" />
+      <span aria-hidden="true" className="h-[5px] w-[5px] rounded-full bg-foreground" />
       Default
     </span>
   );
@@ -308,7 +316,13 @@ function Zone({ label, children }: { label: string; children: React.ReactNode })
       <p className="mb-3 px-0.5 font-mono text-micro uppercase tracking-[0.14em] text-foreground-muted">
         {label}
       </p>
-      <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">{children}</div>
+      {/* The unified shelf panel (Apple-grammar pass) — the same shape the Library shelf and
+          project detail carry: sibling cards on ONE bordered surface with hairline dividers,
+          replacing individually-bordered floating cards. Cards drop their own border/radius
+          inside it; `overflow-hidden` clips the square hover fill to the panel's corners. */}
+      <div className="flex flex-col divide-y divide-white/[0.06] overflow-hidden rounded-[12px] border border-white/[0.06]">
+        {children}
+      </div>
     </section>
   );
 }
@@ -465,12 +479,7 @@ export function AudienceIndex({
     );
 
     return (
-      <CardShell
-        key={audience.id}
-        ariaLabel={audience.name}
-        empty={built.needsAction}
-        onClick={() => onOpen(audience)}
-      >
+      <CardShell key={audience.id} ariaLabel={audience.name} onClick={() => onOpen(audience)}>
         <CardHead
           name={audience.name}
           platform={opts.platform}
