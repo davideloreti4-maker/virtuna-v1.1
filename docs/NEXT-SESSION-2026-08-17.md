@@ -1,5 +1,29 @@
 # Next session — copy-paste brief (session 16 close-out, 2026-08-16)
 
+> # 🔴 UPDATED 2026-08-21 — THE BACKLOG THIS BRIEF DESCRIBES IS CLOSED
+>
+> Read this box before anything below it. Session 17 closed **every** open row this brief lists,
+> and **three** of its headline claims are now false:
+>
+> | this brief says | truth as of 2026-08-21 |
+> |---|---|
+> | *"F-11b … the largest known defect left on this surface"* | **Fixed and SHIPPING.** Stage B is **ON by default** (#538, owner-approved) — `!== "false"`. No env step; it arrives on the first build |
+> | *"F-11d + F-12b — the only things still needing a PAID run"* | **Both answered FREE from code** (#543). Neither ever needed a run. See §2 |
+> | *"the mitigation … is DARK … gated on `NEXT_PUBLIC_ENGINE_ONE_BRAIN`"* | **Not dark.** Default-ON since 2026-08-16 |
+>
+> **A defect this brief could not have known about was found in the fix itself** (#536): B3's label
+> read the pre-router guess **raw** while the pin beside it reads it **narrowed**, so the one
+> measured harmful guess — *"Yes, run the simulate tool on that hook"* — was announced to the
+> creator as *"Looks like a hooks run…"* for the whole 4–5s wait. Landed 16 minutes before #538 made
+> Stage B a shipping default. Pinned by route test **6g2**.
+>
+> **What is actually open:** see the ▶️ block below, which has been rewritten. Everything else in
+> this file — the traps, the DO-NOTs, the known-good list — is still accurate and still worth reading.
+>
+> 🔑 **The lesson this session kept re-learning, four times:** ⚪ *"unmeasured"* and *"needs a paid
+> run"* both mean **nobody opened the file**. Neither means the work is undone. `git log --all
+> --grep`, then read the call site, **before** budgeting anything against an inherited row.
+
 **Lane:** in-thread chat · worktree `~/virtuna-in-thread-chat`
 **Shipped:** **PR #523, MERGED** — merge commit `cf58a5f0`. The monologue leak's *assembly* half is
 closed (N-1 + N-2). The branch `fix/monologue-stream-leak` is deleted.
@@ -26,7 +50,10 @@ assembly half. tsc 0 + 6562 tests 0 failed, verified ON the merge commit.
 Main moved twice during session 16 alone (#524, #525 landed mid-session, from co-sessions).
 
 CONTEXT: this is the in-thread chat lane — chat runs the tools. The last week has been
-auditing what that surface produces. The F-audit backlog is now TWO rows, not four.
+auditing what that surface produces. The F-audit backlog is now ZERO rows (2026-08-21) —
+it read "four", then "two", and every one of them closed without the paid run each was
+budgeted for. F-8b is the only row anywhere still needing money, and it needs a
+CALIBRATED audience with it.
 
 🔴 THE FINDING THAT MATTERS MOST THIS SESSION — read before planning anything:
 Four successive briefs listed "F-3, F-8, F-11, F-12 — never measured, one live billed run
@@ -39,13 +66,25 @@ Nobody re-checked, because "⚪ unmeasured" reads as "still broken" when it only
 times for work already done.
   🔑 ⚪ UNMEASURED ≠ UNFIXED. git log --all --grep before you budget a run against any row.
 
+⚠️ REWRITTEN 2026-08-21 — the list that was here (F-11b, then F-11d + F-12b) is CLOSED.
+   F-11b: fixed, and Stage B ships ON by default (#538). F-11d + F-12b: answered free
+   from code (#543); neither needed the paid run four briefs budgeted for them.
+
 OPEN, in the order I would take them — ASK first, this lane is at a clean stop:
-  1. F-11b — DEAD AIR. Measured free on 2026-08-16 and it is REAL: median 5.28s (prose)
-     / 4.04s (skill) before the first character reaches the creator. The transport
-     streams fine; there is simply nothing to send yet. This is a FIX task, not a
-     measuring task — and it is the largest known defect left on this surface.
-  2. F-11d + F-12b — the only things still needing a PAID run. Both need a billable
-     generator to actually run: cards to count, and the ProgressChecklist spine to exist.
+  1. The prose-call pin's TARGET (route.ts:569) reads the guess RAW, while
+     prose-call.ts's own header claims it is "the guess pin with the ~3.4% wrong-run
+     exposure removed". It never inherited detectGuessPin's narrowing and its design
+     doc never mentions it. Exposure is SMALL — firing needs the model to write a
+     GENERATOR name with "(", and the one known bad ask elicits simulate(...), so the
+     trigger filters it. The COMMENT is inaccurate, not the behaviour. Owner's call on
+     measured design behind a dark flag: fix the code, or fix the sentence.
+  2. F-8b — the ONLY row left that genuinely needs a paid run, and it needs a
+     CALIBRATED audience alongside it or it proves nothing. A repeated persona roster
+     would mean repeated calibration INPUT, not a hardcode (profile-runner.ts:186).
+  3. Task #31 — the monologue leak's STREAM half. Owner-deferred, not forgotten.
+  4. The sidebar ⋯ menu — a design call, not a CSS one.
+  5. The three ENGINE_* pins are still dark and were each measured ALONE. No run has
+     ever had all three on at once. Free to exercise locally; do it before they debut.
 
 🔴 IF YOU WRITE A BROWSER PROBE, MAKE IT WAIT. The F-12 probe typed the instant the
 textarea appeared and measured a 641px void that matched the audit almost exactly —
@@ -111,7 +150,14 @@ later rounds. If revisited, the pattern is `createProseCallGuard` (`prose-call.t
 > leaked 3 of 4 identical asks on 08-12 and 0 of 6 on 08-13. **A clean run is not evidence it is
 > gone.** That is why this is a boundary guard, not a prompt change — there is nothing to A/B.
 
-## 2. 🔴 The backlog is TWO rows, not four
+## 2. 🔴 The backlog went four → two → **zero**, and none of them cost a run
+
+> **Read the arc, not just the rows.** This heading said *"TWO rows, not four"* on 2026-08-16,
+> having corrected an earlier *"four"*. On 2026-08-21 both survivors closed **free**. Four separate
+> briefs budgeted a paid run against rows that were already fixed, already built, or answerable by
+> reading one file. **Every single time, the correction came from opening the code — never from
+> spending.** The rows below are updated in place; the ⚪ markers that remain mean *nobody looked*,
+> which is the one thing this table has never been able to distinguish from *broken*.
 
 Full evidence in `HANDOFF-2026-08-13-audit-rewalk.md` §2, where the rows and the header are now
 corrected. In short, verified in code on 2026-08-16:
@@ -122,11 +168,11 @@ corrected. In short, verified in code on 2026-08-16:
 | **F-8a** static `◐ adjacent` glyph | 🟢 **fixed `53fe7323`** | production hard-codes `fitLabel: null` (`composed-card-receipt.ts:104`, `remix-runner.ts:434`); `proof-receipt.tsx:102` renders no glyph on null. Only *fixtures* still say `"adjacent"` |
 | **F-8b** fixed persona roster | ⚪ open-ish | genuinely unmeasured, but **not a hardcode** — `profile-runner.ts:186` derives personas from the bake signature. A repeated roster would mean repeated calibration *input*. Needs a **calibrated** audience or it proves nothing. (`Lurker` occurs nowhere in `src/`) |
 | **F-11a** transport does not stream | 🟢 **false** | `event: token` per delta → `use-chat-stream.ts:295` `setStreamingText` per token. Wired since `216df989` (**2026-06-21**), two months before the audit. Proven live in reverse: **#523 exists because leaked reasoning streamed** |
-| **F-11b** dead air before first char | 🔴 **STILL LIVE — and it is the whole row** | Measured free, N=4/shape: **prose median 5.28s**, **skill median 4.04s** (dispatching `generate_hooks` 4/4). The audit's ~5.5s is intact. Decomposed below. `scripts/probe-f11-stream-timing.ts` |
+| **F-11b** dead air before first char | 🟢 **CLOSED 2026-08-21 — labelled, and SHIPPING** | The wait is still ~4–5s (provider time-to-first-token against a 25,268-char prompt; no client work removes it), but it is no longer *unlabelled*: Stage B's B3 frame is **ON by default** (#538). ⚠️ Its label was also **wrong** on the one measured harmful guess until #536 — see the box at the top of this file. Original measurement, still valid: prose median **5.28s**, skill **4.04s**, `scripts/probe-f11-stream-timing.ts` |
 | **F-11c** text lands in one paint | 🟢 **false for prose** | 63–104 token frames per answer; median max inter-token gap **0.18s**, worst 0.88s. No silence for a burst to hide behind |
-| **F-11d** cards arrive all at once | ⚪ open | `onBlock` fires per block, so incremental is *possible* — but blocks need a billing seam. **Paid run.** Count off the SSE, not the DOM |
+| **F-11d** cards arrive all at once | 🟢 **ANSWERED FREE 2026-08-21 (#543) — TRUE, structurally** | `chat-agent-loop.ts:1553` is `await skill.run(...)` returning a **complete array**; `:1562` replays it in one tick. Nothing upstream emits per card, so "incremental is possible" is **false at this layer**. ⚠️ The three `onBlock` sites this row used to cite are **not** the skill-card path — it missed `:1562`, the only one that delivers skill cards |
 | **F-12a** the PROSE wait is in a void | 🟢 **false — measured in a browser** | Gap to composer **75px desktop / 64px mobile**, constant across all 44 samples, and the wait sits **668px / 469px from the viewport TOP** — near the bottom, anchored by the composer. The inverse of the row. `scripts/probe-f12-wait-layout.mjs` |
-| **F-12b** the SKILL-RUN wait is in a void | ⚪ open | the row's original sentence. Needs `ProgressChecklist`, which needs `stage` events, which need a **billable** generator. F-12a cannot clear it |
+| **F-12b** the SKILL-RUN wait is in a void | 🟡 **SPINE IS FULLY WIRED — verified in code 2026-08-21 (#543). Only the LOOK is unmeasured** | Not unbuilt, as this row implied. Every link connects: `hooks-runner.ts:662/664/756/894` (progressive) → `chat/route.ts:627` → `use-chat-stream.ts:360` → `thread-turn.tsx:223`/`:236` → `run-capsule.tsx:116`. A skill wait has a real ticking spine. Worth a *glance* on the next billed run for any other reason — not a run of its own |
 
 **The trap, stated once so it stops recurring.** `7d4bc133`'s title is *"…F-3/F-7 receipts, F-1
 re-answer"*. Session 15 correctly warned nobody should read that title as closing **F-7** — and
@@ -165,6 +211,12 @@ zone**"*. That is this exact wait, named and sized by whoever built it. It strea
 frame *before* the loop starts so the thinking dots can label themselves from what is already known
 (a chip's declared skill is `certain: true`; a typed ask gets the cheap `guessSkill` heuristic as
 `certain: false`).
+
+> 🟢 **OUTDATED 2026-08-21 — it fires.** `NEXT_PUBLIC_ENGINE_ONE_BRAIN` flipped to **`!== "false"`**
+> at both read sites (#538, owner-approved), so Stage B is ON by default and needs no env var.
+> The paragraph below describes the state on 2026-08-16 and is kept for the reasoning, not the status.
+> ⚠️ It also fired with the **wrong label** on the one measured harmful guess until #536 — the frame
+> read `guessSkill` raw where the pin reads `detectGuessPin`. Fixed; pinned by route test 6g2.
 
 **It never fires.** It is gated on `ONE_BRAIN` (`:492`), i.e. `NEXT_PUBLIC_ENGINE_ONE_BRAIN ===
 "true"` (`:216`) — the dark convention — and the variable is set nowhere, including `.env.local`.
