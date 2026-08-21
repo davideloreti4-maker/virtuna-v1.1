@@ -28,6 +28,7 @@ import { render, screen, waitFor, cleanup } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RemixBeats } from "../remix-beats";
 import { RemixCardRenderer } from "../remix-card-block";
+import { RemixRefreshContext } from "@/lib/remix-refresh-context";
 import type { SourceBlueprint } from "@/lib/engine/remix/blueprint";
 import type { AdaptedBeat } from "@/lib/engine/remix/decode-types";
 import type { RemixCardBlock } from "@/lib/tools/blocks";
@@ -302,6 +303,87 @@ describe("RemixBeats", () => {
     const { container } = render(<RemixBeats blueprintId={BLUEPRINT_ID} variantIndex={0} />);
     await waitFor(() => expect(globalThis.fetch).toHaveBeenCalled());
     expect(container.innerHTML).toBe("");
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The refresh channel (phase 5, Task 2) — a `revised` frame bumps this sheet's counter in
+// RemixRefreshContext and RemixBeats treats that as an explicit "refetch me" signal, since the
+// thread reload never remounts it (positional keys). Context default `{counters: {}}` is what
+// every test ABOVE this block renders under with no provider at all — that they stay green
+// unmodified IS the proof that a non-thread host (e.g. /dev/cards) sees zero behavior change.
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("RemixBeats — the refresh channel (phase 5)", () => {
+  it("bumping this sheet's counter fires exactly one refetch", async () => {
+    const { rerender } = render(
+      <RemixRefreshContext.Provider value={{ counters: {} }}>
+        <RemixBeats blueprintId={BLUEPRINT_ID} variantIndex={0} />
+      </RemixRefreshContext.Provider>,
+    );
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledTimes(1));
+
+    rerender(
+      <RemixRefreshContext.Provider value={{ counters: { [BLUEPRINT_ID]: 1 } }}>
+        <RemixBeats blueprintId={BLUEPRINT_ID} variantIndex={0} />
+      </RemixRefreshContext.Provider>,
+    );
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledTimes(2));
+  });
+
+  it("bumping a DIFFERENT sheet's counter does not refetch this one", async () => {
+    const { rerender } = render(
+      <RemixRefreshContext.Provider value={{ counters: {} }}>
+        <RemixBeats blueprintId={BLUEPRINT_ID} variantIndex={0} />
+      </RemixRefreshContext.Provider>,
+    );
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledTimes(1));
+
+    rerender(
+      <RemixRefreshContext.Provider value={{ counters: { "some-other-blueprint": 1 } }}>
+        <RemixBeats blueprintId={BLUEPRINT_ID} variantIndex={0} />
+      </RemixRefreshContext.Provider>,
+    );
+    await waitFor(() => expect(screen.getByText("0.0–1.8s · HOOK")).toBeInTheDocument());
+    expect(globalThis.fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("initialData + bump 0 stays byte-identical to today — no network at all", async () => {
+    render(
+      <RemixRefreshContext.Provider value={{ counters: {} }}>
+        <RemixBeats
+          blueprintId={BLUEPRINT_ID}
+          variantIndex={0}
+          initialData={{ script: SCRIPT, blueprint: makeBlueprint() }}
+        />
+      </RemixRefreshContext.Provider>,
+    );
+    await waitFor(() => expect(screen.getByText("0.0–1.8s · HOOK")).toBeInTheDocument());
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+  });
+
+  it("initialData + bump > 0 skips the short-circuit — the network IS hit", async () => {
+    const { rerender } = render(
+      <RemixRefreshContext.Provider value={{ counters: {} }}>
+        <RemixBeats
+          blueprintId={BLUEPRINT_ID}
+          variantIndex={0}
+          initialData={{ script: SCRIPT, blueprint: makeBlueprint() }}
+        />
+      </RemixRefreshContext.Provider>,
+    );
+    expect(globalThis.fetch).not.toHaveBeenCalled();
+
+    rerender(
+      <RemixRefreshContext.Provider value={{ counters: { [BLUEPRINT_ID]: 1 } }}>
+        <RemixBeats
+          blueprintId={BLUEPRINT_ID}
+          variantIndex={0}
+          initialData={{ script: SCRIPT, blueprint: makeBlueprint() }}
+        />
+      </RemixRefreshContext.Provider>,
+    );
+    await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledTimes(1));
   });
 });
 

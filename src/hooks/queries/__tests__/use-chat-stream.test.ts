@@ -288,6 +288,100 @@ describe("useChatStream — predispatch (Stage B)", () => {
   });
 });
 
+// ── Phase 5 (Task 2): the refresh channel — `revised` frames → revisedSheets ────────────────────
+//
+// `revise_remix` (Task 5) is a free tool that rewrites a beat script already sitting in a mounted
+// RemixBeats card. The card fetched once on mount and the thread reload never remounts it
+// (positional keys), so a revision has to reach it through an explicit signal instead of a
+// refetch-on-render. This is that signal, transport-only: the hook just turns each `revised` frame
+// into an entry with a per-blueprintId incrementing nonce (the focusVideo lesson — composer.tsx
+// nonce pattern — a REPEAT revision of the same sheet must still read as a fresh signal).
+describe("useChatStream — revised (phase 5 refresh channel)", () => {
+  it("a revised frame yields a revisedSheets entry with nonce 1", async () => {
+    global.fetch = vi.fn().mockResolvedValue(
+      mockSSEResponse([
+        encodeSSE("revised", { blueprintId: "bp1", variant: 1 }),
+        encodeSSE("done", {}),
+      ]),
+    );
+
+    const { result } = renderHook(() => useChatStream());
+    await act(async () => {
+      await result.current.start("make it punchier", "tiktok");
+    });
+    await waitFor(() => expect(result.current.isDone).toBe(true));
+
+    expect(result.current.revisedSheets).toEqual([{ blueprintId: "bp1", variant: 1, nonce: 1 }]);
+  });
+
+  it("two revisions of the SAME sheet get distinct, incrementing nonces", async () => {
+    global.fetch = vi.fn().mockResolvedValue(
+      mockSSEResponse([
+        encodeSSE("revised", { blueprintId: "bp1", variant: 1 }),
+        encodeSSE("revised", { blueprintId: "bp1", variant: 1 }),
+        encodeSSE("done", {}),
+      ]),
+    );
+
+    const { result } = renderHook(() => useChatStream());
+    await act(async () => {
+      await result.current.start("punch it up again", "tiktok");
+    });
+    await waitFor(() => expect(result.current.isDone).toBe(true));
+
+    expect(result.current.revisedSheets).toEqual([
+      { blueprintId: "bp1", variant: 1, nonce: 1 },
+      { blueprintId: "bp1", variant: 1, nonce: 2 },
+    ]);
+  });
+
+  it("revisedSheets stays empty on a plain chat turn", async () => {
+    global.fetch = vi.fn().mockResolvedValue(
+      mockSSEResponse([encodeSSE("token", { delta: "hi" }), encodeSSE("done", {})]),
+    );
+    const { result } = renderHook(() => useChatStream());
+    await act(async () => {
+      await result.current.start("hi", "tiktok");
+    });
+    await waitFor(() => expect(result.current.isDone).toBe(true));
+    expect(result.current.revisedSheets).toEqual([]);
+  });
+
+  it("ignores a revised frame with no blueprintId", async () => {
+    global.fetch = vi.fn().mockResolvedValue(
+      mockSSEResponse([encodeSSE("revised", { variant: 1 }), encodeSSE("done", {})]),
+    );
+    const { result } = renderHook(() => useChatStream());
+    await act(async () => {
+      await result.current.start("hi", "tiktok");
+    });
+    await waitFor(() => expect(result.current.isDone).toBe(true));
+    expect(result.current.revisedSheets).toEqual([]);
+  });
+
+  it("reset() does NOT clear revisedSheets — the signal must survive into the next turn", async () => {
+    // Unlike streamingBlocks/stages (this turn's live render), a revision is a durable fact about
+    // a card already on screen. Clearing it on the next send would make an unrelated later turn
+    // silently drop the counter RemixBeats is reading, exactly the nudgeShown precedent.
+    global.fetch = vi.fn().mockResolvedValue(
+      mockSSEResponse([
+        encodeSSE("revised", { blueprintId: "bp1", variant: 1 }),
+        encodeSSE("done", {}),
+      ]),
+    );
+    const { result } = renderHook(() => useChatStream());
+    await act(async () => {
+      await result.current.start("make it punchier", "tiktok");
+    });
+    await waitFor(() => expect(result.current.revisedSheets).toHaveLength(1));
+
+    act(() => {
+      result.current.reset();
+    });
+    expect(result.current.revisedSheets).toHaveLength(1);
+  });
+});
+
 describe("useChatStream — the request body (Stage B riders)", () => {
   /** The JSON the hook actually POSTed. */
   const sentBody = () =>

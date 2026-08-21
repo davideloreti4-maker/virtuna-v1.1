@@ -344,6 +344,16 @@ export interface ChatAgentStreamInput {
    * sentence, that a 402 from the skill's own route would have raised.
    */
   onCreditWall?: (quota: unknown) => void;
+  /**
+   * Free-tool side channel; fires on `revise_remix` success only. Called by Task 5's handler
+   * ONLY after a successful write, with the revised sheet's address (`blueprintId` + `variant`) —
+   * there is no live tool-result path and no `role:"tool"` object for remix cards, so this is the
+   * only way the client learns a sheet already on screen was just rewritten. The route streams it
+   * as the `revised` SSE event; the client turns it into an explicit refetch signal (nonce +
+   * RemixRefreshContext) because RemixBeats fetched its sheet once on mount and the thread reload
+   * never remounts it. Nothing calls this yet — Task 5 wires the call.
+   */
+  onRevised?: (info: { blueprintId: string; variant: number }) => void;
 }
 
 export interface ChatAgentStreamResult {

@@ -638,6 +638,9 @@ export async function POST(request: Request): Promise<Response> {
               // A streaming turn cannot answer 402, so the refusal body rides its own frame and the
               // client raises the same paywall dialog every other refused skill raises.
               onCreditWall: (quota) => send("credit-wall", { quota }),
+              // Phase 5: revise_remix's free-tool side channel. Fires only after a successful
+              // write, so the client's refetch signal never fires on a no-op or a failed revise.
+              onRevised: (r) => send("revised", r),
             },
             {
               // THE TRIAL WALL, on chat's back door. This route is free BY DECISION (the glue of the

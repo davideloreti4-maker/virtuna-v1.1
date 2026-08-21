@@ -55,6 +55,7 @@ import { FollowupContext } from "@/lib/followup-context";
 import { PlatformContext } from "@/lib/platform-context";
 import { ScriptTestContext } from "@/lib/script-test-context";
 import { RemixDevelopContext } from "@/lib/remix-develop-context";
+import { RemixRefreshContext } from "@/lib/remix-refresh-context";
 import { useParams, useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowUp, Plus, Square } from "lucide-react";
@@ -655,6 +656,18 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // NEVER navigates to /analyze (D-05, no silent auto-fire).
   const chat = useChatStream();
   const chatBlocks = chat.toBlocks();
+
+  // ── Remix refresh channel (phase 5, Task 2) ───────────────────────────────
+  // Folds chat.revisedSheets (each `revised` frame, in arrival order) into RemixRefreshContext's
+  // `counters` map: blueprintId → its latest nonce. revisedSheets is append-only and nonce is
+  // monotonic per blueprintId, so "latest entry wins" is always the highest count seen so far —
+  // exactly the bump RemixBeats needs to know a sheet already on screen must refetch.
+  const remixRefreshCounters = useMemo(() => {
+    const counters: Record<string, number> = {};
+    for (const sheet of chat.revisedSheets) counters[sheet.blueprintId] = sheet.nonce;
+    return counters;
+  }, [chat.revisedSheets]);
+  const remixRefreshValue = useMemo(() => ({ counters: remixRefreshCounters }), [remixRefreshCounters]);
 
   // ── Script stream (Plan 06-05 — D-09) ─────────────────────────────────────
   // Provides SSE script-card blocks rendered above the composer in ScriptThreadView.
@@ -3092,6 +3105,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   ) : null;
 
   const threadContent = (
+    <RemixRefreshContext.Provider value={remixRefreshValue}>
     <OpenRoomContext.Provider value={openRoomForCard}>
      <SimulateVideoContext.Provider value={simulateVideoInRoom}>
      <InThreadInputContext.Provider value={inThreadInputValue}>
@@ -3134,6 +3148,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
      </InThreadInputContext.Provider>
     </SimulateVideoContext.Provider>
     </OpenRoomContext.Provider>
+    </RemixRefreshContext.Provider>
   );
 
   // ── THE ARMED INDICATOR — what replaced the skill pill, and why it is not one ────────────
