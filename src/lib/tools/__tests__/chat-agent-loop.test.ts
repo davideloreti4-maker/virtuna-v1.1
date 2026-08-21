@@ -1013,6 +1013,80 @@ describe("runChatAgentStream [billing]", () => {
       { role: "assistant", content: "no stakes in the first beat" },
     ]);
   });
+
+  // ── Remix sheets: the address channel (phase 5, task 1) ────────────────────────────────────
+  //
+  // Remix cards reach the model only through this note — there is no live tool-result path and no
+  // `role:"tool"` object for them. The `revise_remix` tool needs `blueprintId` + `variant` to know
+  // WHICH sheet a later "make it punchier" refers to, so those addresses ride on the SAME
+  // thread-state note as the `· record` lines, fenced behind a marker that tells the model never to
+  // repeat them in prose.
+  const RECORD_NOTE_PREFIX =
+    "[Thread state — results already on the creator's screen in this thread, from skills " +
+    "they ran themselves. This note is from the app, NOT from the creator: do not answer " +
+    "it, do not thank them for it. Refer to these when they ask about them. You did NOT " +
+    "produce them this turn, so never claim you just made them, and never re-render them.]\n";
+  const REMIX_SHEETS_MARKER =
+    "[remix sheets on screen — addresses for the revise_remix tool ONLY; never repeat these ids in prose]";
+
+  it("a prior turn WITHOUT remixSheets renders byte-identical to before — pinned fixture", async () => {
+    const stream = mockStream([[textChunk("ok")]]);
+
+    await runChatAgentStream(
+      baseInput({
+        priorTurns: [{ role: "assistant", text: "", skillRecords: ["Video Test — craft 61/100"] }],
+      }),
+      DEPS(stream, { skills: [] }),
+    );
+
+    const { messages } = (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
+      messages: Array<Record<string, unknown>>;
+    };
+    expect(messages[1]).toEqual({
+      role: "user",
+      content: RECORD_NOTE_PREFIX + "· Video Test — craft 61/100",
+    });
+  });
+
+  it("a prior turn with remixSheets appends a fenced JSON data block to the SAME note", async () => {
+    const stream = mockStream([[textChunk("ok")]]);
+
+    await runChatAgentStream(
+      baseInput({
+        priorTurns: [
+          {
+            role: "assistant",
+            text: "",
+            skillRecords: ['Remix — adapted hook: "Everyone lied about mornings"'],
+            remixSheets: [{ blueprintId: "bp1", variant: 2, hook: "Everyone lied about mornings" }],
+          },
+        ],
+      }),
+      DEPS(stream, { skills: [] }),
+    );
+
+    const { messages } = (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
+      messages: Array<Record<string, unknown>>;
+    };
+    // ONE role:"user" note carries both the record line and the data block — not two messages.
+    // NB the loop pushes its own round message onto this same array afterwards, so assert
+    // POSITIONS, never the length (see the tool-call replay test above).
+    expect(messages[2]).toEqual({ role: "user", content: "x" }); // this turn's ask, right after the note
+    const note = messages[1] as { role: string; content: string };
+    expect(note.role).toBe("user");
+    expect(note.content).toContain(REMIX_SHEETS_MARKER);
+
+    const [prose, dataLine] = note.content.split(REMIX_SHEETS_MARKER + "\n");
+    // The record line is still there, unchanged…
+    expect(prose).toBe(RECORD_NOTE_PREFIX + '· Remix — adapted hook: "Everyone lied about mornings"\n');
+    // …and the address itself never leaks into the prose the model might echo back.
+    expect(prose).not.toContain("bp1");
+    expect(prose).not.toContain("blueprintId");
+    // The data line round-trips through JSON.parse, with the exact shape the tool needs.
+    expect(JSON.parse(dataLine!.trim())).toEqual({
+      remix_sheets: [{ blueprintId: "bp1", variant: 2, hook: "Everyone lied about mornings" }],
+    });
+  });
 });
 
 // ── forceSkill: the creator already chose, so the model does not get to re-decide ──────────────

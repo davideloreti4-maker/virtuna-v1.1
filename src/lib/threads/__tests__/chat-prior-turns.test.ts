@@ -338,3 +338,64 @@ describe("openChatPriorTurns — non-generator skill results ride as context rec
     expect(turns[0]!.toolRuns).toBeUndefined();
   });
 });
+
+/**
+ * THE ADDRESS CHANNEL (phase 5, task 1). A remix card is already a recorded block (its hook/band
+ * become a `skillRecords` line above), but the record line alone gives the model no way to name
+ * WHICH sheet a later "make it punchier" refers to — the revise_remix tool needs `blueprintId` +
+ * `variant`, and nothing upstream of this anchor has ever carried them. This is the one seam remix
+ * cards reach the model through at all (no live tool-result path, no `role:"tool"` object), so the
+ * address rides alongside the record line on the SAME turn.
+ */
+describe("openChatPriorTurns — remix sheets ride alongside the record line (the address channel)", () => {
+  it("a remix card with a blueprintId contributes an address alongside its record line", () => {
+    const turns = openChatPriorTurns([
+      msg("assistant", [
+        {
+          type: "remix-card",
+          props: { blueprintId: "bp1", blueprintVariant: 2, adaptedHook: "Everyone lied about mornings" },
+        },
+      ]),
+    ]);
+    expect(turns).toHaveLength(1);
+    expect(turns[0]!.skillRecords?.[0]).toContain("Remix — adapted hook");
+    expect(turns[0]!.remixSheets).toEqual([
+      { blueprintId: "bp1", variant: 2, hook: "Everyone lied about mornings" },
+    ]);
+  });
+
+  it("a remix card WITHOUT a blueprintId contributes its record line but NO sheet — a normal card, not an error", () => {
+    // The run route strips blueprintId/blueprintVariant on a failed blueprint-row write
+    // (api/tools/remix/run/route.ts:259-262). That card still renders and still records; it just
+    // has no address to revise against.
+    const turns = openChatPriorTurns([
+      msg("assistant", [
+        { type: "remix-card", props: { adaptedHook: "Everyone lied about mornings" } },
+      ]),
+    ]);
+    expect(turns).toHaveLength(1);
+    expect(turns[0]!.skillRecords?.[0]).toContain("Remix — adapted hook");
+    expect(turns[0]!.remixSheets).toBeUndefined();
+  });
+
+  it("a blueprintVariant that is not a non-negative integer is treated the same as missing", () => {
+    const turns = openChatPriorTurns([
+      msg("assistant", [
+        { type: "remix-card", props: { blueprintId: "bp1", blueprintVariant: -1, adaptedHook: "x" } },
+      ]),
+      msg("assistant", [
+        { type: "remix-card", props: { blueprintId: "bp2", blueprintVariant: 1.5, adaptedHook: "y" } },
+      ]),
+    ]);
+    expect(turns[0]!.remixSheets).toBeUndefined();
+  });
+
+  it("a thread with no remix cards never grows remixSheets — undefined, not an empty array", () => {
+    const turns = openChatPriorTurns([
+      msg("user", [text("hooks please")]),
+      msg("assistant", cards("hook-card", 5)),
+      msg("assistant", [text("Five hooks are on screen.", "chat-agent")]),
+    ]);
+    expect(turns.every((t) => t.remixSheets === undefined)).toBe(true);
+  });
+});

@@ -219,6 +219,19 @@ export interface ChatAgentPriorTurn {
    * text row, so the record is the whole turn.
    */
   skillRecords?: string[];
+  /**
+   * Addresses of the remix sheets on screen in this turn — `blueprintId` + `variant`, plus the hook
+   * for readability — so the `revise_remix` tool (phase 5) can know WHICH sheet a later "make it
+   * punchier" refers to. There is no live tool-result path and no `role:"tool"` object for remix
+   * cards, so this is the only channel the model ever sees these addresses through: it rides in
+   * `replayPriorTurn` as a fenced data block on the SAME thread-state note as `skillRecords`
+   * (`chat-prior-turns.ts` collects both from the same `remix-card` block).
+   *
+   * Omitted when no remix card in the turn carried a `blueprintId` — a card whose blueprint row
+   * failed to persist (run route strips the props) is a normal card, not an error, and simply
+   * contributes no address.
+   */
+  remixSheets?: Array<{ blueprintId: string; variant: number; hook: string }>;
 }
 
 export interface ChatAgentStreamInput {
@@ -599,6 +612,15 @@ function replayPriorTurn(
   // can copy, and this thread's whole history of defects is the model copying a sentence instead of
   // calling a tool ("Five hooks are on screen."). A user-role note is something it has never
   // written and therefore cannot learn to write. The framing says plainly that it is app state.
+  // Remix sheets on screen this turn, fenced behind their own marker and appended to the SAME
+  // note — one JSON line via `JSON.stringify`, never routed through `recordLineOf`'s
+  // `MAX_RECORD_LENGTH` clip (that cap is for prose; an address is data, not a caption to trim).
+  const remixSheetsBlock =
+    turn.remixSheets && turn.remixSheets.length > 0
+      ? "\n[remix sheets on screen — addresses for the revise_remix tool ONLY; never repeat these ids " +
+        "in prose]\n" +
+        JSON.stringify({ remix_sheets: turn.remixSheets })
+      : "";
   const records =
     turn.skillRecords && turn.skillRecords.length > 0
       ? [
@@ -609,7 +631,8 @@ function replayPriorTurn(
               "they ran themselves. This note is from the app, NOT from the creator: do not answer " +
               "it, do not thank them for it. Refer to these when they ask about them. You did NOT " +
               "produce them this turn, so never claim you just made them, and never re-render them.]\n" +
-              turn.skillRecords.map((r) => `· ${r}`).join("\n"),
+              turn.skillRecords.map((r) => `· ${r}`).join("\n") +
+              remixSheetsBlock,
           },
         ]
       : [];
