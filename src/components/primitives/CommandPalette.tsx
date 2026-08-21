@@ -265,7 +265,16 @@ export function CommandPalette({
 
   const content = (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]"
+      // --z-modal (400), not a raw z-50. The scrim below is full-viewport and always
+      // WAS — but at z-50 it lost to the sidebar's --z-sidebar (250), so the palette
+      // dimmed <main> and the right rail while the left nav stayed at full contrast,
+      // reading as chrome sitting on top of a modal. Measured before the fix:
+      // elementFromPoint at the sidebar's own centre returned a sidebar <span>, not
+      // the scrim, despite the overlay rect covering 0,0→1440,900.
+      // The z-scale in globals.css is the contract every other modal here already
+      // follows (dialog.tsx, delete-test-modal, AmbientOverviewSheet); this was the
+      // one overlay still on a hardcoded value. Toast (500) and tooltip (600) still win.
+      className="fixed inset-0 z-[var(--z-modal)] flex items-start justify-center pt-[15vh]"
       onClick={() => setOpen(false)}
     >
       {/* Backdrop */}

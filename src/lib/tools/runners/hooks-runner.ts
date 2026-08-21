@@ -77,10 +77,10 @@ import type { RetrievedExample } from "@/lib/grounding/types";
 import {
   plausibleSeedHook,
   requestedCount,
-  templateInstantiated,
   trimExamplesToBundle,
   createSourceDiversityCap,
 } from "./output-guards";
+import { resolveAttribution } from "./attribution";
 import {
   buildRevisePrompt,
   findSlotLeaks,
@@ -788,6 +788,9 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
   // (rank order — the strongest cards keep their receipts); beyond the cap a card renders
   // honestly without one.
   const diversity = createSourceDiversityCap();
+  // Why each card kept or lost its receipt, in rank order — the one line a grounded run leaves
+  // behind. Diagnosing a vanished receipt used to mean log archaeology across three guards.
+  const attributionTrail: string[] = [];
 
   for (let rank = 1; rank <= ranked.length; rank++) {
     const candidate = ranked[rank - 1];
@@ -801,13 +804,20 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
     // The madlib check binds to the RAW-SLICE corpus only: under the adapt brief the model
     // consumed the FITTED line, not the madlib, and re-voicing is the design — the lexical
     // check strips 23/28 honest brief citations (measured, 07-15 A/B raw output).
-    const rawProof = buildHookProof(candidate.hook.sourceIndex, shownExamples);
-    const proof =
-      rawProof &&
-      (corpusAdapted || templateInstantiated(rawProof.hookTemplate, candidate.hook.hookLine)) &&
-      diversity.admit(rawProof.videoUrl ?? rawProof.handle)
-        ? rawProof
-        : null;
+    const decision = resolveAttribution({
+      sourceIndex: candidate.hook.sourceIndex,
+      shownExamples,
+      allExamples: groundingExamples,
+      line: candidate.hook.hookLine,
+      adapted: corpusAdapted,
+      admit: diversity.admit,
+    });
+    const proof = decision.proof;
+    attributionTrail.push(
+      decision.reason === "kept" && decision.example
+        ? `${rank}:kept(td=${decision.example.teardownId},@${decision.example.handle})`
+        : `${rank}:${decision.reason}`,
+    );
 
     // WHO this hook was written for. The reaction half (verdict/quote) is NULL now — no SIM ran on
     // this path — so bindTarget receives an EMPTY panel and returns the assignment WITHOUT a
@@ -871,6 +881,13 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
     }
 
     blocks.push(validated.data as HookCardBlock);
+  }
+
+  // Grounded runs only — on an ungrounded run every card is trivially `model-zero` and the line
+  // would be noise. Permanent instrumentation: the receipt rate is now one grep, not archaeology.
+  if (corpusGrounded) {
+    const kept = attributionTrail.filter((t) => t.includes(":kept")).length;
+    console.info(`[attribution] hooks: kept ${kept}/${ranked.length} — [${attributionTrail.join(", ")}]`);
   }
 
   // ── STAGE: Ranking (done) — cards are built + ready to stream ──

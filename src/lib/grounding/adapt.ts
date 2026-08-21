@@ -89,7 +89,7 @@ export interface AdaptProfile {
 export interface AdaptCorpusInput {
   /** Which generate-by-remix skill is briefing — selects the per-skill prompt, header, and fit measure. */
   skill: GroundingSkill;
-  /** The creator's ask — the same query retrieval ran on. Fit is judged against it. */
+  /** The creator's RAW ask (full context). Retrieval may run on a distilled form of it. */
   ask: string;
   niche: string | null;
   platform: string;
