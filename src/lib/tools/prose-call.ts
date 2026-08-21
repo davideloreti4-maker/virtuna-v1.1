@@ -39,8 +39,32 @@
  *     recall within the counted arms   6 of 7 residual failures
  *     overlap with the guess pin       8/8 would also have been pinned by it
  *
- * So this buys PRECISION, NOT COVERAGE: it is the guess pin with the ~3.4% wrong-run exposure
- * removed, covering only the failures where the model announced itself.
+ * So this buys PRECISION, NOT COVERAGE: it covers only the failures where the model announced
+ * itself, and its trigger cannot select for asks the model was right to decline.
+ *
+ * ⚠️ CORRECTED 2026-08-21. This paragraph used to read "it is the guess pin with the ~3.4%
+ * wrong-run exposure removed." That was not true as written, and the difference matters to anyone
+ * reasoning about the two together:
+ *
+ *   the guess pin   route.ts:519   detectGuessPin(rawAsk)   ← NARROWED by namesOtherToolFirst
+ *   this pin        route.ts:569   guessSkill(rawAsk)       ← RAW, no narrowing
+ *
+ * The narrowing exists for one measured sentence — "Yes, run the simulate tool on that hook" —
+ * which `repeat-ask.ts` independently names as the pre-router's single harmful guess. This module
+ * never inherited it, and the design doc (§ below) never mentions it. So the exposure is not
+ * "removed"; it is removed *by a different mechanism*, which is worth stating precisely because the
+ * mechanisms have different edges:
+ *
+ *   The TRIGGER filters that ask, not the target. Firing requires the model to assert a GENERATOR
+ *   call — `generate_ideas|generate_hooks|write_script` followed by `(` — and an ask that says "run
+ *   the simulate tool" elicits `simulate(...)`, which is not in GENERATOR_NAMES and does not match.
+ *
+ * The behaviour is therefore sound and unchanged; only the explanation was wrong. Applying
+ * `detectGuessPin` here would make the two sites consistent, but it is a change to measured design
+ * behind a dark flag, and this module argues at length (above) that the guess pin's reasoning does
+ * NOT transfer. Left as the owner's call rather than silently converged.
+ * (The same raw-vs-narrowed split was a REAL defect at the third site, `route.ts:496` — Stage B's
+ * dead-zone label, which is user-visible and shipping. Fixed in #536, pinned by route test 6g2.)
  *
  * ⚠️ It rests on 8 fires in 107 runs. Session 11 §7.6 records the retry half as "not built and not
  * measured end-to-end". The ~95%-at-~0-exposure figure is a PROJECTION of composing this with the
