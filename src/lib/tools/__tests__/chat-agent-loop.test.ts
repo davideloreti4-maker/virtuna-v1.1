@@ -6,7 +6,7 @@
  * the paid-engine leash + error absorption hold.
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, afterEach } from "vitest";
 import {
   runChatAgentStream,
   type StreamChunk,
@@ -2255,6 +2255,42 @@ describe("runChatAgentStream [composed-card model config]", () => {
 
     expect(params(stream).enable_thinking).toBe(false);
     expect(params(stream).max_tokens).toBe(2000);
+  });
+
+  // ── CHAT_THINKING ───────────────────────────────────────────────────────────────────────────
+  // The kill switch. Reasoning costs ~+3.4s of blank screen before the creator sees a character
+  // (n=18, 7/7 on the no-tool pairs), and until this seam existed there was no way to turn it off
+  // without editing this file. The two tests above pin the UNSET default; these pin the overrides.
+  afterEach(() => vi.unstubAllEnvs());
+
+  it("CHAT_THINKING=false turns reasoning off on a turn that would otherwise think", async () => {
+    vi.stubEnv("CHAT_THINKING", "false");
+    const stream = mockStream([[textChunk("ok")]]);
+    await runChatAgentStream(baseInput({ composedCards: true }), DEPS(stream, { skills: [mkSkill("generate_ideas")] }));
+
+    expect(params(stream).enable_thinking).toBe(false);
+    // The budget is keyed to `composing`, NOT to thinking — so the switch moves one variable and
+    // the composing turn keeps the room it needs to search and compose.
+    expect(params(stream).max_tokens as number).toBeGreaterThan(2000);
+  });
+
+  it("CHAT_THINKING=true turns reasoning on for an ordinary chat turn", async () => {
+    vi.stubEnv("CHAT_THINKING", "true");
+    const stream = mockStream([[textChunk("ok")]]);
+    await runChatAgentStream(baseInput(), DEPS(stream, { skills: [mkSkill("generate_ideas")] }));
+
+    expect(params(stream).enable_thinking).toBe(true);
+  });
+
+  it("falls through to the shipped default on any value that is not exactly true/false", async () => {
+    // A half-set environment must not silently change what every chat turn sends. Only the two
+    // exact strings steer; "1", "TRUE" and "" all mean "nobody has decided", i.e. today's request.
+    for (const junk of ["1", "TRUE", "yes", ""]) {
+      vi.stubEnv("CHAT_THINKING", junk);
+      const stream = mockStream([[textChunk("ok")]]);
+      await runChatAgentStream(baseInput({ composedCards: true }), DEPS(stream, { skills: [mkSkill("generate_ideas")] }));
+      expect(params(stream).enable_thinking, `CHAT_THINKING=${JSON.stringify(junk)}`).toBe(true);
+    }
   });
 
   it("gives a composed-card turn the rounds it needs to search AND compose", async () => {

@@ -471,6 +471,20 @@ const DEFAULT_MAX_ROUNDS = 4;
 const COMPOSING_MAX_ROUNDS = 6;
 /** Reasoning is drawn from the same output budget, so the answer needs headroom beside it. */
 const COMPOSING_MAX_TOKENS = 4000;
+/**
+ * CHAT_THINKING - the seam that lets thinking be forced ON or OFF independently of `composing`.
+ *
+ * UNSET (the default) reproduces today's request byte-for-byte: thinking follows `composing`, so
+ * a composed-card turn reasons and a plain turn does not. "true"/"false" force it either way,
+ * which is what makes the A/B a one-variable experiment - `max_tokens` is already keyed to
+ * `composing` alone, so both arms of a composing A/B share the same 4000-token budget.
+ */
+function chatThinkingEnabled(composing: boolean): boolean {
+  const forced = process.env.CHAT_THINKING;
+  if (forced === "true") return true;
+  if (forced === "false") return false;
+  return composing;
+}
 const DEFAULT_MAX_SKILL_RUNS = 2;
 /**
  * F-1 containment (Stage A): cap on the text a round may stream AFTER a skill has
@@ -1194,13 +1208,37 @@ export async function runChatAgentStream(
       seed,
       max_tokens: composing ? COMPOSING_MAX_TOKENS : 2000,
       /**
-       * Reasoning, for composed-card turns only. MEASURED 2026-08-12: flash scored 2/6, 3/6, 4/6
-       * composing against the shipped contract with this false, and 6/6, 5/6 with it true — plus's
-       * own range, at flash's price ($0.13/M output against $1.60). It also searches LESS when it
-       * can plan, so some of the reasoning tokens pay for themselves.
+       * Reasoning, for composed-card turns only.
+       *
+       * FIRST MEASURED 2026-08-12, n=5 per arm: flash scored 2/6, 3/6, 4/6 composing against the
+       * shipped contract with this false, and 6/6, 5/6 with it true. That is the sample this
+       * default shipped on, and it is too small to carry it.
+       *
+       * RE-MEASURED 2026-08-21 at n=18 per arm — shipped prompt, isolated turns, arms interleaved,
+       * `enable_thinking` the only variable (`CHAT_THINKING`, above):
+       *
+       *     card rate    OFF 5/18 (27.8%)  ON 8/18 (44.4%)  Fisher two-tailed p = 0.49
+       *     TTFT         OFF med 5.9s      ON med 13.7s     ON slower 14/18 paired, p = 0.031
+       *     prompt tok   ON fewer 15/18 (p = 0.008) — it DOES search less when it can plan (19 -> 6)
+       *     output tok   ON more 17/18 (p = 0.0001), ~2.5x
+       *     cost/turn    OFF med 0.0751c   ON med 0.0849c   p = 0.24 — a wash, ~0.08c either way
+       *
+       * The direction held; the confidence did not. ~130 turns per arm are needed to call that
+       * card-rate delta real, so do not quote 6/6-vs-2/6 as if the question were settled.
+       *
+       * What IS established is the PRICE. On the 7 pairs where neither arm called a tool — the
+       * clean read, no search rounds in the way — ON was slower 7/7, median +3.4s of blank screen
+       * before the creator sees a character. That is what this line costs, on every chat turn.
+       *
+       * 🔴 It does NOT rescue the asks that never card: `ending` / `opening` / `greenscreen` scored
+       * 0/9 in BOTH arms. Whatever that selection defect is, no thinking budget buys it — the
+       * hypothesis is spent, do not re-run it.
        *
        * Scoped to `composedCards` deliberately. Nothing here measured decode, adapt, fold or
-       * vision, and an ordinary chat turn keeps the exact request it ships with today.
+       * vision, and an ordinary chat turn keeps the exact request it ships with today. The skill
+       * runners WERE measured (2026-08-21, hooks, n=6 per arm) and came back negative: 5 cards
+       * delivered in every arm — no truncation, even at the 1500 rail — but 35.4s against 13.2s
+       * thinking-off. Generation stays thinking-off.
        *
        * Reasoning USUALLY arrives as `delta.reasoning_content`, which this loop never reads — only
        * `delta.content` reaches `onToken`. Measured 22 more times on 2026-08-16 across four request
@@ -1212,7 +1250,7 @@ export async function runChatAgentStream(
        * the CONTENT channel. `reasoning-leak.ts` is the boundary guard that drops it at assembly.
        * It still STREAMS: withholding tokens would mean buffering, which is not what was ruled.
        */
-      enable_thinking: composing,
+      enable_thinking: chatThinkingEnabled(composing),
     });
 
     // Accumulate the round: text streams straight through; tool-call fragments accumulate by index.
