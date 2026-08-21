@@ -17,13 +17,14 @@ import type { ReviseInput } from '../revise';
 // Module mocks (must be before imports of revise.ts)
 // =====================================================
 
+// Hoisted (not a fresh object per createLogger() call) so tests can assert on log.warn — needed
+// for the finish_reason:"length" distinct-logging assertion below.
+const { mockLog } = vi.hoisted(() => ({
+  mockLog: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
+
 vi.mock('@/lib/logger', () => ({
-  createLogger: vi.fn(() => ({
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  })),
+  createLogger: vi.fn(() => mockLog),
 }));
 
 vi.mock('@sentry/nextjs', () => ({
@@ -199,14 +200,40 @@ describe('revise.ts (reviseBeats)', () => {
     expect(result).toBeNull();
   });
 
-  it('over-cap repair (> 400 chars) → null', async () => {
+  it(
+    'over-cap repair (> 400 chars) → clamped to the cap, beat kept — owner ruling: repair is ' +
+      'advisory metadata, not load-bearing prose, so it is trimmed rather than discarded',
+    async () => {
+      const { reviseBeats } = await import('../revise');
+      mockCreate.mockResolvedValueOnce(
+        makeQwenResponse(makeValidReviseResponse([{ index: 1, repair: 'x'.repeat(401) }])),
+      );
+
+      const result = await reviseBeats(makeReviseInput([1]));
+
+      expect(result).not.toBeNull();
+      expect(result).toHaveLength(1);
+      expect(result![0]!.index).toBe(1);
+      // trimToCap clamps unbroken text to the cap INCLUDING the ellipsis — no off-by-one
+      // (mirrors adapt.test.ts's "clamps unbroken text to the cap" assertion).
+      expect(result![0]!.repair).toHaveLength(400);
+      expect(result![0]!.repair!.endsWith('…')).toBe(true);
+    },
+  );
+
+  it('over-cap spoken/shot/on_screen_text are still strict over-cap→null even when repair also over-caps', async () => {
     const { reviseBeats } = await import('../revise');
     mockCreate.mockResolvedValueOnce(
-      makeQwenResponse(makeValidReviseResponse([{ index: 1, repair: 'x'.repeat(401) }])),
+      makeQwenResponse(
+        makeValidReviseResponse([
+          { index: 1, spoken: 'x'.repeat(601), repair: 'x'.repeat(401) },
+        ]),
+      ),
     );
 
     const result = await reviseBeats(makeReviseInput([1]));
 
+    // The repair clamp must not mask a genuine over-cap on a field that stays strict.
     expect(result).toBeNull();
   });
 
@@ -251,5 +278,51 @@ describe('revise.ts (reviseBeats)', () => {
 
     expect(result).toBeNull();
     expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it(
+    'finish_reason:"length" is logged distinctly — a truncated response must not read as ' +
+      'model malformation',
+    async () => {
+      const { reviseBeats } = await import('../revise');
+      // Genuinely truncated mid-string, as DashScope returns when max_tokens is hit — this is
+      // what a real cut-off response looks like, not hand-picked invalid JSON.
+      mockCreate.mockResolvedValueOnce({
+        choices: [
+          {
+            message: { content: '{"beats": [{"index": 1, "spoken": "the line got cut off ha' },
+            finish_reason: 'length',
+          },
+        ],
+        usage: { prompt_tokens: 100, completion_tokens: 50, total_tokens: 150 },
+      });
+
+      const result = await reviseBeats(makeReviseInput([1]));
+
+      // Truncated JSON still fails to parse — the point of this test is HOW it's logged, not
+      // that the call somehow recovers a usable beat from a cut-off response.
+      expect(result).toBeNull();
+      expect(mockLog.warn).toHaveBeenCalledWith(
+        expect.stringContaining('truncated'),
+        expect.anything(),
+      );
+    },
+  );
+
+  it('finish_reason:"stop" (the ordinary case) never logs a truncation warning', async () => {
+    const { reviseBeats } = await import('../revise');
+    mockCreate.mockResolvedValueOnce({
+      choices: [
+        { message: { content: makeValidReviseResponse([{ index: 1 }]) }, finish_reason: 'stop' },
+      ],
+      usage: { prompt_tokens: 100, completion_tokens: 50, total_tokens: 150 },
+    });
+
+    const result = await reviseBeats(makeReviseInput([1]));
+
+    expect(result).not.toBeNull();
+    for (const call of mockLog.warn.mock.calls) {
+      expect(String(call[0])).not.toContain('truncated');
+    }
   });
 });

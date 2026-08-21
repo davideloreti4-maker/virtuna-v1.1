@@ -19,7 +19,7 @@ import { createLogger } from "@/lib/logger";
 import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "@/lib/engine/qwen/client";
 import { stripModelOutput } from "@/lib/engine/utils/strip";
 import { z } from "zod";
-import { AdaptedBeatZodSchema } from "./adapt";
+import { AdaptedBeatZodSchema, trimToCap } from "./adapt";
 import type { SourceBlueprint } from "./blueprint";
 import type { AdaptedBeat } from "./decode-types";
 
@@ -28,10 +28,16 @@ const log = createLogger({ module: "engine.remix.revise" });
 // A handful of beats, never a full sheet — adapt.ts's 90s budget is sized for a whole script.
 const TIMEOUT_MS = 60_000;
 // Bounded by target count, not fixed: a 1-beat revision needs far fewer tokens than an 8-beat one,
-// and an unused ceiling costs nothing (mirrors adapt.ts's max_tokens comment). ~65 tokens/entry is
-// adapt.ts's own script estimate; the extra headroom covers "repair" when the note calls for it.
+// and an unused ceiling costs nothing (mirrors adapt.ts's max_tokens comment). 600 is derived from
+// AdaptedBeatZodSchema's OWN maximum, not from measured usage: spoken(600) + shot(600) + repair(400)
+// + on_screen_text(300) = 1900 chars of content per beat, before the JSON structural overhead
+// (keys/quotes/braces) each entry also costs. A 450-token ceiling (150 + 1×300) measured live
+// truncated a fully VALID 1-beat response (JSON cut mid-string, 1 of 17 calls) — this is the fix.
 const BASE_TOKENS = 150;
-const TOKENS_PER_BEAT = 300;
+const TOKENS_PER_BEAT = 600;
+// Matches AdaptedBeatZodSchema's inline `repair: z.string().max(400)` (adapt.ts) — kept in sync by
+// hand, same as that schema's own caps are inline literals with no shared constant.
+const REPAIR_CAP = 400;
 
 export const REVISE_SYSTEM_PROMPT = `You are revising specific beats of an adapted shoot script, against feedback from the creator who will film it.
 
@@ -61,6 +67,34 @@ The "beats" array MUST contain EXACTLY one entry per targeted beat, in the same 
 const ReviseResponseZodSchema = z.object({
   beats: z.array(AdaptedBeatZodSchema).min(1),
 });
+
+/**
+ * `repair` is optional advisory metadata — what changed and why — never load-bearing prose a
+ * shoot sheet is useless without, unlike `spoken`/`shot`/`on_screen_text`. Measured live: 3 of 17
+ * calls discarded an otherwise-VALID rewrite because `repair` alone ran over its 400-char cap.
+ * Owner ruling: clamp `repair` — and ONLY `repair` — before validation, same remedy as
+ * `clampOverCapProse` in adapt.ts (`trimToCap`, imported not copied). The other three capped
+ * fields stay strict over-cap→null; a genuinely over-cap `spoken`/`shot`/`on_screen_text` must
+ * still fail the whole beat even when `repair` on the SAME beat also over-caps.
+ */
+function clampOverCapRepair(parsed: unknown): unknown {
+  const beats = (parsed as { beats?: unknown } | null)?.beats;
+  if (!Array.isArray(beats)) return parsed;
+  for (const b of beats) {
+    if (!b || typeof b !== "object") continue;
+    const beat = b as Record<string, unknown>;
+    const repair = beat.repair;
+    if (typeof repair === "string" && repair.length > REPAIR_CAP) {
+      log.warn("revise returned over-cap repair — trimming it, keeping the beat", {
+        index: beat.index,
+        length: repair.length,
+        cap: REPAIR_CAP,
+      });
+      beat.repair = trimToCap(repair, REPAIR_CAP);
+    }
+  }
+  return parsed;
+}
 
 export interface ReviseInput {
   /** The source's timed structural skeleton — the same shape stored on the blueprint row. */
@@ -152,11 +186,23 @@ export async function reviseBeats(input: ReviseInput): Promise<AdaptedBeat[] | n
       { signal: controller.signal },
     );
 
-    const raw = completion.choices[0]?.message?.content ?? "";
+    const choice = completion.choices[0];
+    // Log this distinctly and BEFORE attempting to parse: a truncated response almost always
+    // fails JSON.parse too, and that SyntaxError alone reads as the model emitting malformed
+    // JSON — it isn't. The real defect is max_tokens, not the model, and the two need different
+    // fixes (raise the ceiling vs. fix the prompt).
+    if (choice?.finish_reason === "length") {
+      log.warn("revise response truncated by max_tokens — the response was cut off, not malformed", {
+        finishReason: choice.finish_reason,
+        maxTokens: BASE_TOKENS + promptTargets.length * TOKENS_PER_BEAT,
+      });
+    }
+
+    const raw = choice?.message?.content ?? "";
     const cleaned = stripModelOutput(raw);
     const parsed = JSON.parse(cleaned) as unknown;
 
-    const result = ReviseResponseZodSchema.safeParse(parsed);
+    const result = ReviseResponseZodSchema.safeParse(clampOverCapRepair(parsed));
     if (!result.success) {
       log.warn("revise Zod validation failed", { error: result.error.message });
       return null;

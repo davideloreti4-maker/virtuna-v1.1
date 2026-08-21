@@ -160,8 +160,11 @@ const AdaptConceptsZodSchema = z.object({
  * Trim to `cap` without leaving a dangling half-word. The ellipsis is counted IN — a clamp that
  * returns `cap + 1` characters fails the very schema it exists to satisfy, which is the bug in
  * `clip()` over in grounding/prompt.ts (harmless there, fatal here).
+ *
+ * Exported for revise.ts (phase 5) — its `repair` field gets the same word-boundary-aware clamp
+ * rather than a re-implementation that could drift on the surrogate-pair or off-by-one handling.
  */
-function trimToCap(text: string, cap: number): string {
+export function trimToCap(text: string, cap: number): string {
   if (text.length <= cap) return text;
   const cut       = text.slice(0, cap - 1); // one char of headroom for the ellipsis
   const lastSpace = cut.lastIndexOf(" ");
