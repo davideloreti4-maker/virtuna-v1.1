@@ -1,7 +1,8 @@
 # Engine Model & Latency Policy
 
 > Source-of-truth for **which model + thinking mode + token budget** every engine LLM call uses.
-> Updated **2026-08-04** (reasoning model plus → flash). Goal: **Numen feels snappy while keeping quality.**
+> Updated **2026-08-21** (thinking re-measured at n=18/arm; two stale claims corrected — see the 🔴
+> blocks below). Goal: **Numen feels snappy while keeping quality.**
 > Tune `max_tokens` from logged `usage` after real traffic — values below are measured where noted,
 > else generous headroom rails.
 
@@ -16,12 +17,19 @@ The Qwen engine runs on **exactly two models**, split by ONE capability line —
 - **`qwen3.7-flash`** — **everything else**, text AND video (sighted, deaf). Generation, SIM scoring,
   the fold, chat, decode/adapt.
 
-…with **ONE scoped exception**, held on `qwen3.7-plus` on live evidence:
+…and, since 2026-08-05, with **NO exceptions**. Every scoped seam resolves to flash.
 
-- 🛑 **UNBOUND CHAT** (`QWEN_UNBOUND_CHAT_MODEL`) — the only genuine holdout left, and the only one
-  that is not fixable by tightening a contract. Flash produces a correct refusal sentence and then
-  writes the paid pack anyway (5/6 leaked). That is a **revenue leak**, not a quality regression, so
-  it stays on plus until a harness proves otherwise. Do not flip this one for cost.
+> 🔴 **CORRECTED 2026-08-21 — this section was stale by sixteen days.** It read: *"…with ONE scoped
+> exception, held on `qwen3.7-plus` on live evidence: 🛑 UNBOUND CHAT (`QWEN_UNBOUND_CHAT_MODEL`) —
+> the only genuine holdout left… it stays on plus until a harness proves otherwise."*
+>
+> `client.ts:199` has defaulted to `qwen3.7-flash` since 2026-08-05. The holdout was retired the
+> same way Apollo's and CALIBRATE's were — by fixing OUR layer, not by paying for a bigger model.
+> Flash did write the paid pack after refusing, but the cause was a QUOTE-SCOPED artefact guard and
+> the pack arrives as enumerated STRUCTURE carrying no quotation marks. Extending
+> `createArtefactGuard` to judge enumerated spans closed it on both arms: flash + structure guard
+> measured 6/6 refused · 0/6 leaked, ×3 runs. The gate still binds — move that constant only behind
+> a fresh `live-chat-anon.mjs` at 6/6 refused and 0 leaked.
 
 **Apollo and the CALIBRATE synth are no longer holdouts (2026-08-04).** Both failed on flash first
 and both were **fixed rather than held back** — in each case the defect was in our own prompt/parse
@@ -144,13 +152,21 @@ prompts, audience repaint, grounding lines, omni sensor dumps), so CoT is usuall
 latency isn't worth it. Live-proven on the SIM: thinking-off held identical verdict bands + better
 persona voice at **~3–4× lower latency** (~55s → ~15s batched).
 
-**Thinking is ON in exactly ONE place** — judgment-heavy *and* off the snappy per-request path:
+**Thinking is ON in exactly TWO places:**
 - **APOLLO video insight** — cited, framework-grounded expert judgment (the video moat). Budget A/B-tuned
   (`deepseek.ts:28`): depth held identically 3000→1000; 1500 chosen. Video reads are heavy + infrequent.
+  Judgment-heavy *and* off the snappy per-request path.
+- **COMPOSED-CARD CHAT** — `chat-agent-loop.ts`, `enable_thinking: chatThinkingEnabled(composing)`.
+  Default-ON for every signed-in chat turn since 2026-08-12, because `COMPOSED_CARDS` defaults ON.
+  This one IS on the snappy per-request path, which is the whole tension — see the row in the table
+  below and the measurement at the call site.
 
-> Verified 2026-08-04 by grepping every `chat.completions.create` call site: `engine/deepseek.ts:554`
-> is the only `enable_thinking: true` in non-test source. This section previously listed **CALIBRATE**
-> as a second thinking-ON call; that was wrong — see the ⚠️ correction above.
+> 🔴 **CORRECTED 2026-08-21.** This section said *"Thinking is ON in exactly ONE place"* and
+> *"`engine/deepseek.ts:554` is the only `enable_thinking: true` in non-test source"*, verified by
+> grep on 2026-08-04. A second one landed on 2026-08-12 (`1050d7a9`) and the claim was never
+> re-checked — so the file asserted "one" while the highest-volume model call in the product was
+> quietly thinking on every turn. A grep-dated claim expires the next time someone commits.
+> (The older ⚠️ correction above — CALIBRATE is NOT thinking-ON — still stands.)
 
 ## `max_tokens` semantics (DashScope)
 
@@ -174,6 +190,7 @@ Unused headroom is free (you pay actual output, not the cap).
 | **ADAPT** | `remix/adapt` | `qwen3.7-flash` | OFF | 1200 | — | rail |
 | **DECODE** | `remix/decode` | `qwen3.7-flash` | OFF | 1200 | — | rail |
 | **CONVERSE** chat | `chat-runner`, `analyze/[id]/chat`, 4 tool-route follow-ups | `qwen3.7-flash` | OFF | 2000 | — | bound runaway; streamed |
+| **CONVERSE** composed-card chat | `chat-agent-loop` (the live `/api/tools/chat` path) | `qwen3.7-flash` | **ON** | 4000 | — (no explicit budget) | ⚠️ **the highest-volume model call in the product, and the only thinking-ON call on the snappy per-request path.** `composing` (= `COMPOSED_CARDS`, default ON) drives thinking + rounds + budget together. Re-measured 2026-08-21 at n=18/arm: card rate 5/18 OFF vs 8/18 ON (**p = 0.49 — the gain is NOT established**; ~130/arm needed), but the price is: **+3.4s median to first character**, ON slower 7/7 on no-tool pairs. It searches less (19→6 corpus calls, p = 0.008) so cost is a wash (~0.08¢/turn). Seam: `CHAT_THINKING` |
 | **TEXT-ANALYZE** (no-video path) | `pipeline.ts` gemini_analysis | `qwen3.7-flash` | OFF | 2000 | — | fixed 2026-06-25 (was unbounded + thinking-unset) |
 | **FOLD** (Read audience sim) | `wave3/fold` | `qwen3.7-flash` (video, deaf) | OFF | 8000 | — | 10 personas × N segments; independence directive is the diversity lever. ✅ **validated live 2026-06-26** (5-seg video: 40.9s/90s, diversity 0.31 first-attempt no-retry, 0.56¢; `scripts/fold-validate-r1.ts`) |
 | **CALIBRATE** synth | `audience/enrich-signature` (synth call) | `qwen3.7-flash` | OFF | 8000 | — | v2 persona output (~3.5k) + headroom. ✅ **on flash** — raw flash was 0/7 (Σshares 0.75–0.85); normalize-shares + `liftFlattenedAudience()` + 1 retry → 3/3, ~12× cheaper, ~2× faster. Seam: `QWEN_CALIBRATE_MODEL` |
@@ -191,6 +208,16 @@ Unused headroom is free (you pay actual output, not the cap).
   kept so their path can be held or released independently: `QWEN_APOLLO_MODEL`, `QWEN_CALIBRATE_MODEL`,
   `QWEN_UNBOUND_CHAT_MODEL`, `QWEN_WATCH_MODEL`. `QWEN_FAST_MODEL` removed.
 - `enable_thinking: false` is a DashScope extension (apply via the `@ts-expect-error` pattern).
+- **Thinking seams:** `CHAT_THINKING` (`chat-agent-loop.ts`) forces composed-card chat reasoning on
+  or off; UNSET keeps it keyed to `composing`, i.e. today's request byte-for-byte. It exists because
+  reasoning on that path costs ~3.4s of blank screen per turn and there was previously no way to
+  turn it off without a code change. Only the exact strings `"true"` / `"false"` steer.
+- **Measured NEGATIVE, do not re-run:** thinking on the GENERATORS. `hooks-runner` at its 1500 rail,
+  n=6/arm (2026-08-21): 5 cards delivered in every arm — no truncation, and raising the rail to 4000
+  changed nothing — but **35.4s against 13.2s** thinking-off. Generation stays thinking-off.
+- **Also measured negative:** thinking does NOT rescue the chat asks that never compose a card
+  (`ending` / `opening` / `greenscreen` scored **0/9 in both arms**). That selection defect is real
+  and open, but it is not a reasoning problem — do not spend a session pointing this knob at it.
 - Estimated `max_tokens` are rails with headroom — verify against one real output per site; bump if any truncates.
 
 ## Rollout
