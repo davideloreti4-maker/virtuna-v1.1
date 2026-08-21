@@ -182,3 +182,25 @@ are retrieved videos.
   earns its keep, and to log the input length distribution the `topic` argument itself
   produces once traffic is real. Live-scrape arm remains unmeasured (Apify capped at $0.41
   headroom, need ~$0.70) — this run is the cache arm only, consistent with the dry run.
+
+## Measured (2026-08-21, live-scrape arm)
+
+The arm the 2026-08-16 run could not reach: same probe (`scripts/probe-attribution-rate.mjs`),
+same 6 asks, run after the Apify monthly cap reset, on `main` @ `79375d59` (which includes
+one-brain Stage B defaulting ON — the probe parsed the SSE cleanly through it).
+
+- Receipt rate: 18/18 (100%) — gate ≥70%: **PASS** (live-scrape arm — every send ran a fresh
+  Apify scrape, 3–6 fresh rows each, zero cache fallbacks; `[grounding] live scrape for …`
+  lines confirm per ask).
+- Strip reasons across runs: none — all six `[attribution]` lines report `kept 3/3`, every
+  receipt bound to a fresh scraped row (`td=<uuid>,@handle`).
+- Distillation: 0/6 asks distilled — same chat-route topic pre-compaction as the cache arm;
+  all agent-extracted topics arrived ≤80 chars. Nothing new to add to the 2026-08-16 finding.
+- Fidelity: 0 receipt/row template mismatches; 0/18 unmeasurable; seed-line duplicates 6/18
+  (up from 3/18 on the cache arm — worth an eye if it keeps climbing, not a gate metric).
+- Source diversity: send 5 used one source for 2 of its 3 cards — within the 2/source cap,
+  noted as the first live sighting of the cap actually being leaned on.
+- Cost: Apify $0.744 this run (account $0.0015 → $0.7457 of $5) + the same 6+6 DashScope call
+  shape as the cache arm (no per-call cost script; order-of-magnitude cents).
+- Verdict/next: **both arms now clear the gate** (cache 94.4%, live 100%); the spec's owed
+  live-scrape claim is closed. Raw report: `.scratch/attribution-report-2026-08-21T09-32-35.json`.
