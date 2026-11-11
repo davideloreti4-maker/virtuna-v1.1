@@ -13,10 +13,12 @@ import type { Asset, EditSpec } from "../spec";
 import { frameMs } from "../time";
 
 /**
- * How far a clip may start before the one before it on its track ends: OpenFilm's own rule, 1 ms of
- * rounding (`checkOverlaps` in node_modules/openfilm/src/look.mjs, the check the engine runs on a film).
+ * Floating-point noise, and nothing more: clips on a track must be disjoint and nothing may end after
+ * the film. OpenFilm's own overlap check (`checkOverlaps` in node_modules/openfilm/src/look.mjs) lets
+ * a clip start 1 ms early, but it only warns at render time, and 1 ms is drawn: frame 56 is sampled at
+ * 1.8667 s, inside [1.866, 1.867). Our times are whole milliseconds, so they need no grace (as for file ends below).
  */
-const OVERLAP_S = 0.001;
+const NOISE_S = 1e-6;
 
 /**
  * What is wrong with a compiled film, one readable line per fault; empty when it keeps every rule:
@@ -68,13 +70,13 @@ export function filmFaults(spec: EditSpec, out: Compiled): string[] {
       if (fileMs != null && Math.round(span.to * 1000) > fileMs) faults.push(`${where}: plays its file to ${span.to} s, past its end at ${fileMs / 1000} s`);
       const at = clip.at ?? 0;
       const end = at + span.length;
-      if (Math.round(end * 1000) > filmEnd) faults.push(`${where}: ends at ${end} s, after the film's end at ${filmEnd / 1000} s`);
+      if (end > filmEnd / 1000 + NOISE_S) faults.push(`${where}: ends at ${end} s, after the film's end at ${filmEnd / 1000} s`);
       spans.push({ id: clip.id, at, end });
     }
     spans.sort((a, b) => a.at - b.at);
     spans.forEach((clip, i) => {
       const before = spans[i - 1];
-      if (before && clip.at < before.end - OVERLAP_S) faults.push(`track ${t}: ${clip.id} starts at ${clip.at} s, before ${before.id} ends at ${before.end} s`);
+      if (before && clip.at < before.end - NOISE_S) faults.push(`track ${t}: ${clip.id} starts at ${clip.at} s, before ${before.id} ends at ${before.end} s`);
     });
   });
   return faults;

@@ -77,6 +77,9 @@ describe("compile", () => {
       ['at="1.866" volume="0.6"', 'at="1.8665" volume="0.6"', /^at="1\.8665" is not the floored millisecond of a frame/],
       ['at="1.866" volume="0.6"', 'at="1.867" volume="0.6"', /^at="1\.867" is not the floored millisecond of a frame/], // rounded, not floored
       ['src="kit/v1/text.html#t=0,1.6"', 'src="kit/v1/text.html#t=0,2"', /^txt-t2 .* after the film's end/],
+      /* by less than a millisecond: frame 56 (1.8667 s) would show both clips; seg-s5 at 1.0002 ends 0.4 ms past the film */
+      ['src="assets/take.mp4#t=0,1.866"', 'src="assets/take.mp4#t=0,1.867"', /^track 6: seg-s2 starts at 1\.866 s, before seg-s1 ends at 1\.867 s/],
+      ['src="assets/take.mp4#t=8.28,11.28" at="6.933"', 'src="assets/take.mp4#t=8.28,11.281" at="6.933" speed="1.0002"', /^seg-s5 .* after the film's end at 9\.933 s/],
     ];
     for (const [from, to, fault] of cases) expect(filmFaults(fixture(), broken(from, to))).toEqual([expect.stringMatching(fault)]);
   });
