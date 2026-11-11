@@ -225,6 +225,9 @@ importers:
       meshoptimizer:
         specifier: 0.25.0
         version: 0.25.0
+      openfilm:
+        specifier: 0.3.2
+        version: 0.3.2
       pixelmatch:
         specifier: ^6.0.0
         version: 6.0.0
@@ -4857,6 +4860,11 @@ packages:
       zod:
         optional: true
 
+  openfilm@0.3.2:
+    resolution: {integrity: sha512-TSHiB4OKR6bB8RT4UAAj+XlCSq6B8WLCvDawSVN4hIZmumojev4T51aAdke6mHrknZqkRA7ifalHcZ5CpacA5A==}
+    engines: {node: '>=22.2'}
+    hasBin: true
+
   optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}
     engines: {node: '>= 0.8.0'}
@@ -4951,6 +4959,11 @@ packages:
 
   playwright-core@1.58.2:
     resolution: {integrity: sha512-yZkEtftgwS8CsfYo7nm0KE8jsvm6i/PTgVtB8DL726wNf6H2IMsDuxCpJj59KDaxCtSnrWan2AeDqM7JBaultg==}
+    engines: {node: '>=18'}
+    hasBin: true
+
+  playwright-core@1.61.1:
+    resolution: {integrity: sha512-h7Qlt6m4REp25qvIdvbDtVmD4LqVXfpRxhORv9L0jzETM05p4fuPJ3dKyuSXQxDSbXnmS79HAgi9589lGSpLkg==}
     engines: {node: '>=18'}
     hasBin: true
 
@@ -10888,6 +10901,10 @@ snapshots:
       ws: 8.19.0
       zod: 4.3.6
 
+  openfilm@0.3.2:
+    dependencies:
+      playwright-core: 1.61.1
+
   optionator@0.9.4:
     dependencies:
       deep-is: 0.1.4
@@ -11004,6 +11021,8 @@ snapshots:
       pngjs: 7.0.0
 
   playwright-core@1.58.2: {}
+
+  playwright-core@1.61.1: {}
 
   playwright@1.58.2:
     dependencies:

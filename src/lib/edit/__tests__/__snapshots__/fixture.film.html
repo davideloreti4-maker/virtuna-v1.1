@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1080, height=1920">
+<style>
+@keyframes mv-push-in-50 { from { scale: 1 } to { scale: 1.1 } }
+</style>
+</head>
+<body>
+<section>
+  <track kind="captions" src="captions.vtt" srclang="en" label="Captions">
+</section>
+<section>
+  <iframe id="txt-t1" src="kit/v1/text.html#t=0,1.866" at="0" overrides='[{"at":"#t","text":"POV: back in the booth","style":{"--x":"0.5","--y":"0.14","--w":"0.8","--font":"&#39;inter&#39;","--weight":"800","--size":"62px","--color":"#111111","--fill":"#ffffff","--pad":"18px 30px","--radius":"22px","--stroke":"0","--stroke-color":"transparent","--align":"center","--case":"none","--rotate":"0deg","--in":"pop","--out":"fade","--len":"1.866"}}]'></iframe>
+  <iframe id="txt-t2" src="kit/v1/text.html#t=0,1.6" at="8.333" overrides='[{"at":"#t","text":"Stay tuned","style":{"--x":"0.5","--y":"0.5","--w":"0.8","--font":"&#39;inter&#39;","--weight":"800","--size":"96px","--color":"#ffe14a","--fill":"transparent","--pad":"0","--radius":"0","--stroke":"12px","--stroke-color":"#000000","--align":"center","--case":"uppercase","--rotate":"0deg","--in":"none","--out":"none","--len":"1.6"}}]'></iframe>
+</section>
+<section>
+  <iframe id="wipe-s3" src="kit/v1/wipes/shutter.html#t=0,0.8" at="5.033" overrides='[{"at":"html","style":{"--color":"#ff6363"}}]'></iframe>
+</section>
+<section>
+  <img id="lay-l1" src="assets/photo.jpg#t=0,1" at="4" style="left: 648px; top: 192px; width: 324px; height: 326px; object-fit: cover; rotate: 8deg; border-radius: 24px">
+</section>
+<section>
+  <video id="seg-s3" src="assets/broll.mp4#t=0.8,3" at="3.233" style="left: 0px; top: 656px; width: 1080px; height: 608px" overrides='[{"fade":[0.4,0]}]'></video>
+  <img id="seg-s4" src="assets/photo.jpg#t=0,1.5" at="5.433" style="left: -1166px; top: 0px; width: 3413px; height: 1920px; filter: grayscale(1) contrast(1.08); animation: mv-push-in-50 var(--clip-length) linear both">
+  <video id="seg-s5" src="assets/take.mp4#t=8.28,11.28" at="6.933" style="left: 0px; top: 0px; width: 1080px; height: 1920px"></video>
+</section>
+<section>
+  <video id="blur-s3" src="assets/broll.mp4#t=0.8,3" at="3.233" muted style="left: -1166px; top: 0px; width: 3413px; height: 1920px; filter: blur(40px) brightness(.7)" overrides='[{"fade":[0.4,0]}]'></video>
+</section>
+<section>
+  <video id="seg-s1" src="assets/take.mp4#t=0,1.866" at="0" style="left: -162px; top: -219px; width: 1404px; height: 2496px"></video>
+  <video id="seg-s2" src="assets/take.mp4#t=1.866,3.633" at="1.866" style="left: 0px; top: 0px; width: 1080px; height: 1920px"></video>
+</section>
+<section>
+  <audio id="snd-m1" src="assets/song.mp3#t=0,9.933" at="0" volume="0.4" overrides='[{"fade":[0,1]}]'></audio>
+</section>
+<section>
+  <audio id="snd-k1" src="kit/v1/sfx/kick.m4a#t=0,0.45" at="1.866" volume="0.6"></audio>
+</section>
+</body>
+</html>

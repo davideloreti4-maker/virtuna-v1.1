@@ -1,0 +1,64 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Text</title>
+<style>
+  @font-face { font-family: 'inter'; src: url('fonts/inter-latin-wght.woff2') format('woff2'); font-weight: 100 900; }
+  html, body { margin: 0; width: 100%; height: 100%; overflow: hidden; background: transparent; }
+  /*
+   * One page for every text on a film. What it says and how it looks arrive from the clip's
+   * `overrides`: the words as #t's text, everything else as CSS variables on #t. The page covers
+   * the stage and places the text itself, so moving a text is a change of two variables.
+   */
+  #t {
+    position: absolute;
+    left: calc(var(--x, .5) * 100%);
+    top: calc(var(--y, .5) * 100%);
+    width: max-content;
+    max-width: calc(var(--w, .8) * 100vw);
+    translate: -50% -50%;
+    rotate: var(--rotate, 0deg);
+    box-sizing: border-box;
+    white-space: pre-line;
+    font: var(--weight, 800) var(--size, 62px)/1.15 var(--font, 'inter'), sans-serif;
+    color: var(--color, #111111);
+    background: var(--fill, transparent);
+    padding: var(--pad, 0);
+    border-radius: var(--radius, 0);
+    text-align: var(--align, center);
+    text-transform: var(--case, none);
+    -webkit-text-stroke: var(--stroke, 0) var(--stroke-color, transparent);
+    paint-order: stroke fill;
+  }
+</style>
+</head>
+<body>
+<div id="t">Text</div>
+<script type="module">
+const el = document.getElementById('t');
+const read = (name) => getComputedStyle(el).getPropertyValue(name).trim();
+const ease = (x) => 1 - (1 - Math.min(1, Math.max(0, x))) ** 3;
+/* a motion lasts 9 frames at 30 frames/s */
+const MOVE = 0.3;
+
+window.film = {
+  /* the clip's variables are set before frame() runs, so frame() can read them */
+  frameReadsOverrides: true,
+  ready: document.fonts.load("800 62px 'inter'"),
+  frame(t) {
+    const len = parseFloat(read('--len'));
+    const coming = read('--in');
+    const going = read('--out');
+    const a = coming && coming !== 'none' ? ease(t / MOVE) : 1;
+    const b = going && going !== 'none' && Number.isFinite(len) ? ease((len - t) / MOVE) : 1;
+    const p = Math.min(a, b);
+    const kind = a <= b ? coming : going;
+    el.style.opacity = String(kind === 'pop' || kind === 'fade' || kind === 'rise' ? p : 1);
+    el.style.scale = kind === 'pop' ? String(0.82 + 0.18 * p) : '1';
+    el.style.translate = kind === 'rise' ? `-50% calc(-50% + ${(1 - p) * 40}px)` : '-50% -50%';
+  },
+};
+</script>
+</body>
+</html>
