@@ -7,9 +7,9 @@
  *
  * Spec: docs/superpowers/specs/2026-11-11-edit-format-design.md §4.
  */
-import { frameOf, starts, total } from "./derive";
+import { frameOf, total } from "./derive";
 import type { Asset, EditSpec } from "./spec";
-import { MAX_FRAMES, sourceMs } from "./time";
+import { MAX_FRAMES, minSourceMs } from "./time";
 
 export type ProblemCode =
   | "asset-key" | "generator-missing" | "asset-facts" | "asset-missing" | "asset-kind"
@@ -57,10 +57,10 @@ export function checkEditSpec(spec: EditSpec): Problem[] {
     });
   };
 
-  const at = starts(spec);
+  /* a clip fits its file by the least source it takes at any start (time.ts), so where it sits never decides it */
   spec.main.forEach((seg, i) => {
     const asset = assetOf(seg.asset, ["video", "image"], `main[${i}]`);
-    if (asset?.kind === "video" && seg.inMs + sourceMs(at[i] ?? 0, seg.len, seg.speed) > (asset.ms ?? 0)) {
+    if (asset?.kind === "video" && seg.inMs + minSourceMs(seg.len, seg.speed) > (asset.ms ?? 0)) {
       say("source-overrun", `main[${i}]`, `takes more of "${seg.asset}" than the file holds`);
     }
   });
@@ -72,7 +72,7 @@ export function checkEditSpec(spec: EditSpec): Problem[] {
     const frame = frameOf(spec, layer);
     if (frame == null) say("pin-missing", where, `is pinned to "${layer.pin}", which is not a segment`);
     const asset = assetOf(layer.asset, ["video", "image"], where);
-    if (asset?.kind === "video" && frame != null && layer.inMs + sourceMs(frame, layer.len, layer.speed) > (asset.ms ?? 0)) {
+    if (asset?.kind === "video" && layer.inMs + minSourceMs(layer.len, layer.speed) > (asset.ms ?? 0)) {
       say("source-overrun", where, `takes more of "${layer.asset}" than the file holds`);
     }
   });

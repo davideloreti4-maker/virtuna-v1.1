@@ -30,6 +30,17 @@ export function sourceMs(start: number, len: number, speed: number): number {
   return Math.floor(spanMs(start, len) * speed);
 }
 
+/**
+ * The source a clip of `len` frames is judged by wherever it sits: the least it takes at any start.
+ * A span of `len` frames is `floor(len × 1000 / 30)` ms or one more, by its start frame, so the
+ * source it takes is this or up to ⌈speed⌉ ms more. Whether a clip fits its file is judged by this
+ * (check.ts), so moving or reshaping the edit around a clip never makes it stop fitting; where it
+ * takes the longer span, the compiler cuts it at its file's end, a fraction of a frame early.
+ */
+export function minSourceMs(len: number, speed: number): number {
+  return Math.floor(frameMs(len) * speed);
+}
+
 /** Milliseconds as film.html writes seconds: at most three decimals, no trailing zeros. */
 export function sec(ms: number): string {
   return String(Number((ms / 1000).toFixed(3)));

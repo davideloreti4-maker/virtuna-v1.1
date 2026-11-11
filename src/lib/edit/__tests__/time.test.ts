@@ -6,7 +6,7 @@
  * 1867 is not yet on at that frame.
  */
 import { describe, expect, it } from "vitest";
-import { FPS, MAX_FRAMES, frameMs, sec, sourceMs, spanMs } from "../time";
+import { FPS, MAX_FRAMES, frameMs, minSourceMs, sec, sourceMs, spanMs } from "../time";
 
 describe("frameMs", () => {
   it("is 1866 for frame 56, not 1867", () => {
@@ -41,6 +41,20 @@ describe("sourceMs", () => {
         }
       }
     }
+  });
+});
+
+describe("minSourceMs", () => {
+  it("is the least source a clip takes wherever it sits, and at most ⌈speed⌉ ms under the most", () => {
+    for (const speed of [0.25, 0.3, 0.5, 0.77, 1, 1.5, 2, 3.3, 4]) {
+      for (const len of [3, 4, 5, 7, 10, 31, 47, 100, 18_000]) {
+        /* a frame's millisecond repeats every 3 frames (100 ms), so 30 starts cover every kind */
+        const everywhere = Array.from({ length: 30 }, (_, start) => sourceMs(start, len, speed));
+        expect(minSourceMs(len, speed)).toBe(Math.min(...everywhere));
+        expect(Math.max(...everywhere) - minSourceMs(len, speed)).toBeLessThanOrEqual(Math.ceil(speed));
+      }
+    }
+    expect(minSourceMs(4, 1)).toBe(133); // 4 frames are 133 ms from frame 0 and 134 from frame 5
   });
 });
 

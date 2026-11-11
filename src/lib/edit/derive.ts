@@ -29,7 +29,7 @@ export interface SegmentWindow {
   /** its start and length on the film, in milliseconds */
   atMs: number;
   lenMs: number;
-  /** where in the source it starts, and how much of the source it uses (0 for an image) */
+  /** where in the source it starts, and how much of the source it uses, cut at the file's end (0 for an image) */
   inMs: number;
   usedMs: number;
 }
@@ -39,13 +39,14 @@ export function windowOf(spec: EditSpec, index: number): SegmentWindow {
   const seg = spec.main[index];
   if (!seg) throw new RangeError(`the edit has no segment ${index}`);
   const start = starts(spec)[index] ?? 0;
-  const image = spec.assets[seg.asset]?.kind === "image";
+  const asset = spec.assets[seg.asset];
+  const image = asset?.kind === "image";
   return {
     start,
     atMs: frameMs(start),
     lenMs: spanMs(start, seg.len),
     inMs: image ? 0 : seg.inMs,
-    usedMs: image ? 0 : sourceMs(start, seg.len, seg.speed),
+    usedMs: image ? 0 : Math.max(0, Math.min(sourceMs(start, seg.len, seg.speed), (asset?.ms ?? Infinity) - seg.inMs)),
   };
 }
 

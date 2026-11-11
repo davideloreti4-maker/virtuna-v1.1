@@ -6,8 +6,12 @@
  */
 import { describe, expect, it } from "vitest";
 import { checkEditSpec } from "../check";
+import { compile } from "../compile";
 import { frameOf, starts, total, windowOf } from "../derive";
-import { fixture } from "./fixture";
+import { newSegment } from "../spec";
+import { minSourceMs } from "../time";
+import { filmFaults } from "./film-rules";
+import { file, fixture } from "./fixture";
 
 describe("derive", () => {
   it("places segments end to end", () => {
@@ -18,6 +22,19 @@ describe("derive", () => {
   it("gives a segment its place on the film and in its source", () => {
     expect(windowOf(fixture(), 1)).toEqual({ start: 56, atMs: 1866, lenMs: 1567, inMs: 1866, usedMs: 1567 });
     expect(windowOf(fixture(), 3)).toEqual({ start: 163, atMs: 5433, lenMs: 1500, inMs: 0, usedMs: 0 });
+  });
+
+  it("never gives a source window longer than its file", () => {
+    /* 4 frames from frame 5 last 134 ms; from 12567 they fit the take's 12700 ms by minSourceMs (133) */
+    const spec = fixture();
+    spec.main = [newSegment({ id: "lead", asset: "photo", len: 5 }), newSegment({ id: "a", asset: "take", len: 4, inMs: 12567 }), ...spec.main];
+    expect(checkEditSpec(spec)).toEqual([]);
+    const tight = windowOf(spec, 1);
+    expect(tight.inMs + tight.usedMs).toBeLessThanOrEqual(spec.assets.take!.ms!);
+    expect(tight).toEqual({ start: 5, atMs: 166, lenMs: 134, inMs: 12567, usedMs: 133 });
+    /* with room to spare, the window is the clip's span */
+    spec.main[1]!.inMs = 12500;
+    expect(windowOf(spec, 1)).toEqual({ start: 5, atMs: 166, lenMs: 134, inMs: 12500, usedMs: 134 });
   });
 
   it("counts a pinned item from its segment and an unpinned one from the film's start", () => {
@@ -77,6 +94,40 @@ describe("checkEditSpec", () => {
     const exact = fixture();
     exact.main[4]!.inMs = 9700; // ends on the file's last millisecond
     expect(codes(exact)).toEqual([]);
+  });
+
+  it("source-overrun: whether a clip fits its file does not depend on where it sits", () => {
+    const take = fixture().assets.take!.ms!;
+    for (const speed of [0.25, 0.5, 1, 1.5, 2, 4]) {
+      for (const len of [3, 4, 5, 7, 10, 47]) {
+        const latest = take - minSourceMs(len, speed); // the latest in-point of the take that fits
+        /* a segment starts at 0 or after a lead of 3 frames or more: 3 to 8 hold every kind of start (a frame's millisecond repeats every 3 frames) */
+        for (const lead of [0, 3, 4, 5, 6, 7, 8]) {
+          const placed = (inMs: number): ReturnType<typeof fixture> => {
+            const spec = fixture();
+            const leading = lead ? [newSegment({ id: "lead", asset: "photo", len: lead })] : [];
+            spec.main = [...leading, { ...newSegment({ id: "a", asset: "take", len, inMs }), speed }, ...spec.main];
+            return spec;
+          };
+          const where = `segment, speed ${speed}, ${len} frames from frame ${lead}`;
+          expect(codes(placed(latest)), where).toEqual([]);
+          expect(codes(placed(latest + 1)), where).toEqual(["source-overrun"]);
+          expect(filmFaults(placed(latest), compile(placed(latest), { file })), where).toEqual([]);
+        }
+        /* a layer may sit on any frame */
+        for (let at = 0; at <= 5; at++) {
+          const layered = (inMs: number): ReturnType<typeof fixture> => {
+            const spec = fixture();
+            spec.layers.push({ ...spec.layers[0]!, id: "v", kind: "clip", asset: "take", at, len, inMs, speed });
+            return spec;
+          };
+          const where = `layer, speed ${speed}, ${len} frames from frame ${at}`;
+          expect(codes(layered(latest)), where).toEqual([]);
+          expect(codes(layered(latest + 1)), where).toEqual(["source-overrun"]);
+          expect(filmFaults(layered(latest), compile(layered(latest), { file })), where).toEqual([]);
+        }
+      }
+    }
   });
 
   it("pin-missing: a text pinned to a segment that is not there", () => {

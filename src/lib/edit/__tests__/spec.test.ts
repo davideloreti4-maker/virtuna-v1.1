@@ -5,7 +5,7 @@
  * has to be refused, not dropped: a dropped key is a change that silently did not happen.
  */
 import { describe, expect, it } from "vitest";
-import { EditSpecSchema, parseEditSpec } from "../spec";
+import { EditSpecSchema, IdSchema, parseEditSpec } from "../spec";
 import { fixture } from "./fixture";
 
 describe("parseEditSpec", () => {
@@ -36,6 +36,23 @@ describe("parseEditSpec", () => {
   it("refuses an edit with no segment, and a version it does not know", () => {
     expect(EditSpecSchema.safeParse({ ...fixture(), main: [] }).success).toBe(false);
     expect(() => parseEditSpec({ ...fixture(), v: 2 })).toThrow(/version 2/);
+  });
+
+  it("refuses an id every object already has, as an id and as a record key, and reads ordinary ids", () => {
+    const reserved = Object.getOwnPropertyNames(Object.prototype); // __proto__, constructor, toString, ...
+    expect(reserved).toEqual(expect.arrayContaining(["__proto__", "constructor", "toString", "hasOwnProperty"]));
+    expect(reserved.filter((id) => IdSchema.safeParse(id).success)).toEqual([]);
+    /* as a key: JSON.parse makes "__proto__" an own key, as a stored document or a request body would */
+    for (const id of ["__proto__", "constructor", "toString"]) {
+      const asset = JSON.stringify({ ...fixture().assets.photo, id });
+      const assets = JSON.parse(JSON.stringify(fixture()).replace('"assets":{', `"assets":{"${id}":${asset},`));
+      expect(EditSpecSchema.safeParse(assets).success, `assets.${id}`).toBe(false);
+      const fixes = JSON.parse(JSON.stringify(fixture()).replace('"fixes":{', `"fixes":{"${id}":{"0":"x"},`));
+      expect(EditSpecSchema.safeParse(fixes).success, `captions.fixes.${id}`).toBe(false);
+    }
+    const word = JSON.parse(JSON.stringify(fixture()).replace('"fixes":{"take":{', '"fixes":{"take":{"__proto__":"x",'));
+    expect(EditSpecSchema.safeParse(word).success, "captions.fixes.take.__proto__").toBe(false);
+    expect(["s1", "take", "a-b_9", "proto", "__proto", "Constructor", "toString2"].filter((id) => !IdSchema.safeParse(id).success)).toEqual([]);
   });
 
   it("refuses a kit path that leaves the kit folder, and reads the kit's own paths", () => {

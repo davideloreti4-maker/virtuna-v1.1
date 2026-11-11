@@ -15,8 +15,27 @@ import { z } from "zod";
 import { FILTER_IDS, FONT_IDS, MOTION_IDS, WIPE_IDS } from "./kit";
 import { MAX_FRAMES, MIN_LEN } from "./time";
 
-/** Ids are short and safe to use as an HTML id and in a file name. */
-export const IdSchema = z.string().regex(/^[A-Za-z0-9_-]{1,24}$/);
+/**
+ * Ids are short and safe to use as an HTML id and in a file name. Never a name every object already
+ * has (`__proto__`, `constructor`, `toString`, ...): ids are keys of plain objects (`assets`,
+ * `captions.fixes`), where such a name reads or writes `Object.prototype` instead of the edit.
+ */
+export const IdSchema = z
+  .string()
+  .regex(/^[A-Za-z0-9_-]{1,24}$/)
+  .refine((id) => !Object.hasOwn(Object.prototype, id), "is a name every object already has");
+
+/**
+ * zod skips an own "__proto__" key of a record without a word (zod 4.3.6), so a stored document or a
+ * request body carrying one would lose it silently. Records are read through this first: refused.
+ */
+function noProtoKey(input: unknown, ctx: z.RefinementCtx): unknown {
+  if (typeof input === "object" && input !== null && Object.hasOwn(input, "__proto__")) {
+    ctx.addIssue({ code: "custom", path: ["__proto__"], message: "is a name every object already has" });
+  }
+  return input;
+}
+
 /** Colours are six-digit hex only, so they can be written into CSS and JSON as they are. */
 const Hex = z.string().regex(/^#[0-9a-fA-F]{6}$/);
 const Frame = z.number().int().min(0).max(MAX_FRAMES);
@@ -148,7 +167,7 @@ export const CaptionsSchema = z.strictObject({
   lang: z.string().regex(/^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/),
   style: CaptionStyleSchema,
   /** asset id → word index → the corrected word, or null to hide it */
-  fixes: z.record(IdSchema, z.record(z.string().regex(/^\d{1,6}$/), z.string().min(1).max(80).nullable())),
+  fixes: z.preprocess(noProtoKey, z.record(IdSchema, z.preprocess(noProtoKey, z.record(z.string().regex(/^\d{1,6}$/), z.string().min(1).max(80).nullable())))),
 });
 
 export const RefSchema = z.strictObject({
@@ -160,7 +179,7 @@ export const RefSchema = z.strictObject({
 export const EditSpecSchema = z.strictObject({
   v: z.literal(1),
   stage: z.strictObject({ w: z.literal(1080), h: z.literal(1920), fps: z.literal(30) }),
-  assets: z.record(IdSchema, AssetSchema),
+  assets: z.preprocess(noProtoKey, z.record(IdSchema, AssetSchema)),
   main: z.array(SegmentSchema).min(1),
   layers: z.array(LayerSchema),
   texts: z.array(TextItemSchema),
