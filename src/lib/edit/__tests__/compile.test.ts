@@ -3,19 +3,22 @@
  *
  * The load-bearing assertion is `readFilmFile(...).problems` being empty, read by the same code the renderer and
  * the in-page player use. It checks a film's form (attributes, ids, times, fades against their clip's length); it
- * does NOT check two clips overlapping on a track, a clip longer than its file, or a path outside the folder. The
- * expected film.html is also kept as a file snapshot, so any change to the output shows up as a diff to read.
+ * does NOT check two clips overlapping on a track, a clip longer than its file, or a path outside the folder. Those,
+ * with frame-floored `at`s and nothing past the film's end, are `filmFaults` (film-rules.ts), run on the fixture and
+ * on the edge cases below; one test breaks a film by hand to see each rule fire. The expected film.html is also kept
+ * as a file snapshot, so any change to the output shows up as a diff to read.
  *
  * Nothing of ours is mocked. The reader is the real one from the pinned package.
  */
 import { readFilmFile } from "openfilm/film-doc";
 import { describe, expect, it } from "vitest";
 import { EditSpecError } from "../check";
-import { compile } from "../compile";
+import { compile, type Compiled } from "../compile";
 import { cuesOf } from "../compile/captions";
 import { boxOf } from "../compile/main";
 import type { EditSpec } from "../spec";
 import { frameMs } from "../time";
+import { filmFaults } from "./film-rules";
 import { file, fixture } from "./fixture";
 
 /** A clip as the reader gives it: `src` is the file alone, the `#t=` window is `time`. */
@@ -39,12 +42,43 @@ const get = (clips: Map<string, Clip & { track: number }>, id: string): Clip & {
   return clip;
 };
 
+/** Where a clip ends on the film, in whole milliseconds: its start plus its part of the file at its speed. */
+const endMs = (clip: Clip): number => {
+  const [t0 = 0, t1 = 0] = clip.time ?? [];
+  return Math.round(((clip.at ?? 0) + (t1 - t0) / (clip.speed ?? 1)) * 1000);
+};
+
 describe("compile", () => {
   const out = compile(fixture(), { file });
   const film = read(out.files["film.html"]);
 
   it("makes a film OpenFilm's reader accepts with no problems", () => {
     expect(film.problems).toEqual([]);
+  });
+
+  it("keeps the rules the reader cannot check: no overlap on a track, every clip inside its file and the film, every file in the folder", () => {
+    expect(filmFaults(fixture(), out)).toEqual([]);
+  });
+
+  it("has a guard for those rules that finds each one broken by hand", () => {
+    /** The fixture's film with `from`, which it holds exactly once, written as `to`. */
+    const broken = (from: string, to: string): Compiled => {
+      const html = out.files["film.html"];
+      expect(html.split(from)).toHaveLength(2);
+      return { ...out, files: { ...out.files, "film.html": html.replace(from, to) } };
+    };
+    const cases: [from: string, to: string, fault: RegExp][] = [
+      ['id="seg-s2" src="assets/take.mp4#t=1.866,3.633" at="1.866"', 'id="seg-s2" src="assets/take.mp4#t=1.866,3.633" at="1.5"', /seg-s2 starts at 1\.5 s, before seg-s1 ends/],
+      ['src="kit/v1/sfx/kick.m4a#t=0,0.45"', 'src="kit/v1/sfx/kick.m4a#t=0,0.5"', /^snd-k1 .* past the file's length/],
+      ['src="kit/v1/sfx/kick.m4a#t=0,0.45"', 'src="kit/v1/sfx/kick.m4a#t=0,0.451"', /^snd-k1 .* plays its file to 0\.451 s, past its end at 0\.45 s/], // the 1 ms the engine lets pass
+      ['src="assets/photo.jpg#t=0,1"', 'src="assets/sticker.png#t=0,1"', /^lay-l1 .* not one of the files the compile lists/],
+      ['src="captions.vtt"', 'src="subs.vtt"', /^track 0: its captions read "subs.vtt"/],
+      ['src="assets/take.mp4#t=0,1.866"', 'src="https://cdn.invalid/take.mp4#t=0,1.866"', /^seg-s1 .* not under assets\/ or kit\/v1\//],
+      ['at="1.866" volume="0.6"', 'at="1.8665" volume="0.6"', /^at="1\.8665" is not the floored millisecond of a frame/],
+      ['at="1.866" volume="0.6"', 'at="1.867" volume="0.6"', /^at="1\.867" is not the floored millisecond of a frame/], // rounded, not floored
+      ['src="kit/v1/text.html#t=0,1.6"', 'src="kit/v1/text.html#t=0,2"', /^txt-t2 .* after the film's end/],
+    ];
+    for (const [from, to, fault] of cases) expect(filmFaults(fixture(), broken(from, to))).toEqual([expect.stringMatching(fault)]);
   });
 
   it("is the same bytes for the same document", () => {
@@ -106,8 +140,10 @@ describe("compile", () => {
 
     const cases: [EditSpec, string[]][] = [[cover, ["seg-s3"]], [dip, ["seg-s3", "blur-s3"]], [through, ["seg-s3", "blur-s3"]]];
     const films = cases.map(([spec, ids]) => {
-      const result = read(compile(spec, { file }).files["film.html"]);
+      const compiled = compile(spec, { file });
+      const result = read(compiled.files["film.html"]);
       expect(result.problems).toEqual([]);
+      expect(filmFaults(spec, compiled)).toEqual([]);
       for (const id of ids) {
         const clip = get(result.clips, id);
         const [fadeIn = 0, fadeOut = 0] = clip.overrides?.[0]?.fade ?? [];
@@ -160,9 +196,34 @@ describe("compile", () => {
   });
 
   it("cuts off what runs past the film's end", () => {
-    const text = get(film.clips, "txt-t2"); // frames 250 to 298, one more than the film has
-    expect(text.at).toBe(frameMs(250) / 1000);
-    expect(text.time).toEqual([0, (frameMs(298) - frameMs(250)) / 1000]);
+    /** The fixture with a text, a layer and a sound that end on the film's end (frame 298), or run `past` frames beyond it. */
+    const ending = (past: number): EditSpec => {
+      const spec = fixture();
+      spec.texts[1]!.len = 48 + past; // t2: from frame 250
+      spec.layers[0]!.at = 280; // l1: from frame 280
+      spec.layers[0]!.len = 18 + past;
+      spec.sounds[1]!.len = 298 + past; // m1: from frame 0
+      return spec;
+    };
+    const cut = compile(ending(40), { file });
+    expect(cut).toEqual(compile(ending(0), { file }));
+    const clips = read(cut.files["film.html"]).clips;
+    for (const id of ["txt-t2", "lay-l1", "snd-m1"]) expect(endMs(get(clips, id))).toBe(frameMs(298));
+    expect(get(clips, "txt-t2").time).toEqual([0, (frameMs(298) - frameMs(250)) / 1000]);
+    /* the film's length as the engine reckons it, its latest clip's end, is its frames */
+    expect(Math.max(...[...clips.values()].map(endMs))).toBe(frameMs(cut.frames));
+    expect(filmFaults(ending(40), cut)).toEqual([]);
+
+    /* a wipe on a cut 5 frames before the end: the shutter's 24 frames, centred on the cut, would run 7 past it */
+    const wiped = fixture();
+    wiped.main[3]!.cutOut = { kind: "wipe", id: "shutter" };
+    wiped.main[4]!.len = 5;
+    const short = compile(wiped, { file });
+    const shortClips = read(short.files["film.html"]).clips;
+    expect(short.frames).toBe(213);
+    expect(endMs(get(shortClips, "wipe-s4"))).toBe(frameMs(213));
+    expect(Math.max(...[...shortClips.values()].map(endMs))).toBe(frameMs(213));
+    expect(filmFaults(wiped, short)).toEqual([]);
   });
 
   it("ends a sound when its file does, and fades the music out", () => {
@@ -194,9 +255,11 @@ describe("compile", () => {
       }));
       return out;
     };
-    expect(upsideDown(layered([["hi", 0, 10, 3], ["mid", 5, 10, 2], ["lo", 12, 8, 1]]))).toEqual([]);
+    const stepped = layered([["hi", 0, 10, 3], ["mid", 5, 10, 2], ["lo", 12, 8, 1]]);
+    expect(upsideDown(stepped)).toEqual([]);
     const mixed = layered([["a", 5, 10, 2], ["top", 0, 10, 3], ["b", 12, 8, 2], ["floor", 0, 30, -1], ["late", 25, 5, 5]]);
     expect(upsideDown(mixed)).toEqual([]);
+    for (const spec of [stepped, mixed]) expect(filmFaults(spec, compile(spec, { file }))).toEqual([]);
     expect(compile(structuredClone(mixed), { file })).toEqual(compile(mixed, { file }));
   });
 
@@ -253,6 +316,7 @@ describe("captions", () => {
     const past = voiced(270); // its 120 frames run 92 past the film's end
     expect(cuesOf(past).filter((cue) => cue.start >= end || cue.end > end)).toEqual([]);
     expect(cuesOf(voiced(270, 298, 320))).toEqual(cuesOf(past)); // one starting at the film's end, one after it: no cue
+    for (const spec of [past, voiced(270, 298, 320)]) expect(filmFaults(spec, compile(spec, { file }))).toEqual([]);
   });
 
   it("follow a trim without being made again, and a hidden word is gone", () => {
