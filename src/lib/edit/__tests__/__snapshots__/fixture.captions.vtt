@@ -1,0 +1,27 @@
+WEBVTT
+
+STYLE
+@font-face { font-family: 'inter'; src: url('kit/v1/fonts/inter-latin-wght.woff2') format('woff2'); font-weight: 100 900; }
+::cue { --box: none; --font: 'inter', sans-serif; --weight: 800; --size: 4.375cqh; --color: #ffffff; --stroke: 10px; --stroke-color: #000000; text-transform: uppercase; }
+::cue(:future) { opacity: 0.35; }
+::cue(:past:not(:has(~ :past))) { color: #ffe14a; }
+
+c1
+00:00:00.000 --> 00:00:01.100 line:66%,center size:86%
+<00:00:00.000>Hello <00:00:00.420>guys, <00:00:00.930>we
+
+c2
+00:00:01.100 --> 00:00:01.860 line:66%,center size:86%
+<00:00:01.100>are <00:00:01.350>back <00:00:01.690>in
+
+c3
+00:00:01.866 --> 00:00:03.433 line:66%,center size:86%
+<00:00:01.866>the <00:00:02.110>booth <00:00:02.520>again.
+
+c4
+00:00:06.933 --> 00:00:08.473 line:66%,center size:86%
+<00:00:06.933>Virtuna <00:00:07.703>App <00:00:08.063>will
+
+c5
+00:00:08.473 --> 00:00:09.933 line:66%,center size:86%
+<00:00:08.473>soon <00:00:08.913>be <00:00:09.173>available.
