@@ -33,7 +33,7 @@ export const AssetSchema = z.strictObject({
   generator: z.string().min(1).max(80).optional(),
   at: z.union([
     z.strictObject({ bucket: z.string().min(1).max(60), path: z.string().min(1).max(400) }),
-    z.strictObject({ kit: z.string().regex(/^[a-z0-9][a-z0-9/_.-]{0,80}$/) }),
+    z.strictObject({ kit: z.string().max(81).regex(/^[a-z0-9][a-z0-9_.-]*(?:\/[a-z0-9][a-z0-9_.-]*)*$/) }),
   ]),
   ms: Ms.optional(),
   w: z.number().int().positive().optional(),

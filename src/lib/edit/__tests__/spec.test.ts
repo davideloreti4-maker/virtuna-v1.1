@@ -37,4 +37,16 @@ describe("parseEditSpec", () => {
     expect(EditSpecSchema.safeParse({ ...fixture(), main: [] }).success).toBe(false);
     expect(() => parseEditSpec({ ...fixture(), v: 2 })).toThrow(/version 2/);
   });
+
+  it("refuses a kit path that leaves the kit folder, and reads the kit's own paths", () => {
+    const reads = (kit: string): boolean => {
+      const spec = fixture();
+      spec.assets.kick!.at = { kit };
+      return EditSpecSchema.safeParse(spec).success;
+    };
+    const outside = ["sfx/../x", "sfx/../../../../etc/passwd", "a/..//..", "sfx//kick.m4a", "sfx/", "./sfx/kick.m4a", "/sfx/kick.m4a"];
+    expect(outside.filter(reads)).toEqual([]);
+    const inside = ["sfx/kick.m4a", "wipes/swipe-blur.html", "fonts/inter-latin-wght.woff2", "text.html"];
+    expect(inside.filter((kit) => !reads(kit))).toEqual([]);
+  });
 });
