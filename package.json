@@ -105,6 +105,7 @@
     "eslint-config-next": "16.1.5",
     "happy-dom": "^20.9.0",
     "meshoptimizer": "0.25.0",
+    "openfilm": "0.3.2",
     "pixelmatch": "^6.0.0",
     "pngjs": "^7.0.0",
     "supabase": "^2.74.5",
