@@ -199,12 +199,14 @@ function applyOne(spec: EditSpec, op: Op): void {
       const asset = spec.assets[seg.asset];
       if (speed !== undefined && speed !== seg.speed && asset?.kind === "video") {
         /*
-         * The same stretch of source at another speed: its length on the film changes. Rounded down, so it
-         * never takes more source frames (`1e-9`: an exact length is not lost to floating point), then
-         * shortened if the file has no room for it as check.ts judges. Never under MIN_LEN frames; if the
-         * file has no room for those, the checks refuse the edit. A still has no source: its length stays.
+         * The same stretch of source at another speed: its length on the film changes. A length is whole
+         * frames, so the window is kept to within half a film frame: rounded to the nearest (`1e-9`: a tie
+         * is not lost to floating point), then shortened if the file has no room for it as check.ts judges.
+         * Repeated changes can wander by that rounding, so a continuous control should apply its speed to
+         * the edit as it was before the gesture. Never under MIN_LEN frames; if the file has no room for
+         * those, the checks refuse the edit. A still has no source: its length stays.
          */
-        seg.len = Math.min(MAX_FRAMES, Math.floor((seg.len * seg.speed) / speed + 1e-9));
+        seg.len = Math.min(MAX_FRAMES, Math.round((seg.len * seg.speed) / speed + 1e-9));
         seg.speed = speed;
         seg.len = Math.max(MIN_LEN, fitLen(seg, asset.ms ?? 0));
       }

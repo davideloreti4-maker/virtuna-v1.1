@@ -81,25 +81,34 @@ describe("segment operations", () => {
     expect(spec.main[0]).toMatchObject({ speed: 2, len: 28 });
   });
 
-  it("a speed change rounds the length down, so it never takes more source frames, nor more than the file has", () => {
-    /* s5: 90 frames, 3000 ms of the take from 8280 */
+  it("a speed change keeps the source window to within half a film frame, and never takes more than the file has", () => {
+    /* s5: 90 frames at 1×; at another speed it is 90 / speed frames, to the nearest whole frame */
     for (const speed of [4, 2, 1.5, 0.5, 0.25]) {
       const s5 = applyOps(fixture(), [{ op: "segment.set", id: "s5", patch: { speed } }]).main[4]!;
-      expect(minSourceMs(s5.len, speed), `speed ${speed}`).toBeLessThanOrEqual(3000);
+      expect(Math.abs(s5.len - 90 / speed), `speed ${speed}`).toBeLessThanOrEqual(0.5);
     }
-    expect(applyOps(fixture(), [{ op: "segment.set", id: "s5", patch: { speed: 4 } }]).main[4]).toMatchObject({ speed: 4, len: 22 });
-    /* an exact length is not lost to floating point: 3 frames at 0.7× are 6 at 0.35× (3 × 0.7 / 0.35 = 5.999999999999999) */
-    const slow = applyOps(fixture(), [{ op: "segment.insert", index: 0, segment: { ...newSegment({ id: "n", asset: "take", len: 3 }), speed: 0.7 } }]);
-    expect(applyOps(slow, [{ op: "segment.set", id: "n", patch: { speed: 0.35 } }]).main[0]).toMatchObject({ speed: 0.35, len: 6 });
-    /* 134 frames that end on the take's last millisecond */
+    expect(applyOps(fixture(), [{ op: "segment.set", id: "s5", patch: { speed: 4 } }]).main[4]).toMatchObject({ speed: 4, len: 23 }); // 22.5 frames
+    /* a tie is not lost to floating point: 6 frames at 0.3× are 4.5 at 0.4×, so 5 (6 × 0.3 / 0.4 = 4.499999999999999) */
+    const slow = applyOps(fixture(), [{ op: "segment.insert", index: 0, segment: { ...newSegment({ id: "n", asset: "take", len: 6 }), speed: 0.3 } }]);
+    expect(applyOps(slow, [{ op: "segment.set", id: "n", patch: { speed: 0.4 } }]).main[0]).toMatchObject({ speed: 0.4, len: 5 });
+    /* 134 frames that end on the take's last millisecond: 33.5 at 4× round to 34, which the file has no room for, so 33 */
     const ending = applyOps(fixture(), [{ op: "segment.trim", id: "s5", inMs: 12700 - minSourceMs(134, 1), len: 134 }]);
     expect(applyOps(ending, [{ op: "segment.set", id: "s5", patch: { speed: 4 } }]).main[4]).toMatchObject({ speed: 4, len: 33 });
-    /* never under three frames: 5 frames at 4× would be 1; the 3 it gets take 12 frames of source, not 5 */
+    /* never under three frames: 5 frames at 4× round to 1; the 3 it gets take 12 frames of source, not 5 */
     const short = applyOps(fixture(), [{ op: "segment.trim", id: "s2", len: 5 }, { op: "segment.set", id: "s2", patch: { speed: 4 } }]);
     expect(short.main[1]).toMatchObject({ speed: 4, len: 3 });
     /* and where the file has no room for those three, the checks refuse it */
     const last = applyOps(fixture(), [{ op: "segment.trim", id: "s5", inMs: 12700 - minSourceMs(5, 1), len: 5 }]);
     expect(refusal(() => applyOps(last, [{ op: "segment.set", id: "s5", patch: { speed: 4 } }])).code).toBe("source-overrun");
+  });
+
+  it("repeated speed changes do not eat the segment: s5 from 1× to 4× and back in quarter steps", () => {
+    const steps = [...Array.from({ length: 12 }, (_, i) => 1.25 + i * 0.25), ...Array.from({ length: 12 }, (_, i) => 3.75 - i * 0.25)];
+    let spec = fixture();
+    for (const speed of steps) spec = applyOps(spec, [{ op: "segment.set", id: "s5", patch: { speed } }]);
+    expect(spec.main[4]!.speed).toBe(1);
+    expect(spec.main[4]!.len).toBeGreaterThanOrEqual(87);
+    expect(spec.main[4]!.len).toBe(93); // from 90: rounding wanders a little; flooring every step ended at 63
   });
 
   it("a speed change on a still leaves its length alone: it has no source to keep", () => {
