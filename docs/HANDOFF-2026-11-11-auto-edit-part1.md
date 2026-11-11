@@ -1,5 +1,8 @@
 # Handoff 2026-11-11 (evening) — auto-edit: build part 1
 
+> **Superseded on 2026-11-12 by `docs/HANDOFF-2026-11-12-auto-edit-part2.md`.** Part 1 is built,
+> the branch is pushed and a draft PR is open. Start from that file, not this one.
+
 Written at the end of the session that proved the render path, took the owner's rulings and wrote
 the specs and the plan. Start here; do not redo what is listed as done.
 
