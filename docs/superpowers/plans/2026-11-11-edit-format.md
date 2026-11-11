@@ -1,5 +1,12 @@
 # Auto-edit part 1: edit format, compiler and operations — Implementation Plan
 
+> **Executed 2026-11-11. Do not run this plan again and do not copy its code blocks.** The branch
+> `feat/openfilm-edit` no longer matches them: reviews during the build found defects in the plan's
+> code, and each was fixed with a failing test first. What was built is described by the spec
+> (`docs/superpowers/specs/2026-11-11-edit-format-design.md`): the changes are its §9, F7 to F13,
+> and what is still open is its §10. Task 7 step 1's install command fails against the pinned
+> `playwright-core`; the working form is in the spec's §10.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** A saved edit (`EditSpec`) that compiles to an OpenFilm film folder and can only be changed through a closed list of operations, proven by a real render.

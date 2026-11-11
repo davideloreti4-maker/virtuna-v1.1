@@ -3,6 +3,37 @@
 Written at the end of the session that proved the render path, took the owner's rulings and wrote
 the specs and the plan. Start here; do not redo what is listed as done.
 
+## Update, same day (late): part 1 is built
+
+"Do next" below is done up to step 4. Do not redo it; start from "Next" here.
+
+- Branch `feat/openfilm-edit`: 15 commits on top of `main` (`0efcddd6`), all local. **Nothing is
+  pushed.** The repo's `post-commit` hook pushes on every commit, so every commit here was made
+  with `git -c core.hooksPath=/dev/null commit`. Keep doing that until the owner asks for a push.
+- Checked on the last code commit (`2db67400`): `pnpm exec tsc --noEmit` clean; ESLint clean on
+  `src/lib/edit`; the edit suite 106 tests in 7 files, none skipped, a real render among them; the
+  whole suite 6,832 passed and 42 skipped of 6,874 (the same 42 as before this branch);
+  `pnpm build` green.
+- The branch no longer matches the plan's code blocks, and must not be made to. Reviews found real
+  defects in them, and each was fixed with a failing test first. What changed and why is in
+  `docs/superpowers/specs/2026-11-11-edit-format-design.md` §9 (F7 to F13); the spec's text is
+  updated to what was built. Two of the changes are in the stored format: a document names its kit
+  (`kit: 'v1'`), and an id never names a member of `Object.prototype`.
+- The prototype in `.scratch/openfilm-spike/proto/` is the plan's code, so it is out of date too.
+  Do not diff against it any more.
+- What is still open, sorted by the part it must be done before, is in the same spec, §10. The
+  review reports, with file and line for every item, are in
+  `.scratch/openfilm-spike/part1-reviews/` (gitignored).
+
+Next:
+
+1. The "before part 2" list in the spec's §10. It needs nothing from the owner.
+2. Part 2's spec, through `superpowers:brainstorming`. It needs the owner's Modal account.
+
+One more machine fact: `pnpm add` in this repo also bumps three unrelated packages in the lockfile,
+because `react-scan` asks for `react-grab: latest`. After any `pnpm add`, put those hunks back and
+run `pnpm install --frozen-lockfile`.
+
 ## Goal
 
 Maven edits a creator's takes to match a reference video and renders the result. Engine: OpenFilm

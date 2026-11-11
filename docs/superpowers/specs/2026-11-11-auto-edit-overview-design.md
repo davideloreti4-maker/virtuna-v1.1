@@ -149,7 +149,7 @@ its spec is written.
   `generated`, `kit`). Originals live in a new private bucket, not in `videos`, because of the
   24-hour orphan sweep.
 - **The kit**: the static files every film needs (text page, fonts, wipes, sounds), versioned so an
-  old edit renders the same later.
+  old edit renders the same later. A document names the kit it was made with (`kit: 'v1'`).
 - **Operations**: every change, from a button, the chat or the auto-edit, is one of a closed list of
   operations on an `EditSpec`.
 - **Jobs**: one row per prepare or render job with status and progress, read by the thread block.
