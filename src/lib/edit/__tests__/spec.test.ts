@@ -5,7 +5,7 @@
  * has to be refused, not dropped: a dropped key is a change that silently did not happen.
  */
 import { describe, expect, it } from "vitest";
-import { EditSpecSchema, IdSchema, parseEditSpec } from "../spec";
+import { EditSpecSchema, IdSchema, parseEditSpec, type Word } from "../spec";
 import { fixture } from "./fixture";
 
 describe("parseEditSpec", () => {
@@ -31,6 +31,14 @@ describe("parseEditSpec", () => {
     const colour = fixture();
     colour.captions.style.color = "white";
     expect(EditSpecSchema.safeParse(colour).success).toBe(false);
+  });
+
+  it("names the kit it was made with, and refuses none or a kit it does not know", () => {
+    expect(EditSpecSchema.safeParse({ ...fixture(), kit: "v1" }).success).toBe(true);
+    const none: Record<string, unknown> = { ...fixture() };
+    delete none.kit;
+    expect(EditSpecSchema.safeParse(none).success).toBe(false);
+    expect(EditSpecSchema.safeParse({ ...fixture(), kit: "v2" }).success).toBe(false);
   });
 
   it("refuses an edit with no segment, and a version it does not know", () => {
@@ -65,5 +73,40 @@ describe("parseEditSpec", () => {
     expect(outside.filter(reads)).toEqual([]);
     const inside = ["sfx/kick.m4a", "wipes/swipe-blur.html", "fonts/inter-latin-wght.woff2", "text.html"];
     expect(inside.filter((kit) => !reads(kit))).toEqual([]);
+  });
+
+  it("refuses a storage path that is not plain segments, and reads ordinary paths", () => {
+    const stored = (path: string): boolean => {
+      const spec = fixture();
+      spec.assets.take!.at = { bucket: "takes", path };
+      return EditSpecSchema.safeParse(spec).success;
+    };
+    const bad = ["../x", "u1/../x", "u1/..", "..", ".", "./x", "u1/./x", "/u1/take.mov", "u1//take.mov", "u1/", "u1\\take.mov", "..\\x"];
+    expect(bad.filter(stored)).toEqual([]);
+    const good = ["u1/take.mov", "take.mov", "a/b/c.d", "u1/..take.mov", "u1/.x", "u1/take name (1).mov"];
+    expect(good.filter((path) => !stored(path))).toEqual([]);
+  });
+
+  it("refuses a correction keyed by a word number not written plainly: the compiler would never apply it", () => {
+    const keyed = (key: string): boolean => {
+      const spec = fixture();
+      spec.captions.fixes.take = { [key]: "x" };
+      return EditSpecSchema.safeParse(spec).success;
+    };
+    expect(["016", "00", "-1", "1.0", "1e3", " 1", "1000000"].filter(keyed)).toEqual([]);
+    expect(["0", "16", "19", "999999"].filter((key) => !keyed(key))).toEqual([]);
+  });
+
+  it("refuses words that end before they start, or start before the word before them", () => {
+    const transcript = (words: Word[]): boolean => {
+      const spec = fixture();
+      spec.assets.take!.words = words;
+      return EditSpecSchema.safeParse(spec).success;
+    };
+    expect(transcript([{ t0: 500, t1: 400, text: "back" }])).toBe(false);
+    expect(transcript([{ t0: 0, t1: 400, text: "a" }, { t0: 300, t1: 600, text: "b" }, { t0: 200, t1: 700, text: "c" }])).toBe(false);
+    /* a word may start where the one before it starts, overlap it, or last no time */
+    expect(transcript([{ t0: 0, t1: 400, text: "a" }, { t0: 0, t1: 300, text: "b" }, { t0: 200, t1: 200, text: "c" }])).toBe(true);
+    expect(transcript(fixture().assets.take!.words!)).toBe(true);
   });
 });

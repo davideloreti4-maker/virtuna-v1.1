@@ -12,7 +12,7 @@
  * Spec: docs/superpowers/specs/2026-11-11-edit-format-design.md §5.2 and §5.3.
  */
 import { starts, total } from "../derive";
-import { FILTERS, KIT_DIR, WIPES } from "../kit";
+import { FILTERS, WIPES } from "../kit";
 import type { Asset, EditSpec, Framing, Segment } from "../spec";
 import { FPS, frameMs, sec, sourceMs } from "../time";
 import { H, W, attr, jsonAttr, type Placed } from "./html";
@@ -82,7 +82,7 @@ function plan(spec: EditSpec): { clips: MainClip[]; wipes: Placed[] } {
       wipes.push({
         from: frameMs(fromF),
         to: frameMs(toF),
-        html: `<iframe id="wipe-${a.seg.id}" src="${KIT_DIR}/wipes/${cut.id}.html#t=0,${sec(frameMs(toF) - frameMs(fromF))}" at="${sec(frameMs(fromF))}"${tint}></iframe>`,
+        html: `<iframe id="${attr(`wipe-${a.seg.id}`)}" src="kit/${spec.kit}/wipes/${cut.id}.html#t=0,${sec(frameMs(toF) - frameMs(fromF))}" at="${sec(frameMs(fromF))}"${tint}></iframe>`,
       });
       continue;
     }
@@ -136,12 +136,14 @@ function clipHtml(clip: MainClip, file: string, look: EditSpec["look"], blur: bo
   const box = blur ? boxOf(asset, { zoom: 1, x: 0, y: 0 }, false) : boxOf(asset, seg.framing, seg.fit === "blur");
   const style = [`left: ${box.left}px`, `top: ${box.top}px`, `width: ${box.width}px`, `height: ${box.height}px`];
   const filter = seg.filter ?? look.filter;
-  if (blur) style.push("filter: blur(40px) brightness(.7)");
-  else if (filter) style.push(`filter: ${FILTERS[filter]}`);
+  const own = filter ? FILTERS[filter] : null;
+  /* the fill is the same picture: its filters, as on its clip, then the blur and the dimming */
+  if (blur) style.push(`filter: ${own ? `${own} ` : ""}blur(40px) brightness(.7)`);
+  else if (own) style.push(`filter: ${own}`);
   if (!blur && seg.move) style.push(`animation: ${moveName(seg.move)} var(--clip-length) linear both`);
 
   const src = image ? `${file}#t=0,${sec(win.toMs - win.fromMs)}` : `${file}#t=${sec(win.inMs)},${sec(win.outMs)}`;
-  const parts = [`id="${blur ? "blur" : "seg"}-${seg.id}"`, `src="${attr(src)}"`, `at="${sec(win.fromMs)}"`];
+  const parts = [`id="${attr(`${blur ? "blur" : "seg"}-${seg.id}`)}"`, `src="${attr(src)}"`, `at="${sec(win.fromMs)}"`];
   if (!image) {
     if (seg.speed !== 1) parts.push(`speed="${seg.speed}"`);
     if (blur || seg.volume === 0) parts.push("muted");

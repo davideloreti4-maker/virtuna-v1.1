@@ -1,5 +1,10 @@
 /**
- * fixture.ts — one edit that uses every feature the compiler knows, for the edit tests.
+ * fixture.ts — one edit for the edit tests. It holds the five segments below (a punch-in, a dissolve, a
+ * blurred fill, a coloured wipe, a still with a move and a filter), one sticker layer, two texts (a label
+ * pinned to s1 with motions, an outline without), captions with two fixes, a kit sound pinned to s2 and
+ * music with a fade-out, and a cover frame. It does NOT hold a dip to black, a clip layer, a voiceover,
+ * the `rise` motion, the `plain` preset, a look filter, a speed change, a generated asset or a `ref`:
+ * tests that need those add them.
  *
  * The words are the real Whisper (base) transcript of a 12.7 s phone take, mishearings included:
  * "Cloud" for Claude and "Bertuna" for Virtuna. The fixture corrects both through `captions.fixes`.
@@ -27,6 +32,7 @@ export function fixture(): EditSpec {
   return {
     v: 1,
     stage: { ...STAGE },
+    kit: "v1",
     assets: {
       take: { id: "take", kind: "video", origin: "filmed", at: { bucket: "takes", path: "u1/take.mov" }, ms: 12700, w: 1080, h: 1920, sound: true, words: WORDS },
       broll: { id: "broll", kind: "video", origin: "uploaded", at: { bucket: "takes", path: "u1/broll.mp4" }, ms: 8000, w: 1280, h: 720, sound: true, words: null },

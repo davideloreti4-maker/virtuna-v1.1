@@ -43,7 +43,23 @@ const Len = z.number().int().min(1).max(MAX_FRAMES);
 const Ms = z.number().int().min(0);
 const Unit = z.number().min(0).max(1);
 
-export const WordSchema = z.strictObject({ t0: Ms, t1: Ms, text: z.string().min(1).max(80) });
+export const WordSchema = z
+  .strictObject({ t0: Ms, t1: Ms, text: z.string().min(1).max(80) })
+  .refine((word) => word.t0 <= word.t1, { path: ["t1"], message: "ends before it starts" });
+
+/** A transcript, wherever words are accepted: each word starts no earlier than the one before it. */
+export const WordsSchema = z.array(WordSchema).superRefine((words, ctx) => {
+  words.forEach((word, i) => {
+    const before = words[i - 1];
+    if (before && word.t0 < before.t0) ctx.addIssue({ code: "custom", path: [i, "t0"], message: "starts before the word before it" });
+  });
+});
+
+/** A path inside a storage bucket: segments split by "/", none empty, "." or "..", and no backslash. */
+const StoragePath = z.string().min(1).max(400).refine(
+  (path) => !path.includes("\\") && path.split("/").every((part) => part !== "" && part !== "." && part !== ".."),
+  "is not a plain path: segments split by /, none empty, . or .., and no backslash",
+);
 
 export const AssetSchema = z.strictObject({
   id: IdSchema,
@@ -51,14 +67,14 @@ export const AssetSchema = z.strictObject({
   origin: z.enum(["filmed", "uploaded", "generated", "kit"]),
   generator: z.string().min(1).max(80).optional(),
   at: z.union([
-    z.strictObject({ bucket: z.string().min(1).max(60), path: z.string().min(1).max(400) }),
+    z.strictObject({ bucket: z.string().min(1).max(60), path: StoragePath }),
     z.strictObject({ kit: z.string().max(81).regex(/^[a-z0-9][a-z0-9_.-]*(?:\/[a-z0-9][a-z0-9_.-]*)*$/) }),
   ]),
   ms: Ms.optional(),
   w: z.number().int().positive().optional(),
   h: z.number().int().positive().optional(),
   sound: z.boolean(),
-  words: z.array(WordSchema).nullable(),
+  words: WordsSchema.nullable(),
 });
 
 export const FramingSchema = z.strictObject({
@@ -166,8 +182,8 @@ export const CaptionsSchema = z.strictObject({
   on: z.boolean(),
   lang: z.string().regex(/^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$/),
   style: CaptionStyleSchema,
-  /** asset id → word index → the corrected word, or null to hide it */
-  fixes: z.preprocess(noProtoKey, z.record(IdSchema, z.preprocess(noProtoKey, z.record(z.string().regex(/^\d{1,6}$/), z.string().min(1).max(80).nullable())))),
+  /** asset id → word index (written plainly: `16`, never `016`) → the corrected word, or null to hide it */
+  fixes: z.preprocess(noProtoKey, z.record(IdSchema, z.preprocess(noProtoKey, z.record(z.string().regex(/^(0|[1-9]\d{0,5})$/), z.string().min(1).max(80).nullable())))),
 });
 
 export const RefSchema = z.strictObject({
@@ -179,6 +195,8 @@ export const RefSchema = z.strictObject({
 export const EditSpecSchema = z.strictObject({
   v: z.literal(1),
   stage: z.strictObject({ w: z.literal(1080), h: z.literal(1920), fps: z.literal(30) }),
+  /** The kit the edit was made with and compiles against (`kit/<kit>/` in its film folder). A new kit adds its name here; `KIT` is what a new edit gets. */
+  kit: z.literal("v1"),
   assets: z.preprocess(noProtoKey, z.record(IdSchema, AssetSchema)),
   main: z.array(SegmentSchema).min(1),
   layers: z.array(LayerSchema),

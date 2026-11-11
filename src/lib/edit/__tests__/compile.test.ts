@@ -12,10 +12,12 @@
  */
 import { readFilmFile } from "openfilm/film-doc";
 import { describe, expect, it } from "vitest";
+import { ZodError } from "zod";
 import { EditSpecError } from "../check";
 import { compile, type Compiled } from "../compile";
 import { cuesOf } from "../compile/captions";
-import { boxOf } from "../compile/main";
+import { layerClips, soundClips, textClips } from "../compile/items";
+import { boxOf, mainTracks } from "../compile/main";
 import type { EditSpec } from "../spec";
 import { frameMs } from "../time";
 import { filmFaults } from "./film-rules";
@@ -177,6 +179,47 @@ describe("compile", () => {
     expect(out.files["film.html"]).toContain("filter: blur(40px) brightness(.7)");
   });
 
+  it("gives the blurred fill its picture's filters, then the blur and the dimming", () => {
+    /** The `filter` in the style of the clip `id` of the edit's film. */
+    const filterOf = (spec: EditSpec, id: string): string | undefined => {
+      const html = compile(spec, { file }).files["film.html"];
+      const style = new RegExp(`id="${id}"[^>]* style="([^"]*)"`).exec(html)?.[1] ?? "";
+      return /filter: ([^;]*)/.exec(style)?.[1];
+    };
+    const mono = fixture();
+    mono.main[2]!.filter = "mono"; // s3, the blurred segment
+    const warm = fixture();
+    warm.look.filter = "warm";
+    const both = structuredClone(mono);
+    both.look.filter = "warm"; // the clip's own filter stands instead of the edit's, on its fill too
+    expect(filterOf(mono, "seg-s3")).toBe("grayscale(1) contrast(1.08)");
+    expect(filterOf(mono, "blur-s3")).toBe("grayscale(1) contrast(1.08) blur(40px) brightness(.7)");
+    expect(filterOf(warm, "seg-s3")).toBe("sepia(.18) saturate(1.12)");
+    expect(filterOf(warm, "blur-s3")).toBe("sepia(.18) saturate(1.12) blur(40px) brightness(.7)");
+    expect(filterOf(both, "seg-s3")).toBe("grayscale(1) contrast(1.08)");
+    expect(filterOf(both, "blur-s3")).toBe("grayscale(1) contrast(1.08) blur(40px) brightness(.7)");
+    expect(filterOf(fixture(), "blur-s3")).toBe("blur(40px) brightness(.7)");
+    for (const spec of [mono, warm, both]) expect(read(compile(spec, { file }).files["film.html"]).problems).toEqual([]);
+  });
+
+  it("gives one move name one set of keyframes, whatever order the segments are in", () => {
+    /** The fixture with a push-in on s1 and s4 by these amounts. */
+    const moved = (first: number, second: number): EditSpec => {
+      const spec = fixture();
+      spec.main[0]!.move = { kind: "push-in", amount: first };
+      spec.main[3]!.move = { kind: "push-in", amount: second };
+      return spec;
+    };
+    const head = (spec: EditSpec): string => {
+      const html = compile(spec, { file }).files["film.html"];
+      return html.slice(0, html.indexOf("</head>"));
+    };
+    /* 0.501 and 0.504 are both named mv-push-in-50 (the review's P4): its keyframes are those of 0.5, in either order */
+    expect(head(moved(0.501, 0.504))).toBe(head(moved(0.504, 0.501)));
+    expect(head(moved(0.501, 0.504))).toBe(head(fixture())); // the fixture's one move: a push-in of 0.5 on s4
+    expect(read(compile(moved(0.501, 0.504), { file }).files["film.html"]).problems).toEqual([]);
+  });
+
   it("punches in around the framing's point", () => {
     expect(boxOf({ w: 1080, h: 1920 } as never, { zoom: 1.3, x: 0, y: -0.24 }, false)).toEqual({ left: -162, top: -219, width: 1404, height: 2496 });
   });
@@ -234,6 +277,24 @@ describe("compile", () => {
     expect(get(film.clips, "snd-m1").overrides).toEqual([{ fade: [0, 1] }]); // 30 frames
   });
 
+  it("shortens a sound's fades in proportion to what was asked, so together they fill the clip", () => {
+    /** The fade a 30-frame (1000 ms) sound gets, asked to fade in and out over these frames. */
+    const faded = (fadeIn: number, fadeOut: number): number[] | undefined => {
+      const spec = fixture();
+      spec.sounds = [{ id: "m", pin: null, at: 0, len: 30, role: "music", asset: "song", inMs: 0, volume: 1, fadeIn, fadeOut }];
+      const compiled = compile(spec, { file });
+      const result = read(compiled.files["film.html"]);
+      expect(result.problems).toEqual([]);
+      expect(filmFaults(spec, compiled)).toEqual([]);
+      return get(result.clips, "snd-m").overrides?.[0]?.fade;
+    };
+    /* 1 frame in and 60 out: shortened alike, as the engine's own fittedFade does, not to half the clip each */
+    expect(faded(1, 60)).toEqual([0.016, 0.984]);
+    expect(faded(60, 1)).toEqual([0.983, 0.017]);
+    expect(faded(30, 30)).toEqual([0.5, 0.5]);
+    expect(faded(10, 20)).toEqual([0.333, 0.667]); // they fit: as asked
+  });
+
   it("stacks layers by z: of two that overlap, the higher is nearer the top, and at equal z the later in the document", () => {
     const layered = (layers: [id: string, at: number, len: number, z: number][]): EditSpec => {
       const spec = fixture();
@@ -278,6 +339,48 @@ describe("compile", () => {
     const broken = fixture();
     broken.main[0]!.asset = "nope";
     expect(() => compile(broken, { file })).toThrow(EditSpecError);
+  });
+
+  it("refuses a document that is not an EditSpec, whatever its type says, and makes no film of it", () => {
+    /* the review's probe: a stored document typed as an EditSpec but never parsed, with a quote in a segment id */
+    const probe = fixture();
+    probe.main[0]!.id = 'x" onload="alert(1)';
+    probe.texts[0]!.pin = probe.main[0]!.id; // so the checks alone would pass it
+    const sepia = fixture();
+    (sepia.look as { filter: string }).filter = "sepia"; // not in the closed list
+    for (const spec of [probe, sepia, { ...fixture(), extra: 1 } as EditSpec]) {
+      let made: Compiled | undefined;
+      expect(() => { made = compile(spec, { file }); }).toThrow(ZodError);
+      expect(made).toBeUndefined();
+    }
+  });
+
+  it("writes every id escaped, should one with a quote ever reach the clips", () => {
+    const hostile = 'x" onload="alert(1)';
+    const spec = fixture();
+    spec.main[2]!.id = hostile; // s3: a blurred fill, and the wipe out of it
+    spec.texts[0]!.id = hostile;
+    spec.layers[0]!.id = hostile;
+    spec.sounds[0]!.id = hostile;
+    const at = (id: string): string => `assets/${id}.mp4`;
+    const main = mainTracks(spec, at);
+    const html = [...main.a, ...main.b, ...main.blurA, ...main.blurB, ...main.wipes, ...textClips(spec), ...layerClips(spec, at), ...soundClips(spec, at)]
+      .map((clip) => clip.html).join("\n");
+    for (const kind of ["seg", "blur", "wipe", "txt", "lay", "snd"]) expect(html).toContain(`id="${kind}-x&quot; onload=&quot;alert(1)"`);
+    expect(html).not.toContain('onload="');
+  });
+
+  it("takes from opts.file only a file directly under assets/, and names the asset otherwise", () => {
+    const bad = [
+      "https://cdn.invalid/broll.mp4", "../broll.mp4", "assets/../broll.mp4", "/assets/broll.mp4", "/Users/x/broll.mp4",
+      "assets/sub/broll.mp4", "assets/", "assets/.broll.mp4", "broll.mp4", "assets\\broll.mp4", 'assets/broll.mp4" onload="x',
+    ];
+    for (const path of bad) {
+      expect(() => compile(fixture(), { file: (asset) => (asset.id === "broll" ? path : file(asset)) }), path).toThrow(/"broll"/);
+    }
+    expect(compile(fixture(), { file: (asset) => `assets/${asset.id}-v2_preview.1.mp4` }).assets.map((a) => a.file)).toEqual([
+      "assets/take-v2_preview.1.mp4", "assets/broll-v2_preview.1.mp4", "assets/photo-v2_preview.1.mp4", "assets/song-v2_preview.1.mp4",
+    ]);
   });
 });
 

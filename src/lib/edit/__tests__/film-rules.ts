@@ -8,7 +8,6 @@
  */
 import { clipSpan, readFilmFile } from "openfilm/film-doc";
 import type { Compiled } from "../compile";
-import { KIT_DIR } from "../kit";
 import type { Asset, EditSpec } from "../spec";
 import { frameMs } from "../time";
 
@@ -45,7 +44,7 @@ export function filmFaults(spec: EditSpec, out: Compiled): string[] {
     const asset = spec.assets[id];
     if (asset) files.set(file, asset);
   }
-  for (const asset of Object.values(spec.assets)) if ("kit" in asset.at) files.set(`${KIT_DIR}/${asset.at.kit}`, asset);
+  for (const asset of Object.values(spec.assets)) if ("kit" in asset.at) files.set(`kit/${spec.kit}/${asset.at.kit}`, asset);
   const inFolder = (src: string): boolean => /^(assets|kit\/v1)\//.test(src) && !src.split("/").includes("..");
 
   read.value.tracks.forEach((track, t) => {

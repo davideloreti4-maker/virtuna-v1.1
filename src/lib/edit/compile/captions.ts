@@ -12,7 +12,7 @@
  * Spec: docs/superpowers/specs/2026-11-11-edit-format-design.md §3.4 and §5.4.
  */
 import { frameOf, starts, total } from "../derive";
-import { FONTS, KIT_DIR } from "../kit";
+import { FONTS } from "../kit";
 import type { EditSpec, Word } from "../spec";
 import { frameMs, sourceMs, spanMs } from "../time";
 import { num } from "./html";
@@ -136,7 +136,7 @@ export function vttOf(spec: EditSpec, cues: Cue[]): string {
     "WEBVTT",
     "",
     "STYLE",
-    `@font-face { font-family: '${font.family}'; src: url('${KIT_DIR}/${font.file}') format('woff2'); font-weight: 100 900; }`,
+    `@font-face { font-family: '${font.family}'; src: url('kit/${spec.kit}/${font.file}') format('woff2'); font-weight: 100 900; }`,
     `::cue { --box: ${style.fill ?? "none"}; --font: '${font.family}', sans-serif; --weight: ${style.weight}; --size: ${num((style.size / 1920) * 100)}cqh; `
       + `--color: ${style.color}; --stroke: ${style.stroke ? `${num(style.stroke.w)}px` : "0"}; --stroke-color: ${style.stroke?.color ?? "transparent"}; `
       + `text-transform: ${style.uppercase ? "uppercase" : "none"}; }`,

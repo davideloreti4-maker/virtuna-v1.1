@@ -3,7 +3,8 @@
  *
  * A film clip moves by CSS animation with `translate`, `scale` and `rotate` only (never `left`,
  * `top` or `transform`), on its own time. The name is derived from the move, so equal moves
- * share one block and the film's keyframes are the same for the same edit.
+ * share one block and the film's keyframes are the same for the same edit. The amount is taken in
+ * whole percent for both the name and the keyframes, so one name always means the same keyframes.
  *
  * Pans and the shake carry a small constant scale: without it the move would uncover the stage
  * at the clip's edge.
@@ -11,13 +12,16 @@
 import type { Move } from "../spec";
 import { num } from "./html";
 
+/** The move's amount in whole percent: what its name and its keyframes are made from. */
+const percent = (move: Move): number => Math.round(move.amount * 100);
+
 export function moveName(move: Move): string {
-  return `mv-${move.kind}-${Math.round(move.amount * 100)}`;
+  return `mv-${move.kind}-${percent(move)}`;
 }
 
 /** The body of the move's `@keyframes` block. */
 export function moveKeyframes(move: Move): string {
-  const a = move.amount;
+  const a = percent(move) / 100;
   switch (move.kind) {
     case "push-in":
       return `from { scale: 1 } to { scale: ${num(1 + 0.2 * a)} }`;

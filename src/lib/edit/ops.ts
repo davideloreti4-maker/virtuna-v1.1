@@ -18,7 +18,7 @@ import { starts } from "./derive";
 import { FILTER_IDS } from "./kit";
 import {
   AssetSchema, CaptionStyleSchema, CaptionsSchema, EditSpecSchema, IdSchema, LayerSchema, RefSchema,
-  SegmentSchema, SoundSchema, TextItemSchema, WordSchema, type EditSpec, type Segment,
+  SegmentSchema, SoundSchema, TextItemSchema, WordsSchema, type EditSpec, type Segment,
 } from "./spec";
 import { FPS, MAX_FRAMES, MIN_LEN, minSourceMs, sourceMs } from "./time";
 
@@ -50,10 +50,11 @@ export const OpSchema = z.discriminatedUnion("op", [
     op: z.literal("captions.set"),
     patch: z.strictObject({ on: z.boolean().optional(), lang: CaptionsSchema.shape.lang.optional(), style: CaptionStyleSchema.partial().optional() }),
   }),
-  /** `text`: the corrected word; null hides the word; left out, the correction is undone. */
-  z.strictObject({ op: z.literal("captions.fix"), asset: IdSchema, word: Index, text: z.string().min(1).max(80).nullable().optional() }),
+  /** `text`: the corrected word; null hides the word; left out, the correction is undone. `word`: at most the largest key `captions.fixes` holds. */
+  z.strictObject({ op: z.literal("captions.fix"), asset: IdSchema, word: Index.max(999_999), text: z.string().min(1).max(80).nullable().optional() }),
   z.strictObject({ op: z.literal("asset.add"), asset: AssetSchema }),
-  z.strictObject({ op: z.literal("asset.words"), id: IdSchema, words: z.array(WordSchema).nullable() }),
+  /** New words for an asset. Its caption fixes are dropped: they were keyed to the old words by index. */
+  z.strictObject({ op: z.literal("asset.words"), id: IdSchema, words: WordsSchema.nullable() }),
   z.strictObject({ op: z.literal("look.set"), filter: z.enum(FILTER_IDS).nullable() }),
   z.strictObject({ op: z.literal("cover.set"), frame: z.number().int().min(0).max(MAX_FRAMES).nullable() }),
   z.strictObject({ op: z.literal("ref.set"), ref: RefSchema.nullable() }),
@@ -244,6 +245,7 @@ function applyOne(spec: EditSpec, op: Op): void {
       const asset = spec.assets[op.id];
       if (!asset) throw new Refusal("not-found", `there is no asset "${op.id}"`);
       asset.words = op.words;
+      delete spec.captions.fixes[op.id]; // keyed to the old words: a shorter transcript is applied, not refused
       return;
     }
     case "look.set": spec.look.filter = op.filter; return;

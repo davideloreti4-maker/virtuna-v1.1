@@ -47,6 +47,7 @@ function edit(): EditSpec {
   return {
     v: 1,
     stage: { ...STAGE },
+    kit: "v1",
     assets: {
       red: clip("red", [{ t0: 0, t1: 400, text: "Red" }, { t0: 400, t1: 650, text: "clip." }]),
       blue: clip("blue", null),

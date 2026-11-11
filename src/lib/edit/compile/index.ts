@@ -6,15 +6,14 @@
  * `opts.file`. The compiler reads no file and looks at no clock, so the same document always
  * gives the same bytes.
  *
- * It refuses a document that fails `checkEditSpec`, so nothing downstream ever sees a film made
- * from a broken edit.
+ * It parses what it is given and refuses a document that fails `checkEditSpec`, so nothing
+ * downstream ever sees a film made from a broken edit, typed as an EditSpec or not.
  *
  * Spec: docs/superpowers/specs/2026-11-11-edit-format-design.md §5.
  */
 import { EditSpecError, checkEditSpec } from "../check";
 import { total } from "../derive";
-import { KIT, KIT_DIR } from "../kit";
-import type { Asset, EditSpec, Move } from "../spec";
+import { EditSpecSchema, type Asset, type EditSpec, type Move } from "../spec";
 import { cuesOf, vttOf } from "./captions";
 import { attr, byStart, head, pack, section, stack, type Placed } from "./html";
 import { layerClips, soundClips, textClips } from "./items";
@@ -22,7 +21,7 @@ import { keyframesLine, moveName } from "./keyframes";
 import { mainTracks } from "./main";
 
 export interface CompileOptions {
-  /** The path, inside the film folder, of the file that stands for an asset: `assets/<id>.mp4`. Never asked about kit assets. */
+  /** The path, inside the film folder, of the file that stands for an asset: `assets/<name>`, directly under `assets/` (`assets/<id>.mp4`). Never asked about kit assets. */
   file: (asset: Asset) => string;
 }
 
@@ -30,12 +29,22 @@ export interface Compiled {
   files: { "film.html": string; "captions.vtt"?: string };
   /** What has to be put in the film folder, beside the kit. */
   assets: { id: string; file: string }[];
-  kit: typeof KIT;
+  /** The document's kit: the film folder needs it at `kit/<kit>/`. */
+  kit: EditSpec["kit"];
   /** The film's length. */
   frames: number;
 }
 
-export function compile(spec: EditSpec, opts: CompileOptions): Compiled {
+/** What `opts.file` may give: a file directly under `assets/`, so a film references only files inside its own folder. */
+const ASSET_FILE = /^assets\/[A-Za-z0-9][A-Za-z0-9_.-]*$/;
+
+/**
+ * The film of an edit. Throws, and makes no film, when `input` is not an EditSpec (the schema's ZodError,
+ * whatever its TypeScript type says), when it fails `checkEditSpec` (EditSpecError), and when `opts.file`
+ * gives an asset anything but a file directly under `assets/` (an Error that names the asset).
+ */
+export function compile(input: EditSpec, opts: CompileOptions): Compiled {
+  const spec = EditSpecSchema.parse(input);
   const problems = checkEditSpec(spec);
   if (problems.length) throw new EditSpecError(problems);
 
@@ -43,10 +52,11 @@ export function compile(spec: EditSpec, opts: CompileOptions): Compiled {
   const file = (assetId: string): string => {
     const asset = spec.assets[assetId];
     if (!asset) throw new Error(`the edit names a missing asset "${assetId}"`);
-    if ("kit" in asset.at) return `${KIT_DIR}/${asset.at.kit}`;
+    if ("kit" in asset.at) return `kit/${spec.kit}/${asset.at.kit}`;
     const known = used.get(assetId);
     if (known) return known;
     const path = opts.file(asset);
+    if (!ASSET_FILE.test(path)) throw new Error(`opts.file gave "${path}" for the asset "${assetId}": not a file directly under assets/`);
     used.set(assetId, path);
     return path;
   };
@@ -76,7 +86,7 @@ export function compile(spec: EditSpec, opts: CompileOptions): Compiled {
   return {
     files: cues.length ? { "film.html": film, "captions.vtt": vttOf(spec, cues) } : { "film.html": film },
     assets: [...used].map(([id, path]) => ({ id, file: path })),
-    kit: KIT,
+    kit: spec.kit,
     frames: total(spec),
   };
 }

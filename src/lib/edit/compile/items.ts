@@ -9,7 +9,7 @@
  * Anything that runs past the film's end is cut off there.
  */
 import { frameOf, total } from "../derive";
-import { FONTS, KIT_DIR } from "../kit";
+import { FONTS } from "../kit";
 import type { EditSpec, Layer, Sound, TextItem } from "../spec";
 import { frameMs, sec, spanMs } from "../time";
 import { H, W, attr, jsonAttr, num, type Placed } from "./html";
@@ -56,7 +56,7 @@ export function textClips(spec: EditSpec): Placed[] {
     out.push({
       from: at.from,
       to: at.to,
-      html: `<iframe id="txt-${text.id}" src="${KIT_DIR}/text.html#t=0,${sec(at.to - at.from)}" at="${sec(at.from)}" overrides='${jsonAttr(overrides)}'></iframe>`,
+      html: `<iframe id="${attr(`txt-${text.id}`)}" src="kit/${spec.kit}/text.html#t=0,${sec(at.to - at.from)}" at="${sec(at.from)}" overrides='${jsonAttr(overrides)}'></iframe>`,
     });
   }
   return out;
@@ -79,7 +79,7 @@ function layerClip(spec: EditSpec, layer: Layer, file: (assetId: string) => stri
   const lenMs = at.to - at.from;
   const outMs = Math.min(asset.ms ?? Number.MAX_SAFE_INTEGER, layer.inMs + Math.floor(lenMs * layer.speed));
   const src = image ? `${file(layer.asset)}#t=0,${sec(lenMs)}` : `${file(layer.asset)}#t=${sec(layer.inMs)},${sec(outMs)}`;
-  const parts = [`id="lay-${layer.id}"`, `src="${attr(src)}"`, `at="${sec(at.from)}"`];
+  const parts = [`id="${attr(`lay-${layer.id}`)}"`, `src="${attr(src)}"`, `at="${sec(at.from)}"`];
   if (!image) {
     if (layer.speed !== 1) parts.push(`speed="${layer.speed}"`);
     if (layer.volume === 0) parts.push("muted");
@@ -112,9 +112,13 @@ function soundClip(spec: EditSpec, sound: Sound, file: (assetId: string) => stri
   const lenMs = outMs - sound.inMs;
   let fadeIn = Math.min(lenMs, spanMs(at.start, Math.min(sound.fadeIn, at.len)));
   let fadeOut = Math.min(lenMs, at.to - frameMs(at.start + at.len - Math.min(sound.fadeOut, at.len)));
-  if (fadeIn + fadeOut > lenMs) { fadeIn = Math.floor(lenMs / 2); fadeOut = lenMs - fadeIn; }
+  if (fadeIn + fadeOut > lenMs) {
+    /* longer together than the clip: both shortened alike, in proportion to what was asked, to fill it (as the engine's `fittedFade`) */
+    fadeIn = Math.floor((lenMs * sound.fadeIn) / (sound.fadeIn + sound.fadeOut));
+    fadeOut = lenMs - fadeIn;
+  }
 
-  const parts = [`id="snd-${sound.id}"`, `src="${attr(`${file(sound.asset)}#t=${sec(sound.inMs)},${sec(outMs)}`)}"`, `at="${sec(at.from)}"`];
+  const parts = [`id="${attr(`snd-${sound.id}`)}"`, `src="${attr(`${file(sound.asset)}#t=${sec(sound.inMs)},${sec(outMs)}`)}"`, `at="${sec(at.from)}"`];
   if (sound.volume === 0) parts.push("muted");
   else if (sound.volume !== 1) parts.push(`volume="${sound.volume}"`);
   if (fadeIn || fadeOut) parts.push(`overrides='${jsonAttr([{ fade: [fadeIn / 1000, fadeOut / 1000] }])}'`);

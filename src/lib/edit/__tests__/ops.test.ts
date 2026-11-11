@@ -167,6 +167,36 @@ describe("text, sound, layer and caption operations", () => {
     expect(spec.assets.vo?.words).toEqual([{ t0: 0, t1: 500, text: "Hi" }]);
     expect(refusal(() => applyOps(spec, [{ op: "asset.add", asset: spec.assets.vo! }])).code).toBe("id-taken");
   });
+
+  it("refuses words out of order or ending before they start, at that operation", () => {
+    const mono: Op = { op: "look.set", filter: "mono" };
+    const backwards = [{ t0: 500, t1: 400, text: "Hi" }];
+    const unordered = [{ t0: 0, t1: 400, text: "a" }, { t0: 600, t1: 900, text: "b" }, { t0: 300, t1: 500, text: "c" }];
+    for (const words of [backwards, unordered]) {
+      expect(refusal(() => applyOps(fixture(), [{ op: "asset.words", id: "broll", words }, mono])), JSON.stringify(words)).toMatchObject({ code: "invalid", index: 0 });
+    }
+  });
+
+  it("new words for an asset drop its corrections, which were keyed to the old words", () => {
+    const hi = [{ t0: 0, t1: 500, text: "Hi" }];
+    const shorter = applyOps(fixture(), [{ op: "asset.words", id: "take", words: hi }]); // the take's fixes name words 16 and 19
+    expect(shorter.assets.take?.words).toEqual(hi);
+    expect(shorter.captions.fixes).toEqual({});
+    expect(applyOps(fixture(), [{ op: "asset.words", id: "take", words: fixture().assets.take!.words }]).captions.fixes).toEqual({});
+    /* another asset's corrections stay */
+    const vo = applyOps(fixture(), [
+      { op: "asset.add", asset: { id: "vo", kind: "audio", origin: "uploaded", at: { bucket: "takes", path: "u1/vo.m4a" }, ms: 2000, sound: true, words: [...hi, { t0: 500, t1: 900, text: "there" }] } },
+      { op: "captions.fix", asset: "vo", word: 1, text: "you" },
+      { op: "asset.words", id: "take", words: hi },
+    ]);
+    expect(vo.captions.fixes).toEqual({ vo: { "1": "you" } });
+  });
+
+  it("refuses a correction for a word past the last one a correction can name, at that operation", () => {
+    const mono: Op = { op: "look.set", filter: "mono" };
+    expect(refusal(() => applyOps(fixture(), [{ op: "captions.fix", asset: "take", word: 1_000_000, text: "x" }, mono]))).toMatchObject({ code: "invalid", index: 0 });
+    expect(refusal(() => applyOps(fixture(), [{ op: "captions.fix", asset: "take", word: 999_999, text: "x" }, mono]))).toMatchObject({ code: "fix-missing", index: 1 });
+  });
 });
 
 describe("applyOps", () => {

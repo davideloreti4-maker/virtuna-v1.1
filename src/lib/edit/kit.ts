@@ -7,9 +7,8 @@
  *
  * Spec: docs/superpowers/specs/2026-11-11-edit-format-design.md §3.5 and §5.6.
  */
+/** The kit a new edit is made with. An edit names its own kit (`EditSpec.kit`), and compiles against that one. */
 export const KIT = "v1" as const;
-/** Where the kit sits inside a film folder. */
-export const KIT_DIR = `kit/${KIT}` as const;
 
 /** Whole-clip looks, as CSS filter strings. */
 export const FILTERS = {
