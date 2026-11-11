@@ -82,7 +82,7 @@ function plan(spec: EditSpec): { clips: MainClip[]; wipes: Placed[] } {
       wipes.push({
         from: frameMs(fromF),
         to: frameMs(toF),
-        html: `<iframe id="${attr(`wipe-${a.seg.id}`)}" src="kit/${spec.kit}/wipes/${cut.id}.html#t=0,${sec(frameMs(toF) - frameMs(fromF))}" at="${sec(frameMs(fromF))}"${tint}></iframe>`,
+        html: `<iframe id="${attr(`wipe-${a.seg.id}`)}" src="${attr(`kit/${spec.kit}/wipes/${cut.id}.html#t=0,${sec(frameMs(toF) - frameMs(fromF))}`)}" at="${sec(frameMs(fromF))}"${tint}></iframe>`,
       });
       continue;
     }

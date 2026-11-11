@@ -29,3 +29,5 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+The edit kit also carries the font Inter under the SIL Open Font License 1.1; its text is in `public/edit-kit/v1/fonts/OFL.txt`.

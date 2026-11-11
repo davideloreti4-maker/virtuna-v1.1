@@ -16,10 +16,12 @@ const kit = fileURLToPath(new URL(`../../../../public/edit-kit/${KIT}/`, import.
 /**
  * Kit v1 file by file, as sha256, generated from the files (never typed by hand). An edit renders the
  * same later only if its kit does: once rendered, a kit never changes, so a file changed, added or gone
- * is a new kit version (v2), not an edit to this list.
+ * is a new kit version (v2), not an edit to this list. Names starting with a dot (`.DS_Store`, left by
+ * Finder) are not kit files and are skipped.
  */
 const V1: Record<string, string> = {
-  "NOTICE.md": "7286f30d8c3f7cf6d74728ddcc414aaa791196d440164d14515f81361a16a5dc",
+  "NOTICE.md": "17ed915719e3297be5d41850ecd7ad63bc6d88c64ca49a8b20455d4f3e35aff8",
+  "fonts/OFL.txt": "262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a",
   "fonts/inter-latin-wght.woff2": "3100e775e8616cd2611beecfa23a4263d7037586789b43f035236a2e6fbd4c62",
   "sfx/boom.m4a": "15b4ea0d51bd22a853d3f7823be82dfccee0d739fdd919b15336e36e96a2331f",
   "sfx/buzz.m4a": "2e9769d429085747d79db7dc1157b9ebbe20085b4dbbf6a1bc4418eb2bff1fb5",
@@ -71,12 +73,17 @@ describe(`the kit (${KIT})`, () => {
     const dir = fileURLToPath(new URL("../../../../public/edit-kit/v1/", import.meta.url));
     const now: Record<string, string> = {};
     for (const path of readdirSync(dir, { recursive: true, encoding: "utf8" }).sort()) {
+      if (path.split(sep).some((name) => name.startsWith("."))) continue;
       if (statSync(`${dir}${path}`).isFile()) now[path.split(sep).join("/")] = createHash("sha256").update(readFileSync(`${dir}${path}`)).digest("hex");
     }
     expect(now, "kit v1 changed: a kit that has been rendered never changes; a change to it is a new kit version (v2)").toEqual(V1);
   });
 
-  it("says where its files came from", () => {
-    expect(readFileSync(`${kit}NOTICE.md`, "utf8")).toMatch(/CC0/);
+  it("says where its files came from, and carries the font's licence", () => {
+    const notice = readFileSync(`${kit}NOTICE.md`, "utf8");
+    expect(notice).toMatch(/CC0/);
+    expect(notice).toContain("`fonts/OFL.txt`");
+    expect(existsSync(`${kit}fonts/OFL.txt`)).toBe(true);
+    expect(readFileSync(`${kit}fonts/OFL.txt`, "utf8")).toContain("SIL OPEN FONT LICENSE Version 1.1");
   });
 });

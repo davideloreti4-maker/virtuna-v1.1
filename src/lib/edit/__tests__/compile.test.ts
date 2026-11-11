@@ -288,9 +288,10 @@ describe("compile", () => {
       expect(filmFaults(spec, compiled)).toEqual([]);
       return get(result.clips, "snd-m").overrides?.[0]?.fade;
     };
-    /* 1 frame in and 60 out: shortened alike, as the engine's own fittedFade does, not to half the clip each */
-    expect(faded(1, 60)).toEqual([0.016, 0.984]);
-    expect(faded(60, 1)).toEqual([0.983, 0.017]);
+    /* each ask is cut to the clip first (60 frames out: 1000 ms), then both shortened in proportion, not to half each */
+    expect(faded(1, 60)).toEqual([0.031, 0.969]); // 33 and 1000 ms asked
+    expect(faded(60, 1)).toEqual([0.967, 0.033]); // 1000 and 34 ms asked
+    expect(faded(1, 18_000)).toEqual([0.031, 0.969]); // an ask far longer than the sound does not swallow the other fade
     expect(faded(30, 30)).toEqual([0.5, 0.5]);
     expect(faded(10, 20)).toEqual([0.333, 0.667]); // they fit: as asked
   });
@@ -355,9 +356,10 @@ describe("compile", () => {
     }
   });
 
-  it("writes every id escaped, should one with a quote ever reach the clips", () => {
+  it("writes every id and the kit escaped, should one with a quote ever reach the clips", () => {
     const hostile = 'x" onload="alert(1)';
     const spec = fixture();
+    (spec as { kit: string }).kit = hostile; // the text page's and the wipe's src
     spec.main[2]!.id = hostile; // s3: a blurred fill, and the wipe out of it
     spec.texts[0]!.id = hostile;
     spec.layers[0]!.id = hostile;
@@ -367,17 +369,28 @@ describe("compile", () => {
     const html = [...main.a, ...main.b, ...main.blurA, ...main.blurB, ...main.wipes, ...textClips(spec), ...layerClips(spec, at), ...soundClips(spec, at)]
       .map((clip) => clip.html).join("\n");
     for (const kind of ["seg", "blur", "wipe", "txt", "lay", "snd"]) expect(html).toContain(`id="${kind}-x&quot; onload=&quot;alert(1)"`);
+    for (const page of ["text.html", "wipes/shutter.html"]) expect(html).toContain(`src="kit/x&quot; onload=&quot;alert(1)/${page}#t=`);
     expect(html).not.toContain('onload="');
   });
 
   it("takes from opts.file only a file directly under assets/, and names the asset otherwise", () => {
     const bad = [
       "https://cdn.invalid/broll.mp4", "../broll.mp4", "assets/../broll.mp4", "/assets/broll.mp4", "/Users/x/broll.mp4",
-      "assets/sub/broll.mp4", "assets/", "assets/.broll.mp4", "broll.mp4", "assets\\broll.mp4", 'assets/broll.mp4" onload="x',
+      "assets/sub/broll.mp4", "assets/", "assets/.broll.mp4", "assets/.hidden", "assets/..", "assets/.", "broll.mp4",
+      "assets\\broll.mp4", 'assets/broll.mp4" onload="x',
     ];
     for (const path of bad) {
       expect(() => compile(fixture(), { file: (asset) => (asset.id === "broll" ? path : file(asset)) }), path).toThrow(/"broll"/);
     }
+    /* an id may start with _ or -, and so may the file named after it (`assets/<id>.<ext>`) */
+    const dashed = fixture();
+    dashed.assets._b = { ...dashed.assets.broll!, id: "_b" };
+    dashed.assets["-b"] = { ...dashed.assets.photo!, id: "-b" };
+    dashed.main[2]!.asset = "_b";
+    dashed.main[3]!.asset = "-b";
+    const named = compile(dashed, { file });
+    expect(named.assets.map((a) => a.file)).toEqual(["assets/take.mp4", "assets/_b.mp4", "assets/-b.jpg", "assets/photo.jpg", "assets/song.mp3"]);
+    expect(filmFaults(dashed, named)).toEqual([]);
     expect(compile(fixture(), { file: (asset) => `assets/${asset.id}-v2_preview.1.mp4` }).assets.map((a) => a.file)).toEqual([
       "assets/take-v2_preview.1.mp4", "assets/broll-v2_preview.1.mp4", "assets/photo-v2_preview.1.mp4", "assets/song-v2_preview.1.mp4",
     ]);

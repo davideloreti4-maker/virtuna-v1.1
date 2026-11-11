@@ -1,8 +1,10 @@
 #!/usr/bin/env node
 // Copies the kit's third-party files out of the pinned openfilm package into public/edit-kit/v1/.
 // Run once per kit version; the output is committed, so nothing at run time depends on node_modules.
-// text.html is ours and is not touched. usage: node scripts/build-edit-kit.mjs
-import { copyFileSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
+// text.html is ours and is not touched. fonts/OFL.txt (Inter's licence) is in no package: it was taken by hand from the
+// font's own repository, and this script never writes it; it stops if the file is missing.
+// usage: node scripts/build-edit-kit.mjs
+import { copyFileSync, existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,6 +14,10 @@ const require = createRequire(import.meta.url);
 const pkg = dirname(require.resolve("openfilm/package.json"));
 const { version } = require("openfilm/package.json");
 const out = join(root, "public", "edit-kit", "v1");
+const ofl = join(out, "fonts", "OFL.txt");
+if (!existsSync(ofl)) {
+  throw new Error(`${ofl} is missing: it is Inter's LICENSE.txt, unchanged, from https://raw.githubusercontent.com/rsms/inter/master/LICENSE.txt (this script never writes it)`);
+}
 
 const WIPES = ["swipe-blur", "glitch", "flare-whip", "shutter", "rgb-split", "datamosh"];
 const SFX = [
@@ -32,8 +38,9 @@ writeFileSync(join(out, "NOTICE.md"), `# Edit kit v1: what is in it and where it
 
 - \`text.html\`: written for this project.
 - \`fonts/inter-latin-wght.woff2\`: Inter by Rasmus Andersson, SIL Open Font License 1.1
-  (https://openfontlicense.org). Copied from openfilm ${version}, which bundles it via
-  @fontsource-variable/inter.
+  (https://openfontlicense.org), its text in \`fonts/OFL.txt\`. Copied from openfilm ${version}, which bundles it via
+  @fontsource-variable/inter. \`fonts/OFL.txt\` is Inter's own LICENSE.txt, unchanged, taken on 2026-11-11 from
+  https://raw.githubusercontent.com/rsms/inter/master/LICENSE.txt.
 - \`wipes/*.html\` and \`sfx/*.m4a\`: from the library of openfilm ${version}
   (https://github.com/openfilm/openfilm), dedicated to the public domain under CC0 1.0. Copied
   unchanged.

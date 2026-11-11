@@ -35,8 +35,11 @@ export interface Compiled {
   frames: number;
 }
 
-/** What `opts.file` may give: a file directly under `assets/`, so a film references only files inside its own folder. */
-const ASSET_FILE = /^assets\/[A-Za-z0-9][A-Za-z0-9_.-]*$/;
+/**
+ * What `opts.file` may give: a file directly under `assets/`, so a film references only files inside its own folder.
+ * Its name may start with `_` or `-`, as an id may (`assets/<id>.<ext>`), never with `.`.
+ */
+const ASSET_FILE = /^assets\/[A-Za-z0-9_-][A-Za-z0-9_.-]*$/;
 
 /**
  * The film of an edit. Throws, and makes no film, when `input` is not an EditSpec (the schema's ZodError,

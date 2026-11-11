@@ -56,7 +56,7 @@ export function textClips(spec: EditSpec): Placed[] {
     out.push({
       from: at.from,
       to: at.to,
-      html: `<iframe id="${attr(`txt-${text.id}`)}" src="kit/${spec.kit}/text.html#t=0,${sec(at.to - at.from)}" at="${sec(at.from)}" overrides='${jsonAttr(overrides)}'></iframe>`,
+      html: `<iframe id="${attr(`txt-${text.id}`)}" src="${attr(`kit/${spec.kit}/text.html#t=0,${sec(at.to - at.from)}`)}" at="${sec(at.from)}" overrides='${jsonAttr(overrides)}'></iframe>`,
     });
   }
   return out;
@@ -113,8 +113,8 @@ function soundClip(spec: EditSpec, sound: Sound, file: (assetId: string) => stri
   let fadeIn = Math.min(lenMs, spanMs(at.start, Math.min(sound.fadeIn, at.len)));
   let fadeOut = Math.min(lenMs, at.to - frameMs(at.start + at.len - Math.min(sound.fadeOut, at.len)));
   if (fadeIn + fadeOut > lenMs) {
-    /* longer together than the clip: both shortened alike, in proportion to what was asked, to fill it (as the engine's `fittedFade`) */
-    fadeIn = Math.floor((lenMs * sound.fadeIn) / (sound.fadeIn + sound.fadeOut));
+    /* each is already cut to the clip; longer together than it, both are shortened in proportion to those lengths, to fill it */
+    fadeIn = Math.floor((lenMs * fadeIn) / (fadeIn + fadeOut));
     fadeOut = lenMs - fadeIn;
   }
 
