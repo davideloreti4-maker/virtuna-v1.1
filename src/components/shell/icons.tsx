@@ -59,6 +59,13 @@ export const PlusIcon: ShellIcon = (props) => (
   </Glyph>
 );
 
+/** Back, on a pushed screen: the reference's chevron. */
+export const BackIcon: ShellIcon = (props) => (
+  <Glyph {...props}>
+    <path d="m14.5 6-6 6 6 6" />
+  </Glyph>
+);
+
 /** New chat on desktop: a sheet with a pencil. */
 export const ComposeIcon: ShellIcon = (props) => (
   <Glyph {...props}>
