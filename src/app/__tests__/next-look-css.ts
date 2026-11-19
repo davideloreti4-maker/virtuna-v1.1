@@ -10,8 +10,34 @@ export const DOC = readFileSync(join(ROOT, 'docs/DESIGN-SYSTEM.md'), 'utf8');
 export const LIGHT = ':root[data-look="next"]';
 export const DARK = ':root[data-look="next"][data-theme="dark"]';
 
+/**
+ * The tokens the next look themes: declared in the light block, re-declared in the dark block
+ * (next-look-contrast.test.ts) and documented, both themes, in the "Next look" tables
+ * (design-token-drift.test.ts). One list, so a token cannot be guarded by one test and not the other.
+ */
+export const NEXT_LOOK_THEMED = [
+  '--color-background', '--color-surface', '--color-surface-elevated', '--color-surface-sunken',
+  '--color-border', '--color-border-hover',
+  '--color-foreground', '--color-foreground-secondary', '--color-foreground-muted',
+  '--color-action', '--color-action-foreground', '--color-hover', '--color-active',
+  '--color-track', '--color-above', '--color-above-soft',
+  '--color-below', '--color-below-text', '--color-below-soft',
+  '--color-glass', '--color-scrim',
+  '--shadow-rest', '--shadow-lift', '--shadow-press', '--shadow-float', '--shadow-button', '--shadow-sheet',
+] as const;
+
 function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Every `--token: value;` declaration in `text`, one per line. The first declaration of a name wins. */
+export function declarationsIn(text: string): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const line of text.split('\n')) {
+    const m = /^\s*(--[\w-]+)\s*:\s*([^;]+);/.exec(line);
+    if (m?.[1] && m[2] && !out.has(m[1])) out.set(m[1], m[2].trim());
+  }
+  return out;
 }
 
 /**
@@ -25,12 +51,7 @@ export function ruleBlock(css: string, selector: string): Map<string, string> {
   const start = open.index + open[0].length;
   const end = css.indexOf('\n}', start);
   if (end === -1) throw new Error(`rule "${selector}" is never closed`);
-  const out = new Map<string, string>();
-  for (const line of css.slice(start, end).split('\n')) {
-    const m = /^\s*(--[\w-]+)\s*:\s*([^;]+);/.exec(line);
-    if (m?.[1] && m[2]) out.set(m[1], m[2].trim());
-  }
-  return out;
+  return declarationsIn(css.slice(start, end));
 }
 
 /** What <html> resolves under the new look: @theme, then the light block, then the dark block. */

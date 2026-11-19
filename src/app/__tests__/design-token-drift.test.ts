@@ -1,7 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { lookTokens } from './next-look-css';
+import { CSS, DOC, NEXT_LOOK_THEMED, declarationsIn, lookTokens, resolveToken } from './next-look-css';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Design-token drift guard.
@@ -27,33 +25,10 @@ import { lookTokens } from './next-look-css';
 // docs table. Change the CSS and this test tells you which row to update.
 //
 // PURE FS test (default `node` env — no happy-dom pragma).
+//
+// CSS, DOC, the line-based parser and the var() resolver come from ./next-look-css,
+// shared with the next-look tests below and in next-look-contrast.test.ts.
 // ─────────────────────────────────────────────────────────────────────────────
-
-const ROOT = join(__dirname, '..', '..', '..');
-const CSS = readFileSync(join(ROOT, 'src/app/globals.css'), 'utf8');
-const DOC = readFileSync(join(ROOT, 'docs/DESIGN-SYSTEM.md'), 'utf8');
-
-/** Every `--token: value;` declaration in the stylesheet. */
-function declarations(css: string): Map<string, string> {
-  const out = new Map<string, string>();
-  for (const line of css.split('\n')) {
-    const m = /^\s*(--[\w-]+)\s*:\s*([^;]+);/.exec(line);
-    if (!m) continue;
-    const [, name, value] = m;
-    if (name && value && !out.has(name)) out.set(name, value.trim());
-  }
-  return out;
-}
-
-/** Follow `var(--x)` aliases to the literal value. */
-function resolve(token: string, decls: Map<string, string>, seen = new Set<string>()): string {
-  if (seen.has(token)) throw new Error(`circular var() chain at ${token}`);
-  seen.add(token);
-  const raw = decls.get(token);
-  if (raw === undefined) throw new Error(`${token} is not declared in globals.css`);
-  const aliased = /^var\(\s*(--[\w-]+)\s*\)$/.exec(raw)?.[1];
-  return aliased ? resolve(aliased, decls, seen) : raw;
-}
 
 /** The markdown table row that documents this token. */
 function docRow(token: string): string | undefined {
@@ -80,14 +55,15 @@ const DOCUMENTED = [
 ] as const;
 
 describe('design tokens: globals.css is the only source of truth', () => {
-  const decls = declarations(CSS);
+  // The FIRST declaration of each token anywhere in globals.css: the legacy @theme value.
+  const decls = declarationsIn(CSS);
 
   it('parses the @theme block', () => {
     expect(decls.size).toBeGreaterThan(50);
   });
 
   it.each(DOCUMENTED)('%s — docs table matches globals.css', (token) => {
-    const actual = resolve(token, decls);
+    const actual = resolveToken(token, decls);
     const row = docRow(token);
 
     expect(row, `no row in docs/DESIGN-SYSTEM.md documents ${token}`).toBeDefined();
@@ -103,7 +79,7 @@ describe('design tokens: globals.css is the only source of truth', () => {
   });
 
   it('the retired hues never come back as the live accent', () => {
-    const accent = resolve('--color-accent', decls).toLowerCase();
+    const accent = resolveToken('--color-accent', decls).toLowerCase();
     // #FF7F50 = retired Raycast coral. #d97757 = retired terracotta.
     expect(accent).not.toContain('#ff7f50');
     expect(accent).not.toContain('#d97757');
@@ -115,18 +91,9 @@ describe('design tokens: globals.css is the only source of truth', () => {
 // blocks: every row of the "Next look" tables must carry the value globals.css
 // declares, light and dark. The rows above keep reading the FIRST declaration of a
 // token (the legacy @theme value), so the two looks are guarded side by side.
+// The token list is NEXT_LOOK_THEMED, the same one next-look-contrast.test.ts checks for
+// completeness, so a themed token is always both complete and documented.
 // ─────────────────────────────────────────────────────────────────────────────
-
-const NEXT_DOCUMENTED = [
-  '--color-background', '--color-surface', '--color-surface-elevated', '--color-surface-sunken',
-  '--color-border', '--color-border-hover',
-  '--color-foreground', '--color-foreground-secondary', '--color-foreground-muted',
-  '--color-action', '--color-action-foreground', '--color-hover', '--color-active',
-  '--color-track', '--color-above', '--color-above-soft',
-  '--color-below', '--color-below-text', '--color-below-soft',
-  '--color-glass', '--color-scrim',
-  '--shadow-rest', '--shadow-lift', '--shadow-press', '--shadow-float', '--shadow-button', '--shadow-sheet',
-] as const;
 
 const normalise = (v: string) => v.replace(/`/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
 
@@ -148,7 +115,7 @@ function nextLookRow(token: string): string[] | undefined {
 }
 
 describe('next look: the docs tables match the scoped blocks in globals.css', () => {
-  it.each(NEXT_DOCUMENTED)('%s — light and dark', (token) => {
+  it.each(NEXT_LOOK_THEMED)('%s — light and dark', (token) => {
     const cells = nextLookRow(token);
     expect(cells, `no row in the "Next look" section of docs/DESIGN-SYSTEM.md documents ${token}`).toBeDefined();
     expect(cells![2], `${token}, light`).toBe(normalise(lookTokens('light').get(token) ?? ''));

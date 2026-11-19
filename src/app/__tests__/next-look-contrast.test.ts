@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { cn } from '@/lib/utils';
-import { CSS, DARK, LIGHT, lookTokens, references, resolveToken, ruleBlock } from './next-look-css';
+import { CSS, DARK, LIGHT, NEXT_LOOK_THEMED, lookTokens, references, resolveToken, ruleBlock } from './next-look-css';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Next look (behind NEXT_PUBLIC_NEW_LOOK): the colours are judged from the CSS,
@@ -75,18 +75,6 @@ const GRAPHIC: Pair[] = [
   ['muted on the ground', '--color-foreground-muted', ['--color-background']],
 ];
 
-/** Tokens the dark block must re-declare, or dark would inherit a light value. */
-const THEMED = [
-  '--color-background', '--color-surface', '--color-surface-elevated', '--color-surface-sunken',
-  '--color-border', '--color-border-hover',
-  '--color-foreground', '--color-foreground-secondary', '--color-foreground-muted',
-  '--color-action', '--color-action-foreground', '--color-hover', '--color-active',
-  '--color-track', '--color-above', '--color-above-soft',
-  '--color-below', '--color-below-text', '--color-below-soft',
-  '--color-glass', '--color-scrim',
-  '--shadow-rest', '--shadow-lift', '--shadow-press', '--shadow-float', '--shadow-button', '--shadow-sheet',
-] as const;
-
 /** Names @theme must know, so Tailwind generates their utilities. */
 const NEW_NAMES = [
   '--color-track', '--color-above', '--color-above-soft', '--color-below', '--color-below-text',
@@ -119,7 +107,8 @@ describe.each(['light', 'dark'] as const)('next look, %s theme: contrast compute
 });
 
 describe('next look: the blocks are complete', () => {
-  it.each(THEMED)('%s is declared for light and re-declared for dark', (token) => {
+  // NEXT_LOOK_THEMED: the tokens the dark block must re-declare, or dark would inherit a light value.
+  it.each(NEXT_LOOK_THEMED)('%s is declared for light and re-declared for dark', (token) => {
     expect(ruleBlock(CSS, LIGHT).has(token), `${token} missing in ${LIGHT}`).toBe(true);
     expect(ruleBlock(CSS, DARK).has(token), `${token} missing in ${DARK}`).toBe(true);
   });
