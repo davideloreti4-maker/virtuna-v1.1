@@ -60,6 +60,12 @@ export const PLACES: readonly Place[] = [
   },
 ];
 
+/**
+ * The order of the places in the desktop sidebar. The reference puts Library last there, next to
+ * the recent threads it holds; the phone tab bar keeps the order of PLACES.
+ */
+export const SIDE_NAV_ORDER: readonly PlaceId[] = ["home", "discover", "audience", "library"];
+
 function placeFor(pathname: string): Place | undefined {
   return PLACES.find((place) => place.prefixes.some((prefix) => under(pathname, prefix)));
 }

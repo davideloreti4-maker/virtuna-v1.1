@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   PLACES,
+  SIDE_NAV_ORDER,
   activePlace,
   backTarget,
   shouldStartCollapsed,
@@ -87,5 +88,12 @@ describe('shouldStartCollapsed: the desktop sidebar on a narrow window', () => {
 
   it('never overrides a stored choice', () => {
     expect(shouldStartCollapsed(900, true)).toBe(false);
+  });
+});
+
+describe('SIDE_NAV_ORDER: the desktop sidebar order', () => {
+  it('is Home, Discover, Audience, Library, and names every place once', () => {
+    expect(SIDE_NAV_ORDER).toEqual(['home', 'discover', 'audience', 'library']);
+    expect([...SIDE_NAV_ORDER].sort()).toEqual(PLACES.map((p) => p.id).sort());
   });
 });
