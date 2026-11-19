@@ -47,6 +47,16 @@ describe('TabBar', () => {
     expect(onNewChat).toHaveBeenCalledTimes(1);
   });
 
+  it('the new-chat button is the whole slot, not only the circle', () => {
+    const onNewChat = vi.fn();
+    render(<TabBar onNewChat={onNewChat} />);
+    const button = within(bar()).getByRole('button', { name: 'New chat' });
+    // A direct child of the bar: nothing un-clickable wraps it, so the slot is the touch target.
+    expect(button.parentElement).toBe(bar());
+    fireEvent.click(button);
+    expect(onNewChat).toHaveBeenCalledTimes(1);
+  });
+
   it('is glass: a blur as an inline style, because Lightning CSS strips it from classes', () => {
     render(<TabBar onNewChat={() => {}} />);
     expect(bar().getAttribute('style') ?? '').toContain('blur(24px)');

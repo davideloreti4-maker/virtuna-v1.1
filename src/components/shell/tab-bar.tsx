@@ -28,7 +28,8 @@ function Tab({ place, active }: { place: Place; active: boolean }) {
       href={place.href}
       aria-current={active ? "page" : undefined}
       className={cn(
-        // Each slot is at least 64 by 64: the touch target is the slot, not the icon.
+        // Every slot, the new-chat one included, is at least 64 by 64: the touch target is the
+        // slot, not the icon.
         "flex h-16 min-w-16 flex-1 flex-col items-center justify-center gap-[3px]",
         "text-micro font-[560] transition-colors duration-150",
         // No pill, no dot, no fill change: the active tab is only darker.
@@ -58,16 +59,21 @@ export function TabBar({ onNewChat }: { onNewChat: () => void }) {
         {PLACES.slice(0, 2).map((place) => (
           <Tab key={place.id} place={place} active={current === place.id} />
         ))}
-        <div className="flex h-16 min-w-16 flex-1 items-center justify-center">
-          <button
-            type="button"
-            onClick={onNewChat}
-            aria-label="New chat"
-            className="flex h-[50px] w-[50px] items-center justify-center rounded-full bg-action text-action-foreground shadow-[var(--shadow-button)] transition-transform duration-150 active:scale-[0.98]"
+        {/* The button is the whole 64px slot, so a tap on the ring around the circle still
+            starts a chat. `rounded-full` makes the app-wide focus ring a pill, not a box. */}
+        <button
+          type="button"
+          onClick={onNewChat}
+          aria-label="New chat"
+          className="group flex h-16 min-w-16 flex-1 items-center justify-center rounded-full"
+        >
+          <span
+            aria-hidden
+            className="flex h-[50px] w-[50px] items-center justify-center rounded-full bg-action text-action-foreground shadow-[var(--shadow-button)] transition-transform duration-150 group-active:scale-[0.98]"
           >
             <Plus size={22} weight="bold" aria-hidden />
-          </button>
-        </div>
+          </span>
+        </button>
         {PLACES.slice(2).map((place) => (
           <Tab key={place.id} place={place} active={current === place.id} />
         ))}
