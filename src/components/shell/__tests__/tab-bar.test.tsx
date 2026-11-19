@@ -47,12 +47,11 @@ describe('TabBar', () => {
     expect(onNewChat).toHaveBeenCalledTimes(1);
   });
 
-  it('the new-chat button sits straight in the bar, its touch target 64 through its hit-area extension', () => {
+  it('the new-chat button sits directly in the nav, and a click on it starts a new chat', () => {
     const onNewChat = vi.fn();
     render(<TabBar onNewChat={onNewChat} />);
     const button = within(bar()).getByRole('button', { name: 'New chat' });
-    // A direct child of the bar: nothing un-clickable wraps it, so its own `::before`, 7px
-    // past the 50px circle on every side, is the 64px touch target.
+    // Nothing un-clickable wraps it.
     expect(button.parentElement).toBe(bar());
     fireEvent.click(button);
     expect(onNewChat).toHaveBeenCalledTimes(1);
