@@ -1,6 +1,14 @@
 # The result page on real simulation data
 
-Date: 2026-11-19 · Status: draft, waiting for the owner's review · Build part 2 of 6
+Date: 2026-11-19 · Status: draft, NOT ready to build · Build part 2 of 6
+
+> **Checked against 25 stored runs after this was written (2026-11-19). Sections 4, 5 and 7 need
+> changes before a plan is written:** one simulated viewer carries 15 points, so "above / below your
+> usual" at 6 points is noise; the existing verdict and trim propose cutting most of a clip when the
+> drop comes late, so the page needs its own rule; "watching at 3s" reads 96 to 100 on about a quarter
+> of runs that then lose half their viewers; a clip has 4 to 9 scenes, so the curve is a few wide
+> steps; "Low confidence" is set on a third of runs. Findings:
+> `.scratch/next-look/part2/real-runs-findings.md`.
 
 Foundation (part 1): `docs/superpowers/specs/2026-11-18-foundation-look-and-shell-design.md`.
 Inputs for this part, on disk only (`.scratch/next-look/part2/`, not in git):
