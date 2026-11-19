@@ -60,6 +60,8 @@ The owner added one instruction mid-run: **always check the visual alignment of 
 - Task 3: the press eases on the CSS `scale` property (Tailwind v4's `scale-*` does not write `transform`); disabled Chip and IconButton drop their shadow; IconButton sizes its icon to 18.
 - Task 5: the tab bar is laid out exactly as the reference (items 66 / 66 / 50 / 66 / 66, space-around, 21px label line); the round button's touch target is 64 through a hit-area extension; icons are the reference's own (departure 13).
 - Task 6: desktop place order, the compose glyph on New chat, "Recent" in the muted tone and 2px between thread rows follow the reference (departure 14 and the table in Task 6).
+- Task 6 (after review): whether the sidebar is collapsed comes from one hook, `useSideNavCollapse()` (`{ collapsed, toggle }`): the creator's persisted choice, or a non-persisted rail on a window under 1100px until they choose. Thread rows keep keyboard focus through delete and rename, and show their actions on the active row on touch screens. The shell draws one inset focus ring (`SHELL_FOCUS`) instead of `FOCUS_RING`.
+- Task 7: the frame reads the sidebar width from that hook, and ⌘\ goes through its `toggle`.
 - Task 7: the pushed header follows the reference's Account and thread screens: white round Back button with the reference's chevron, and a round new-chat button on the right of every pushed screen (the first draft had a plain Back only).
 - Owner question mid-run (2026-11-19): where do new pages such as Earn go once the phone bar is full? The reference already answers it: the avatar on Home opens Account, and Account lists Earn, the connected accounts and Appearance; Earn is a pushed page. The bar stays at four places plus new chat. Nothing in this part changes for it; the avatar and the Account page belong to parts 3 and 6. His ruling on a Stanley-style referral block on the Earn page is open.
 
@@ -3603,7 +3605,7 @@ beforeEach(() => {
   pathname = '/library';
   router.push.mockReset();
   localStorage.clear();
-  useShellStore.setState({ threadOpen: false });
+  useShellStore.setState({ threadOpen: false, autoRail: false });
   useBoardStore.setState({ activeThreadId: null });
   useSidebarStore.setState({ isCollapsed: false, commandOpen: false });
 });
@@ -4024,6 +4026,7 @@ import { PushedHeader } from "./pushed-header";
 import { SideNav } from "./side-nav";
 import { TabBar } from "./tab-bar";
 import { useShellShortcuts } from "./use-shell-shortcuts";
+import { useSideNavCollapse } from "./use-side-nav-collapse";
 import { useThreadActions } from "./use-thread-actions";
 
 /**
@@ -4042,7 +4045,9 @@ export function NextShell({ children }: { children: React.ReactNode }) {
   const actions = useThreadActions();
   const commandItems = useCommandItems();
   const threadOpen = useShellStore((s) => s.threadOpen);
-  const isCollapsed = useSidebarStore((s) => s.isCollapsed);
+  // The sidebar's width as it is drawn: the creator's choice, or the rail the app starts with
+  // on a narrow window. The same hook drives SideNav, so the two cannot disagree.
+  const { collapsed: isCollapsed } = useSideNavCollapse();
   const commandOpen = useSidebarStore((s) => s.commandOpen);
   const setCommandOpen = useSidebarStore((s) => s.setCommandOpen);
   const activeThreadId = useBoardStore((s) => s.activeThreadId);
