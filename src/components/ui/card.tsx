@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { cn } from "@/lib/utils";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 
 /* ============================================
  * CARD COMPONENT TYPES
@@ -30,6 +31,13 @@ export interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
  * Basic card with surface background and border
  * ============================================ */
 
+// The legacy surface is an INLINE style (transparent + an inset white line), which no class can
+// override. So the new look is chosen with the flag here, not with a `next:` variant.
+const LEGACY_CARD_STYLE = {
+  background: "transparent",
+  boxShadow: "rgba(255, 255, 255, 0.05) 0px 1px 0px 0px inset",
+} as const;
+
 /**
  * Basic Card component with dark surface styling.
  *
@@ -48,24 +56,38 @@ export interface GlassCardProps extends React.HTMLAttributes<HTMLDivElement> {
  * </Card>
  * ```
  */
-const Card = React.forwardRef<HTMLDivElement, CardProps>(
+const Card =React.forwardRef<HTMLDivElement, CardProps>(
   ({ className, style, ...props }, ref) => (
     <div
       ref={ref}
       className={cn(
-        "border border-border rounded-[12px] transition-colors duration-150 hover:bg-white/[0.02]",
+        NEW_LOOK_ENABLED
+          ? // Spec §7: surface, radius 24, the resting shadow (which carries the hairline), padding 16.
+            "rounded-3xl bg-surface p-4 shadow-[var(--shadow-rest)]"
+          : "border border-border rounded-[12px] transition-colors duration-150 hover:bg-white/[0.02]",
         className
       )}
-      style={{
-        background: "transparent",
-        boxShadow: "rgba(255, 255, 255, 0.05) 0px 1px 0px 0px inset",
-        ...style,
-      }}
+      style={NEW_LOOK_ENABLED ? style : { ...LEGACY_CARD_STYLE, ...style }}
       {...props}
     />
   )
 );
 Card.displayName = "Card";
+
+/**
+ * Tile — a card inside a card (new look). Radius 20, hairline only, no shadow.
+ * A card is never nested more than once; the inner one is a tile.
+ */
+const Tile = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
+  ({ className, ...props }, ref) => (
+    <div
+      ref={ref}
+      className={cn("rounded-2xl border border-border p-4", className)}
+      {...props}
+    />
+  )
+);
+Tile.displayName = "Tile";
 
 /* ============================================
  * GLASS CARD COMPONENT
@@ -146,7 +168,7 @@ const CardHeader = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("p-6", className)} {...props} />
+  <div ref={ref} className={cn("p-6 next:p-0 next:pb-3", className)} {...props} />
 ));
 CardHeader.displayName = "CardHeader";
 
@@ -158,7 +180,7 @@ const CardContent = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
+  <div ref={ref} className={cn("p-6 pt-0 next:p-0", className)} {...props} />
 ));
 CardContent.displayName = "CardContent";
 
@@ -172,10 +194,10 @@ const CardFooter = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex items-center p-6 pt-0", className)}
+    className={cn("flex items-center p-6 pt-0 next:p-0 next:pt-3", className)}
     {...props}
   />
 ));
 CardFooter.displayName = "CardFooter";
 
-export { Card, GlassCard, CardHeader, CardContent, CardFooter };
+export { Card, GlassCard, CardHeader, CardContent, CardFooter, Tile };

@@ -1,0 +1,64 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`flag off: the base parts keep their legacy classes > badge accent / md 1`] = `"bg-surface border border-border font-medium h-6 inline-flex items-center justify-center px-2.5 rounded-full text-foreground-secondary text-xs"`;
+
+exports[`flag off: the base parts keep their legacy classes > badge accent / sm 1`] = `"bg-surface border border-border font-medium h-5 inline-flex items-center justify-center px-2 rounded-full text-[10px] text-foreground-secondary"`;
+
+exports[`flag off: the base parts keep their legacy classes > badge default / md 1`] = `"bg-surface border border-border font-medium h-6 inline-flex items-center justify-center px-2.5 rounded-full text-foreground-secondary text-xs"`;
+
+exports[`flag off: the base parts keep their legacy classes > badge default / sm 1`] = `"bg-surface border border-border font-medium h-5 inline-flex items-center justify-center px-2 rounded-full text-[10px] text-foreground-secondary"`;
+
+exports[`flag off: the base parts keep their legacy classes > badge error / md 1`] = `"bg-error/10 border border-error/20 font-medium h-6 inline-flex items-center justify-center px-2.5 rounded-full text-error text-xs"`;
+
+exports[`flag off: the base parts keep their legacy classes > badge error / sm 1`] = `"bg-error/10 border border-error/20 font-medium h-5 inline-flex items-center justify-center px-2 rounded-full text-[10px] text-error"`;
+
+exports[`flag off: the base parts keep their legacy classes > badge info / md 1`] = `"bg-info/10 border border-info/20 font-medium h-6 inline-flex items-center justify-center px-2.5 rounded-full text-info text-xs"`;
+
+exports[`flag off: the base parts keep their legacy classes > badge info / sm 1`] = `"bg-info/10 border border-info/20 font-medium h-5 inline-flex items-center justify-center px-2 rounded-full text-[10px] text-info"`;
+
+exports[`flag off: the base parts keep their legacy classes > badge secondary / md 1`] = `"bg-surface-elevated border border-border font-medium h-6 inline-flex items-center justify-center px-2.5 rounded-full text-foreground-secondary text-xs"`;
+
+exports[`flag off: the base parts keep their legacy classes > badge secondary / sm 1`] = `"bg-surface-elevated border border-border font-medium h-5 inline-flex items-center justify-center px-2 rounded-full text-[10px] text-foreground-secondary"`;
+
+exports[`flag off: the base parts keep their legacy classes > badge success / md 1`] = `"bg-success/10 border border-success/20 font-medium h-6 inline-flex items-center justify-center px-2.5 rounded-full text-success text-xs"`;
+
+exports[`flag off: the base parts keep their legacy classes > badge success / sm 1`] = `"bg-success/10 border border-success/20 font-medium h-5 inline-flex items-center justify-center px-2 rounded-full text-[10px] text-success"`;
+
+exports[`flag off: the base parts keep their legacy classes > badge warning / md 1`] = `"bg-warning/10 border border-warning/20 font-medium h-6 inline-flex items-center justify-center px-2.5 rounded-full text-warning text-xs"`;
+
+exports[`flag off: the base parts keep their legacy classes > badge warning / sm 1`] = `"bg-warning/10 border border-warning/20 font-medium h-5 inline-flex items-center justify-center px-2 rounded-full text-[10px] text-warning"`;
+
+exports[`flag off: the base parts keep their legacy classes > button destructive / lg 1`] = `"active:bg-error/80 bg-error cursor-pointer disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background font-medium gap-2 h-12 hover:bg-error/90 inline-flex items-center justify-center min-h-[48px] min-w-[48px] px-6 rounded-md text-base text-white transition-colors"`;
+
+exports[`flag off: the base parts keep their legacy classes > button destructive / md 1`] = `"active:bg-error/80 bg-error cursor-pointer disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background font-medium gap-2 h-11 hover:bg-error/90 inline-flex items-center justify-center min-h-[44px] min-w-[44px] px-4 rounded-md text-sm text-white transition-colors"`;
+
+exports[`flag off: the base parts keep their legacy classes > button destructive / sm 1`] = `"active:bg-error/80 bg-error cursor-pointer disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background font-medium gap-2 h-9 hover:bg-error/90 inline-flex items-center justify-center min-h-[36px] min-w-[36px] px-3 rounded-md text-sm text-white transition-colors"`;
+
+exports[`flag off: the base parts keep their legacy classes > button ghost / lg 1`] = `"active:bg-active bg-transparent cursor-pointer disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background font-medium gap-2 h-12 hover:bg-hover inline-flex items-center justify-center min-h-[48px] min-w-[48px] px-6 rounded-md text-base text-foreground transition-colors"`;
+
+exports[`flag off: the base parts keep their legacy classes > button ghost / md 1`] = `"active:bg-active bg-transparent cursor-pointer disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background font-medium gap-2 h-11 hover:bg-hover inline-flex items-center justify-center min-h-[44px] min-w-[44px] px-4 rounded-md text-foreground text-sm transition-colors"`;
+
+exports[`flag off: the base parts keep their legacy classes > button ghost / sm 1`] = `"active:bg-active bg-transparent cursor-pointer disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background font-medium gap-2 h-9 hover:bg-hover inline-flex items-center justify-center min-h-[36px] min-w-[36px] px-3 rounded-md text-foreground text-sm transition-colors"`;
+
+exports[`flag off: the base parts keep their legacy classes > button primary / lg 1`] = `"active:bg-action/80 bg-action cursor-pointer disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background font-medium gap-2 h-12 hover:bg-action/90 inline-flex items-center justify-center min-h-[48px] min-w-[48px] px-6 rounded-md shadow-button text-action-foreground text-base transition-colors"`;
+
+exports[`flag off: the base parts keep their legacy classes > button primary / md 1`] = `"active:bg-action/80 bg-action cursor-pointer disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background font-medium gap-2 h-11 hover:bg-action/90 inline-flex items-center justify-center min-h-[44px] min-w-[44px] px-4 rounded-md shadow-button text-action-foreground text-sm transition-colors"`;
+
+exports[`flag off: the base parts keep their legacy classes > button primary / sm 1`] = `"active:bg-action/80 bg-action cursor-pointer disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background font-medium gap-2 h-9 hover:bg-action/90 inline-flex items-center justify-center min-h-[36px] min-w-[36px] px-3 rounded-md shadow-button text-action-foreground text-sm transition-colors"`;
+
+exports[`flag off: the base parts keep their legacy classes > button secondary / lg 1`] = `"active:bg-white/[0.15] bg-transparent border border-white/[0.06] cursor-pointer disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background font-medium gap-2 h-12 hover:bg-white/[0.1] inline-flex items-center justify-center min-h-[48px] min-w-[48px] px-6 rounded-md text-base text-foreground transition-colors"`;
+
+exports[`flag off: the base parts keep their legacy classes > button secondary / md 1`] = `"active:bg-white/[0.15] bg-transparent border border-white/[0.06] cursor-pointer disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background font-medium gap-2 h-11 hover:bg-white/[0.1] inline-flex items-center justify-center min-h-[44px] min-w-[44px] px-4 rounded-md text-foreground text-sm transition-colors"`;
+
+exports[`flag off: the base parts keep their legacy classes > button secondary / sm 1`] = `"active:bg-white/[0.15] bg-transparent border border-white/[0.06] cursor-pointer disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--focus-ring)] focus-visible:ring-offset-2 focus-visible:ring-offset-background font-medium gap-2 h-9 hover:bg-white/[0.1] inline-flex items-center justify-center min-h-[36px] min-w-[36px] px-3 rounded-md text-foreground text-sm transition-colors"`;
+
+exports[`flag off: the base parts keep their legacy classes > card keeps its inline surface and its classes 1`] = `"background: transparent; box-shadow: rgba(255, 255, 255, 0.05) 0px 1px 0px 0px inset;"`;
+
+exports[`flag off: the base parts keep their legacy classes > card keeps its inline surface and its classes 2`] = `
+[
+  "border border-border duration-150 hover:bg-white/[0.02] rounded-[12px] transition-colors",
+  "p-6",
+  "p-6 pt-0",
+  "flex items-center p-6 pt-0",
+]
+`;

@@ -40,36 +40,44 @@ const buttonVariants = cva(
     "disabled:pointer-events-none disabled:opacity-50",
     // Ensure cursor pointer for interactive element
     "cursor-pointer",
+    // Next look (spec §7): title weight, press = scale 0.98, disabled = 40% and no shadow.
+    "next:font-[640] next:duration-150 next:transition-[color,background-color,box-shadow,transform]",
+    "next:active:scale-[0.98] next:disabled:opacity-40 next:disabled:shadow-none",
   ],
   {
     variants: {
       /**
        * Visual style variant
-       * - `primary`: Coral accent background, for primary CTAs (use sparingly)
-       * - `secondary`: Surface background with border, default for most buttons
+       * - `primary`: the one filled action of a card or screen (cream today, ink under the new look)
+       * - `secondary`: default for most buttons (bordered today, tint fill under the new look)
        * - `ghost`: Transparent background, for tertiary/icon buttons
        * - `destructive`: Error color background, for dangerous actions
+       * - `quiet`: text only, for links like "See all" (new look)
        */
       variant: {
         primary:
-          "bg-action text-action-foreground shadow-button hover:bg-action/90 active:bg-action/80",
+          "bg-action text-action-foreground shadow-button hover:bg-action/90 active:bg-action/80 next:shadow-[var(--shadow-button)]",
         secondary:
-          "bg-transparent border border-white/[0.06] text-foreground hover:bg-white/[0.1] active:bg-white/[0.15]",
+          "bg-transparent border border-white/[0.06] text-foreground hover:bg-white/[0.1] active:bg-white/[0.15] next:border-transparent next:bg-surface-sunken next:hover:bg-active next:active:bg-active",
         ghost:
           "bg-transparent text-foreground hover:bg-hover active:bg-active",
         destructive:
           "bg-error text-white hover:bg-error/90 active:bg-error/80",
+        quiet:
+          "bg-transparent text-foreground-secondary hover:text-foreground",
       },
       /**
-       * Size variant - all meet 44x44px minimum touch target (except sm which is 36px for icon buttons)
+       * Size variant
        * - `sm`: 36px height, compact for icon buttons
        * - `md`: 44px height, default, meets touch target
-       * - `lg`: 48px height, prominent CTAs
+       * - `lg`: 48px height (50px under the new look), prominent actions
+       * - `xl`: 56px height, the one main action of a screen (new look)
        */
       size: {
-        sm: "h-9 min-h-[36px] min-w-[36px] px-3 text-sm rounded-md",
-        md: "h-11 min-h-[44px] min-w-[44px] px-4 text-sm rounded-md",
-        lg: "h-12 min-h-[48px] min-w-[48px] px-6 text-base rounded-md",
+        sm: "h-9 min-h-[36px] min-w-[36px] px-3 text-sm rounded-md next:rounded-lg",
+        md: "h-11 min-h-[44px] min-w-[44px] px-4 text-sm rounded-md next:rounded-xl",
+        lg: "h-12 min-h-[48px] min-w-[48px] px-6 text-base rounded-md next:h-[50px] next:rounded-xl next:text-ui",
+        xl: "h-14 min-h-[56px] min-w-[56px] px-6 text-ui rounded-xl",
       },
     },
     defaultVariants: {

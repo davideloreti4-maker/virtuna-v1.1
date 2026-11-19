@@ -32,7 +32,7 @@ import { cn } from "@/lib/utils";
  */
 const badgeVariants = cva(
   // Base styles - shared across all variants
-  "inline-flex items-center justify-center rounded-full font-medium",
+  "inline-flex items-center justify-center rounded-full font-medium next:font-[560]",
   {
     variants: {
       /**
@@ -47,17 +47,17 @@ const badgeVariants = cva(
        */
       variant: {
         default:
-          "bg-surface text-foreground-secondary border border-border",
+          "bg-surface text-foreground-secondary border border-border next:border-transparent next:bg-surface-sunken",
         secondary:
           "bg-surface-elevated text-foreground-secondary border border-border",
         accent:
           "bg-surface text-foreground-secondary border border-border",
         success:
-          "bg-success/10 text-success border border-success/20",
+          "bg-success/10 text-success border border-success/20 next:border-transparent next:bg-above-soft next:text-above",
         warning:
           "bg-warning/10 text-warning border border-warning/20",
         error:
-          "bg-error/10 text-error border border-error/20",
+          "bg-error/10 text-error border border-error/20 next:border-transparent next:bg-below-soft next:text-below-text",
         info:
           "bg-info/10 text-info border border-info/20",
       },
