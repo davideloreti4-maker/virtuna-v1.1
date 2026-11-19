@@ -72,7 +72,8 @@ export function SideNav({ actions }: { actions: ThreadActions }) {
   const current = activePlace(pathname);
 
   // Below 1100px the sidebar starts as the rail, unless the creator already chose. This is the
-  // app's default, so it goes to the unpersisted autoRail, never to the saved choice.
+  // app's default, so it goes to the unpersisted autoRail, never to the saved choice. Set both
+  // ways: a mount on a wide window clears a default left from a narrow one.
   useEffect(() => {
     let chosen = true;
     try {
@@ -80,7 +81,7 @@ export function SideNav({ actions }: { actions: ThreadActions }) {
     } catch {
       // Storage blocked: count it as chosen and leave the sidebar as it is.
     }
-    if (shouldStartCollapsed(window.innerWidth, chosen)) setAutoRail(true);
+    setAutoRail(shouldStartCollapsed(window.innerWidth, chosen));
   }, [setAutoRail]);
 
   // The newest thread always shows (it may be the open, still untitled one); beyond it only

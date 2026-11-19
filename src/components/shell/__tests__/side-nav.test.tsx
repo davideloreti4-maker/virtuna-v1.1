@@ -210,7 +210,8 @@ describe('SideNav — keyboard focus survives the row changing', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Rename Why did Tuesday flop' }));
     const field = screen.getByRole('textbox', { name: 'Rename Why did Tuesday flop' });
     fireEvent.change(field, { target: { value: 'Something else' } });
-    fireEvent.keyDown(field, { key: 'Escape' });
+    // Default-prevented (false), so Escape never reaches a surrounding dialog or menu.
+    expect(fireEvent.keyDown(field, { key: 'Escape' })).toBe(false);
 
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Why did Tuesday flop' }));
     expect(rename).not.toHaveBeenCalled();
@@ -221,9 +222,12 @@ describe('SideNav — keyboard focus survives the row changing', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Rename Why did Tuesday flop' }));
     const field = screen.getByRole('textbox', { name: 'Rename Why did Tuesday flop' });
     fireEvent.change(field, { target: { value: 'Tuesday post-mortem' } });
-    fireEvent.keyDown(field, { key: 'Enter' });
+    // Default-prevented (false): focus moves to the open button during keydown, and a browser
+    // would turn the rest of this Enter into a click on it (opening the thread).
+    expect(fireEvent.keyDown(field, { key: 'Enter' })).toBe(false);
 
     expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Why did Tuesday flop' }));
+    expect(router.push).not.toHaveBeenCalled();
     expect(rename).toHaveBeenCalledTimes(1);
     expect(rename).toHaveBeenCalledWith({ id: 't3', title: 'Tuesday post-mortem' });
   });
@@ -294,11 +298,13 @@ describe('SideNav — a narrow window starts as the rail, and that is not a choi
     expect(within(nav()).getByRole('button', { name: 'Collapse sidebar' })).toBeInTheDocument();
   });
 
-  it('at 1100px and wider with no choice made: expanded', () => {
+  it('at 1100px and wider with no choice made: expanded, and a rail default left from a narrow window is cleared', () => {
+    useShellStore.setState({ autoRail: true }); // as if an earlier mount was on a narrow window
     setWidth(1440);
     renderNav();
 
     expect(nav()).toHaveStyle({ width: '248px' });
+    expect(useShellStore.getState().autoRail).toBe(false);
     expect(screen.getByRole('list', { name: 'Recent' })).toBeInTheDocument();
   });
 

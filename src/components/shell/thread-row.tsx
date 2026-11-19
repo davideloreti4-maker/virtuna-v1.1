@@ -77,8 +77,16 @@ export function ThreadRow({
           aria-label={`Rename ${label}`}
           placeholder="Thread name"
           onKeyDown={(e) => {
-            if (e.key === "Enter") endRename(e.currentTarget.value);
-            else if (e.key === "Escape") endRename(null);
+            // preventDefault first: endRename moves focus to the open button during this keydown,
+            // and the browser would turn the rest of the Enter into a click on it (opening the
+            // thread). On Escape it also keeps the key from reaching a surrounding dialog or menu.
+            if (e.key === "Enter") {
+              e.preventDefault();
+              endRename(e.currentTarget.value);
+            } else if (e.key === "Escape") {
+              e.preventDefault();
+              endRename(null);
+            }
           }}
           onBlur={(e) => {
             if (renameEnded.current) return;
