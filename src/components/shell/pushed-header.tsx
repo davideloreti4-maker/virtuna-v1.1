@@ -12,6 +12,10 @@ import { BackIcon } from "./icons";
  * shadow) with an 18px glyph; the title is 16 / 640, tracked -0.014em. An 8px column gap keeps
  * a long title 10px clear of either button.
  *
+ * Focus: these two buttons keep the app-wide outside ring, not SHELL_FOCUS (the inset ring the
+ * sidebar rows use). The sidebar scrolls and would clip an outside ring; this header and its
+ * fixed wrapper clip nothing, and an inset ring on a white 38px circle would crowd its glyph.
+ *
  * `titleAs="div"` where the screen below already has its own <h1> (the thread has one).
  */
 export function PushedHeader({

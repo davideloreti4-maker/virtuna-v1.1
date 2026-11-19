@@ -17,13 +17,11 @@ vi.mock('next/navigation', () => ({
   useRouter: () => router,
 }));
 
+const GYM = { id: 't1', title: 'Three hooks for the gym video', updated_at: '2026-11-18T10:00:00Z', created_at: '2026-11-18T09:00:00Z', pinned_at: null };
+// What the thread-list query returns; a test sets `undefined` for a list still loading.
+let threadList: (typeof GYM)[] | undefined = [GYM];
 vi.mock('@/hooks/queries', () => ({
-  useThreadList: () => ({
-    data: [
-      { id: 't1', title: 'Three hooks for the gym video', updated_at: '2026-11-18T10:00:00Z', created_at: '2026-11-18T09:00:00Z', pinned_at: null },
-    ],
-    isLoading: false,
-  }),
+  useThreadList: () => ({ data: threadList, isLoading: threadList === undefined }),
   useArchiveThread: () => ({ mutateAsync: vi.fn() }),
   useRenameThread: () => ({ mutate: vi.fn() }),
   usePinThread: () => ({ mutate: vi.fn() }),
@@ -50,6 +48,8 @@ const renderShell = () =>
 
 const tabBar = () => screen.queryByRole('navigation', { name: 'Places' });
 const back = () => screen.queryByRole('button', { name: 'Back' });
+/** The phone's Back header (the sidebar's Recent rows sit outside it). */
+const pushedHeader = () => back()!.closest('header')!;
 
 // The window width the sidebar's narrow-window rail reads. happy-dom's default (1024) is below
 // 1100, where the sidebar starts as the rail; the tests run on a desktop window unless they say.
@@ -61,6 +61,7 @@ afterEach(() => setWidth(realWidth));
 
 beforeEach(() => {
   setWidth(1440);
+  threadList = [GYM];
   pathname = '/library';
   router.push.mockReset();
   localStorage.clear();
@@ -88,12 +89,29 @@ describe('NextShell — what frames a screen', () => {
     renderShell();
 
     expect(tabBar()).toBeNull();
-    // The thread's title names the screen.
-    expect(screen.getAllByText('Three hooks for the gym video').length).toBeGreaterThan(0);
+    // The thread's title names the screen, in its header.
+    expect(within(pushedHeader()).getByText('Three hooks for the gym video')).toBeInTheDocument();
 
     fireEvent.click(back()!);
     expect(useBoardStore.getState().activeThreadId).toBeNull();
     expect(router.push).toHaveBeenCalledWith('/home');
+  });
+
+  it('a thread the loaded list does not hold (or holds untitled) is called "New chat"', () => {
+    pathname = '/home';
+    useShellStore.setState({ threadOpen: true });
+    useBoardStore.setState({ activeThreadId: 't9' });
+    renderShell();
+    expect(within(pushedHeader()).getByText('New chat')).toBeInTheDocument();
+  });
+
+  it('while the thread list loads, the thread header shows no title (no "New chat" flash)', () => {
+    threadList = undefined;
+    pathname = '/home';
+    useShellStore.setState({ threadOpen: true });
+    useBoardStore.setState({ activeThreadId: 't1' });
+    renderShell();
+    expect(pushedHeader().textContent).toBe('');
   });
 
   it('a pushed screen under a place: no tab bar; Back goes up to the place', () => {
@@ -116,8 +134,7 @@ describe('NextShell — what frames a screen', () => {
     pathname = '/settings';
     useBoardStore.setState({ activeThreadId: 't1' });
     renderShell();
-    const header = back()!.closest('header')!;
-    fireEvent.click(within(header).getByRole('button', { name: 'New chat' }));
+    fireEvent.click(within(pushedHeader()).getByRole('button', { name: 'New chat' }));
     expect(useBoardStore.getState().activeThreadId).toBeNull();
     expect(router.push).toHaveBeenCalledWith('/home');
   });

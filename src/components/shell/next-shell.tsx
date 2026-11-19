@@ -53,7 +53,11 @@ export function NextShell({ children }: { children: React.ReactNode }) {
 
   const inThread = pathname === "/home" && threadOpen;
   const showBar = tabBarVisible(pathname, threadOpen);
-  const threadTitle = threads?.find((t) => t.id === activeThreadId)?.title?.trim() || "New chat";
+  // While the list loads the title stays empty, so the header does not flash "New chat" first.
+  const threadTitle =
+    threads === undefined
+      ? ""
+      : threads.find((t) => t.id === activeThreadId)?.title?.trim() || "New chat";
 
   // Until the viewport is measured assume desktop, as the legacy shell does, so the first paint
   // does not start at 0 and jump by the sidebar's width.
@@ -66,7 +70,16 @@ export function NextShell({ children }: { children: React.ReactNode }) {
         <SideNav actions={actions} />
 
         {!showBar && (
-          <div className="fixed inset-x-0 top-0 z-[var(--z-sidebar)] bg-background px-4 pb-[3px] pt-[calc(env(safe-area-inset-top)+3px)] md:hidden">
+          // The band is exactly what <main> reserves (MOBILE_NAV_BAND below the safe area), from the
+          // same constant, so the two cannot drift; the 40px row is centred in it. A column flex,
+          // not a row: as a row item the header would shrink to its content and lose its width.
+          <div
+            className="fixed inset-x-0 top-0 z-[var(--z-sidebar)] flex flex-col justify-center bg-background px-4 md:hidden"
+            style={{
+              height: `calc(env(safe-area-inset-top) + ${MOBILE_NAV_BAND}px)`,
+              paddingTop: "env(safe-area-inset-top)",
+            }}
+          >
             <PushedHeader
               // A thread's title names the screen; other screens carry their own heading.
               title={inThread ? threadTitle : ""}
