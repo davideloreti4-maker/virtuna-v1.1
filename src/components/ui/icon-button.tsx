@@ -15,7 +15,8 @@ export interface IconButtonProps
 /**
  * Icon button (new look, spec §7): a 38px circle with an 18px icon. The button sizes the icon
  * (any child `svg` is drawn at 18px), so callers pass the icon without a size. `.tap-44` grows
- * the hit area to 44px on touch without growing the drawn circle.
+ * the hit area to 44px on touch without growing the drawn circle. On touch `.tap-44` sets
+ * `position: relative` from unlayered CSS, so a positioning utility passed by a caller would lose.
  */
 export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
   ({ className, surface = "ground", type = "button", ...props }, ref) => (
@@ -24,9 +25,9 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
       type={type}
       className={cn(
         "tap-44 inline-flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full text-foreground [&_svg]:size-[18px]",
-        "duration-150 transition-[color,background-color,box-shadow,scale] active:scale-[0.98]",
+        "duration-150 transition-[color,background-color,box-shadow,scale] motion-safe:active:scale-[0.98]",
         "disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none",
-        surface === "ground" && "bg-surface shadow-[var(--shadow-press)]",
+        surface === "ground" && "bg-surface shadow-[var(--shadow-control)]",
         surface === "card" && "bg-surface-sunken hover:bg-active",
         surface === "quiet" && "text-foreground-secondary hover:bg-hover hover:text-foreground",
         className,

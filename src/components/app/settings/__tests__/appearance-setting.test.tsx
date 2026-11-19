@@ -1,7 +1,7 @@
 /** @vitest-environment happy-dom */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
-import { THEME_STORAGE_KEY } from '@/lib/theme/theme';
+import { THEME_STORAGE_KEY, __resetThemeMemory } from '@/lib/theme/theme';
 import { AppearanceSetting } from '../appearance-setting';
 
 function systemPrefersDark(dark: boolean) {
@@ -11,6 +11,14 @@ function systemPrefersDark(dark: boolean) {
     addEventListener: () => {},
     removeEventListener: () => {},
   }));
+}
+
+/** A browser that refuses storage (private mode, blocked cookies): every call throws. */
+function blockStorage() {
+  const blocked = () => {
+    throw new Error('blocked');
+  };
+  vi.stubGlobal('localStorage', { getItem: blocked, setItem: blocked, removeItem: blocked, clear: blocked });
 }
 
 const painted = () => document.documentElement.getAttribute('data-theme');
@@ -25,7 +33,10 @@ beforeEach(() => {
   systemPrefersDark(false);
 });
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  __resetThemeMemory();
+});
 
 describe('AppearanceSetting', () => {
   it('offers Light, Dark and Match system, with Light chosen at first', () => {
@@ -51,6 +62,14 @@ describe('AppearanceSetting', () => {
     expect(painted()).toBe('dark');
     expect(localStorage.getItem(THEME_STORAGE_KEY)).toBe('system');
     expect(chosen()).toEqual(['Match system']);
+  });
+
+  it('with storage blocked, Dark still paints dark and shows as chosen', () => {
+    blockStorage();
+    render(<AppearanceSetting />);
+    fireEvent.click(option('Dark'));
+    expect(painted()).toBe('dark');
+    expect(chosen()).toEqual(['Dark']);
   });
 
   it('opens on the stored choice', () => {

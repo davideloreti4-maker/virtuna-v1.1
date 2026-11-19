@@ -240,6 +240,8 @@ default. Until cut-over both exist. With the flag on, the root layout renders
 
 Guards: `design-token-drift.test.ts` (every row below, both themes) and
 `next-look-contrast.test.ts` (contrast computed from the CSS, cycles, completeness).
+Scripts: `scripts/next-look-probe.cjs` records the flag-off app (tokens, `<html>` attributes,
+landmarks, chrome screenshots) and `scripts/next-look-compare.cjs` compares two recordings.
 
 ### Next look: colour
 
@@ -281,7 +283,8 @@ coral.
 |---|---|---|---|
 | `--shadow-rest` | card | `0 0 0 1px var(--color-border), 0 1px 1px rgba(0, 0, 0, 0.03), 0 10px 26px -12px rgba(0, 0, 0, 0.1), 0 34px 60px -34px rgba(0, 0, 0, 0.14)` | `0 0 0 1px var(--color-border), inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 24px 50px -24px rgba(0, 0, 0, 0.9)` |
 | `--shadow-lift` | card hovered (desktop) | `0 0 0 1px var(--color-border-hover), 0 14px 30px -12px rgba(0, 0, 0, 0.16), 0 40px 70px -34px rgba(0, 0, 0, 0.18)` | `0 0 0 1px var(--color-border-hover), inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 24px 50px -24px rgba(0, 0, 0, 0.9)` |
-| `--shadow-press` | pressed, resting control on the ground | `0 0 0 1px var(--color-border), 0 1px 2px rgba(0, 0, 0, 0.06)` | `0 0 0 1px var(--color-border)` |
+| `--shadow-press` | pressed | `0 0 0 1px var(--color-border), 0 1px 2px rgba(0, 0, 0, 0.06)` | `0 0 0 1px var(--color-border)` |
+| `--shadow-control` | control resting on the ground: icon button, chip, New chat | `0 0 0 1px var(--color-border), 0 2px 6px -2px rgba(0, 0, 0, 0.12)` | `0 0 0 1px var(--color-border), 0 2px 6px -2px rgba(0, 0, 0, 0.12)` |
 | `--shadow-float` | tab bar, message field, popover | `0 0 0 1px var(--color-border), 0 14px 34px -12px rgba(0, 0, 0, 0.3)` | `0 0 0 1px var(--color-border), 0 14px 34px -12px rgba(0, 0, 0, 0.7)` |
 | `--shadow-button` | primary button | `inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 10px 20px -10px rgba(0, 0, 0, 0.45)` | `0 0 0 0 transparent` |
 | `--shadow-sheet` | sheet | `0 -20px 50px rgba(0, 0, 0, 0.3)` | `0 -20px 50px rgba(0, 0, 0, 0.6)` |
@@ -315,3 +318,14 @@ Radius: thumbnail `rounded-lg` 12 · button `rounded-xl` 16 · tile `rounded-2xl
 Parts (`src/components/ui`): `Card` and `Tile`, `Button` (`primary`, `secondary`, `quiet`; `lg`
 is 50 tall, `xl` is 56), `IconButton`, `Chip`, `Badge` (the tag), `Sheet`. Shell
 (`src/components/shell`): `TabBar`, `SideNav`, `PlaceHeader`, `PushedHeader`, `NextShell`.
+
+Rules that are not in the spec:
+
+- Navigation glyphs come from `src/components/shell/icons.tsx` (the reference's own drawings),
+  not from Phosphor.
+- The keyboard ring sits 2px outside a control by default. Inside scroll or overflow containers
+  use `SHELL_FOCUS` (`nav-config.ts`), which draws the same ring inside.
+- Under the flag a caller's plain class loses to a primitive's `next:` default: override with a
+  `next:`-prefixed class.
+- Write `next:` first in a class (`next:hover:…`): the parity test strips classes by that prefix.
+- A press is `motion-safe:active:scale-[0.98]`, and its transition must cover `scale`.

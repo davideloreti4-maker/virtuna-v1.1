@@ -23,7 +23,8 @@ export const NEXT_LOOK_THEMED = [
   '--color-track', '--color-above', '--color-above-soft',
   '--color-below', '--color-below-text', '--color-below-soft',
   '--color-glass', '--color-scrim',
-  '--shadow-rest', '--shadow-lift', '--shadow-press', '--shadow-float', '--shadow-button', '--shadow-sheet',
+  '--shadow-rest', '--shadow-lift', '--shadow-press', '--shadow-control', '--shadow-float', '--shadow-button',
+  '--shadow-sheet',
 ] as const;
 
 function escapeRe(s: string): string {

@@ -57,6 +57,9 @@ export function useThreadActions(): ThreadActions {
         router.push("/home");
       },
       deleteThread: async (id, wasActive) => {
+        // Where the creator is counts at click time, as in the legacy sidebar: a place switched
+        // to while the request is out must not change what this delete does.
+        const onHome = live.current.pathname === "/home";
         try {
           await live.current.archiveThread.mutateAsync(id);
         } catch {
@@ -65,7 +68,7 @@ export function useThreadActions(): ThreadActions {
           live.current.toast({ variant: "error", title: "Couldn't delete that thread." });
           return;
         }
-        if (wasActive && live.current.pathname === "/home") {
+        if (wasActive && onHome) {
           clearActiveThreadCookie();
           setActiveThreadId(null);
           switchThread();

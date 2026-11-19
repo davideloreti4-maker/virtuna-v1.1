@@ -26,13 +26,24 @@ export function resolveTheme(choice: ThemeChoice, systemPrefersDark: boolean): R
   return choice;
 }
 
-/** The stored choice. Light when nothing valid is stored or storage is blocked. */
+/**
+ * The last choice made on this page. Only read when storage throws: without it, a browser that
+ * blocks storage would show Light as chosen while painting Dark, and the next OS scheme change
+ * would repaint a chosen Dark as light.
+ */
+let remembered: ThemeChoice | null = null;
+
+/**
+ * The stored choice. Storage first whenever it works, so another tab's change is still followed;
+ * when storage is blocked, the choice made on this page, else light. Light when nothing valid is
+ * stored.
+ */
 export function readThemeChoice(): ThemeChoice {
   try {
     const stored = window.localStorage.getItem(THEME_STORAGE_KEY);
     return isThemeChoice(stored) ? stored : "light";
   } catch {
-    return "light";
+    return remembered ?? "light";
   }
 }
 
@@ -52,6 +63,7 @@ export function paintTheme(choice: ThemeChoice): ResolvedTheme {
 
 /** Store `choice`, paint it, and tell this tab's listeners. */
 export function applyThemeChoice(choice: ThemeChoice): ResolvedTheme {
+  remembered = choice;
   try {
     window.localStorage.setItem(THEME_STORAGE_KEY, choice);
   } catch {
@@ -60,6 +72,11 @@ export function applyThemeChoice(choice: ThemeChoice): ResolvedTheme {
   const resolved = paintTheme(choice);
   window.dispatchEvent(new Event(THEME_EVENT));
   return resolved;
+}
+
+/** Tests only: forget the in-memory choice, so no test inherits another's. */
+export function __resetThemeMemory(): void {
+  remembered = null;
 }
 
 /**

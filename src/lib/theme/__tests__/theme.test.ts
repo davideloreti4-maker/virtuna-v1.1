@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   THEME_INIT_SCRIPT,
   THEME_STORAGE_KEY,
+  __resetThemeMemory,
   applyThemeChoice,
   readThemeChoice,
   resolveTheme,
@@ -36,8 +37,12 @@ beforeEach(() => {
   systemPrefersDark(false);
 });
 
-// Restores the real localStorage and matchMedia before the next test's beforeEach.
-afterEach(() => vi.unstubAllGlobals());
+// Restores the real localStorage and matchMedia before the next test's beforeEach, and forgets
+// the choice the module keeps in memory, so no test inherits another's.
+afterEach(() => {
+  vi.unstubAllGlobals();
+  __resetThemeMemory();
+});
 
 describe('resolveTheme', () => {
   it('returns an explicit choice as it is', () => {
@@ -111,5 +116,18 @@ describe('applyThemeChoice', () => {
     blockStorage();
     expect(applyThemeChoice('dark')).toBe('dark');
     expect(painted()).toBe('dark');
+  });
+
+  it('remembers the choice for this page when storage is blocked', () => {
+    blockStorage();
+    applyThemeChoice('dark');
+    expect(readThemeChoice()).toBe('dark');
+  });
+
+  it('still follows storage when storage works, so a change from another tab wins', () => {
+    applyThemeChoice('dark');
+    // Another tab stores a different choice.
+    localStorage.setItem(THEME_STORAGE_KEY, 'light');
+    expect(readThemeChoice()).toBe('light');
   });
 });

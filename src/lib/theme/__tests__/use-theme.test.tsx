@@ -1,7 +1,7 @@
 /** @vitest-environment happy-dom */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, renderHook } from '@testing-library/react';
-import { THEME_STORAGE_KEY } from '../theme';
+import { THEME_STORAGE_KEY, __resetThemeMemory, applyThemeChoice } from '../theme';
 import { useThemeSync } from '../use-theme';
 
 // The OS colour-scheme query is the I/O boundary here: a stand-in that records its `change`
@@ -40,6 +40,14 @@ function otherTabStores(choice: string) {
   });
 }
 
+/** A browser that refuses storage (private mode, blocked cookies): every call throws. */
+function blockStorage() {
+  const blocked = () => {
+    throw new Error('blocked');
+  };
+  vi.stubGlobal('localStorage', { getItem: blocked, setItem: blocked, removeItem: blocked, clear: blocked });
+}
+
 const painted = () => document.documentElement.getAttribute('data-theme');
 
 beforeEach(() => {
@@ -50,7 +58,10 @@ beforeEach(() => {
   stubSystemTheme();
 });
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  __resetThemeMemory();
+});
 
 describe('useThemeSync', () => {
   it('with "Match system", repaints when the OS switches to dark and back', () => {
@@ -70,6 +81,15 @@ describe('useThemeSync', () => {
 
     osSwitchesTo(true);
     expect(painted()).toBe('light');
+  });
+
+  it('with storage blocked and "Dark" chosen, an OS switch leaves it dark', () => {
+    blockStorage();
+    applyThemeChoice('dark');
+    renderHook(() => useThemeSync());
+
+    osSwitchesTo(false);
+    expect(painted()).toBe('dark');
   });
 
   it('repaints dark when another tab stores "dark"', () => {

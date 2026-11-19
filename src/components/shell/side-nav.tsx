@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId } from "react";
+import { useId, useLayoutEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { GearSix, SidebarSimple, SignOut } from "@phosphor-icons/react";
@@ -38,6 +38,9 @@ import { ThreadRow } from "./thread-row";
 import { useSideNavCollapse } from "./use-side-nav-collapse";
 import type { ThreadActions } from "./use-thread-actions";
 
+/** An account menu row: the text role and colour, the button radius, the hover tint when highlighted. */
+const MENU_ITEM = "rounded-xl text-ui text-foreground focus:bg-hover";
+
 /** In the rail a control shows no text, so it gets a tooltip. */
 function Hint({ label, show, children }: { label: string; show: boolean; children: React.ReactElement }) {
   if (!show) return children;
@@ -73,8 +76,11 @@ export function SideNav({ actions }: { actions: ThreadActions }) {
 
   // Below 1100px the sidebar starts as the rail, unless the creator already chose. This is the
   // app's default, so it goes to the unpersisted autoRail, never to the saved choice. Set both
-  // ways: a mount on a wide window clears a default left from a narrow one.
-  useEffect(() => {
+  // ways: a mount on a wide window clears a default left from a narrow one. A layout effect, so
+  // it lands before the first paint: set after it, the sidebar and the content would be drawn at
+  // 248 and then slide to 56. Safe: the sidebar never renders on the server (it mounts inside
+  // AuthGuard, after the client session check).
+  useLayoutEffect(() => {
     let chosen = true;
     try {
       chosen = window.localStorage.getItem(SIDE_NAV_CHOICE_KEY) !== null;
@@ -142,8 +148,8 @@ export function SideNav({ actions }: { actions: ThreadActions }) {
           aria-label="New chat"
           aria-keyshortcuts="Meta+N"
           className={cn(
-            "mb-2.5 flex h-[42px] shrink-0 items-center gap-[9px] rounded-xl bg-surface text-ui font-[640] text-foreground shadow-[var(--shadow-press)]",
-            "transition-transform duration-150 active:scale-[0.98]",
+            "mb-2.5 flex h-[42px] shrink-0 items-center gap-[9px] rounded-xl bg-surface text-ui font-[640] text-foreground shadow-[var(--shadow-control)]",
+            "transition-transform duration-150 motion-safe:active:scale-[0.98]",
             SHELL_FOCUS,
             collapsed ? "w-[40px] justify-center" : "px-3",
           )}
@@ -237,13 +243,19 @@ export function SideNav({ actions }: { actions: ThreadActions }) {
               )}
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent side="top" align="start" className="min-w-[200px]">
-            <DropdownMenuItem onSelect={() => router.push("/settings")}>
+          {/* The shared primitive's panel names `bg-popover`, which this app does not define, and
+              sits at z-50, under the sidebar (--z-sidebar 250). Given its surface and layer here. */}
+          <DropdownMenuContent
+            side="top"
+            align="start"
+            className="z-[var(--z-modal)] min-w-[200px] rounded-2xl border-0 bg-surface p-1.5 text-foreground shadow-[var(--shadow-float)]"
+          >
+            <DropdownMenuItem className={MENU_ITEM} onSelect={() => router.push("/settings")}>
               <GearSix size={16} aria-hidden />
               Settings
             </DropdownMenuItem>
             {/* AuthGuard's auth listener owns the redirect to /login; do not navigate here too. */}
-            <DropdownMenuItem onSelect={() => { void supabase.auth.signOut(); }}>
+            <DropdownMenuItem className={MENU_ITEM} onSelect={() => { void supabase.auth.signOut(); }}>
               <SignOut size={16} aria-hidden />
               Log out
             </DropdownMenuItem>

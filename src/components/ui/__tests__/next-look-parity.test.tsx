@@ -4,6 +4,7 @@ import { render } from '@testing-library/react';
 import { badgeVariants } from '../badge';
 import { buttonVariants } from '../button';
 import { Card, CardContent, CardFooter, CardHeader } from '../card';
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from '../sheet';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Flag off, the base parts must look exactly as they did before the new look.
@@ -21,6 +22,7 @@ const BUTTON_VARIANTS = ['primary', 'secondary', 'ghost', 'destructive'] as cons
 const BUTTON_SIZES = ['sm', 'md', 'lg'] as const;
 const BADGE_VARIANTS = ['default', 'secondary', 'accent', 'success', 'warning', 'error', 'info'] as const;
 const BADGE_SIZES = ['sm', 'md'] as const;
+const SHEET_SIDES = ['top', 'right', 'bottom', 'left'] as const;
 
 describe('flag off: the base parts keep their legacy classes', () => {
   it.each(BUTTON_VARIANTS.flatMap((v) => BUTTON_SIZES.map((s) => [v, s] as const)))(
@@ -48,5 +50,25 @@ describe('flag off: the base parts keep their legacy classes', () => {
     const card = container.firstElementChild as HTMLElement;
     expect(card.getAttribute('style')).toMatchSnapshot();
     expect([card, ...Array.from(card.children)].map((el) => legacy(el.className))).toMatchSnapshot();
+  });
+
+  // Recorded after the restyle, which only appended `next:` classes to Sheet's strings, so the
+  // record is exactly the legacy strings.
+  it.each(SHEET_SIDES)('sheet %s keeps its overlay and panel classes, and has no handle', (side) => {
+    render(
+      <Sheet open>
+        <SheetContent side={side}>
+          <SheetTitle>t</SheetTitle>
+          <SheetDescription>d</SheetDescription>
+        </SheetContent>
+      </Sheet>,
+    );
+    const overlay = document.querySelector('[data-slot="sheet-overlay"]');
+    const content = document.querySelector('[data-slot="sheet-content"]');
+    expect(overlay).not.toBeNull();
+    expect(content).not.toBeNull();
+    expect(legacy(overlay!.className)).toMatchSnapshot();
+    expect(legacy(content!.className)).toMatchSnapshot();
+    expect(document.querySelector('[data-slot="sheet-handle"]')).toBeNull();
   });
 });

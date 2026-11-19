@@ -62,3 +62,19 @@ exports[`flag off: the base parts keep their legacy classes > card keeps its inl
   "flex items-center p-6 pt-0",
 ]
 `;
+
+exports[`flag off: the base parts keep their legacy classes > sheet bottom keeps its overlay and panel classes, and has no handle 1`] = `"bg-black/50 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 fixed inset-0 z-[var(--z-modal-backdrop)]"`;
+
+exports[`flag off: the base parts keep their legacy classes > sheet bottom keeps its overlay and panel classes, and has no handle 2`] = `"bg-background border-t bottom-0 data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=closed]:slide-out-to-bottom data-[state=open]:animate-in data-[state=open]:duration-500 data-[state=open]:slide-in-from-bottom ease-in-out fixed flex flex-col gap-4 h-auto inset-x-0 shadow-lg transition z-[var(--z-modal)]"`;
+
+exports[`flag off: the base parts keep their legacy classes > sheet left keeps its overlay and panel classes, and has no handle 1`] = `"bg-black/50 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 fixed inset-0 z-[var(--z-modal-backdrop)]"`;
+
+exports[`flag off: the base parts keep their legacy classes > sheet left keeps its overlay and panel classes, and has no handle 2`] = `"bg-background border-r data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=closed]:slide-out-to-left data-[state=open]:animate-in data-[state=open]:duration-500 data-[state=open]:slide-in-from-left ease-in-out fixed flex flex-col gap-4 h-full inset-y-0 left-0 shadow-lg sm:max-w-sm transition w-3/4 z-[var(--z-modal)]"`;
+
+exports[`flag off: the base parts keep their legacy classes > sheet right keeps its overlay and panel classes, and has no handle 1`] = `"bg-black/50 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 fixed inset-0 z-[var(--z-modal-backdrop)]"`;
+
+exports[`flag off: the base parts keep their legacy classes > sheet right keeps its overlay and panel classes, and has no handle 2`] = `"bg-background border-l data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=closed]:slide-out-to-right data-[state=open]:animate-in data-[state=open]:duration-500 data-[state=open]:slide-in-from-right ease-in-out fixed flex flex-col gap-4 h-full inset-y-0 right-0 shadow-lg sm:max-w-sm transition w-3/4 z-[var(--z-modal)]"`;
+
+exports[`flag off: the base parts keep their legacy classes > sheet top keeps its overlay and panel classes, and has no handle 1`] = `"bg-black/50 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 fixed inset-0 z-[var(--z-modal-backdrop)]"`;
+
+exports[`flag off: the base parts keep their legacy classes > sheet top keeps its overlay and panel classes, and has no handle 2`] = `"bg-background border-b data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=closed]:slide-out-to-top data-[state=open]:animate-in data-[state=open]:duration-500 data-[state=open]:slide-in-from-top ease-in-out fixed flex flex-col gap-4 h-auto inset-x-0 shadow-lg top-0 transition z-[var(--z-modal)]"`;

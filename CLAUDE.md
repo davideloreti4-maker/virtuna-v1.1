@@ -31,7 +31,9 @@ default, Inter only, ink buttons, glass only on floating chrome. Tokens and rule
 `docs/superpowers/specs/2026-11-18-foundation-look-and-shell-design.md`. While both looks exist:
 
 - Flag off must render exactly as before. Never change an existing `@theme` value.
-- New-look code lives in `src/components/shell/` and in `next:` variants on `src/components/ui`.
+- New-look code lives in `src/components/shell/`, in `src/lib/theme/`, in the two new-look-only
+  parts `src/components/ui/chip.tsx` and `icon-button.tsx`, and in `next:` variants on
+  `src/components/ui`.
 - In new-look code write `shadow-[var(--shadow-float)]`, never `shadow-float`: Tailwind copies a
   shadow token's value into its utility, so the utility ignores the scoped re-valuation.
 - Do not patch a legacy screen to look right inside the flag; each is replaced by its own part.

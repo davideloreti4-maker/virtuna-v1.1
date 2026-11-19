@@ -34,7 +34,8 @@ function Tab({ place, active }: { place: Place; active: boolean }) {
         // keeps it above the round button's extended touch target, so where the two meet on a
         // narrow screen the tab wins.
         "relative z-[1] flex h-16 w-[66px] min-w-0 flex-col items-center justify-center gap-[3px]",
-        "text-micro font-[560] transition-colors duration-150",
+        // A press scales the tab only (no fill change); the transition covers the scale.
+        "text-micro font-[560] transition-[color,scale] duration-150 motion-safe:active:scale-[0.98]",
         // The keyboard ring is drawn on an `::after` box 4px inside the tab, rounded, so it stays
         // inside the pill; the link's own outline is switched off. The `!` is needed: the app-wide
         // focus rule is unlayered CSS and beats a plain utility.
@@ -78,7 +79,7 @@ export function TabBar({ onNewChat }: { onNewChat: () => void }) {
           type="button"
           onClick={onNewChat}
           aria-label="New chat"
-          className="relative flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full bg-action text-action-foreground shadow-[var(--shadow-button)] transition-transform duration-150 active:scale-[0.98] before:absolute before:-inset-[7px] before:rounded-full before:content-['']"
+          className="relative flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full bg-action text-action-foreground shadow-[var(--shadow-button)] transition-transform duration-150 motion-safe:active:scale-[0.98] before:absolute before:-inset-[7px] before:rounded-full before:content-['']"
         >
           <PlusIcon size={22} aria-hidden />
         </button>

@@ -45,7 +45,7 @@ const buttonVariants = cva(
     "cursor-pointer",
     // Next look (spec §7): title weight, press = scale 0.98, disabled = 40% and no shadow.
     "next:font-[640] next:duration-150 next:transition-[color,background-color,box-shadow,scale]",
-    "next:active:scale-[0.98] next:disabled:opacity-40 next:disabled:shadow-none",
+    "next:motion-safe:active:scale-[0.98] next:disabled:opacity-40 next:disabled:shadow-none",
   ],
   {
     variants: {

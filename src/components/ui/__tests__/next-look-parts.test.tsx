@@ -33,6 +33,11 @@ describe('Chip', () => {
     expect(screen.getByRole('button', { name: 'Drafts' })).toHaveAttribute('type', 'button');
   });
 
+  it('grows its touch area to 44px without growing the drawn pill', () => {
+    render(<Chip surface="card">Shorter</Chip>);
+    expect(screen.getByRole('button', { name: 'Shorter' }).className).toContain('tap-44');
+  });
+
   it('when disabled, is disabled and drops to 40% with no shadow (spec state rule)', () => {
     render(<Chip disabled>Posted</Chip>);
     const chip = screen.getByRole('button', { name: 'Posted' });

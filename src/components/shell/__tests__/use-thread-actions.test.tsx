@@ -29,6 +29,15 @@ vi.mock('@/hooks/queries', () => ({
 import { useThreadActions } from '../use-thread-actions';
 
 const wrapper = ({ children }: { children: ReactNode }) => <ToastProvider>{children}</ToastProvider>;
+
+/** A request the test settles by hand, so it can act while the request is still out. */
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((r) => {
+    resolve = r;
+  });
+  return { promise, resolve };
+}
 const actions = () => renderHook(() => useThreadActions(), { wrapper }).result;
 
 beforeEach(() => {
@@ -84,6 +93,53 @@ describe('useThreadActions', () => {
     const result = actions();
 
     await act(() => result.current.deleteThread('t9', false));
+
+    expect(useBoardStore.getState().activeThreadId).toBe('t1');
+    expect(getActiveThreadCookie()).toBe('t1');
+  });
+
+  // Where the creator is decides at CLICK time, as in the legacy sidebar: the request can take a
+  // while, and a place switched to meanwhile must not change what the delete does.
+  it('deleting the open thread from /home clears the pointer, even if the creator leaves before the request returns', async () => {
+    const request = deferred();
+    archive.mockReturnValue(request.promise);
+    setActiveThreadCookie('t1');
+    useBoardStore.setState({ activeThreadId: 't1' });
+    const { result, rerender } = renderHook(() => useThreadActions(), { wrapper });
+
+    let done!: Promise<void>;
+    act(() => {
+      done = result.current.deleteThread('t1', true);
+    });
+    pathname = '/library';
+    rerender();
+    await act(async () => {
+      request.resolve();
+      await done;
+    });
+
+    expect(useBoardStore.getState().activeThreadId).toBeNull();
+    expect(getActiveThreadCookie()).toBeNull();
+  });
+
+  it('deleting the open thread while away from /home leaves the pointer, even if the creator arrives on /home before the request returns', async () => {
+    const request = deferred();
+    archive.mockReturnValue(request.promise);
+    pathname = '/library';
+    setActiveThreadCookie('t1');
+    useBoardStore.setState({ activeThreadId: 't1' });
+    const { result, rerender } = renderHook(() => useThreadActions(), { wrapper });
+
+    let done!: Promise<void>;
+    act(() => {
+      done = result.current.deleteThread('t1', true);
+    });
+    pathname = '/home';
+    rerender();
+    await act(async () => {
+      request.resolve();
+      await done;
+    });
 
     expect(useBoardStore.getState().activeThreadId).toBe('t1');
     expect(getActiveThreadCookie()).toBe('t1');

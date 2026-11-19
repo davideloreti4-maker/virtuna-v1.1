@@ -104,9 +104,10 @@ export const RECENT_LIMIT = 6;
 export const SIDE_NAV_CHOICE_KEY = "maven-sidenav-chosen";
 
 /**
- * The shell's one focus ring: the app-wide `:focus-visible` outline, drawn inside the control
- * so a scroll container cannot clip it. The `!` is needed: the app-wide rule is unlayered CSS
- * and beats a plain utility.
+ * The app-wide `:focus-visible` ring drawn inside the control instead of 2px outside it. Use it
+ * on a control that sits in a scroll or overflow container (the sidebar and its Recent list),
+ * where a ring outside would be clipped; elsewhere keep the default ring. The `!` is needed: the
+ * app-wide rule is unlayered CSS and beats a plain utility.
  */
 export const SHELL_FOCUS = "focus-visible:outline-offset-[-2px]!";
 
