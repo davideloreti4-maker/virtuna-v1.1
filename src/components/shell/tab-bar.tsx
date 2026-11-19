@@ -28,15 +28,19 @@ function Tab({ place, active }: { place: Place; active: boolean }) {
       href={place.href}
       aria-current={active ? "page" : undefined}
       className={cn(
-        // Each tab is 66 by 64 and the whole tab is its touch target, not only the icon, on
-        // every width: `relative z-[1]` keeps it above the round button's invisible hit-area
-        // extension, which reaches into Discover and Library below 385px wide. `min-w-0` lets it
-        // shrink on a very narrow screen instead of overflowing the pill.
+        // The tab's whole box is its touch target, not only the icon, on every width: 66 by 64
+        // at 350px and wider; below that `min-w-0` lets it shrink instead of overflowing the
+        // pill. The box stays SQUARE: rounded-off corners would take no taps. `relative z-[1]`
+        // keeps it above the round button's extended touch target, so where the two meet on a
+        // narrow screen the tab wins.
         "relative z-[1] flex h-16 w-[66px] min-w-0 flex-col items-center justify-center gap-[3px]",
         "text-micro font-[560] transition-colors duration-150",
-        // The keyboard ring is drawn inside the slot, rounded, so it stays inside the pill. The
-        // `!` is needed: the app-wide focus rule is unlayered CSS and beats a plain utility.
-        "rounded-2xl focus-visible:outline-offset-[-2px]!",
+        // The keyboard ring is drawn on an `::after` box 4px inside the tab, rounded, so it stays
+        // inside the pill; the link's own outline is switched off. The `!` is needed: the app-wide
+        // focus rule is unlayered CSS and beats a plain utility.
+        "focus-visible:outline-none!",
+        "after:pointer-events-none after:absolute after:inset-1 after:rounded-2xl after:content-['']",
+        "focus-visible:after:outline-2 focus-visible:after:outline-[color:var(--focus-ring)]",
         // No pill, no dot, no fill change: the current tab darkens its label only.
         active ? "text-foreground" : "text-foreground-secondary",
       )}
@@ -66,16 +70,15 @@ export function TabBar({ onNewChat }: { onNewChat: () => void }) {
         {PLACES.slice(0, 2).map((place) => (
           <Tab key={place.id} place={place} active={current === place.id} />
         ))}
-        {/* The round button is drawn at 50. Its `::before` box reaches 7px past the circle on
-            every side (50 + 2 × 7 = 64), so where there is room, as at 393px, the touch target is
-            64 by 64. Below 385px wide that box overlaps Discover and Library; there the tabs win
-            (a labelled tab never loses a tap to an invisible box) and the visible 50px circle
-            stays fully tappable. */}
+        {/* The round button is drawn at 50; its `::before` extends the touch target to a 64px
+            circle (50 + 2 × 7). The tabs sit above that extension, so where the two meet on a
+            narrow screen the tab wins (a labelled tab never loses a tap to an invisible area).
+            The visible 50px circle is always tappable. */}
         <button
           type="button"
           onClick={onNewChat}
           aria-label="New chat"
-          className="relative flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full bg-action text-action-foreground shadow-[var(--shadow-button)] transition-transform duration-150 active:scale-[0.98] before:absolute before:-inset-[7px] before:content-['']"
+          className="relative flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full bg-action text-action-foreground shadow-[var(--shadow-button)] transition-transform duration-150 active:scale-[0.98] before:absolute before:-inset-[7px] before:rounded-full before:content-['']"
         >
           <PlusIcon size={22} aria-hidden />
         </button>
