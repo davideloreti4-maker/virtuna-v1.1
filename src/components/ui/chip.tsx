@@ -24,8 +24,8 @@ export const Chip = React.forwardRef<HTMLButtonElement, ChipProps>(
       className={cn(
         "inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full",
         "text-reading font-[560] leading-none text-foreground",
-        "duration-150 transition-[color,background-color,box-shadow,transform] active:scale-[0.98]",
-        "disabled:pointer-events-none disabled:opacity-40",
+        "duration-150 transition-[color,background-color,box-shadow,scale] active:scale-[0.98]",
+        "disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none",
         surface === "card" ? "h-8 px-3" : "h-9 px-3.5",
         selected
           ? "bg-action text-action-foreground"

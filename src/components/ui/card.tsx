@@ -56,7 +56,7 @@ const LEGACY_CARD_STYLE = {
  * </Card>
  * ```
  */
-const Card =React.forwardRef<HTMLDivElement, CardProps>(
+const Card = React.forwardRef<HTMLDivElement, CardProps>(
   ({ className, style, ...props }, ref) => (
     <div
       ref={ref}

@@ -32,6 +32,14 @@ describe('Chip', () => {
     render(<Chip>Drafts</Chip>);
     expect(screen.getByRole('button', { name: 'Drafts' })).toHaveAttribute('type', 'button');
   });
+
+  it('when disabled, is disabled and drops to 40% with no shadow (spec state rule)', () => {
+    render(<Chip disabled>Posted</Chip>);
+    const chip = screen.getByRole('button', { name: 'Posted' });
+    expect(chip).toBeDisabled();
+    expect(chip.classList).toContain('disabled:opacity-40');
+    expect(chip.classList).toContain('disabled:shadow-none');
+  });
 });
 
 describe('IconButton', () => {
@@ -49,6 +57,14 @@ describe('IconButton', () => {
   it('grows its touch area to 44px without growing the drawn circle', () => {
     render(<IconButton aria-label="Save"><svg aria-hidden /></IconButton>);
     expect(screen.getByRole('button', { name: 'Save' }).className).toContain('tap-44');
+  });
+
+  it('when disabled, is disabled and drops to 40% with no shadow (spec state rule)', () => {
+    render(<IconButton aria-label="Share" disabled><svg aria-hidden /></IconButton>);
+    const button = screen.getByRole('button', { name: 'Share' });
+    expect(button).toBeDisabled();
+    expect(button.classList).toContain('disabled:opacity-40');
+    expect(button.classList).toContain('disabled:shadow-none');
   });
 });
 

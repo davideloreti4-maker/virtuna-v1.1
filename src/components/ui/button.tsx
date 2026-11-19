@@ -11,11 +11,11 @@ import { cn } from "@/lib/utils";
  * Button variant styles using class-variance-authority (CVA).
  *
  * Uses semantic design tokens from globals.css for consistent theming.
- * Default variant is `secondary` following Raycast's pattern of sparse accent usage.
+ * Default variant is `secondary`. No variant uses the accent colour.
  *
  * @example
  * ```tsx
- * // Primary CTA (coral accent) - use sparingly
+ * // Primary - the neutral action fill, for the one main action of a card or screen
  * <Button variant="primary">Get Started</Button>
  *
  * // Secondary (default) - most common usage
@@ -27,6 +27,9 @@ import { cn } from "@/lib/utils";
  *
  * // Destructive - for dangerous actions
  * <Button variant="destructive">Delete Account</Button>
+ *
+ * // Quiet - text only, for links like "See all"
+ * <Button variant="quiet">See all</Button>
  * ```
  */
 const buttonVariants = cva(
@@ -41,7 +44,7 @@ const buttonVariants = cva(
     // Ensure cursor pointer for interactive element
     "cursor-pointer",
     // Next look (spec §7): title weight, press = scale 0.98, disabled = 40% and no shadow.
-    "next:font-[640] next:duration-150 next:transition-[color,background-color,box-shadow,transform]",
+    "next:font-[640] next:duration-150 next:transition-[color,background-color,box-shadow,scale]",
     "next:active:scale-[0.98] next:disabled:opacity-40 next:disabled:shadow-none",
   ],
   {
@@ -114,11 +117,11 @@ export interface ButtonProps
 }
 
 /**
- * Button component with Raycast-style design system integration.
+ * Button component built on the semantic design tokens.
  *
  * Features:
- * - 4 variants: primary (coral), secondary (default), ghost, destructive
- * - 3 sizes: sm (36px), md (44px), lg (48px) - all meet touch target requirements
+ * - 5 variants: primary (the neutral action fill), secondary (default), ghost, destructive, quiet
+ * - 4 sizes: sm (36px), md (44px), lg (48px; 50px under the new look), xl (56px) - md and up meet the 44px touch target
  * - Loading state with spinner and disabled interaction
  * - Full accessibility support (aria-busy, aria-disabled, focus-visible ring)
  * - Composition support via asChild prop (Radix Slot)
