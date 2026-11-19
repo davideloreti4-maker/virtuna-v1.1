@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { lookTokens } from './next-look-css';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Design-token drift guard.
@@ -106,5 +107,51 @@ describe('design tokens: globals.css is the only source of truth', () => {
     // #FF7F50 = retired Raycast coral. #d97757 = retired terracotta.
     expect(accent).not.toContain('#ff7f50');
     expect(accent).not.toContain('#d97757');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Next look (behind NEXT_PUBLIC_NEW_LOOK). Same contract as above, for the scoped
+// blocks: every row of the "Next look" tables must carry the value globals.css
+// declares, light and dark. The rows above keep reading the FIRST declaration of a
+// token (the legacy @theme value), so the two looks are guarded side by side.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const NEXT_DOCUMENTED = [
+  '--color-background', '--color-surface', '--color-surface-elevated', '--color-surface-sunken',
+  '--color-border', '--color-border-hover',
+  '--color-foreground', '--color-foreground-secondary', '--color-foreground-muted',
+  '--color-action', '--color-action-foreground', '--color-hover', '--color-active',
+  '--color-track', '--color-above', '--color-above-soft',
+  '--color-below', '--color-below-text', '--color-below-soft',
+  '--color-glass', '--color-scrim',
+  '--shadow-rest', '--shadow-lift', '--shadow-press', '--shadow-float', '--shadow-button', '--shadow-sheet',
+] as const;
+
+const normalise = (v: string) => v.replace(/`/g, '').toLowerCase().replace(/\s+/g, ' ').trim();
+
+/** The text of the "## Next look" section of the docs, up to the next "## " heading. */
+function nextLookSection(): string {
+  const start = DOC.indexOf('\n## Next look');
+  if (start === -1) return '';
+  const rest = DOC.slice(start + 1);
+  const end = rest.indexOf('\n## ', 1);
+  return end === -1 ? rest : rest.slice(0, end);
+}
+
+/** The cells of the row documenting `token`: | Token | Role or Use | Light | Dark | */
+function nextLookRow(token: string): string[] | undefined {
+  const line = nextLookSection()
+    .split('\n')
+    .find((l) => l.trimStart().startsWith('|') && l.includes(`\`${token}\``));
+  return line?.split('|').slice(1, -1).map(normalise);
+}
+
+describe('next look: the docs tables match the scoped blocks in globals.css', () => {
+  it.each(NEXT_DOCUMENTED)('%s — light and dark', (token) => {
+    const cells = nextLookRow(token);
+    expect(cells, `no row in the "Next look" section of docs/DESIGN-SYSTEM.md documents ${token}`).toBeDefined();
+    expect(cells![2], `${token}, light`).toBe(normalise(lookTokens('light').get(token) ?? ''));
+    expect(cells![3], `${token}, dark`).toBe(normalise(lookTokens('dark').get(token) ?? ''));
   });
 });

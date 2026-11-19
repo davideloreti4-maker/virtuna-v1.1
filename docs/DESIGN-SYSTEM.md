@@ -229,3 +229,89 @@ the marketing scroll-reveal layer is `docs/motion-guidelines.md`.
 `CLAUDE.md` branding line + "Raycast Design Language Rules" section are wrong and should be
 replaced with a pointer here. `BRAND-BIBLE.md` + `docs/tokens.md` etc. should be regenerated
 from `globals.css` or deleted. Tracked, not yet done.
+
+## Next look (behind `NEXT_PUBLIC_NEW_LOOK`)
+
+Owner ruling 2026-11-18: this look replaces the flat-warm charcoal system above; light is the
+default. Until cut-over both exist. With the flag on, the root layout renders
+`<html data-look="next" data-theme="light|dark">` and the scoped blocks in `globals.css`
+(`:root[data-look="next"]` and `…[data-theme="dark"]`) re-value the semantic tokens. Spec:
+`docs/superpowers/specs/2026-11-18-foundation-look-and-shell-design.md`.
+
+Guards: `design-token-drift.test.ts` (every row below, both themes) and
+`next-look-contrast.test.ts` (contrast computed from the CSS, cycles, completeness).
+
+### Next look: colour
+
+| Token | Role | Light | Dark |
+|---|---|---|---|
+| `--color-background` | ground | `#f4f3f0` | `#08080a` |
+| `--color-surface` | card | `#ffffff` | `#131315` |
+| `--color-surface-elevated` | raised control on a card, tooltip | `#efeeea` | `#232326` |
+| `--color-surface-sunken` | tint fill: secondary button, chip, search field | `rgba(18, 18, 17, 0.06)` | `rgba(255, 255, 255, 0.07)` |
+| `--color-border` | hairline | `rgba(17, 17, 16, 0.06)` | `rgba(255, 255, 255, 0.075)` |
+| `--color-border-hover` | hairline, hovered | `rgba(17, 17, 16, 0.12)` | `rgba(255, 255, 255, 0.14)` |
+| `--color-foreground` | text, icons | `#121211` | `#f7f6f3` |
+| `--color-foreground-secondary` | secondary text | `rgba(18, 18, 17, 0.6)` | `rgba(247, 246, 243, 0.62)` |
+| `--color-foreground-muted` | placeholder, unit, disabled | `rgba(18, 18, 17, 0.46)` | `rgba(247, 246, 243, 0.38)` |
+| `--color-action` | primary button | `#121211` | `#f7f6f3` |
+| `--color-action-foreground` | text on the primary button | `#ffffff` | `#0b0b0c` |
+| `--color-hover` | overlay tint on hover | `rgba(18, 18, 17, 0.04)` | `rgba(255, 255, 255, 0.05)` |
+| `--color-active` | overlay tint, pressed or selected | `rgba(18, 18, 17, 0.08)` | `rgba(255, 255, 255, 0.1)` |
+| `--color-track` | empty part of a gauge or progress line | `rgba(18, 18, 17, 0.07)` | `rgba(255, 255, 255, 0.09)` |
+| `--color-above` | 6+ above usual, graphic and text | `#17783b` | `#62d892` |
+| `--color-above-soft` | its pill background | `#e3f3e8` | `rgba(98, 216, 146, 0.14)` |
+| `--color-below` | 6+ below usual, graphic | `#ec4a35` | `#ff5f4c` |
+| `--color-below-text` | 6+ below usual, text | `#c5371f` | `#ff8778` |
+| `--color-below-soft` | its pill background | `#fde9e4` | `rgba(255, 98, 80, 0.16)` |
+| `--color-glass` | floating chrome fill | `rgba(255, 255, 255, 0.78)` | `rgba(30, 30, 33, 0.78)` |
+| `--color-scrim` | behind a sheet | `rgba(0, 0, 0, 0.42)` | `rgba(0, 0, 0, 0.6)` |
+
+`--color-accent` stays `#FF6363` and is the brand mark only. `--color-success` aliases
+`--color-above`; `--color-error` aliases `--color-below-text`.
+
+Rules: one meaning per colour (green and coral only say "against your usual"; ink is action).
+`--color-foreground-muted` never carries information on its own. `--color-below` is for arcs,
+dots and curves; text uses `--color-below-text`. Buttons are ink (light) or white (dark), never
+coral.
+
+### Next look: elevation
+
+| Token | Use | Light | Dark |
+|---|---|---|---|
+| `--shadow-rest` | card | `0 0 0 1px var(--color-border), 0 1px 1px rgba(0, 0, 0, 0.03), 0 10px 26px -12px rgba(0, 0, 0, 0.1), 0 34px 60px -34px rgba(0, 0, 0, 0.14)` | `0 0 0 1px var(--color-border), inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 24px 50px -24px rgba(0, 0, 0, 0.9)` |
+| `--shadow-lift` | card hovered (desktop) | `0 0 0 1px var(--color-border-hover), 0 14px 30px -12px rgba(0, 0, 0, 0.16), 0 40px 70px -34px rgba(0, 0, 0, 0.18)` | `0 0 0 1px var(--color-border-hover), inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 24px 50px -24px rgba(0, 0, 0, 0.9)` |
+| `--shadow-press` | pressed, resting control on the ground | `0 0 0 1px var(--color-border), 0 1px 2px rgba(0, 0, 0, 0.06)` | `0 0 0 1px var(--color-border)` |
+| `--shadow-float` | tab bar, message field, popover | `0 0 0 1px var(--color-border), 0 14px 34px -12px rgba(0, 0, 0, 0.3)` | `0 0 0 1px var(--color-border), 0 14px 34px -12px rgba(0, 0, 0, 0.7)` |
+| `--shadow-button` | primary button | `inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 10px 20px -10px rgba(0, 0, 0, 0.45)` | `0 0 0 0 transparent` |
+| `--shadow-sheet` | sheet | `0 -20px 50px rgba(0, 0, 0, 0.3)` | `0 -20px 50px rgba(0, 0, 0, 0.6)` |
+
+Consume these as `shadow-[var(--shadow-float)]`. The utilities `shadow-float`, `shadow-button`
+and `shadow-rest` carry the legacy value: Tailwind copies a shadow token into its utility at
+build time. Glass = `bg-glass` plus `backdrop-filter: blur(24px) saturate(1.6)` as an inline
+style, only where chrome floats over content (tab bar, message field, controls on a video).
+
+### Next look: type, radius, parts
+
+Inter only. Four weights: `font-[430]` text, `font-[560]` label, `font-[640]` title, `font-bold`
+numbers and screen titles. Every number is tabular.
+
+| Role | Utility | Size / line |
+|---|---|---|
+| Screen title | `text-3xl font-bold leading-[35px] tracking-[-0.035em]` | 30 / 35 |
+| Verdict line | `text-heading font-[640]` | 22 / 26 |
+| Title | `text-title font-[640]` | 16 / 22 |
+| Text | `text-ui` | 15 / 21 |
+| Meta | `text-meta` | 13 / 18 |
+| Small label | `text-label font-[560]` | 12 / 18 |
+| Tab label | `text-micro font-[560]` | 10 / 14 |
+| Figure | `text-figure font-bold` | 62 / 58 |
+| Large figure | `text-figure-lg font-bold` | 76 / 72 |
+
+Radius: thumbnail `rounded-lg` 12 · button `rounded-xl` 16 · tile `rounded-2xl` 20 · card
+`rounded-3xl` 24 · tab bar, sheet top, message field `rounded-4xl` 32 · chip, tag, icon button
+`rounded-full`.
+
+Parts (`src/components/ui`): `Card` and `Tile`, `Button` (`primary`, `secondary`, `quiet`; `lg`
+is 50 tall, `xl` is 56), `IconButton`, `Chip`, `Badge` (the tag), `Sheet`. Shell
+(`src/components/shell`): `TabBar`, `SideNav`, `PlaceHeader`, `PushedHeader`, `NextShell`.
