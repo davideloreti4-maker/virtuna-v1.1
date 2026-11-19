@@ -60,6 +60,8 @@ The owner added one instruction mid-run: **always check the visual alignment of 
 - Task 3: the press eases on the CSS `scale` property (Tailwind v4's `scale-*` does not write `transform`); disabled Chip and IconButton drop their shadow; IconButton sizes its icon to 18.
 - Task 5: the tab bar is laid out exactly as the reference (items 66 / 66 / 50 / 66 / 66, space-around, 21px label line); the round button's touch target is 64 through a hit-area extension; icons are the reference's own (departure 13).
 - Task 6: desktop place order, the compose glyph on New chat, "Recent" in the muted tone and 2px between thread rows follow the reference (departure 14 and the table in Task 6).
+- Task 7: the pushed header follows the reference's Account and thread screens: white round Back button with the reference's chevron, and a round new-chat button on the right of every pushed screen (the first draft had a plain Back only).
+- Owner question mid-run (2026-11-19): where do new pages such as Earn go once the phone bar is full? The reference already answers it: the avatar on Home opens Account, and Account lists Earn, the connected accounts and Appearance; Earn is a pushed page. The bar stays at four places plus new chat. Nothing in this part changes for it; the avatar and the Account page belong to parts 3 and 6. His ruling on a Stanley-style referral block on the Earn page is open.
 
 Known and accepted inside the flag until later parts: on phone Home the legacy message field sits above the tab bar (Home is part 3); legacy thread cards use the tint fill; Settings is reached from the desktop account menu or by URL.
 
@@ -3528,6 +3530,7 @@ git -c core.hooksPath=/dev/null commit -m "feat(next-look): desktop sidebar — 
 - Create: `src/components/app/__tests__/app-shell.legacy.test.tsx`
 - Create: `src/components/app/__tests__/app-shell.next.test.tsx`
 - Modify: `src/components/app/app-shell.tsx` (whole file, shown below)
+- Modify: `src/components/shell/icons.tsx` and `src/components/shell/__tests__/icons.test.tsx` (add `BackIcon`)
 
 **Interfaces:**
 - Consumes: everything from Tasks 2 to 6.
@@ -3545,7 +3548,7 @@ Create `src/components/shell/__tests__/next-shell.test.tsx`:
 ```tsx
 /** @vitest-environment happy-dom */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { ToastProvider } from '@/components/ui/toast';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useBoardStore } from '@/stores/board-store';
@@ -3645,6 +3648,16 @@ describe('NextShell — what frames a screen', () => {
     renderShell();
     expect(tabBar()).toBeNull();
     fireEvent.click(back()!);
+    expect(router.push).toHaveBeenCalledWith('/home');
+  });
+
+  it('a pushed screen keeps a new chat one tap away, in its header', () => {
+    pathname = '/settings';
+    useBoardStore.setState({ activeThreadId: 't1' });
+    renderShell();
+    const header = back()!.closest('header')!;
+    fireEvent.click(within(header).getByRole('button', { name: 'New chat' }));
+    expect(useBoardStore.getState().activeThreadId).toBeNull();
     expect(router.push).toHaveBeenCalledWith('/home');
   });
 });
@@ -3785,6 +3798,21 @@ Expected: `next-shell` FAILS (cannot resolve `../next-shell`). `app-shell.legacy
 
 - [ ] **Step 4: Write the two headers**
 
+The pushed header follows the reference, measured on the mock's Account and thread screens at 393 wide: a 40px row with 16px side padding; Back is a white round button, 38 × 38, at the left edge, with the reference's chevron (18px); the title is centred, 16 / 640, one line; the trailing control is the same round button with the compose glyph, at the right edge.
+
+First add the chevron to the shell's glyphs. In `src/components/shell/icons.tsx` add:
+
+```tsx
+/** Back, on a pushed screen: the reference's chevron. */
+export const BackIcon: ShellIcon = (props) => (
+  <Glyph {...props}>
+    <path d="m14.5 6-6 6 6 6" />
+  </Glyph>
+);
+```
+
+and add `BackIcon` to the list of glyphs that `src/components/shell/__tests__/icons.test.tsx` runs over (run that file: it passes with one more case).
+
 Create `src/components/shell/place-header.tsx`:
 
 ```tsx
@@ -3807,13 +3835,16 @@ Create `src/components/shell/pushed-header.tsx`:
 ```tsx
 "use client";
 
-import { CaretLeft } from "@phosphor-icons/react";
 import { IconButton } from "@/components/ui/icon-button";
+import { BackIcon } from "./icons";
 
 /**
  * Pushed header (new look, spec §6.1): 40 tall. Back on the left, the title centred on one
  * line (it truncates), one trailing action on the right. Used by every screen that is pushed
  * on top of a place: a thread, a result, a video, settings.
+ *
+ * As in the reference: both controls are white round buttons (38px, hairline and a soft
+ * shadow) with an 18px glyph; the title is 16 / 640.
  *
  * `titleAs="div"` where the screen below already has its own <h1> (the thread has one).
  */
@@ -3830,8 +3861,8 @@ export function PushedHeader({
 }) {
   return (
     <header className="grid h-10 grid-cols-[40px_minmax(0,1fr)_40px] items-center">
-      <IconButton aria-label="Back" surface="quiet" onClick={onBack}>
-        <CaretLeft size={18} weight="bold" aria-hidden />
+      <IconButton aria-label="Back" onClick={onBack}>
+        <BackIcon aria-hidden />
       </IconButton>
       <Title className="truncate text-center text-title font-[640] text-foreground">{title}</Title>
       <div className="flex justify-end">{trailing}</div>
@@ -3986,6 +4017,8 @@ import { cn } from "@/lib/utils";
 import { useBoardStore } from "@/stores/board-store";
 import { useShellStore } from "@/stores/shell-store";
 import { useSidebarStore } from "@/stores/sidebar-store";
+import { IconButton } from "@/components/ui/icon-button";
+import { ComposeIcon } from "./icons";
 import { SIDE_NAV_RAIL, SIDE_NAV_WIDTH, backTarget, tabBarVisible } from "./nav-config";
 import { PushedHeader } from "./pushed-header";
 import { SideNav } from "./side-nav";
@@ -4034,12 +4067,18 @@ export function NextShell({ children }: { children: React.ReactNode }) {
         <SideNav actions={actions} />
 
         {!showBar && (
-          <div className="fixed inset-x-0 top-0 z-[var(--z-sidebar)] bg-background px-2 pb-[3px] pt-[calc(env(safe-area-inset-top)+3px)] md:hidden">
+          <div className="fixed inset-x-0 top-0 z-[var(--z-sidebar)] bg-background px-4 pb-[3px] pt-[calc(env(safe-area-inset-top)+3px)] md:hidden">
             <PushedHeader
               // A thread's title names the screen; other screens carry their own heading.
               title={inThread ? threadTitle : ""}
               titleAs="div"
               onBack={inThread ? actions.newThread : () => router.push(backTarget(pathname))}
+              // As in the reference: a new chat is one tap away on every pushed screen.
+              trailing={
+                <IconButton aria-label="New chat" onClick={actions.newThread}>
+                  <ComposeIcon aria-hidden />
+                </IconButton>
+              }
             />
           </div>
         )}
