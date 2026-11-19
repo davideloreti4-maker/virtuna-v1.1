@@ -18,6 +18,7 @@ import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { HomeGreeting } from "./home-greeting";
 import { AMBIENT_V2_ENABLED } from "@/lib/flags/ambient-v2";
 import { CONCEPT_V8_ENABLED } from "@/lib/flags/concept-v8";
+import { useShellStore } from "@/stores/shell-store";
 import { Composer } from "./composer";
 
 /**
@@ -95,6 +96,12 @@ export function HomePageLayout() {
   // 760px internally) so the conversation scrolls page-wide like a real chat.
   // Empty home stays a centered 760px column (greeting above, composer pinned below).
   const threadMode = hasThread || rehydrating || engaged;
+  // The new app shell hides the phone tab bar while a thread is open. It cannot see this
+  // component's state, so the fact is published. Nothing reads it while NEXT_PUBLIC_NEW_LOOK is off.
+  useEffect(() => {
+    useShellStore.getState().setThreadOpen(threadMode);
+    return () => useShellStore.getState().setThreadOpen(false);
+  }, [threadMode]);
   // True on the fresh empty home (no thread, nothing streamed). Drives the
   // greeting + the vertical-centering of the greeting→actions→composer group.
   const emptyHome = !hasConversation && !rehydrating;

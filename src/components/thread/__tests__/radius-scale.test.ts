@@ -34,7 +34,7 @@ import { join } from 'node:path';
 const COMPONENTS = join(__dirname, '..', '..'); // …/src/components
 
 /** The guarded surfaces, relative to src/components. */
-const GUARDED_DIRS = ['thread', 'reading'] as const;
+const GUARDED_DIRS = ['thread', 'reading', 'shell'] as const;
 
 /** The token utilities (globals.css --radius-xs … --radius-3xl). Pixel literals are banned outright. */
 
