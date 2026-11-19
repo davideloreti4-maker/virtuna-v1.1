@@ -1346,6 +1346,18 @@ select:focus-visible,
 }
 
 /* ─────────────────────────────────────────────────────────────────────────────
+   .tabbar-fade — the ground under the phone tab bar (new look, spec §6.1).
+
+   A 120px band at the bottom of the screen that fades from the page colour to nothing, so
+   rows leave the screen under the floating bar instead of colliding with it. A MASK on a
+   `bg-background` element, for the reason `.composer-veil` gives: the page colour is stated
+   once, as the token, and follows the theme. */
+.tabbar-fade {
+  -webkit-mask-image: linear-gradient(to top, black 0, black 24px, transparent 100%);
+  mask-image: linear-gradient(to top, black 0, black 24px, transparent 100%);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
    .nav-scrim — the mobile top band behind the sidebar opener (F-18).
 
    The burger is `position: fixed` and opaque, and since 2026-07-31 the thread scrolls
