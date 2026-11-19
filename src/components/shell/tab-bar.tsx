@@ -28,16 +28,17 @@ function Tab({ place, active }: { place: Place; active: boolean }) {
       href={place.href}
       aria-current={active ? "page" : undefined}
       className={cn(
-        // Every slot, the new-chat one included, is at least 64 by 64: the touch target is the
-        // slot, not the icon.
-        "flex h-16 min-w-16 flex-1 flex-col items-center justify-center gap-[3px]",
+        // Each tab is 66 by 64: the touch target is the tab, not the icon. `min-w-0` lets it
+        // shrink on a very narrow screen instead of overflowing the pill.
+        "flex h-16 w-[66px] min-w-0 flex-col items-center justify-center gap-[3px]",
         "text-micro font-[560] transition-colors duration-150",
         // No pill, no dot, no fill change: the active tab is only darker.
         active ? "text-foreground" : "text-foreground-secondary",
       )}
     >
       <Glyph size={23} aria-hidden />
-      <span>{place.label}</span>
+      {/* A 21px line: icon 23 + gap 3 + line 21 = 47, centred in the 64px bar. */}
+      <span className="leading-[21px]">{place.label}</span>
     </Link>
   );
 }
@@ -54,25 +55,20 @@ export function TabBar({ onNewChat }: { onNewChat: () => void }) {
       <nav
         aria-label="Places"
         style={FLOATING}
-        className="fixed inset-x-3 z-[var(--z-sidebar)] flex h-16 items-center rounded-4xl bg-glass px-1.5 shadow-[var(--shadow-float)] md:hidden"
+        className="fixed inset-x-3 z-[var(--z-sidebar)] flex h-16 items-center justify-around rounded-4xl bg-glass px-1.5 shadow-[var(--shadow-float)] md:hidden"
       >
         {PLACES.slice(0, 2).map((place) => (
           <Tab key={place.id} place={place} active={current === place.id} />
         ))}
-        {/* The button is the whole 64px slot, so a tap on the ring around the circle still
-            starts a chat. `rounded-full` makes the app-wide focus ring a pill, not a box. */}
+        {/* The round button is drawn at 50; its touch target is 64 by 64 through the `::before`
+            box, which reaches 7px past the circle on every side (50 + 2 × 7). */}
         <button
           type="button"
           onClick={onNewChat}
           aria-label="New chat"
-          className="group flex h-16 min-w-16 flex-1 items-center justify-center rounded-full"
+          className="relative flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full bg-action text-action-foreground shadow-[var(--shadow-button)] transition-transform duration-150 active:scale-[0.98] before:absolute before:-inset-[7px] before:content-['']"
         >
-          <span
-            aria-hidden
-            className="flex h-[50px] w-[50px] items-center justify-center rounded-full bg-action text-action-foreground shadow-[var(--shadow-button)] transition-transform duration-150 group-active:scale-[0.98]"
-          >
-            <Plus size={22} weight="bold" aria-hidden />
-          </span>
+          <Plus size={22} weight="bold" aria-hidden />
         </button>
         {PLACES.slice(2).map((place) => (
           <Tab key={place.id} place={place} active={current === place.id} />

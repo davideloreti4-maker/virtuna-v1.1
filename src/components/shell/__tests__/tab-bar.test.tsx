@@ -47,11 +47,12 @@ describe('TabBar', () => {
     expect(onNewChat).toHaveBeenCalledTimes(1);
   });
 
-  it('the new-chat button is the whole slot, not only the circle', () => {
+  it('the new-chat button sits straight in the bar, its touch target 64 through its hit-area extension', () => {
     const onNewChat = vi.fn();
     render(<TabBar onNewChat={onNewChat} />);
     const button = within(bar()).getByRole('button', { name: 'New chat' });
-    // A direct child of the bar: nothing un-clickable wraps it, so the slot is the touch target.
+    // A direct child of the bar: nothing un-clickable wraps it, so its own `::before`, 7px
+    // past the 50px circle on every side, is the 64px touch target.
     expect(button.parentElement).toBe(bar());
     fireEvent.click(button);
     expect(onNewChat).toHaveBeenCalledTimes(1);
