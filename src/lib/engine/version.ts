@@ -184,5 +184,16 @@
  * without a code change still moves the version.
  *
  * D-23 cache invariant holds either way: prediction-cache.ts keys on this string.
+ *
+ * 3.23.0 → 3.25.0, and the rollback value 3.22.0 → 3.24.0 (2026-11-19, the fold's request): the fold
+ * asked for "one entry per archetype" while listing ten persona SLOTS, and only three of the eight
+ * content types have one slot per archetype. On qwen3.7-flash that dropped or swapped viewers:
+ * nine entries failed `.length(10)` twice and the audience was dropped ("expert read only"); ten
+ * entries with the wrong set were accepted and the stranger weighted as "fyp". Measured on five
+ * clips through the real pipeline: 3 of 10 runs had an audience before, 6 of 6 after. The request
+ * now names the ten persona ids in order and restates the reaction count last, and runFold keeps
+ * only the viewers that were asked for (alignFoldToSlots). The audience of every talking_head,
+ * b_roll, action, tutorial and vlog video changes, so both branches of the flag move: a rolled-back
+ * engine runs the new fold too and must not write under the old unified-era number.
  */
-export const ENGINE_VERSION = process.env.ENGINE_AUDIO_SPLIT === "false" ? "3.22.0" : "3.23.0";
+export const ENGINE_VERSION = process.env.ENGINE_AUDIO_SPLIT === "false" ? "3.24.0" : "3.25.0";

@@ -32,9 +32,9 @@ import type { SegmentGrid, EmotionArcPoint } from "../types";
 // All volatile data (verbatim, segments, emotion arc) goes in the USER message.
 // =====================================================
 
-export const STABLE_FOLD_SYSTEM_PROMPT = `You are simulating TEN TikTok viewer archetypes watching a video.
+export const STABLE_FOLD_SYSTEM_PROMPT = `You are simulating TEN TikTok viewers watching a video. Each viewer is one PERSONA SLOT listed in the user message; every slot is one of the archetypes defined below. An archetype can fill two slots or none.
 
-Your task: for each of the 10 archetypes defined below, produce BOTH:
+Your task: for each of the 10 persona slots in the user message, produce BOTH:
 1. Pass-1 behavioral intents (watch_through_pct, share_intent, comment_intent, save_intent, rewatch_intent, scroll_past_second)
 2. Pass-2 segment reactions (attention timeline with per-segment attention [0,1], swipe_predicted)
 
@@ -121,7 +121,7 @@ Return ONLY a JSON object matching this EXACT shape and types. This is a worked 
         { "attention": 0.95, "swipe_predicted": false }
       ]
     }
-    // ... exactly 10 entries total, one per archetype above ...
+    // ... exactly 10 entries total, one per persona slot, in the order the slots are listed ...
   ]
 }
 
@@ -133,7 +133,7 @@ TYPE RULES (STRICT — a wrong type breaks parsing and discards the whole result
 - attention: number between 0.0 and 1.0 — no exceptions
 - swipe_predicted: boolean true/false (not "true"); becomes true at the scroll-away moment and
   stays true for all subsequent segments
-- EXACTLY 10 persona entries — one per archetype listed above
+- EXACTLY 10 persona entries — ONE PER PERSONA SLOT in the user message, IN THE SAME ORDER, each with that slot's exact persona_id and archetype. Two slots with the same archetype are two separate viewers: each gets its own entry. Never add an archetype that has no slot.
 - EXACTLY N segment_reactions per persona, ONE PER INPUT SEGMENT, IN THE SAME ORDER as the
   segment grid (index i = segment i). Do NOT include timestamps — timing comes from the input grid.
 - Output strict JSON only — no markdown, no code fences, no explanatory text`;
@@ -244,6 +244,17 @@ function buildFoldTextBlock(
 
   lines.push(
     `Return a JSON object with EXACTLY 10 personas and EXACTLY ${segments.length} segment_reactions per persona.`,
+  );
+  // The ten viewers BY ID, in order (2026-11-19). The slot list above is one-per-archetype for only
+  // three of eight content types; without this list qwen3.7-flash answered "one per archetype":
+  // it dropped duplicates, invented unlisted archetypes, and returned nine entries on long grids.
+  lines.push(`The "personas" array MUST contain these persona_id values, in this order, one entry each:`);
+  slots.forEach((slot, i) => lines.push(`${i + 1}. ${slot.persona_id}`));
+  // The per-entry reaction count, LAST (2026-11-19). On a two-minute clip (70k video tokens) flash
+  // copied the worked example's 2-item arrays and returned 2 reactions per viewer; with this as the
+  // final line it returned the full count (0 of 3 before, 6 of 7 after on that request).
+  lines.push(
+    `Every entry's "segment_reactions" array MUST have exactly ${segments.length} items: one for each segment idx 0 to ${segments.length - 1} of the Segment Grid, in order. The 2-item arrays in the instructions are only an example of the shape.`,
   );
 
   return lines.join("\n");

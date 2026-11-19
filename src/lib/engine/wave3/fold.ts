@@ -271,6 +271,50 @@ export function adaptFoldToPass2Results(
 }
 
 // =====================================================
+// Slot alignment — the answer is only as good as its match to the viewers that were ASKED for.
+// =====================================================
+
+/**
+ * Match the model's entries to the requested persona slots (2026-11-19).
+ *
+ * The count check alone let a wrong audience through: for content types whose slots are not
+ * one-per-archetype (talking_head, b_roll, action, tutorial, vlog) qwen3.7-flash returned ten
+ * entries "one per archetype" — an unlisted viewer in, a listed one out — and the adapters weighted
+ * the stranger as "fyp". Exact persona_id wins; an entry with a misspelled id is matched to a still
+ * free slot of its archetype and gets that slot's id back. Entries nobody asked for are reported and
+ * dropped; asked slots without an entry are reported as missing.
+ */
+export function alignFoldToSlots(
+  personas: FoldResponse["personas"],
+  slots: PersonaSlot[],
+): { personas: FoldResponse["personas"]; missing: string[]; unasked: string[] } {
+  type Entry = FoldResponse["personas"][number];
+  const matched: Array<Entry | null> = slots.map(() => null);
+  const claim = (i: number, p: Entry) => {
+    matched[i] = { ...p, persona_id: slots[i]!.persona_id, archetype: slots[i]!.archetype };
+  };
+
+  // Exact ids first, so a misspelled entry can never take the slot of a correctly named one.
+  const unnamed: Entry[] = [];
+  for (const p of personas) {
+    const i = slots.findIndex((s, k) => matched[k] === null && s.persona_id === p.persona_id);
+    if (i >= 0) claim(i, p);
+    else unnamed.push(p);
+  }
+  const unasked: string[] = [];
+  for (const p of unnamed) {
+    const i = slots.findIndex((s, k) => matched[k] === null && s.archetype === p.archetype);
+    if (i >= 0) claim(i, p);
+    else unasked.push(`${p.persona_id} (${p.archetype})`);
+  }
+  return {
+    personas: matched.filter((p): p is Entry => p !== null),
+    missing: slots.filter((_, i) => matched[i] === null).map((s) => s.persona_id),
+    unasked,
+  };
+}
+
+// =====================================================
 // runFold — the single bounded qwen3.6-plus thinking call (R7 / one audience-sim call).
 // =====================================================
 
@@ -394,8 +438,16 @@ export async function runFold(
       // F20 salvage (T-04-01 segment-count guard): keep personas whose segment_reactions match
       // segments.length, DROP only the mismatched ones (was all-or-nothing). Succeed when ≥
       // MIN_VALID_PERSONAS remain so the audience read stays meaningful.
-      const validPersonas = validated.data.personas.filter((p) => p.segment_reactions.length === segments.length);
-      const mismatched = validated.data.personas.filter((p) => p.segment_reactions.length !== segments.length);
+      // Only the viewers that were asked for count (see alignFoldToSlots): strangers are dropped,
+      // and a short-handed answer goes through the same ≥ MIN_VALID_PERSONAS floor as F20.
+      const aligned = alignFoldToSlots(validated.data.personas, slots);
+      if (aligned.unasked.length > 0 || aligned.missing.length > 0) {
+        const msg = `fold answer does not match the requested viewers — not asked for: ${aligned.unasked.join(", ") || "none"}; missing: ${aligned.missing.join(", ") || "none"}`;
+        warnings.push(msg);
+        Sentry.captureException(new Error(msg), { tags: { stage: "wave_3_fold", archetype: "all_10" } });
+      }
+      const validPersonas = aligned.personas.filter((p) => p.segment_reactions.length === segments.length);
+      const mismatched = aligned.personas.filter((p) => p.segment_reactions.length !== segments.length);
       if (mismatched.length > 0) {
         const archetypes = mismatched.map((p) => p.archetype).join(", ");
         const msg = `fold dropped ${mismatched.length} persona(s) with a segment-count mismatch: ${archetypes} (expected ${segments.length} each)`;

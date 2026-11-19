@@ -689,7 +689,7 @@ describe("Phase 3 — provenance + stub invocations", () => {
     const { ENGINE_VERSION } = await import("../aggregator");
     const { ENGINE_VERSION: viaVersion } = await import("../version");
     expect(ENGINE_VERSION).toBe(viaVersion);
-    expect(ENGINE_VERSION).toBe("3.23.0"); // 2026-08-04 — the modality split is ON by default
+    expect(ENGINE_VERSION).toBe("3.25.0"); // 2026-11-19 — the fold asks for one entry per persona slot; the audience changes
   });
 
   it("PredictionResult.engine_version reads from ./version module", async () => {
