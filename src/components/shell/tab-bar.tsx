@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Plus } from "@phosphor-icons/react";
 import { cn } from "@/lib/utils";
+import { PlusIcon } from "./icons";
 import { PLACES, activePlace, type Place } from "./nav-config";
 
 /**
@@ -68,7 +68,7 @@ export function TabBar({ onNewChat }: { onNewChat: () => void }) {
           aria-label="New chat"
           className="relative flex h-[50px] w-[50px] shrink-0 items-center justify-center rounded-full bg-action text-action-foreground shadow-[var(--shadow-button)] transition-transform duration-150 active:scale-[0.98] before:absolute before:-inset-[7px] before:content-['']"
         >
-          <Plus size={22} weight="bold" aria-hidden />
+          <PlusIcon size={22} aria-hidden />
         </button>
         {PLACES.slice(2).map((place) => (
           <Tab key={place.id} place={place} active={current === place.id} />

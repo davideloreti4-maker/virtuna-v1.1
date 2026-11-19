@@ -1,5 +1,4 @@
-import type { Icon as PhosphorIcon } from "@phosphor-icons/react";
-import { Compass, Folder, House, Users } from "@phosphor-icons/react";
+import { AudienceIcon, DiscoverIcon, HomeIcon, LibraryIcon, type ShellIcon } from "./icons";
 
 /**
  * The one place list. The phone tab bar and the desktop sidebar both read it, so the two can
@@ -13,7 +12,7 @@ export interface Place {
   label: string;
   /** Where the tab or the sidebar row navigates. */
   href: string;
-  icon: PhosphorIcon;
+  icon: ShellIcon;
   /** Paths that light this place, redirect doors included. */
   prefixes: readonly string[];
   /** True where the phone tab bar shows. A pushed screen under a place hides it. */
@@ -28,7 +27,7 @@ export const PLACES: readonly Place[] = [
     id: "home",
     label: "Home",
     href: "/home",
-    icon: House,
+    icon: HomeIcon,
     prefixes: ["/home"],
     showsBar: (p) => p === "/home",
   },
@@ -37,7 +36,7 @@ export const PLACES: readonly Place[] = [
     label: "Discover",
     // The hub lives at /feed; /discover and /competitors only redirect into it.
     href: "/feed",
-    icon: Compass,
+    icon: DiscoverIcon,
     prefixes: ["/feed", "/competitors", "/discover"],
     // The hub's own tabs are sub-paths of /feed and are still the place itself.
     showsBar: (p) => under(p, "/feed"),
@@ -46,7 +45,7 @@ export const PLACES: readonly Place[] = [
     id: "library",
     label: "Library",
     href: "/library",
-    icon: Folder,
+    icon: LibraryIcon,
     prefixes: ["/library", "/saved"],
     showsBar: (p) => p === "/library",
   },
@@ -54,7 +53,7 @@ export const PLACES: readonly Place[] = [
     id: "audience",
     label: "Audience",
     href: "/audience",
-    icon: Users,
+    icon: AudienceIcon,
     // Analytics was folded into Audience; /analytics and /grow redirect there.
     prefixes: ["/audience", "/analytics", "/grow"],
     showsBar: (p) => p === "/audience",
