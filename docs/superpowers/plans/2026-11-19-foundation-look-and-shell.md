@@ -4692,3 +4692,37 @@ Report to the owner, in this order: (1) each of the six "Done when" points of th
 | §11 known gaps | the departures table and the "accepted inside the flag" note at the top |
 
 Not built here, as the spec says: page content, the gauge, the ring, the curves, the brain. Not built here although the spec lists it under the shell: the 980 / 720 content columns (departure 12).
+
+## Result (2026-11-19)
+
+Built, reviewed and verified. Head of `design/next-look` after this part: see `git log`. Local commits only; nothing pushed.
+
+| Check | Result |
+|---|---|
+| Full suite | 593 files passed, 1 skipped, 0 failed; 7,022 tests (before this part: 576 files, 6,726 tests) |
+| `tsc --noEmit` | clean |
+| `pnpm build` (flag off) | compiled successfully |
+| Flag off against the baseline recorded before any change | identical on `/home`, `/library`, `/feed`, phone and desktop: 194 token values, `<html>` attributes, landmarks, body background and weight, nine chrome screenshots byte for byte |
+| Flag on | light, dark and "Match system" paint the right theme; high contrast strengthens hairlines and muted text; reduced transparency keeps the tab bar legible; Dark survives a reload with no flash |
+| Against the v11 reference, in a browser | tab bar, sidebar and pushed header match in position and size (measured) and side by side, light and dark |
+| Phone | the tab bar shows on the four places, hides in a thread; Back returns to Home; taps at 393, 360 and 320 land on the right control |
+| Keyboard | every sidebar control is reached in order and shows one ring |
+
+Comparison sheets (not in git): `.scratch/next-look/final/01…08-*.png`.
+
+## Open after this part
+
+For the owner:
+- The brand mark: the build uses the app's real, tapered gull; the reference drew a heavier, simplified one.
+- Earn: the reference has it as a row in Account (avatar on Home → Account → Earn). Whether it also becomes a row in the desktop sidebar, and whether the Earn page gets a referral block like Stanley's, is not ruled.
+- ⌘N may be taken by the browser for a new window outside an installed app; the legacy sidebar shows the same hint. Check by hand.
+- When to push or open a pull request.
+
+For parts 2 to 6 and the cut-over (found by the reviews, deliberately not fixed here):
+- Token guards before more tokens are added: `lookTokens` ignores the `prefers-contrast` blocks; `contrast()` should refuse a translucent bottom layer; `--color-surface-elevated` has no guarded pair (muted text on it is at about 3.0:1); `type-scale.test.ts` cannot see `--text-figure-lg`; `ruleBlock` should fail on a duplicate declaration.
+- Theme: head-script cases for "light" on a dark system and "system" on a light one; repaint on `pageshow`; a `setItem`-only storage failure still forgets the choice.
+- Base parts: tests for Chip's `card` surface and IconButton's `card` and `quiet`; the muted icon tone of an unselected chip belongs in `Chip`, not in `AppearanceSetting`; `dropdown-menu.tsx` uses tokens that do not exist (`bg-popover`, `text-muted-foreground`): restyle it with `next:` when Discover is rebuilt.
+- Shell: the untitled newest thread and the action are both named "New chat"; the rail's Expand and account buttons have no tooltip; Pin flips its label and sets `aria-pressed`; holding Enter in a rename field opens the thread; an IME's confirming Enter commits a rename in Safari; toggling the rail with focus on a place link drops the focus (`Hint` changes the element type); row actions are 28px on touch tablets; the thread header has no title when the thread list fails to load; the shell guard does not catch `hsl()`, `oklch()`, palette utilities or `backdrop-blur-*`.
+- Frame: the 46px top band above legacy place pages on phone goes when Home is rebuilt; `PlaceHeader` has no consumer yet; `AuthGuard`'s loading skeleton draws a 248px sidebar at every width; `reading-chat.tsx` places its composer from the legacy sidebar widths.
+- Settings: ESLint ignores `src/components/app/settings/**`; the Appearance card sits below the licence credits; the reference shows Appearance as a row on the Account page (part 6).
+- Cut-over: `FOCUS_RING` (`src/lib/utils.ts`) shows a double ring under the new look; `duration-150` literals should become `--duration-fast`; the flag-off bundle carries the shell's code; the scoped values move into `@theme` and the scope, the `next:` variant, the aliases and the dead tokens go.
