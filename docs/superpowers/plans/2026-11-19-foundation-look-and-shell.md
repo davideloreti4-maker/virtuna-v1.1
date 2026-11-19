@@ -49,6 +49,17 @@
 | 10 | Marketing, landing, onboarding "untouched" | They are not edited, but they do receive the new tokens while the flag is on | The attribute sits on `<html>` in the root layout, as the spec's mechanics require (portals render into `<body>`). |
 | 11 | Phone: the reserved top band (`--mobile-nav-band`) is removed | The 46px band stays on `<main>`; the Back header sits in it | Legacy Home cancels that band with a negative margin (`composer.tsx`); removing it would push the thread off screen. It goes when Home is rebuilt (part 3). |
 | 12 | Content frame: a 980 column, 720 for threads | Not built in this part | No page uses it until that page is rebuilt; `PlaceHeader` carries the 44px title offset. |
+| 13 | Navigation icons from Phosphor | The reference's own six glyphs (`src/components/shell/icons.tsx`) | Owner, mid-run: built UI must align with the reference. The reference draws its own icons; Phosphor's Home and Audience look visibly different. |
+| 14 | One place order for both layouts | Phone: Home, Discover, Library, Audience. Desktop sidebar: Home, Discover, Audience, Library | That is what the reference shows; on desktop Library sits next to the threads it holds. |
+
+## Changes made during execution (2026-11-19)
+
+The owner added one instruction mid-run: **always check the visual alignment of built UI with the reference.** From Task 5 on, every part with visible UI is rendered in the running app and compared with the v11 reference (side-by-side image and measured geometry, light and dark) before it counts as done. Where that or a code review changed what a task's code block below says, the commits are the truth:
+
+- Task 1: the 27 themed tokens are one shared list (`NEXT_LOOK_THEMED` in `next-look-css.ts`), not two.
+- Task 3: the press eases on the CSS `scale` property (Tailwind v4's `scale-*` does not write `transform`); disabled Chip and IconButton drop their shadow; IconButton sizes its icon to 18.
+- Task 5: the tab bar is laid out exactly as the reference (items 66 / 66 / 50 / 66 / 66, space-around, 21px label line); the round button's touch target is 64 through a hit-area extension; icons are the reference's own (departure 13).
+- Task 6: desktop place order, the compose glyph on New chat, "Recent" in the muted tone and 2px between thread rows follow the reference (departure 14 and the table in Task 6).
 
 Known and accepted inside the flag until later parts: on phone Home the legacy message field sits above the tab bar (Home is part 3); legacy thread cards use the tint fill; Settings is reached from the desktop account menu or by URL.
 
@@ -2818,12 +2829,31 @@ git -c core.hooksPath=/dev/null commit -m "feat(next-look): phone tab bar — fl
 - Create: `src/components/shell/thread-row.tsx`
 - Create: `src/components/shell/side-nav.tsx`
 - Create: `src/components/shell/__tests__/side-nav.test.tsx`
+- Modify: `src/components/shell/nav-config.ts` (add `SIDE_NAV_ORDER`)
+- Modify: `src/components/shell/__tests__/nav-config.test.ts` (one test)
 
 **Interfaces:**
-- Consumes: `PLACES`, `activePlace`, `SIDE_NAV_WIDTH`, `SIDE_NAV_RAIL`, `RECENT_LIMIT`, `SIDEBAR_STORAGE_KEY`, `shouldStartCollapsed` (Task 4); `ThreadActions` (Task 4); `IconButton` (Task 3); existing `useThreadList`, `useRenameThread`, `usePinThread`, `ThreadSummary` from `@/hooks/queries`; `useProfile`; `useSubscription`; `useSidebarStore`; `useBoardStore`; `MavenMark`; `Avatar`; `Badge`; `Tooltip*`; `DropdownMenu*`.
+- Consumes: `PLACES`, `activePlace`, `SIDE_NAV_WIDTH`, `SIDE_NAV_RAIL`, `RECENT_LIMIT`, `SIDEBAR_STORAGE_KEY`, `shouldStartCollapsed` (Task 4); `ThreadActions` (Task 4); `ComposeIcon` and the place glyphs from `./icons` (Task 5: the shell uses the reference's own icons; `Place.icon` is a `ShellIcon`, a component that takes `size` and SVG props); `IconButton` (Task 3); existing `useThreadList`, `useRenameThread`, `usePinThread`, `ThreadSummary` from `@/hooks/queries`; `useProfile`; `useSubscription`; `useSidebarStore`; `useBoardStore`; `MavenMark`; `Avatar`; `Badge`; `Tooltip*`; `DropdownMenu*`.
 - Produces:
+  - `SIDE_NAV_ORDER: readonly PlaceId[]` from `./nav-config`: `["home", "discover", "audience", "library"]`.
   - `ThreadRow({ thread, isActive, onOpen, onDelete, onTogglePin, onRename })`
   - `SideNav({ actions }: { actions: ThreadActions })`, a `<nav aria-label="App navigation">` hidden below 768px. Width is `SIDE_NAV_WIDTH`, or `SIDE_NAV_RAIL` when `useSidebarStore().isCollapsed`.
+
+**Reference (measured from the v11 mock at 1440×900, light; coordinates from the sidebar's top-left corner).** The built sidebar is compared with these numbers in a browser after this task:
+
+| Element | Box (x, y, w × h) | Type | Other |
+|---|---|---|---|
+| Brand row | 14, 18, 220 × 34 | "Maven" 17 / 680 | mark 26 × 26 at 22, 22, coral |
+| New chat | 14, 66, 220 × 42 | 14.5 / 620 | white, hairline + soft shadow; compose glyph 17 × 17 at 26, 78.5; shortcut hint right |
+| Home | 14, 120, 220 × 38 | 14.5 / 560, secondary | glyph 18 × 18 at 26, 130 |
+| Discover | 14, 160, 220 × 38 | same | |
+| Audience | 14, 200, 220 × 38 | same | |
+| Library | 14, 240, 220 × 38 | same; current = ink on a 7% tint, radius 12 | |
+| "Recent" | 26, 298, 21 tall | 12.5 / 600, muted | |
+| Thread rows | 14, 327 / 363 / 399 …, 220 × 34 | 14 / 430, secondary | 2px between rows |
+| Account | 14, 840, 220 × 46 | name 14.5 / 620 | avatar 30, tag right |
+
+On desktop the reference lists the places as Home, Discover, **Audience, Library** (Library sits next to the threads it holds); the phone tab bar keeps Home, Discover, Library, Audience. Sizes that are off the type scale snap to it (14.5 → `text-ui` 15, 12.5 → `text-label` 12, 17 → `text-title` 16), as the plan's constraints say.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -2927,10 +2957,10 @@ beforeEach(() => {
 });
 
 describe('SideNav — places', () => {
-  it('lists the four places in order, after the brand', () => {
+  it('lists the four places in the desktop order, after the brand: Library sits next to the threads', () => {
     renderNav();
     expect(within(nav()).getAllByRole('link').map(nameOf)).toEqual([
-      'Maven home', 'Home', 'Discover', 'Library', 'Audience',
+      'Maven home', 'Home', 'Discover', 'Audience', 'Library',
     ]);
   });
 
@@ -3055,7 +3085,32 @@ Run: `NODE_OPTIONS=--no-experimental-webstorage pnpm exec vitest run src/compone
 
 Expected: FAIL, cannot resolve `../side-nav`.
 
-- [ ] **Step 3: Write the thread row**
+- [ ] **Step 3: Add the desktop order to the place config**
+
+In `src/components/shell/__tests__/nav-config.test.ts` add `SIDE_NAV_ORDER` to the import from `../nav-config` and append:
+
+```ts
+describe('SIDE_NAV_ORDER: the desktop sidebar order', () => {
+  it('is Home, Discover, Audience, Library, and names every place once', () => {
+    expect(SIDE_NAV_ORDER).toEqual(['home', 'discover', 'audience', 'library']);
+    expect([...SIDE_NAV_ORDER].sort()).toEqual(PLACES.map((p) => p.id).sort());
+  });
+});
+```
+
+Run `NODE_OPTIONS=--no-experimental-webstorage pnpm exec vitest run src/components/shell/__tests__/nav-config.test.ts` — expected: FAIL (`SIDE_NAV_ORDER` is not exported). Then in `src/components/shell/nav-config.ts`, after the `PLACES` array, add:
+
+```ts
+/**
+ * The order of the places in the desktop sidebar. The reference puts Library last there, next to
+ * the recent threads it holds; the phone tab bar keeps the order of PLACES.
+ */
+export const SIDE_NAV_ORDER: readonly PlaceId[] = ["home", "discover", "audience", "library"];
+```
+
+Run the file again — expected: PASS.
+
+- [ ] **Step 3b: Write the thread row**
 
 Create `src/components/shell/thread-row.tsx`:
 
@@ -3204,7 +3259,7 @@ Create `src/components/shell/side-nav.tsx`:
 import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { GearSix, Plus, SidebarSimple, SignOut } from "@phosphor-icons/react";
+import { GearSix, SidebarSimple, SignOut } from "@phosphor-icons/react";
 import { MavenMark } from "@/components/brand/maven-logo";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -3223,10 +3278,12 @@ import { createClient } from "@/lib/supabase/client";
 import { FOCUS_RING, cn } from "@/lib/utils";
 import { useBoardStore } from "@/stores/board-store";
 import { useSidebarStore } from "@/stores/sidebar-store";
+import { ComposeIcon } from "./icons";
 import {
   PLACES,
   RECENT_LIMIT,
   SIDEBAR_STORAGE_KEY,
+  SIDE_NAV_ORDER,
   SIDE_NAV_RAIL,
   SIDE_NAV_WIDTH,
   activePlace,
@@ -3329,13 +3386,13 @@ export function SideNav({ actions }: { actions: ThreadActions }) {
           aria-label="New chat"
           aria-keyshortcuts="Meta+N"
           className={cn(
-            "mb-2.5 flex h-[42px] shrink-0 items-center gap-[9px] rounded-xl bg-surface text-ui font-[560] text-foreground shadow-[var(--shadow-press)]",
+            "mb-2.5 flex h-[42px] shrink-0 items-center gap-[9px] rounded-xl bg-surface text-ui font-[640] text-foreground shadow-[var(--shadow-press)]",
             "transition-transform duration-150 active:scale-[0.98]",
             FOCUS_RING,
             isCollapsed ? "w-[40px] justify-center" : "px-3",
           )}
         >
-          <Plus size={17} weight="bold" aria-hidden />
+          <ComposeIcon size={17} aria-hidden />
           {!isCollapsed && (
             <>
               <span>New chat</span>
@@ -3345,8 +3402,10 @@ export function SideNav({ actions }: { actions: ThreadActions }) {
         </button>
       </Hint>
 
-      {/* The four places */}
-      {PLACES.map((place) => {
+      {/* The four places, in the desktop order */}
+      {SIDE_NAV_ORDER.map((id) => {
+        const place = PLACES.find((candidate) => candidate.id === id);
+        if (!place) return null;
         const Glyph = place.icon;
         const active = current === place.id;
         return (
@@ -3373,11 +3432,12 @@ export function SideNav({ actions }: { actions: ThreadActions }) {
 
       {/* Recent */}
       {!isCollapsed && recent.length > 0 && (
-        <div className="mt-[18px] flex min-h-0 flex-1 flex-col">
-          <p id="side-nav-recent" className="mb-1.5 px-3 text-label font-[560] text-foreground-secondary">
+        <div className="mt-[18px] flex min-h-0 flex-1 flex-col gap-0.5">
+          {/* 21px line + 6 below + the 2px gap put the first thread row at y 327, as in the reference. */}
+          <p id="side-nav-recent" className="mb-1.5 px-3 text-label font-[560] leading-[21px] text-foreground-muted">
             Recent
           </p>
-          <ul aria-labelledby="side-nav-recent" className="flex min-h-0 flex-col gap-px overflow-y-auto">
+          <ul aria-labelledby="side-nav-recent" className="flex min-h-0 flex-col gap-0.5 overflow-y-auto">
             {recent.map((thread) => {
               // The open thread is on screen only on /home.
               const isActive = pathname === "/home" && thread.id === activeThreadId;
