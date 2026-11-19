@@ -51,6 +51,9 @@
 | 12 | Content frame: a 980 column, 720 for threads | Not built in this part | No page uses it until that page is rebuilt; `PlaceHeader` carries the 44px title offset. |
 | 13 | Navigation icons from Phosphor | The reference's own six glyphs (`src/components/shell/icons.tsx`) | Owner, mid-run: built UI must align with the reference. The reference draws its own icons; Phosphor's Home and Audience look visibly different. |
 | 14 | One place order for both layouts | Phone: Home, Discover, Library, Audience. Desktop sidebar: Home, Discover, Audience, Library | That is what the reference shows; on desktop Library sits next to the threads it holds. |
+| 15 | New chat and the icon button rest on `--shadow-press` (§6.2, §7) | A new token, `--shadow-control` (hairline + `0 2px 6px -2px rgba(0,0,0,.12)`, light and dark), for controls that rest on the ground; `--shadow-press` is the pressed state only | Measured on the reference's round buttons and New chat: `--shadow-press` was visibly flatter. |
+| 16 | Focus: a 2px ring, 2px outside, everywhere (§7) | Outside by default; drawn inside (`SHELL_FOCUS`) for rows in scroll containers; on a tab, inside on an inner box | An outside ring is clipped by a scrolling list and stuck out of the tab bar's pill. |
+| 17 | Reduced motion: "the existing central handling" (§4.5) | Every press scale is `motion-safe:` | The central rules cover animations only, not a transition on `scale`. |
 
 ## Changes made during execution (2026-11-19)
 
@@ -63,6 +66,7 @@ The owner added one instruction mid-run: **always check the visual alignment of 
 - Task 6 (after review): whether the sidebar is collapsed comes from one hook, `useSideNavCollapse()` (`{ collapsed, toggle }`): the creator's persisted choice, or a non-persisted rail on a window under 1100px until they choose. Thread rows keep keyboard focus through delete and rename, and show their actions on the active row on touch screens. The shell draws one inset focus ring (`SHELL_FOCUS`) instead of `FOCUS_RING`.
 - Task 7: the frame reads the sidebar width from that hook, and ⌘\ goes through its `toggle`.
 - Task 7: the pushed header follows the reference's Account and thread screens: white round Back button with the reference's chevron, and a round new-chat button on the right of every pushed screen (the first draft had a plain Back only).
+- After the whole-branch review (one fix wave): the account menu gets a real surface above the sidebar; the narrow-window rail is set before first paint; deleting a thread decides "on Home" at click time; Sheet joins the flag-off parity snapshot; the theme choice survives blocked storage; chips get a 44px touch floor; departures 15–17. The review's "fix later" list lives in the run ledger (`.superpowers/sdd/2026-11-19-foundation-look-and-shell/progress.md`) and belongs to parts 2–6 and the cut-over.
 - Owner question mid-run (2026-11-19): where do new pages such as Earn go once the phone bar is full? The reference already answers it: the avatar on Home opens Account, and Account lists Earn, the connected accounts and Appearance; Earn is a pushed page. The bar stays at four places plus new chat. Nothing in this part changes for it; the avatar and the Account page belong to parts 3 and 6. His ruling on a Stanley-style referral block on the Earn page is open.
 
 Known and accepted inside the flag until later parts: on phone Home the legacy message field sits above the tab bar (Home is part 3); legacy thread cards use the tint fill; Settings is reached from the desktop account menu or by URL.
