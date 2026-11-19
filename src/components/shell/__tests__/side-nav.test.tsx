@@ -1,9 +1,10 @@
 /** @vitest-environment happy-dom */
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { ToastProvider } from '@/components/ui/toast';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { useBoardStore } from '@/stores/board-store';
+import { useShellStore } from '@/stores/shell-store';
 import { useSidebarStore } from '@/stores/sidebar-store';
 
 // Module warm-up (icons, stores, Radix) lands on the first test; see Sidebar.recent.test.tsx.
@@ -37,8 +38,9 @@ vi.mock('@/hooks/queries', () => ({
   usePinThread: () => ({ mutate: pin }),
 }));
 
+let profile = { name: 'Nia Test', email: 'nia@example.com', avatar: null as string | null };
 vi.mock('@/hooks/queries/use-profile', () => ({
-  useProfile: () => ({ data: { name: 'Nia Test', email: 'nia@example.com', avatar: null } }),
+  useProfile: () => ({ data: profile }),
 }));
 
 let usage: { remaining: number | null } | null = null;
@@ -51,7 +53,9 @@ vi.mock('@/lib/supabase/client', () => ({
   createClient: () => ({ auth: { signOut } }),
 }));
 
+import { SIDE_NAV_CHOICE_KEY } from '../nav-config';
 import { SideNav } from '../side-nav';
+import { useShellShortcuts } from '../use-shell-shortcuts';
 import { useThreadActions } from '../use-thread-actions';
 
 function Harness() {
@@ -59,21 +63,36 @@ function Harness() {
   return <SideNav actions={actions} />;
 }
 
-const renderNav = () =>
+/** The sidebar with the chrome shortcuts, as the frame mounts them. */
+function WithShortcuts() {
+  const actions = useThreadActions();
+  useShellShortcuts(actions);
+  return <SideNav actions={actions} />;
+}
+
+const renderNav = (ui: React.ReactElement = <Harness />) =>
   render(
     <ToastProvider>
-      <TooltipProvider>
-        <Harness />
-      </TooltipProvider>
+      <TooltipProvider>{ui}</TooltipProvider>
     </ToastProvider>,
   );
+
+// The window width the auto-rail reads. happy-dom's default (1024) is below 1100, so every test
+// sets one; the narrow-window tests set 1000.
+const realWidth = window.innerWidth;
+const setWidth = (value: number) =>
+  Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value });
+/** sidebar-store's own persist key (its saved collapse state). */
+const sidebarKey = () => useSidebarStore.persist.getOptions().name!;
 
 const nav = () => screen.getByRole('navigation', { name: 'App navigation' });
 const nameOf = (el: Element) => el.getAttribute('aria-label') ?? el.textContent ?? '';
 
 beforeEach(() => {
+  setWidth(1440);
   pathname = '/home';
   usage = null;
+  profile = { name: 'Nia Test', email: 'nia@example.com', avatar: null };
   threads = [
     row('t1', null),
     row('t2', 'Three hooks for the gym video'),
@@ -89,9 +108,15 @@ beforeEach(() => {
   pin.mockReset();
   archive.mockReset();
   signOut.mockReset();
-  localStorage.clear();
   useSidebarStore.setState({ isCollapsed: false });
+  useShellStore.setState({ autoRail: false });
   useBoardStore.setState({ activeThreadId: null });
+  // Last: resetting sidebar-store above writes its persist key.
+  localStorage.clear();
+});
+
+afterEach(() => {
+  setWidth(realWidth);
 });
 
 describe('SideNav — places', () => {
@@ -153,6 +178,10 @@ describe('SideNav — recent threads', () => {
     expect(pin).toHaveBeenCalledWith({ id: 't3', pinned: true });
 
     fireEvent.click(screen.getByRole('button', { name: 'Rename Why did Tuesday flop' }));
+    fireEvent.keyDown(screen.getByRole('textbox', { name: 'Rename Why did Tuesday flop' }), { key: 'Enter' });
+    expect(rename).not.toHaveBeenCalled(); // nothing changed, nothing sent
+
+    fireEvent.click(screen.getByRole('button', { name: 'Rename Why did Tuesday flop' }));
     const field = screen.getByRole('textbox', { name: 'Rename Why did Tuesday flop' });
     fireEvent.change(field, { target: { value: 'Tuesday post-mortem' } });
     fireEvent.keyDown(field, { key: 'Enter' });
@@ -162,6 +191,41 @@ describe('SideNav — recent threads', () => {
     expect(archive).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole('button', { name: 'Delete Remix the 19x one' }));
     expect(archive).toHaveBeenCalledWith('t5');
+  });
+});
+
+describe('SideNav — keyboard focus survives the row changing', () => {
+  it('arming delete lands on Cancel; cancelling returns to the delete button', () => {
+    renderNav();
+    fireEvent.click(screen.getByRole('button', { name: 'Delete thread: Remix the 19x one' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Cancel delete' }));
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel delete' }));
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Delete thread: Remix the 19x one' }));
+    expect(archive).not.toHaveBeenCalled();
+  });
+
+  it('leaving rename with Escape returns to the row and sends nothing', () => {
+    renderNav();
+    fireEvent.click(screen.getByRole('button', { name: 'Rename Why did Tuesday flop' }));
+    const field = screen.getByRole('textbox', { name: 'Rename Why did Tuesday flop' });
+    fireEvent.change(field, { target: { value: 'Something else' } });
+    fireEvent.keyDown(field, { key: 'Escape' });
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Why did Tuesday flop' }));
+    expect(rename).not.toHaveBeenCalled();
+  });
+
+  it('leaving rename with Enter returns to the row and sends the new name once', () => {
+    renderNav();
+    fireEvent.click(screen.getByRole('button', { name: 'Rename Why did Tuesday flop' }));
+    const field = screen.getByRole('textbox', { name: 'Rename Why did Tuesday flop' });
+    fireEvent.change(field, { target: { value: 'Tuesday post-mortem' } });
+    fireEvent.keyDown(field, { key: 'Enter' });
+
+    expect(document.activeElement).toBe(screen.getByRole('button', { name: 'Why did Tuesday flop' }));
+    expect(rename).toHaveBeenCalledTimes(1);
+    expect(rename).toHaveBeenCalledWith({ id: 't3', title: 'Tuesday post-mortem' });
   });
 });
 
@@ -194,6 +258,65 @@ describe('SideNav — the rail', () => {
   });
 });
 
+describe('SideNav — a narrow window starts as the rail, and that is not a choice', () => {
+  it('below 1100px with no choice made: the rail, and nothing is saved', () => {
+    setWidth(1000);
+    renderNav();
+
+    expect(nav()).toHaveStyle({ width: '56px' });
+    expect(within(nav()).getByRole('button', { name: 'Expand sidebar' })).toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: 'Recent' })).toBeNull();
+    expect(useSidebarStore.getState().isCollapsed).toBe(false);
+    expect(localStorage.getItem(sidebarKey())).toBeNull();
+    expect(localStorage.getItem(SIDE_NAV_CHOICE_KEY)).toBeNull();
+  });
+
+  it('below 1100px after the creator chose: left as it is (expanded)', () => {
+    localStorage.setItem(SIDE_NAV_CHOICE_KEY, '1');
+    setWidth(1000);
+    renderNav();
+
+    expect(nav()).toHaveStyle({ width: '248px' });
+    expect(screen.getByRole('list', { name: 'Recent' })).toBeInTheDocument();
+  });
+
+  it('expanding the rail is a choice: it is recorded and a later visit keeps it', () => {
+    setWidth(1000);
+    const { unmount } = renderNav();
+    fireEvent.click(within(nav()).getByRole('button', { name: 'Expand sidebar' }));
+
+    expect(nav()).toHaveStyle({ width: '248px' });
+    expect(localStorage.getItem(SIDE_NAV_CHOICE_KEY)).toBe('1');
+    unmount();
+
+    renderNav();
+    expect(nav()).toHaveStyle({ width: '248px' });
+    expect(within(nav()).getByRole('button', { name: 'Collapse sidebar' })).toBeInTheDocument();
+  });
+
+  it('at 1100px and wider with no choice made: expanded', () => {
+    setWidth(1440);
+    renderNav();
+
+    expect(nav()).toHaveStyle({ width: '248px' });
+    expect(screen.getByRole('list', { name: 'Recent' })).toBeInTheDocument();
+  });
+
+  it('⌘\\ is a choice too: it toggles the sidebar and records it', () => {
+    setWidth(1000);
+    renderNav(<WithShortcuts />);
+    expect(nav()).toHaveStyle({ width: '56px' });
+
+    fireEvent.keyDown(window, { key: '\\', metaKey: true });
+    expect(nav()).toHaveStyle({ width: '248px' });
+    expect(localStorage.getItem(SIDE_NAV_CHOICE_KEY)).toBe('1');
+
+    fireEvent.keyDown(window, { key: '\\', metaKey: true });
+    expect(nav()).toHaveStyle({ width: '56px' });
+    expect(useSidebarStore.getState().isCollapsed).toBe(true);
+  });
+});
+
 describe('SideNav — the account', () => {
   it('shows the name, and the balance only when the account has one', () => {
     usage = { remaining: 3 };
@@ -207,9 +330,21 @@ describe('SideNav — the account', () => {
     expect(screen.queryByText(/left$/)).toBeNull();
   });
 
+  it('names the account button after the account, and falls back to the email for a blank name', () => {
+    const { unmount } = renderNav();
+    expect(screen.getByRole('button', { name: /^Account/ })).toHaveAccessibleName('Account: Nia Test');
+    unmount();
+
+    profile = { name: '   ', email: 'nia@example.com', avatar: null };
+    renderNav();
+    expect(screen.getByRole('button', { name: /^Account/ })).toHaveAccessibleName('Account: nia@example.com');
+    expect(screen.getByText('nia@example.com')).toBeInTheDocument();
+    expect(screen.getByText('?')).toBeInTheDocument(); // no initials from a blank name
+  });
+
   it('keeps Settings and Log out one menu away', () => {
     renderNav();
-    fireEvent.keyDown(screen.getByRole('button', { name: 'Account menu' }), { key: 'Enter' });
+    fireEvent.keyDown(screen.getByRole('button', { name: /^Account/ }), { key: 'Enter' });
 
     fireEvent.click(screen.getByRole('menuitem', { name: 'Log out' }));
     expect(signOut).toHaveBeenCalledTimes(1);

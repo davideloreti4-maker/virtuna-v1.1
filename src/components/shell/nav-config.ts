@@ -96,8 +96,19 @@ export const SIDE_NAV_WIDTH = 248;
 export const SIDE_NAV_RAIL = 56;
 /** Threads listed under "Recent". */
 export const RECENT_LIMIT = 6;
-/** zustand persist key of sidebar-store; present once the creator has toggled the sidebar. */
-export const SIDEBAR_STORAGE_KEY = "virtuna-sidebar";
+/**
+ * localStorage key, set once the creator collapses or expands the sidebar themselves. Its own
+ * key: sidebar-store's persisted blob is written by any change to that store (the ⌘K palette
+ * too), so its presence does not mean the creator chose.
+ */
+export const SIDE_NAV_CHOICE_KEY = "maven-sidenav-chosen";
+
+/**
+ * The shell's one focus ring: the app-wide `:focus-visible` outline, drawn inside the control
+ * so a scroll container cannot clip it. The `!` is needed: the app-wide rule is unlayered CSS
+ * and beats a plain utility.
+ */
+export const SHELL_FOCUS = "focus-visible:outline-offset-[-2px]!";
 
 const AUTO_COLLAPSE_BELOW = 1100;
 

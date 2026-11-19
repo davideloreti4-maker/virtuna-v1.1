@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { Check, PencilSimple, PushPin, Trash, X } from "@phosphor-icons/react";
 import type { ThreadSummary } from "@/hooks/queries";
-import { FOCUS_RING, cn } from "@/lib/utils";
+import { cn } from "@/lib/utils";
+import { SHELL_FOCUS } from "./nav-config";
 
 /**
  * One thread in the desktop sidebar's "Recent" list (new look, spec §6.2): 34 tall, 14px, one
@@ -15,12 +17,17 @@ import { FOCUS_RING, cn } from "@/lib/utils";
  * - Delete is two-step (trash, then confirm), so one stray click never drops a thread. The
  *   confirm disarms when the pointer leaves the row.
  * - Rename replaces the row with a field. Enter and blur commit, Escape cancels. An emptied
- *   field clears the title, which hands the thread back to automatic naming.
+ *   field clears the title, which hands the thread back to automatic naming. An unchanged
+ *   name sends nothing.
+ *
+ * Keyboard focus never falls to the page when the row changes shape: arming delete lands on
+ * Cancel (the safe default), cancelling returns to the delete button, and leaving rename with
+ * Enter or Escape returns to the row. (Blur keeps wherever focus was going.)
  */
 const ACTION = cn(
   "flex h-7 w-7 items-center justify-center rounded-md text-foreground-secondary",
   "transition-colors duration-150 hover:bg-active hover:text-foreground",
-  FOCUS_RING,
+  SHELL_FOCUS,
 );
 
 export function ThreadRow({
@@ -40,8 +47,26 @@ export function ThreadRow({
 }) {
   const [confirming, setConfirming] = useState(false);
   const [renaming, setRenaming] = useState(false);
+  const openRef = useRef<HTMLButtonElement>(null);
+  const deleteRef = useRef<HTMLButtonElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
+  // Set once Enter or Escape has ended the rename, so the blur that may follow as the field is
+  // removed does not commit a second time.
+  const renameEnded = useRef(false);
   const label = thread.title?.trim() || "New chat";
   const isPinned = thread.pinned_at != null;
+
+  const commitRename = (value: string) => {
+    if (value !== (thread.title ?? "")) onRename(value);
+  };
+
+  /** Leave rename by key: commit (Enter) or not (Escape), then put focus back on the row. */
+  const endRename = (value: string | null) => {
+    renameEnded.current = true;
+    if (value !== null) commitRename(value);
+    flushSync(() => setRenaming(false));
+    openRef.current?.focus();
+  };
 
   if (renaming) {
     return (
@@ -52,15 +77,12 @@ export function ThreadRow({
           aria-label={`Rename ${label}`}
           placeholder="Thread name"
           onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              onRename(e.currentTarget.value);
-              setRenaming(false);
-            } else if (e.key === "Escape") {
-              setRenaming(false);
-            }
+            if (e.key === "Enter") endRename(e.currentTarget.value);
+            else if (e.key === "Escape") endRename(null);
           }}
           onBlur={(e) => {
-            onRename(e.currentTarget.value);
+            if (renameEnded.current) return;
+            commitRename(e.currentTarget.value);
             setRenaming(false);
           }}
           className="w-full min-w-0 bg-transparent text-reading text-foreground outline-none placeholder:text-foreground-muted"
@@ -78,12 +100,13 @@ export function ThreadRow({
       onMouseLeave={() => setConfirming(false)}
     >
       <button
+        ref={openRef}
         type="button"
         onClick={onOpen}
         aria-current={isActive ? "page" : undefined}
         className={cn(
           "flex h-full min-w-0 flex-1 items-center gap-2 rounded-lg px-3 text-left text-reading",
-          FOCUS_RING,
+          SHELL_FOCUS,
           isActive
             ? "font-[560] text-foreground"
             : "text-foreground-secondary group-hover/row:text-foreground",
@@ -98,7 +121,16 @@ export function ThreadRow({
           <button type="button" onClick={onDelete} aria-label={`Delete ${label}`} className={cn(ACTION, "text-error hover:text-error")}>
             <Check size={14} weight="bold" aria-hidden />
           </button>
-          <button type="button" onClick={() => setConfirming(false)} aria-label="Cancel delete" className={ACTION}>
+          <button
+            ref={cancelRef}
+            type="button"
+            onClick={() => {
+              flushSync(() => setConfirming(false));
+              deleteRef.current?.focus();
+            }}
+            aria-label="Cancel delete"
+            className={ACTION}
+          >
             <X size={14} weight="bold" aria-hidden />
           </button>
         </div>
@@ -111,6 +143,10 @@ export function ThreadRow({
             "pointer-events-none flex w-0 items-center gap-0.5 overflow-hidden opacity-0 transition-opacity duration-150",
             "group-hover/row:pointer-events-auto group-hover/row:mr-1 group-hover/row:w-auto group-hover/row:opacity-100",
             "focus-within:pointer-events-auto focus-within:mr-1 focus-within:w-auto focus-within:opacity-100",
+            // Touch has no hover (tablets get this sidebar from 768px up): there the open
+            // thread's row keeps its actions shown, as the legacy row does. One row, so the list
+            // stays clean.
+            isActive && "pointer-coarse:pointer-events-auto pointer-coarse:mr-1 pointer-coarse:w-auto pointer-coarse:opacity-100",
           )}
         >
           <button
@@ -122,10 +158,27 @@ export function ThreadRow({
           >
             <PushPin size={14} weight={isPinned ? "fill" : "regular"} aria-hidden />
           </button>
-          <button type="button" onClick={() => setRenaming(true)} aria-label={`Rename ${label}`} className={ACTION}>
+          <button
+            type="button"
+            onClick={() => {
+              renameEnded.current = false;
+              setRenaming(true);
+            }}
+            aria-label={`Rename ${label}`}
+            className={ACTION}
+          >
             <PencilSimple size={14} aria-hidden />
           </button>
-          <button type="button" onClick={() => setConfirming(true)} aria-label={`Delete thread: ${label}`} className={ACTION}>
+          <button
+            ref={deleteRef}
+            type="button"
+            onClick={() => {
+              flushSync(() => setConfirming(true));
+              cancelRef.current?.focus();
+            }}
+            aria-label={`Delete thread: ${label}`}
+            className={ACTION}
+          >
             <Trash size={14} aria-hidden />
           </button>
         </div>
