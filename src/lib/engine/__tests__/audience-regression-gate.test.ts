@@ -6,8 +6,8 @@
  * path. The phase CANNOT pass with this red.
  *
  * Three protected invariants:
- *  1. ENGINE_VERSION === "3.23.0" — bumped 2026-08-04 (the omni modality split is ON by default;
- *     ENGINE_AUDIO_SPLIT=false rolls both the engine AND this version back to 3.22.0).
+ *  1. ENGINE_VERSION === "3.25.0" — bumped 2026-11-19 (the fold asks for one entry per persona slot;
+ *     ENGINE_AUDIO_SPLIT=false rolls both the engine AND this version back to 3.24.0).
  *     S3′ is a deliberate TEXT-path scoring change; the MAX VIDEO path is untouched, so
  *     invariants 2 & 3 below (the video-path protections this gate actually guards) remain green.
  *  2. The General audience reproduces the byte-stable DEFAULT_PERSONA_WEIGHT_CONFIG mix
@@ -47,8 +47,8 @@ const generalAudience: Audience = {
 };
 
 describe("audience regression gate (AUD-03) — BLOCKING", () => {
-  it("ENGINE_VERSION is exactly '3.23.0' (2026-08-04 — the modality split is ON; cache MUST invalidate)", () => {
-    expect(ENGINE_VERSION).toBe("3.23.0");
+  it("ENGINE_VERSION is exactly '3.25.0' (2026-11-19 — the fold asks for one entry per persona slot; the audience changes; cache MUST invalidate)", () => {
+    expect(ENGINE_VERSION).toBe("3.25.0");
   });
 
   it("resolveWeights(DEFAULT, {}) reproduces the DEFAULT mix at source 'default'", () => {
