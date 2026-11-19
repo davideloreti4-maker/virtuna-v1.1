@@ -4713,7 +4713,7 @@ Comparison sheets (not in git): `.scratch/next-look/final/01…08-*.png`.
 ## Open after this part
 
 For the owner:
-- The brand mark: the build uses the app's real, tapered gull; the reference drew a heavier, simplified one.
+- ~~The brand mark~~ Ruled 2026-11-19: a new mark (a deep V with the wings swept out and up, symmetric, one tapered stroke, closing in a single point). It is in `src/components/brand/maven-logo.tsx` behind the flag; with the flag off the legacy gull is unchanged.
 - Earn: the reference has it as a row in Account (avatar on Home → Account → Earn). Whether it also becomes a row in the desktop sidebar, and whether the Earn page gets a referral block like Stanley's, is not ruled.
 - ⌘N may be taken by the browser for a new window outside an installed app; the legacy sidebar shows the same hint. Check by hand.
 - When to push or open a pull request.
@@ -4725,4 +4725,5 @@ For parts 2 to 6 and the cut-over (found by the reviews, deliberately not fixed 
 - Shell: the untitled newest thread and the action are both named "New chat"; the rail's Expand and account buttons have no tooltip; Pin flips its label and sets `aria-pressed`; holding Enter in a rename field opens the thread; an IME's confirming Enter commits a rename in Safari; toggling the rail with focus on a place link drops the focus (`Hint` changes the element type); row actions are 28px on touch tablets; the thread header has no title when the thread list fails to load; the shell guard does not catch `hsl()`, `oklch()`, palette utilities or `backdrop-blur-*`.
 - Frame: the 46px top band above legacy place pages on phone goes when Home is rebuilt; `PlaceHeader` has no consumer yet; `AuthGuard`'s loading skeleton draws a 248px sidebar at every width; `reading-chat.tsx` places its composer from the legacy sidebar widths.
 - Settings: ESLint ignores `src/components/app/settings/**`; the Appearance card sits below the licence credits; the reference shows Appearance as a row on the Account page (part 6).
+- Cut-over, brand: the standalone assets still hold the legacy gull and switch with the flag's removal: `public/brand/maven-mark.svg`, `public/brand/maven-mark-light.svg`, `src/app/icon.svg`, `src/app/apple-icon.svg`. At 16px the mark needs to sit larger in the icon tile than the legacy one did. The legacy path and view box in `maven-logo.tsx` go at the same time.
 - Cut-over: `FOCUS_RING` (`src/lib/utils.ts`) shows a double ring under the new look; `duration-150` literals should become `--duration-fast`; the flag-off bundle carries the shell's code; the scoped values move into `@theme` and the scope, the `next:` variant, the aliases and the dead tokens go.

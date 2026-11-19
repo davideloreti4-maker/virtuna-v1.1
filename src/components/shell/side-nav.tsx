@@ -126,8 +126,8 @@ export function SideNav({ actions }: { actions: ThreadActions }) {
       <div className={cn("mb-3 flex items-center", collapsed ? "flex-col gap-2" : "h-[34px] justify-between pl-2")}>
         <Link href="/" aria-label="Maven home" className={cn("flex items-center gap-[9px] rounded-lg text-foreground", SHELL_FOCUS)}>
           {/* The mark sits in a 26 square, as in the reference. MavenMark is 2.5:1 (size = its
-              height), so at 13 tall it is 32.5 wide; its gull spans 72% of that (23.3), the
-              reference's drawn width. Centred, the svg's empty ends overflow the square. */}
+              height), so at 13 tall it is 32.5 wide; the new-look mark spans 75% of that (24.3)
+              and 11.6 of the height. Centred, the svg's empty ends overflow the square. */}
           <span aria-hidden className="flex size-[26px] shrink-0 items-center justify-center">
             <MavenMark size={13} className="shrink-0 text-accent" />
           </span>
