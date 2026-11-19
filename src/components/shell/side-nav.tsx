@@ -18,6 +18,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { usePinThread, useRenameThread, useThreadList } from "@/hooks/queries";
 import { useProfile } from "@/hooks/queries/use-profile";
 import { useSubscription } from "@/hooks/use-subscription";
+import { initialAutoRail } from "@/lib/shell/side-nav-default";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { useBoardStore } from "@/stores/board-store";
@@ -27,19 +28,21 @@ import {
   PLACES,
   RECENT_LIMIT,
   SHELL_FOCUS,
-  SIDE_NAV_CHOICE_KEY,
   SIDE_NAV_ORDER,
   SIDE_NAV_RAIL,
   SIDE_NAV_WIDTH,
   activePlace,
-  shouldStartCollapsed,
 } from "./nav-config";
 import { ThreadRow } from "./thread-row";
 import { useSideNavCollapse } from "./use-side-nav-collapse";
 import type { ThreadActions } from "./use-thread-actions";
 
-/** An account menu row: the text role and colour, the button radius, the hover tint when highlighted. */
-const MENU_ITEM = "rounded-xl text-ui text-foreground focus:bg-hover";
+/**
+ * An account menu row: the text role and colour, the button radius, and the "active" tint while
+ * highlighted (Radix focuses the item under the pointer too, so this covers hover). The hover
+ * tint (4% in light) was too faint to see which row is highlighted.
+ */
+const MENU_ITEM = "rounded-xl text-ui text-foreground focus:bg-active";
 
 /** In the rail a control shows no text, so it gets a tooltip. */
 function Hint({ label, show, children }: { label: string; show: boolean; children: React.ReactElement }) {
@@ -75,19 +78,13 @@ export function SideNav({ actions }: { actions: ThreadActions }) {
   const current = activePlace(pathname);
 
   // Below 1100px the sidebar starts as the rail, unless the creator already chose. This is the
-  // app's default, so it goes to the unpersisted autoRail, never to the saved choice. Set both
-  // ways: a mount on a wide window clears a default left from a narrow one. A layout effect, so
-  // it lands before the first paint: set after it, the sidebar and the content would be drawn at
-  // 248 and then slide to 56. Safe: the sidebar never renders on the server (it mounts inside
-  // AuthGuard, after the client session check).
+  // app's default, so it goes to the unpersisted autoRail, never to the saved choice. The store
+  // already starts with this value (shell-store), so the first frame is right; this re-checks on
+  // every mount, both ways: a mount on a wide window clears a default left from a narrow one.
+  // A layout effect, so a correction lands before paint. Safe: the sidebar never renders on the
+  // server (it mounts inside AuthGuard, after the client session check).
   useLayoutEffect(() => {
-    let chosen = true;
-    try {
-      chosen = window.localStorage.getItem(SIDE_NAV_CHOICE_KEY) !== null;
-    } catch {
-      // Storage blocked: count it as chosen and leave the sidebar as it is.
-    }
-    setAutoRail(shouldStartCollapsed(window.innerWidth, chosen));
+    setAutoRail(initialAutoRail());
   }, [setAutoRail]);
 
   // The newest thread always shows (it may be the open, still untitled one); beyond it only
@@ -244,11 +241,13 @@ export function SideNav({ actions }: { actions: ThreadActions }) {
             </button>
           </DropdownMenuTrigger>
           {/* The shared primitive's panel names `bg-popover`, which this app does not define, and
-              sits at z-50, under the sidebar (--z-sidebar 250). Given its surface and layer here. */}
+              sits at z-50, under the sidebar (--z-sidebar 250). Given its surface and layer here.
+              The shadow is `!`: cn() keeps the primitive's `shadow-md` beside an arbitrary
+              shadow, and `.shadow-md` comes later in the CSS, so it would win. */}
           <DropdownMenuContent
             side="top"
             align="start"
-            className="z-[var(--z-modal)] min-w-[200px] rounded-2xl border-0 bg-surface p-1.5 text-foreground shadow-[var(--shadow-float)]"
+            className="z-[var(--z-modal)] min-w-[200px] rounded-2xl border-0 bg-surface p-1.5 text-foreground shadow-[var(--shadow-float)]!"
           >
             <DropdownMenuItem className={MENU_ITEM} onSelect={() => router.push("/settings")}>
               <GearSix size={16} aria-hidden />

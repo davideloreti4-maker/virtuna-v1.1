@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { initialAutoRail } from '@/lib/shell/side-nav-default';
 
 interface ShellState {
   /**
@@ -20,6 +21,12 @@ interface ShellState {
 export const useShellStore = create<ShellState>()((set) => ({
   threadOpen: false,
   setThreadOpen: (open) => set({ threadOpen: open }),
-  autoRail: false,
+  // Known before the first render, not set by an effect after it: the sidebar's first frame must
+  // already be the rail, or it is drawn at 248 and slides to 56. An effect runs too late: on some
+  // pages other code reads layout in the same commit (Radix Presence on /settings, the thread
+  // autoscroll on /home), which fixes 248 as the transition's start before any re-render.
+  // Safe: false on the server, and the new shell renders only on the client, inside AuthGuard
+  // after the session check, so no server-rendered markup depends on this value.
+  autoRail: initialAutoRail(),
   setAutoRail: (v) => set({ autoRail: v }),
 }));

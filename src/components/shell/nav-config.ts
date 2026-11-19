@@ -1,5 +1,9 @@
 import { AudienceIcon, DiscoverIcon, HomeIcon, LibraryIcon, type ShellIcon } from "./icons";
 
+// The narrow-window default lives in a pure module the shell store can read at load; re-exported
+// here so the shell keeps one place to import its config from.
+export { SIDE_NAV_CHOICE_KEY, shouldStartCollapsed } from "@/lib/shell/side-nav-default";
+
 /**
  * The one place list. The phone tab bar and the desktop sidebar both read it, so the two can
  * never disagree about what the app's places are (spec §6).
@@ -96,12 +100,6 @@ export const SIDE_NAV_WIDTH = 248;
 export const SIDE_NAV_RAIL = 56;
 /** Threads listed under "Recent". */
 export const RECENT_LIMIT = 6;
-/**
- * localStorage key, set once the creator collapses or expands the sidebar themselves. Its own
- * key: sidebar-store's persisted blob is written by any change to that store (the ⌘K palette
- * too), so its presence does not mean the creator chose.
- */
-export const SIDE_NAV_CHOICE_KEY = "maven-sidenav-chosen";
 
 /**
  * The app-wide `:focus-visible` ring drawn inside the control instead of 2px outside it. Use it
@@ -110,10 +108,3 @@ export const SIDE_NAV_CHOICE_KEY = "maven-sidenav-chosen";
  * app-wide rule is unlayered CSS and beats a plain utility.
  */
 export const SHELL_FOCUS = "focus-visible:outline-offset-[-2px]!";
-
-const AUTO_COLLAPSE_BELOW = 1100;
-
-/** Below 1100px the sidebar starts as the rail, unless the creator already chose. */
-export function shouldStartCollapsed(viewportWidth: number, hasStoredChoice: boolean): boolean {
-  return !hasStoredChoice && viewportWidth < AUTO_COLLAPSE_BELOW;
-}
