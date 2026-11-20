@@ -39,6 +39,7 @@ export function NextShell({ children }: { children: React.ReactNode }) {
   const actions = useThreadActions();
   const commandItems = useCommandItems();
   const threadOpen = useShellStore((s) => s.threadOpen);
+  const pushedTitle = useShellStore((s) => s.pushedTitle);
   // The sidebar's width as it is drawn: the creator's choice, or the rail the app starts with
   // on a narrow window. The same hook drives SideNav, so the two cannot disagree.
   const { collapsed: isCollapsed } = useSideNavCollapse();
@@ -52,6 +53,13 @@ export function NextShell({ children }: { children: React.ReactNode }) {
   useThemeSync();
 
   const inThread = pathname === "/home" && threadOpen;
+  // A result is opened from a thread, a card or Library: Back returns there. Opened directly
+  // (a fresh tab, a pasted link) there is nothing to go back to, so it goes Home.
+  const back = inThread
+    ? actions.newThread
+    : pathname.startsWith("/simulation/")
+      ? () => (window.history.length > 1 ? router.back() : router.push("/home"))
+      : () => router.push(backTarget(pathname));
   const showBar = tabBarVisible(pathname, threadOpen);
   // While the list loads the title stays empty, so the header does not flash "New chat" first.
   const threadTitle =
@@ -81,10 +89,12 @@ export function NextShell({ children }: { children: React.ReactNode }) {
             }}
           >
             <PushedHeader
-              // A thread's title names the screen; other screens carry their own heading.
-              title={inThread ? threadTitle : ""}
-              titleAs="div"
-              onBack={inThread ? actions.newThread : () => router.push(backTarget(pathname))}
+              // A thread's title names the screen; a screen that names itself from its data sets
+              // `pushedTitle` (the result page); the others carry their own heading.
+              title={inThread ? threadTitle : pushedTitle}
+              // A screen named through `pushedTitle` has no heading of its own on the phone: this is it.
+              titleAs={!inThread && pushedTitle ? "h1" : "div"}
+              onBack={back}
               // As in the reference: a new chat is one tap away on every pushed screen.
               trailing={
                 <IconButton aria-label="New chat" onClick={actions.newThread}>

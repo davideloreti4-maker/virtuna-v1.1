@@ -168,6 +168,7 @@ import { track } from "@/lib/analytics/funnel-events";
 import { consumePendingUpload } from "@/lib/onboarding/pending-upload";
 import type { Verb } from "@/lib/room-contract/types";
 import { LAUNCH_PARAM } from "@/lib/room-contract/thread-launch";
+import { resultHref } from "@/lib/result/href";
 
 // Matches a canonical v1–v5 UUID. Used to gate the per-thread audience pin: only a
 // real audience-row UUID (or null=General) may PATCH threads.active_audience_id (uuid
@@ -1828,13 +1829,13 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         const data = (await res.json().catch(() => ({}))) as { degraded?: string };
         if (!res.ok || data.degraded) {
           // No honest craft card to drop → the full breakdown page is the honest fallback.
-          router.push(`/analyze/${id}`);
+          router.push(resultHref(id));
           return;
         }
         // Surface the freshly-sealed card in the unified stream (no navigate-out).
         await reloadChatThread();
       } catch {
-        router.push(`/analyze/${id}`);
+        router.push(resultHref(id));
       } finally {
         setCarding(false);
       }

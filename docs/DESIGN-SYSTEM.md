@@ -319,6 +319,24 @@ Parts (`src/components/ui`): `Card` and `Tile`, `Button` (`primary`, `secondary`
 is 50 tall, `xl` is 56), `IconButton`, `Chip`, `Badge` (the tag), `Sheet`. Shell
 (`src/components/shell`): `TabBar`, `SideNav`, `PlaceHeader`, `PushedHeader`, `NextShell`.
 
+Result page (`src/components/result`, logic in `src/lib/result`; spec
+`docs/superpowers/specs/2026-11-19-result-page-design.md`): `ResultPage` (loading, running,
+stalled, not found, no audience, result), `VideoResult` (phone column / desktop grid), `Hero`,
+`Player`, `Gauge`, `Curve` with `SceneStrip`, `Moment`, `CompactPlayer`, `PanelSwitch`,
+`BrainPanel`, `EngagementPanel`, `AudiencePanel` with `AudienceRing`. One playhead for all of them:
+`PlayheadProvider` / `usePlayhead()`. Rules of that page:
+
+- Coral (`--color-below`, text `--color-below-text`, band `--color-below-soft`) marks one thing:
+  the scene the sentence names (its part of the line, its tile in the strip, its wedges and rows).
+- Tokens only; `result-guard.test.ts` enforces it. Glass exists in one place, the play mark on
+  the video (`PlayMark` in `player.tsx`, blur as an inline style).
+- The number is `headlineOf()` and nothing else; the craft grader's score is never shown.
+- While the playhead moves, the readout shows a stored value (the end of the scene under it),
+  and its dot sits at that point.
+- The brain's porcelain look is `look="porcelain-light" | "porcelain-dark"` on `CortexCanvas`
+  (`cortex-porcelain.ts`); the default `"scan"` is the legacy look, unchanged.
+- To look at it: `/dev/result?fixture=<name>` and `node scripts/result-shots.cjs --out <dir>`.
+
 Rules that are not in the spec:
 
 - Navigation glyphs come from `src/components/shell/icons.tsx` (the reference's own drawings),

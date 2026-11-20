@@ -16,6 +16,13 @@ interface ShellState {
    */
   autoRail: boolean;
   setAutoRail: (v: boolean) => void;
+  /**
+   * The phone header's title on a pushed screen that is not a thread and names itself from its
+   * data (the result page: "Video · 0:29"). The page sets it and clears it on unmount. Empty:
+   * no title. Not persisted.
+   */
+  pushedTitle: string;
+  setPushedTitle: (title: string) => void;
 }
 
 export const useShellStore = create<ShellState>()((set) => ({
@@ -29,4 +36,6 @@ export const useShellStore = create<ShellState>()((set) => ({
   // after the session check, so no server-rendered markup depends on this value.
   autoRail: initialAutoRail(),
   setAutoRail: (v) => set({ autoRail: v }),
+  pushedTitle: '',
+  setPushedTitle: (title) => set({ pushedTitle: title }),
 }));
