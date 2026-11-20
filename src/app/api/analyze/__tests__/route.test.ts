@@ -49,6 +49,15 @@ vi.mock("nanoid", () => ({
   nanoid: vi.fn(() => "test-req-id"),
 }));
 
+// The caller's open thread carries the pinned audience. The lookup reads a cookie and the
+// database; in these tests it finds nothing (it rejects, and the route falls back to General)
+// unless a test pins an audience.
+const mockOpenThread = vi.fn();
+vi.mock("@/lib/threads/threads", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/threads/threads")>()),
+  createOpenThreadLazy: (userId: string) => mockOpenThread(userId),
+}));
+
 // =====================================================
 // Mock Supabase auth + service clients
 // =====================================================
@@ -77,6 +86,17 @@ const mockInsert = vi.fn(() => Promise.resolve({ error: null }));
 const mockUpsert = vi.fn(() => Promise.resolve({ error: null }));
 const mockStorageRemove = vi.fn(() => Promise.resolve({ error: null }));
 
+// Which stored runs reference an uploaded file. The orphan cleanup asks before it deletes:
+// `.select("id").eq("user_id", …).eq("video_storage_path", …).limit(1)`. Empty = an orphan.
+const mockReferencingRows = vi.fn((): Array<{ id: string }> => []);
+const mockReferenceSelect = vi.fn(() => ({
+  eq: vi.fn(() => ({
+    eq: vi.fn(() => ({
+      limit: vi.fn(() => Promise.resolve({ data: mockReferencingRows(), error: null })),
+    })),
+  })),
+}));
+
 // Fix 1 — spy on analysis_results UPDATE call (SSE path persists score before event:complete)
 const mockUpdateEq = vi.fn(() => ({ eq: vi.fn(() => Promise.resolve({ error: null })) }));
 const mockUpdate = vi.fn(() => ({ eq: mockUpdateEq }));
@@ -85,7 +105,12 @@ vi.mock("@/lib/supabase/service", () => ({
   createServiceClient: vi.fn(() => ({
     from: vi.fn((table: string) => {
       if (table === "analysis_results") {
-        return { insert: mockInsert, upsert: mockUpsert, update: mockUpdate };
+        return {
+          insert: mockInsert,
+          upsert: mockUpsert,
+          update: mockUpdate,
+          select: mockReferenceSelect,
+        };
       }
       if (table === "usage_tracking") {
         // Route uses .select().eq().eq().eq().single() then .upsert() on this table
@@ -234,6 +259,8 @@ beforeEach(() => {
   mockUpdateEq.mockReturnValue({ eq: vi.fn(() => Promise.resolve({ error: null })) });
   mockUpdate.mockReturnValue({ eq: mockUpdateEq });
   mockStorageRemove.mockResolvedValue({ error: null });
+  mockReferencingRows.mockReturnValue([]);
+  mockOpenThread.mockRejectedValue(new Error("no open thread in this test"));
 
   // Default: cache miss
   (lookupPredictionCache as unknown as ReturnType<typeof vi.fn>).mockResolvedValue(
@@ -454,6 +481,79 @@ describe("POST /api/analyze — provenance INSERT (PIPE-05, PIPE-06, CACHE-01)",
   });
 });
 
+/** The caller has used up today's allowance: the route answers 429 before any engine spend. */
+const mockDailyLimitReached = async () => {
+  // Simulate rate limit: user subscription is "free", and today's count (50) is past its limit.
+  // Override the auth client to return free tier + maxed usage count.
+  const { createClient } = await import("@/lib/supabase/server");
+  (createClient as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+    auth: {
+      getUser: () =>
+        Promise.resolve({ data: { user: { id: "user-1" } }, error: null }),
+    },
+    from: vi.fn((table: string) => {
+      if (table === "user_subscriptions") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              single: vi.fn(() =>
+                Promise.resolve({ data: { virtuna_tier: "free" }, error: null })
+              ),
+            })),
+          })),
+        };
+      }
+      if (table === "creator_profiles") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              maybeSingle: vi.fn(() =>
+                Promise.resolve({ data: { storage_retention_opted_in: false }, error: null })
+              ),
+            })),
+          })),
+        };
+      }
+      return {};
+    }),
+  });
+  // Override service client to return a usage count past the free limit.
+  const { createServiceClient } = await import("@/lib/supabase/service");
+  (createServiceClient as unknown as ReturnType<typeof vi.fn>).mockReturnValueOnce({
+    from: vi.fn((table: string) => {
+      if (table === "usage_tracking") {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn(() => ({
+              eq: vi.fn(() => ({
+                eq: vi.fn(() => ({
+                  single: vi.fn(() =>
+                    Promise.resolve({ data: { analysis_count: 50 }, error: null })
+                  ),
+                })),
+              })),
+            })),
+          })),
+          upsert: vi.fn(() => Promise.resolve({ error: null })),
+        };
+      }
+      if (table === "analysis_results") {
+        return {
+          insert: mockInsert,
+          upsert: mockUpsert,
+          update: mockUpdate,
+          select: mockReferenceSelect,
+        };
+      }
+      return {};
+    }),
+    storage: {
+      from: vi.fn(() => ({ remove: mockStorageRemove })),
+    },
+    rpc: vi.fn(() => Promise.resolve({ error: null })),
+  });
+};
+
 // =====================================================
 // Phase 3 (260528-nsb) — Storage cleanup on early-return branches (Mode A fix)
 // =====================================================
@@ -461,7 +561,7 @@ describe("POST /api/analyze — provenance INSERT (PIPE-05, PIPE-06, CACHE-01)",
 describe("POST /api/analyze — storage cleanup on cache-hit (Mode A fix)", () => {
   const videoInput = {
     input_mode: "video_upload",
-    video_storage_path: "user-x/abc.mp4",
+    video_storage_path: "user-1/abc.mp4",
     content_text: "This is a test piece of content for analysis.",
     content_type: "video",
   };
@@ -474,7 +574,7 @@ describe("POST /api/analyze — storage cleanup on cache-hit (Mode A fix)", () =
     const req = makeRequest(videoInput, { Accept: "application/json" });
     const res = await POST(req);
     expect(res.status).toBe(200);
-    expect(mockStorageRemove).toHaveBeenCalledWith(["user-x/abc.mp4"]);
+    expect(mockStorageRemove).toHaveBeenCalledWith(["user-1/abc.mp4"]);
   });
 
   it("cache-hit skips storage cleanup for opted-in user (retention active)", async () => {
@@ -510,75 +610,12 @@ describe("POST /api/analyze — storage cleanup on cache-hit (Mode A fix)", () =
   });
 
   it("rate-limit (429) cleans up uploaded storage for opted-out user", async () => {
-    // Simulate rate limit: user subscription is "free" (50/day limit), usage already at 50.
-    // Override the auth client to return free tier + maxed usage count.
-    const { createClient } = await import("@/lib/supabase/server");
-    (createClient as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
-      auth: {
-        getUser: () =>
-          Promise.resolve({ data: { user: { id: "user-1" } }, error: null }),
-      },
-      from: vi.fn((table: string) => {
-        if (table === "user_subscriptions") {
-          return {
-            select: vi.fn(() => ({
-              eq: vi.fn(() => ({
-                single: vi.fn(() =>
-                  Promise.resolve({ data: { virtuna_tier: "free" }, error: null })
-                ),
-              })),
-            })),
-          };
-        }
-        if (table === "creator_profiles") {
-          return {
-            select: vi.fn(() => ({
-              eq: vi.fn(() => ({
-                maybeSingle: vi.fn(() =>
-                  Promise.resolve({ data: { storage_retention_opted_in: false }, error: null })
-                ),
-              })),
-            })),
-          };
-        }
-        return {};
-      }),
-    });
-    // Override service client to return usage count >= free limit (50).
-    const { createServiceClient } = await import("@/lib/supabase/service");
-    (createServiceClient as unknown as ReturnType<typeof vi.fn>).mockReturnValueOnce({
-      from: vi.fn((table: string) => {
-        if (table === "usage_tracking") {
-          return {
-            select: vi.fn(() => ({
-              eq: vi.fn(() => ({
-                eq: vi.fn(() => ({
-                  eq: vi.fn(() => ({
-                    single: vi.fn(() =>
-                      Promise.resolve({ data: { analysis_count: 50 }, error: null })
-                    ),
-                  })),
-                })),
-              })),
-            })),
-            upsert: vi.fn(() => Promise.resolve({ error: null })),
-          };
-        }
-        if (table === "analysis_results") {
-          return { insert: mockInsert, upsert: mockUpsert, update: mockUpdate };
-        }
-        return {};
-      }),
-      storage: {
-        from: vi.fn(() => ({ remove: mockStorageRemove })),
-      },
-      rpc: vi.fn(() => Promise.resolve({ error: null })),
-    });
+    await mockDailyLimitReached();
 
     const req = makeRequest(videoInput, { Accept: "application/json" });
     const res = await POST(req);
     expect(res.status).toBe(429);
-    expect(mockStorageRemove).toHaveBeenCalledWith(["user-x/abc.mp4"]);
+    expect(mockStorageRemove).toHaveBeenCalledWith(["user-1/abc.mp4"]);
   });
 
   it("pipeline-throw (JSON branch) cleans up uploaded storage for opted-out user", async () => {
@@ -593,7 +630,139 @@ describe("POST /api/analyze — storage cleanup on cache-hit (Mode A fix)", () =
     // Note: this test exercises the outer catch path (after validated is set).
     const res = await POST(req);
     expect(res.status).toBe(500);
-    expect(mockStorageRemove).toHaveBeenCalledWith(["user-x/abc.mp4"]);
+    expect(mockStorageRemove).toHaveBeenCalledWith(["user-1/abc.mp4"]);
+  });
+
+  it("pipeline-throw (SSE branch) cleans up a fresh upload", async () => {
+    (runPredictionPipeline as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new Error("Gemini unavailable")
+    );
+
+    const res = await POST(makeRequest(videoInput, { Accept: "text/event-stream" }));
+    const payload = await readSSEPayload(res);
+    expect(payload).toContain("event: error");
+    expect(mockStorageRemove).toHaveBeenCalledWith(["user-1/abc.mp4"]);
+  });
+});
+
+// =====================================================
+// The cleanup only ever deletes the caller's own orphan
+// =====================================================
+// Two rules. (1) A path under another account's folder is refused at the door: the route
+// works with the service client, so nothing downstream would stop it reading or deleting a
+// stranger's video. (2) A file that a stored run still plays from is not an orphan: running a
+// stored video again must not destroy it when that run is refused, cached or fails.
+
+describe("POST /api/analyze — a video path that is not the caller's", () => {
+  const foreignInput = {
+    input_mode: "video_upload",
+    video_storage_path: "user-2/theirs.mp4",
+    content_text: "This is a test piece of content for analysis.",
+    content_type: "video",
+  };
+
+  it("is refused with 403 before anything is analysed or deleted", async () => {
+    const res = await POST(makeRequest(foreignInput, { Accept: "application/json" }));
+
+    expect(res.status).toBe(403);
+    expect(runPredictionPipeline).not.toHaveBeenCalled();
+    expect(lookupPredictionCache).not.toHaveBeenCalled();
+    expect(mockInsert).not.toHaveBeenCalled();
+    expect(mockStorageRemove).not.toHaveBeenCalled();
+  });
+
+  it("is refused on the SSE path too", async () => {
+    const res = await POST(makeRequest(foreignInput, { Accept: "text/event-stream" }));
+
+    expect(res.status).toBe(403);
+    expect(mockStorageRemove).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["a folder that only starts like the caller's", "user-12/abc.mp4"],
+    ["a path that climbs out of the caller's folder", "user-1/../user-2/theirs.mp4"],
+    ["a path with an empty folder", "user-1//abc.mp4"],
+    ["a bare folder", "user-1/"],
+    ["no folder at all", "abc.mp4"],
+    // On its way to storage the path sits inside a URL, which reads these as "..".
+    ["an escaped climb out of the caller's folder", "user-1/%2e%2e/user-2/theirs.mp4"],
+    ["a half-escaped climb", "user-1/.%2E/user-2/theirs.mp4"],
+    ["a backslash climb", "user-1/..\\user-2/theirs.mp4"],
+    ["a climb hidden by a tab", "user-1/.\t./user-2/theirs.mp4"],
+  ])("refuses %s", async (_name, path) => {
+    const res = await POST(
+      makeRequest({ ...foreignInput, video_storage_path: path }, { Accept: "application/json" })
+    );
+
+    expect(res.status).toBe(403);
+    expect(runPredictionPipeline).not.toHaveBeenCalled();
+    expect(mockStorageRemove).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/analyze — running a stored video again keeps its file", () => {
+  const storedInput = {
+    input_mode: "video_upload",
+    video_storage_path: "user-1/stored.mp4",
+    content_text: "This is a test piece of content for analysis.",
+    content_type: "video",
+  };
+
+  beforeEach(() => {
+    // An earlier run of this caller plays from the file.
+    mockReferencingRows.mockReturnValue([{ id: "stored-run" }]);
+  });
+
+  it("when the daily limit refuses the run", async () => {
+    await mockDailyLimitReached();
+
+    const res = await POST(makeRequest(storedInput, { Accept: "application/json" }));
+
+    expect(res.status).toBe(429);
+    expect(mockStorageRemove).not.toHaveBeenCalled();
+  });
+
+  it("when the input is refused as invalid", async () => {
+    const res = await POST(
+      makeRequest({ ...storedInput, content_type: "not-a-type" }, { Accept: "application/json" })
+    );
+
+    expect(res.status).toBe(400);
+    expect(mockStorageRemove).not.toHaveBeenCalled();
+  });
+
+  it("when the answer comes from the cache", async () => {
+    (lookupPredictionCache as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      fakeFinalResult
+    );
+
+    const res = await POST(makeRequest(storedInput, { Accept: "application/json" }));
+
+    expect(res.status).toBe(200);
+    expect(mockStorageRemove).not.toHaveBeenCalled();
+  });
+
+  it("when the pipeline fails (JSON)", async () => {
+    (runPredictionPipeline as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new Error("Gemini unavailable")
+    );
+
+    const res = await POST(makeRequest(storedInput, { Accept: "application/json" }));
+
+    expect(res.status).toBe(500);
+    expect(mockStorageRemove).not.toHaveBeenCalled();
+  });
+
+  it("when the pipeline fails (SSE)", async () => {
+    (runPredictionPipeline as unknown as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
+      new Error("Gemini unavailable")
+    );
+
+    const res = await POST(makeRequest(storedInput, { Accept: "text/event-stream" }));
+    const payload = await readSSEPayload(res);
+
+    expect(payload).toContain("event: error");
+    expect(mockStorageRemove).not.toHaveBeenCalled();
   });
 });
 
@@ -763,5 +932,77 @@ describe("POST /api/analyze — the funnel wall (verdict seal, §0b②)", () => 
     expect(body.heatmap).not.toBeNull();
     expect(body.heatmap.weighted_curve).toEqual([0.8, 0.4]);
     expect(body.personas).toHaveLength(1);
+  });
+});
+
+// =====================================================
+// MODE-01 — a custom audience refuses a video run; the upload is cleaned up like any orphan
+// =====================================================
+
+describe("POST /api/analyze — a run refused by the pinned audience", () => {
+  const videoInput = {
+    input_mode: "video_upload",
+    video_storage_path: "user-1/abc.mp4",
+    content_text: "This is a test piece of content for analysis.",
+    content_type: "video",
+  };
+
+  /** The caller's thread is pinned to a custom (`mode: 'general'`) audience. */
+  const pinCustomAudience = async () => {
+    mockOpenThread.mockResolvedValue({ id: "thread-1", active_audience_id: "aud-panel" });
+    const { createClient } = await import("@/lib/supabase/server");
+    (createClient as unknown as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      auth: {
+        getUser: () => Promise.resolve({ data: { user: { id: "user-1" } }, error: null }),
+      },
+      from: vi.fn((table: string) => ({
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            single: vi.fn(() =>
+              table === "audiences"
+                ? Promise.resolve({
+                    data: { id: "aud-panel", user_id: "user-1", name: "Hiring panel", mode: "general" },
+                    error: null,
+                  })
+                : Promise.resolve({ data: { virtuna_tier: "pro" }, error: null })
+            ),
+            maybeSingle: vi.fn(() =>
+              Promise.resolve({ data: { storage_retention_opted_in: false }, error: null })
+            ),
+          })),
+        })),
+      })),
+    });
+  };
+
+  it("answers 400 without analysing, and removes the fresh upload", async () => {
+    await pinCustomAudience();
+
+    const res = await POST(makeRequest(videoInput, { Accept: "application/json" }));
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe("skill_requires_socials_audience");
+    expect(runPredictionPipeline).not.toHaveBeenCalled();
+    expect(mockStorageRemove).toHaveBeenCalledWith(["user-1/abc.mp4"]);
+  });
+
+  it("keeps the file when the refused run was of a stored video", async () => {
+    await pinCustomAudience();
+    mockReferencingRows.mockReturnValue([{ id: "stored-run" }]);
+
+    const res = await POST(makeRequest(videoInput, { Accept: "application/json" }));
+
+    expect(res.status).toBe(400);
+    expect(mockStorageRemove).not.toHaveBeenCalled();
+  });
+
+  it("still refuses when the cleanup cannot reach storage", async () => {
+    await pinCustomAudience();
+    mockStorageRemove.mockRejectedValue(new Error("storage offline"));
+
+    const res = await POST(makeRequest(videoInput, { Accept: "application/json" }));
+
+    expect(res.status).toBe(400);
+    expect(runPredictionPipeline).not.toHaveBeenCalled();
   });
 });
