@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createLogger } from "@/lib/logger";
+import { ownsVideoPath } from "@/lib/storage/own-video-path";
 
 const log = createLogger({ module: "videos.sign" });
 
@@ -25,9 +26,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 
-  // Path convention: `<userId>/<nanoid>.<ext>` — refuse if it doesn't match.
-  const ownerId = path.split("/")[0];
-  if (ownerId !== user.id) {
+  // Path convention: `<userId>/<nanoid>.<ext>` — refuse anything else. Reading the first folder
+  // alone was not enough: `<userId>/../<other>/<file>` starts in the caller's folder and the
+  // URL it is signed through resolves it to another account's video (see ownsVideoPath).
+  if (!ownsVideoPath(path, user.id)) {
     return NextResponse.json({ error: "forbidden" }, { status: 403 });
   }
 
