@@ -301,7 +301,11 @@ describe("videoStateOf: the one object the page renders from", () => {
   });
 
   it("is 'running' while the run is in flight", () => {
-    expect(videoStateOf({ id: "x", processing: true, heatmap: null })).toEqual({ kind: "running", id: "x" });
+    expect(videoStateOf({ id: "x", processing: true, heatmap: null })).toEqual({
+      kind: "running",
+      id: "x",
+      startedAt: null,
+    });
   });
 
   it("is 'no-audience' for a finished run without simulated viewers, and carries no score", () => {
@@ -403,10 +407,15 @@ describe("edge cases found in review (2026-11-20)", () => {
   it("a run still in flight after six minutes has stalled: the pipeline died", () => {
     const now = Date.parse("2026-11-20T12:00:00Z");
     const startedAgo = (minutes: number) => new Date(now - minutes * 60_000).toISOString();
-    expect(videoStateOf({ id: "x", processing: true, created_at: startedAgo(1) }, now)).toEqual({ kind: "running", id: "x" });
+    // A run in flight carries its start, for the running screen's clock.
+    expect(videoStateOf({ id: "x", processing: true, created_at: startedAgo(1) }, now)).toEqual({
+      kind: "running",
+      id: "x",
+      startedAt: now - 60_000,
+    });
     expect(videoStateOf({ id: "x", processing: true, created_at: startedAgo(7) }, now)).toEqual({ kind: "stalled", id: "x" });
     // Without a start time nothing can be said: it keeps running.
-    expect(videoStateOf({ id: "x", processing: true }, now)).toEqual({ kind: "running", id: "x" });
+    expect(videoStateOf({ id: "x", processing: true }, now)).toEqual({ kind: "running", id: "x", startedAt: null });
   });
 
   it("a group whose viewers carry no weight still shows whether they watch", () => {

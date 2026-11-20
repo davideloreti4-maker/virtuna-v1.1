@@ -15,7 +15,7 @@ import type { RingDot, RingLayout, WedgeLook } from "@/lib/result/ring-layout";
  */
 
 /** Dots as circles in one path: each is two half arcs. */
-function circles(dots: readonly RingDot[], r: number): string {
+export function circles(dots: readonly RingDot[], r: number): string {
   const d = r.toFixed(2);
   const w = (2 * r).toFixed(2);
   let path = "";

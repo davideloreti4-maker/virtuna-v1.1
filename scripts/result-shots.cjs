@@ -6,7 +6,7 @@
  *        [--theme light|dark] [--tab brain|engagement|audience] [--scroll <px>] [--t <seconds>]
  *        [--processing] [--full] [--clean] [--no-frames] [--name <file>] [--base http://127.0.0.1:3021]
  *        [--cookies .scratch/next-look/cookie.json] [--video <url>] [--video-file <path>]
- *        [--width <px>] [--height <px>] [--reduced-motion]
+ *        [--width <px>] [--height <px>] [--reduced-motion] [--query "<k=v&k=v>"]
  *
  * Phone 393×852, desktop 1440×900, device scale 2. The scene frames are served from the local copy
  * of the reference run (.scratch/next-look/part2/frames/ZVDugmW7*), because stored frame addresses
@@ -21,8 +21,12 @@
  * --reduced-motion opens the page as a visitor who asked for less motion.
  * --video plays that address as the run's video; --video-file serves a local file as that video
  * (at https://video.fixture/clip); a --video on https://video.fixture/ without a file answers 404.
+ * --query appends more of the dev page's parameters to its address (the running screen's moments,
+ * e.g. --processing --query "elapsed=42&groups=10&runframes=7"); the file name then carries
+ * q<6 characters of the query's hash> unless --name is given.
  */
 const { chromium } = require("@playwright/test");
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 
@@ -54,6 +58,10 @@ const video = arg("video", videoFile ? "https://video.fixture/clip" : null);
 const width = Number(arg("width", 0)) || null;
 const height = Number(arg("height", 0)) || null;
 const reducedMotion = arg("reduced-motion", false) === true;
+const extraQuery = (() => {
+  const value = arg("query", null);
+  return typeof value === "string" ? value.replace(/^[?&]+/, "") : null;
+})();
 
 if (!outDir || !["phone", "desktop"].includes(view) || !["light", "dark"].includes(theme)) {
   console.error(
@@ -64,7 +72,7 @@ if (!outDir || !["phone", "desktop"].includes(view) || !["light", "dark"].includ
 
 const name =
   arg("name", null) ||
-  [fixture, view, width ? `w${width}` : null, theme, tab, reducedMotion ? "calm" : null, scroll ? `s${scroll}` : null, t != null ? `t${t}` : null, processing ? "running" : null, full ? "full" : null]
+  [fixture, view, width ? `w${width}` : null, theme, tab, reducedMotion ? "calm" : null, scroll ? `s${scroll}` : null, t != null ? `t${t}` : null, processing ? "running" : null, extraQuery ? `q${crypto.createHash("sha1").update(extraQuery).digest("hex").slice(0, 6)}` : null, full ? "full" : null]
     .filter(Boolean)
     .join("-");
 
@@ -124,6 +132,7 @@ const VIEWPORTS = { phone: { width: 393, height: 852 }, desktop: { width: 1440, 
   if (processing) query.set("processing", "1");
   if (t != null) query.set("t", String(t));
   if (video) query.set("video", String(video));
+  for (const [key, value] of new URLSearchParams(extraQuery ?? "")) query.set(key, value);
   const url = `${base}/dev/result?${query}`;
 
   await page.goto(url, { waitUntil: "domcontentloaded", timeout: 120_000 });

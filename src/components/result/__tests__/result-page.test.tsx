@@ -18,6 +18,7 @@ const router = { push: vi.fn(), replace: vi.fn(), back: vi.fn() };
 vi.mock("next/navigation", () => ({ useRouter: () => router, usePathname: () => "/simulation/x" }));
 
 import { videoStateOf } from "@/lib/result/video-model";
+import { forgetRunVideos, runVideoOf } from "@/lib/result/run-video";
 import type { ResultRow, ResultState } from "@/lib/result/types";
 import { SESSION_EXPIRED_EVENT, SESSION_EXPIRED_MESSAGE } from "@/lib/auth/session-expired";
 import { CREDIT_WALL_EVENT } from "@/lib/billing/credit-wall";
@@ -81,6 +82,7 @@ beforeEach(() => {
 
 afterEach(() => {
   client.clear();
+  forgetRunVideos();
   setWidth(realWidth);
   vi.unstubAllGlobals();
 });
@@ -103,11 +105,105 @@ describe("not found", () => {
 });
 
 describe("running", () => {
-  it("shows one quiet line and names the screen 'Simulating'", () => {
-    renderPage({ kind: "running", id: "run-1" });
-    expect(screen.getByText("Simulating…")).toBeInTheDocument();
+  // Layout does not run here: the running screen's stage is measured through a stand-in
+  // ResizeObserver reporting the reference desktop's content area.
+  class FakeResizeObserver {
+    constructor(private callback: ResizeObserverCallback) {}
+    observe(target: Element) {
+      this.callback([{ target, contentRect: { width: 1192, height: 832 } } as unknown as ResizeObserverEntry], this as unknown as ResizeObserver);
+    }
+    unobserve() {}
+    disconnect() {}
+  }
+  beforeEach(() => vi.stubGlobal("ResizeObserver", FakeResizeObserver));
+
+  it("shows the running screen and names the screen 'Simulating'", () => {
+    const { container } = renderPage({ kind: "running", id: "run-1", startedAt: null });
+    expect(container.querySelector('[data-result="running-ring"]')).not.toBeNull();
     expect(useShellStore.getState().pushedTitle).toBe("Simulating");
+    // On desktop the page's heading names it (the phone's is the shell's pushed header).
+    expect(screen.getByRole("heading", { level: 1, name: "Simulating" })).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/%/);
+  });
+
+  it("another run starts fresh: its groups arrive again instead of appearing at once", () => {
+    type Listener = (event: MessageEvent) => void;
+    const opened: Array<{ url: string; listeners: Map<string, Listener[]> }> = [];
+    vi.stubGlobal(
+      "EventSource",
+      class {
+        listeners = new Map<string, Listener[]>();
+        constructor(public url: string) {
+          opened.push(this);
+        }
+        addEventListener(type: string, listener: Listener) {
+          this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener]);
+        }
+        removeEventListener() {}
+        close() {}
+      },
+    );
+    const roster = JSON.stringify({ personas: Array.from({ length: 10 }, (_, i) => ({ archetype: `group-${i}` })) });
+    const sendRoster = () => act(() => opened.at(-1)!.listeners.get("roster")!.forEach((l) => l({ data: roster } as MessageEvent)));
+    const wedges = (c: HTMLElement) => c.querySelectorAll("[data-wedge]").length;
+    vi.useFakeTimers();
+    try {
+      const { container, rerender } = renderPage({ kind: "running", id: "run-1", startedAt: null });
+      sendRoster();
+      act(() => vi.advanceTimersByTime(600));
+      expect(wedges(container)).toBe(10);
+
+      rerender(<ResultPage state={{ kind: "running", id: "run-2", startedAt: null }} />);
+      expect(opened.at(-1)!.url).toBe("/api/analyze/run-2/stream");
+      sendRoster();
+
+      expect(wedges(container)).toBeLessThan(10);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  const body = (c: HTMLElement) => c.querySelector<HTMLElement>("[data-result-body]");
+
+  it("the result fades in when the run finishes while the page is open", () => {
+    const { container, rerender } = renderPage({ kind: "running", id: "run-1", startedAt: null });
+    expect(body(container)?.hasAttribute("data-arrived")).toBe(false);
+
+    rerender(<ResultPage state={stateOf(early)} />);
+
+    expect(container.querySelector('[data-result="gauge"]')).not.toBeNull();
+    expect(body(container)?.hasAttribute("data-arrived")).toBe(true);
+    // Opacity only: an animated transform or filter would, for its 400 ms, make the pinned
+    // compact player position against the page body instead of the screen.
+    const fade = body(container)?.className ?? "";
+    expect(fade).toMatch(/motion-safe:transition-opacity/);
+    expect(fade).toMatch(/motion-safe:starting:opacity-0/);
+    expect(fade).not.toMatch(/animate-in|fade-in|zoom|slide|spin|blur|translate|scale|rotate|transform|filter/);
+  });
+
+  it("a run that turns into no audience fades in too", () => {
+    const { container, rerender } = renderPage({ kind: "running", id: "run-1", startedAt: null });
+
+    rerender(<ResultPage state={{ kind: "no-audience", id: "run-1", title: "Video", videoPath: null }} />);
+
+    expect(screen.getByText("No audience came back.")).toBeInTheDocument();
+    expect(body(container)?.hasAttribute("data-arrived")).toBe(true);
+  });
+
+  it("a run that stalls does not fade in", () => {
+    const { container, rerender } = renderPage({ kind: "running", id: "run-1", startedAt: null });
+
+    rerender(<ResultPage state={{ kind: "stalled", id: "run-1" }} />);
+
+    expect(screen.getByText("This simulation did not finish.")).toBeInTheDocument();
+    expect(body(container)?.hasAttribute("data-arrived")).toBe(false);
+  });
+
+  it("a result opened directly does not fade in", () => {
+    const { container } = renderPage(stateOf(early));
+    expect(container.querySelector('[data-result="gauge"]')).not.toBeNull();
+    expect(body(container)?.hasAttribute("data-arrived")).toBe(false);
+    expect(body(container)?.className ?? "").not.toMatch(/fade-in|opacity/);
   });
 });
 
@@ -177,6 +273,8 @@ describe("no audience", () => {
     expect(router.push).not.toHaveBeenCalled();
     const analyzeCall = fetchMock.mock.calls.find(([url]) => String(url).startsWith("/api/analyze"));
     expect(JSON.parse((analyzeCall![1] as RequestInit).body as string).video_storage_path).toBe("user-1/clip.mp4");
+    // The new run's screen plays the video this page already holds while the run is in flight.
+    expect(runVideoOf("new-1")).toBe("https://videos.test/clip.mp4");
   });
 
   it("when the new run cannot start: says so under the button, and the button works again", async () => {

@@ -38,8 +38,11 @@ const RADIUS: Record<Size, string> = {
   desktop: "rounded-3xl",
   compact: "rounded-lg",
 };
-/** The mock's `.player` / `.vcard` shadows, in tokens: a hairline and a drop in the scrim tone. */
-const SHADOW: Record<Size, string> = {
+/**
+ * The mock's `.player` / `.vcard` shadows, in tokens: a hairline and a drop in the scrim tone. The
+ * running screen's picture uses them too (the small tile `hero`, the large one `desktop`).
+ */
+export const SHADOW: Record<Size, string> = {
   hero: "shadow-[0_0_0_1px_var(--color-border),0_10px_22px_-10px_var(--color-scrim)]",
   desktop: "shadow-[0_0_0_1px_var(--color-border),0_18px_40px_-20px_var(--color-scrim)]",
   compact: "shadow-[0_0_0_1px_var(--color-border),0_10px_22px_-10px_var(--color-scrim)]",

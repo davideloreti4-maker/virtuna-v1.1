@@ -22,10 +22,17 @@ function useNowUntilStalled(processing: boolean, createdAt: string | null | unde
   return now;
 }
 
-/** `/simulation/[id]`: reads the stored run (polled while it is in flight) and picks the state. */
+/**
+ * `/simulation/[id]`: reads the stored run (polled while it is in flight) and picks the state.
+ *
+ * A row last seen in flight and now past the stall limit is asked for again when the page opens
+ * (useSimulationRow). Until that answer is in, the page shows its loading frame: the cached row
+ * cannot tell a run that did not finish from one that finished while the page was closed.
+ */
 export function SimulationScreen({ id }: { id: string }) {
-  const { row, notFound } = useSimulationRow(id);
+  const { row, notFound, asking } = useSimulationRow(id);
   const now = useNowUntilStalled(!!row?.processing, row?.created_at);
-  const state: ResultPageState = notFound ? { kind: "not-found" } : videoStateOf(row, now);
+  const read: ResultPageState = notFound ? { kind: "not-found" } : videoStateOf(row, now);
+  const state: ResultPageState = read.kind === "stalled" && asking ? { kind: "loading" } : read;
   return <ResultPage state={state} />;
 }

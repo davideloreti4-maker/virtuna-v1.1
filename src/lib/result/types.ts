@@ -125,7 +125,8 @@ export interface VideoModel {
 
 export type ResultState =
   | { kind: "loading" }
-  | { kind: "running"; id: string }
+  /** `startedAt`: when the run began (ms), for the running screen's clock; null when unknown. */
+  | { kind: "running"; id: string; startedAt: number | null }
   /** Still marked as in flight long after any run ends: the pipeline died and nothing will arrive. */
   | { kind: "stalled"; id: string }
   | { kind: "no-audience"; id: string; title: string; videoPath: string | null }

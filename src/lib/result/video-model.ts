@@ -45,7 +45,8 @@ export function videoStateOf(row: ResultRow | null | undefined, now: number = Da
   if (row.processing) {
     const started = row.created_at ? Date.parse(row.created_at) : Number.NaN;
     const stalled = Number.isFinite(started) && now - started > STALLED_AFTER_MS;
-    return { kind: stalled ? "stalled" : "running", id: row.id };
+    if (stalled) return { kind: "stalled", id: row.id };
+    return { kind: "running", id: row.id, startedAt: Number.isFinite(started) ? started : null };
   }
 
   const audience = audienceOf(row);

@@ -19,7 +19,9 @@ One result page in the new look, behind `NEXT_PUBLIC_NEW_LOOK`, built in two sli
 number, the moment viewers leave, three panels (Brain, Engagement, Audience), and the state for a run
 that came back without an audience. The edit tool joins this page later (section 5b).
 
-**Slice B:** "your usual", the running state, and the result of a hook simulation.
+**Slice B:** the running state. (Ruled by the owner on 2026-11-20 after the check against real
+data, `.scratch/next-look/part2/slice-b-inventory.md`: the hook result moves to part 3, where the
+hook card that opens it is built; "your usual" is parked. Sections 4, 6 and 7 say why.)
 
 Not in this part: thread cards and the message field (part 3), links from Library (part 4), sharing, a
 fix button, and anything the engine does not produce today (section 11).
@@ -60,14 +62,13 @@ fix button, and anything the engine does not produce today (section 11).
 - One function, `headlineOf`, in `src/lib/result/headline.ts`. Thread cards and Library (parts 3 and
   4) must call it. Legacy screens keep their numbers until they are replaced.
 
-**Your usual (slice B).** The median headline of the user's 20 most recent finished video simulations
-on engine 3.8 or later, without the current one. Shown from five. It appears as a quiet line under the
-gauge, "your usual 47%", and as a small grey mark outside the gauge's track. Before five runs neither
-is shown. A status ("Above your usual" in
-`--color-above`, "Below your usual" in `--color-below`, the arc in the same colour) appears only when
-the difference is at least the weight of two heavy viewers (about 29 points). On the stored runs that
-happens rarely; most pages show the neutral line and an ink arc. Source: a read-only endpoint
-`GET /api/simulations/usual`, computed from rows that already exist. No schema change.
+**Your usual: parked (owner, 2026-11-20).** The plan was the median headline of the user's 20
+most recent video simulations, shown from five. On the test account's 20 runs that have an audience
+it is 47 on every page (12 of the 20 runs land at 46 to 48), the status would fire on 2 of 20, and
+the engine fix in PR #562 lifts new runs by 10 to 36 points, so a usual across engine versions
+would call a newer engine "above your usual". It comes back when the engine tells a strong video
+from a weak one, and then per engine version. The query is worked out (about 1 kB a row:
+`heatmap->segments`, `heatmap->personas`, `heatmap->weights`; inventory section C3).
 
 ## 5. The video result (slice A)
 
@@ -186,27 +187,55 @@ to 10); nothing here is built in part 2.
   and a remove on it. How the two line up for a video made from several takes is for the edit tool's
   part 4.
 
-## 6. The hook result (slice B)
+## 6. The hook result (moved to part 3)
 
-As in the first draft: the hook on its tile, the gauge with "would stop to watch", one sentence, two
-panels (Brain with four bars against "at rest"; Audience as the 1,000-dot ring filled per group, ten
-rows with a percent). No curve, no play button. **Not checked on stored hook runs yet.** Before this
-slice is planned, the same check as for video runs: dump the stored ones, feed the screen, look.
+Built together with the hook card that opens it (owner, 2026-11-20); until thread cards exist the
+page has no way in. Checked on the 20 stored hook simulations of the test account (inventory
+section B):
+
+- It shows the hook's text, **one number** (`population.stopPct`, "would stop to watch"; never the
+  seal's `pct`, which is another number on 11 of 13 seals) and the **audience**: the 1,000-dot ring
+  per group and ten rows with a percent, named by `archetypeDisplayName` (not the stored names).
+- **No sentence**: the existing function writes "The idea holds." on every stored hook, from 18%
+  to 60%. **No Brain**: its bars are a straight function of the one number.
+- A seal without a population (7 of 20, older ones) has no number: it gets the "simulate again"
+  state. Reading a seal by thread id needs a new read-only, owner-checked endpoint.
 
 ## 7. The running state (slice B)
 
-Shown on the video result's own address while the run is in flight. The video's cover in a faint ring.
-One line and one bar, in three stages taken from the events the server already sends: "Reading your
-video" until the scene plan arrives; "Scene 4 of 9" while frames arrive, shown as a row of small
-frames; "Showing it to your audience" until the run finishes. Then the result appears once: the wedges
-fill and the gauge counts up in at most 1.2 seconds, not at all under reduced motion. If the run ends
-without an audience, the "No audience" state of section 5. If the event stream is unavailable the
-first line stays and the page keeps asking for the result; after six minutes an error with a way back.
+Shown on the video result's own address while the run is in flight. It shows only what the page
+can know (inventory section A, one recorded run): the ten viewer groups about 4 seconds in
+(`roster`), the scene frames when they arrive (`filmstrip_plan`, `filmstrip_segment_ready`: a burst
+of 1 to 12 seconds somewhere between 18 and 106 seconds in, and not at all where the frame job
+does not run), the time since the run started, and the finish. There are no stages, no percent
+and no partial result on the page's stream, so the screen names none.
+
+Picked by the owner from two drawings (`.scratch/next-look/part2/running-state-two-options.png`,
+option A), then refined after an independent critique
+(`.scratch/next-look/part2/running-state-refined.png`; mock
+`design/app.html?screen=run&real=1&look=ring2&m=a0|a|b|b2|c`). Three things, nothing else:
+
+- **The ring** of the viewer groups: pale, equal wedges (the roster carries no weights), thin
+  (phone radii 175 / 140, desktop 265 / 212), centred on the page. The wedges appear when the
+  roster arrives, spread round the ring, not clockwise.
+- **The picture**, a 9:16 tile in the ring's centre, never cropped to a circle: the creator's own
+  video playing muted when this device started the run; else the scene frames, one after another,
+  once frames have arrived; else nothing.
+- **The clock**, the time since the run started ("0:42"), large. In the ring's centre while there
+  is no picture, under the ring once there is one.
+- The header says "Simulating"; the screen has no other word, no stage, no bar, no percent, no
+  row of frames, nothing coral. A window too short for the large ring gets the small one.
+- Reduced motion: the wedges are there at once, the frames do not take turns, nothing fades, the
+  video does not start by itself.
+- When the run finishes the result page takes the screen's place. A run that ends without an
+  audience shows the "No audience" state of section 5; a run still in flight after six minutes
+  shows "This simulation did not finish." The stream is a bonus: where it is unavailable the page
+  keeps asking for the row, and one failed poll does not stop it.
 
 ## 8. Addresses and ways in
 
-- `/simulation/[id]` for a video (the id of the analysis) and `/simulation/hook/[threadId]/[key]` for a
-  hook (the key is a short hash of the hook's text).
+- `/simulation/[id]` for a video (the id of the analysis). The hook result's address
+  (`/simulation/hook/[threadId]/[key]`, the key a short hash of the hook's text) arrives with part 3.
 - Both are pushed screens in the new frame; Back returns to the chat. The header is the one from part
   1 (Back, title, new chat). No share button and no "Library /" crumb in this part.
 - Flag off: both addresses answer "not found" and `/analyze/[id]` is unchanged. Flag on:
@@ -246,9 +275,11 @@ Slice A:
 7. Keyboard: the panel switch and the curve are fully usable; focus is always visible.
 8. The pure functions are tested on recorded runs, without stand-ins for our own code.
 
-Slice B: the usual line and mark appear from five runs and the status only at two heavy viewers'
-distance; a run opened in flight shows the three stages and then the result; a stored hook result
-opens at its address.
+Slice B: a run opened in flight shows the ring of its ten groups and the time since it started;
+frames take turns in the ring's centre when the stream sends them; the creator's own video plays
+there when this device started the run; the result takes the screen's place when the run
+finishes, without a reload; the running screen matches the refined drawing in a browser, phone
+and desktop, light and dark; with reduced motion nothing arrives one by one, turns or fades.
 
 ## 11. Not in this part
 

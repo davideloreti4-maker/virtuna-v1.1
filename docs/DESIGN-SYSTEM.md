@@ -336,6 +336,14 @@ stalled, not found, no audience, result), `VideoResult` (phone column / desktop 
 - The brain's porcelain look is `look="porcelain-light" | "porcelain-dark"` on `CortexCanvas`
   (`cortex-porcelain.ts`); the default `"scan"` is the legacy look, unchanged.
 - To look at it: `/dev/result?fixture=<name>` and `node scripts/result-shots.cjs --out <dir>`.
+- Each panel lays itself out for the width it gets, not the window's (container queries and
+  `audienceLayoutFor`), so a tablet or a narrow window never cuts a part off.
+- The running screen (`Running` with `RunningRing`; what the run's stream has said so far is
+  `useRunStream` over `run-progress.ts`) holds three things: the pale ring of the viewer groups,
+  the picture in its centre (the creator's video, else the scene frames in turn, else none) and
+  the clock. No words but the header's "Simulating", nothing coral, no stage and no percent: the
+  page's stream carries none, so the screen names none. Its moments on the dev page:
+  `/dev/result?fixture=early&processing=1&elapsed=<s>&groups=<n>[&arriving=<k>][&runframes=<n>][&own=1]`.
 
 Rules that are not in the spec:
 

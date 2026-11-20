@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { isSessionExpiredRefusal, SESSION_EXPIRED_MESSAGE } from "@/lib/auth/session-expired";
 import { isCreditWallRefusal } from "@/lib/billing/credit-wall";
 import { resultHref } from "@/lib/result/href";
+import { rememberRunVideo } from "@/lib/result/run-video";
 import { startVideoSimulation } from "@/lib/result/simulate-again";
 import { useSignedVideo } from "./use-signed-video";
 
@@ -91,6 +92,7 @@ export function NoAudience({
     setProblem(null);
     try {
       const id = await startVideoSimulation(videoPath);
+      if (src) rememberRunVideo(id, src);
       // In place of this page: Back from the new run should not land here and invite a second paid run.
       if (here.current) router.replace(resultHref(id));
     } catch (error) {
