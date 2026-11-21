@@ -1,0 +1,13 @@
+{
+ "id": "fixture-no-audience",
+ "engine_version": "3.23.0",
+ "input_mode": "video_upload",
+ "video_storage_path": null,
+ "overall_score": 76,
+ "processing": false,
+ "heatmap": null,
+ "persona_behavioral_aggregate": null,
+ "variants": {
+  "filmstrip_segments": []
+ }
+}

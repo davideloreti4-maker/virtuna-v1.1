@@ -43,6 +43,7 @@ import { ACCOUNT_READ_PLAN } from '@/lib/account-read/account-read-stages';
 import { CardPrimaryAction } from './card-primitives';
 import { useTestRunStages } from './use-test-run-stages';
 import { useTestRunEvidence } from './use-test-run-evidence';
+import { resultHref } from '@/lib/result/href';
 
 export interface InputRequestBlockRendererProps {
   block: InputRequestBlock;
@@ -738,7 +739,7 @@ function UploadField({ block }: InputRequestBlockRendererProps) {
           Analyzed your video — open the full frame-by-frame breakdown:
         </p>
         <Link
-          href={`/analyze/${degradedId}`}
+          href={resultHref(degradedId)}
           className="self-start text-body font-medium text-foreground-secondary transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[color:var(--focus-ring)]"
         >
           See the full breakdown →

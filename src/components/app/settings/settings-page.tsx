@@ -19,6 +19,8 @@ import { NotificationsSection } from "./notifications-section";
 import { BillingSection } from "./billing-section";
 import { TeamSection } from "./team-section";
 import { CreatorProfileSection } from "./creator-profile-section";
+import { AppearanceSetting } from "./appearance-setting";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 import { ReferralsSection } from "@/components/referral/referrals-section";
 import type { ConnectedAccount } from "@/lib/connected-accounts/connected-accounts-repo";
 import { PageShell, SurfaceHeader } from "@/components/surfaces/surface-header";
@@ -95,6 +97,12 @@ export function SettingsPage({ defaultTab = "profile", referral, connectedAccoun
           <Tabs.Content value="account" className="outline-none">
             <AccountSection />
             <Credits />
+            {/* The legacy look has one theme; the choice exists only under the new look. */}
+            {NEW_LOOK_ENABLED && (
+              <div className="mt-8">
+                <AppearanceSetting />
+              </div>
+            )}
           </Tabs.Content>
           <Tabs.Content value="connected" className="outline-none">
             <ConnectedAccountsSection accounts={connectedAccounts} />

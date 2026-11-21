@@ -3,6 +3,8 @@ import { Inter, Newsreader } from "next/font/google";
 import { FunnelProvider } from "@/components/analytics/funnel-provider";
 import { DevLocator } from "@/components/dev/locator";
 import "./globals.css";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
+import { THEME_INIT_SCRIPT } from "@/lib/theme/theme";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -48,11 +50,22 @@ export const metadata: Metadata = {
   },
 };
 
+// With the flag on, <html> carries the new look. The server always renders "light"; the head
+// script corrects it before first paint, which is why React must not warn about the attribute.
+const NEXT_LOOK_ATTRS = NEW_LOOK_ENABLED
+  ? ({ "data-look": "next", "data-theme": "light", suppressHydrationWarning: true } as const)
+  : {};
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${newsreader.variable}`}>
+    <html lang="en" className={`${inter.variable} ${newsreader.variable}`} {...NEXT_LOOK_ATTRS}>
+      {NEW_LOOK_ENABLED && (
+        <head>
+          <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        </head>
+      )}
       <body className="min-h-screen bg-background font-sans antialiased">
         {children}
         {/* The funnel's event sink (DESIGN §8) — root-level so /go and / are covered. */}

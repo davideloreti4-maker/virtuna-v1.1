@@ -34,6 +34,12 @@ const TYPE_ROLES = [
   "subhead",
   "heading",
   "stat",
+  // Next look (behind NEXT_PUBLIC_NEW_LOOK). "figure-lg" is invisible to the guard's regex
+  // (it stops at the dash), so next-look-contrast.test.ts asserts all four through cn().
+  "ui",
+  "meta",
+  "figure",
+  "figure-lg",
   // Pre-existing custom `--text-*` keys. They carry the same latent defect —
   // tailwind-merge never knew them either — so they belong here regardless of
   // which pass introduced them.

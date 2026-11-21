@@ -1,26 +1,15 @@
 'use client';
 import { useParams } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
+import { queryOptions, useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queries/query-keys';
 
 /**
- * Reads the current /analyze/[id] route param and returns the cached analysis
- * row from `GET /api/analysis/[id]`. TanStack Query deduplicates the fetch so
- * multiple consumers (Board, AudienceNode, etc.) share a single network call
- * and the row hydrates every useAnalysisStream instance via its initialData.
- *
- * Without this shared lookup, child nodes that call `useAnalysisStream()`
- * with no initialData start with `result=null` — which surfaces as the
- * "no data loads at all" symptom on permalink loads.
+ * The query options for one analysis row: its cache key, its fetch and its polling. Shared by
+ * usePermalinkAnalysis (the board) and useSimulationRow (the new look's result page), so the two
+ * read one cache entry and poll the same way.
  */
-export function usePermalinkAnalysis() {
-  const params = useParams();
-  const id =
-    params && typeof (params as { id?: unknown }).id === 'string'
-      ? (params as { id: string }).id
-      : null;
-
-  const query = useQuery({
+export function analysisDetailQuery(id: string | null) {
+  return queryOptions({
     queryKey: queryKeys.analysis.detail(id ?? ''),
     queryFn: async () => {
       const r = await fetch(`/api/analysis/${id}`);
@@ -73,6 +62,26 @@ export function usePermalinkAnalysis() {
       return inFlight || finalizingApollo ? 2000 : false;
     },
   });
+}
+
+/**
+ * Reads the current /analyze/[id] route param and returns the cached analysis
+ * row from `GET /api/analysis/[id]`. TanStack Query deduplicates the fetch so
+ * multiple consumers (Board, AudienceNode, etc.) share a single network call
+ * and the row hydrates every useAnalysisStream instance via its initialData.
+ *
+ * Without this shared lookup, child nodes that call `useAnalysisStream()`
+ * with no initialData start with `result=null` — which surfaces as the
+ * "no data loads at all" symptom on permalink loads.
+ */
+export function usePermalinkAnalysis() {
+  const params = useParams();
+  const id =
+    params && typeof (params as { id?: unknown }).id === 'string'
+      ? (params as { id: string }).id
+      : null;
+
+  const query = useQuery(analysisDetailQuery(id));
 
   return { id, data: query.data ?? null, isLoading: query.isLoading };
 }

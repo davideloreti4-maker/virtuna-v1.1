@@ -91,6 +91,7 @@ vi.mock('@/hooks/queries/use-hooks-stream', () => ({
 }));
 
 import { HomePageLayout } from '../home-page-layout';
+import { useShellStore } from '@/stores/shell-store';
 
 beforeEach(() => {
   ideasMockBlocks = [];
@@ -147,5 +148,21 @@ describe('HomePageLayout — welcome hero visibility', () => {
     expect(headings[0]?.textContent).toMatch(/good (morning|afternoon|evening)|welcome back/i);
     // the legacy hero's promise line is gone — this greeting is v2 Start's, not the old one
     expect(screen.queryByText(/simulate your audience/i)).toBeNull();
+  });
+});
+
+describe('HomePageLayout — tells the app shell whether a thread is open', () => {
+  // The shell hides the phone tab bar inside a thread but cannot see this component's state.
+  it('reports "no thread" on the empty home', () => {
+    useShellStore.setState({ threadOpen: true }); // stale value from a previous screen
+    renderWithClient(<HomePageLayout />);
+    expect(useShellStore.getState().threadOpen).toBe(false);
+  });
+
+  it('withdraws the signal when the creator leaves Home', () => {
+    renderWithClient(<HomePageLayout />);
+    useShellStore.setState({ threadOpen: true }); // as if a thread had been opened
+    cleanup();
+    expect(useShellStore.getState().threadOpen).toBe(false);
   });
 });

@@ -36,7 +36,7 @@
  *   useIdeasStream drives IdeasThreadView rendered above the composer when active.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 // CreditWallRefusal / isCreditWallRefusal went with `askAudience` (step 4) — it was the one
 // caller here that had to distinguish "refused" from "failed" to avoid recording a dead ask.
 import { reportCredit402 } from "@/lib/billing/credit-wall";
@@ -87,6 +87,7 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useOnline } from "@/hooks/use-online";
 import { createClient } from "@/lib/supabase/client";
 import {
+  BILLABLE_BY_TOOL,
   ComposerControls,
   Ico,
   MAX_BILLABLE_BY_TOOL,
@@ -103,6 +104,11 @@ import {
 } from "./composer-controls";
 // ── Composer v8 (CONCEPT_V8_ENABLED — platform concept Phase 1) ──────────────
 import { CONCEPT_V8_ENABLED } from "@/lib/flags/concept-v8";
+// ── The new look (NEW_LOOK_ENABLED — plan 2026-11-20, the thread field) ──────
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
+import { ThreadField } from "@/components/thread-next/thread-field";
+import { MORE_SKILLS, MoreSheet } from "@/components/thread-next/more-sheet";
+import { NEXT_PLACEHOLDER_BY_TOOL, NEXT_SIMULATE_PLACEHOLDER } from "@/components/thread-next/field-copy";
 import { SkillPill, SkillsPanel } from "./v8/skills-panel";
 import { AudienceLensChip } from "./v8/audience-lens-chip";
 
@@ -151,7 +157,7 @@ import { BuildChooser } from "./build-chooser";
 import { HomeStarter, HomeFirstRunDemo } from "./home-starter";
 import { HomeAudienceIntro } from "./home-audience-intro";
 import { useAmbientFocus, type AmbientCardDescriptor } from "./use-ambient-focus";
-import { useThreadAutoscroll } from "./use-thread-autoscroll";
+import { PIN_THRESHOLD_PX, useThreadAutoscroll } from "./use-thread-autoscroll";
 import { buildAmbientDescriptors, resolveFocusDescriptor } from "./ambient-descriptors";
 import { detectRefineIntent } from "@/lib/tools/refine";
 // Stage B "one brain" — the client half of the lever (default OFF; see one-brain-flag.ts). It
@@ -168,6 +174,7 @@ import { track } from "@/lib/analytics/funnel-events";
 import { consumePendingUpload } from "@/lib/onboarding/pending-upload";
 import type { Verb } from "@/lib/room-contract/types";
 import { LAUNCH_PARAM } from "@/lib/room-contract/thread-launch";
+import { resultHref } from "@/lib/result/href";
 
 // Matches a canonical v1–v5 UUID. Used to gate the per-thread audience pin: only a
 // real audience-row UUID (or null=General) may PATCH threads.active_audience_id (uuid
@@ -253,6 +260,27 @@ const PLACEHOLDER_BY_TOOL: Record<ToolId, string> = {
   simulate: "Type a draft to run through your audience…",
   predict: "Describe a scenario for the analyst panel to read…",
 };
+
+// ── The new look's field (NEW_LOOK_ENABLED — plan 2026-11-20, the thread field) ──────────────
+// What a skill costs, as the field's pills and More print it: CREDIT_COSTS through
+// BILLABLE_BY_TOOL, never a typed number. null = free (chat).
+function priceOfTool(tool: ToolId): number | null {
+  const action = BILLABLE_BY_TOOL[tool];
+  return action ? creditCost(action) : null;
+}
+
+// Where the field sits (reference `.scratch/next-look/part3/design/field-boxes.json`): 16px from
+// the phone's edges and 720 wide from 752 up; 30px above the bottom on the phone, 24 from md up.
+// The thread's bottom reserve is the field's measured height (`--field-reserve`) plus that same
+// space. Tailwind only builds class names it finds whole in the source, so the two are written
+// out, not derived: the 30 and the 24 in both are pinned by the composer test "the dock and the
+// reserve agree" (composer-next-field.flag-on.test.tsx).
+const NEXT_DOCK = "pointer-events-none absolute inset-x-0 bottom-0 pb-[30px] md:pb-[24px]";
+const NEXT_DOCK_COLUMN = "w-full max-w-[752px] mx-auto px-4";
+const NEXT_THREAD_RESERVE = "pb-[calc(var(--field-reserve)+30px)] md:pb-[calc(var(--field-reserve)+24px)]";
+// The field at rest as drawn (96), until the first measurement lands.
+const NEXT_FIELD_REST_HEIGHT = 96;
+// The new look's short placeholders: `@/components/thread-next/field-copy` (shared with /dev/field).
 
 // Map an audience's platform to the composer Platform union (custom → tiktok).
 function audienceToPlatform(p?: AudiencePlatform | null): Platform {
@@ -542,6 +570,21 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // ── v8 composer state (CONCEPT_V8_ENABLED) ─────────────────────────────────
   const [skillsPanelOpen, setSkillsPanelOpen] = useState(false);
   const [audienceSheetOpen, setAudienceSheetOpen] = useState(false);
+  // New look (final review 5): opened from More's audience row, today's audience sheet gets the
+  // focus More gave up (it manages none itself): its first option, else its first button. Only
+  // a DOM focus here, after the sheet is in the document. Flag-off the ref is never set.
+  const nextFocusAudienceRef = useRef(false);
+  useEffect(() => {
+    if (!audienceSheetOpen || !nextFocusAudienceRef.current) return;
+    nextFocusAudienceRef.current = false;
+    const sheet = document.querySelector<HTMLElement>('[data-testid="audience-sheet"]');
+    (sheet?.querySelector<HTMLElement>('[role="option"]') ?? sheet?.querySelector<HTMLElement>("button"))?.focus();
+  }, [audienceSheetOpen]);
+  // New look: the field's More sheet (it replaces the skill pill + skills panel). Unused flag-off.
+  const [moreOpen, setMoreOpen] = useState(false);
+  // The example chips' "More ▸": the skills panel, or under the new look the More sheet (the
+  // panel lives in the legacy box, which the new look does not render).
+  const openChipsMore = NEW_LOOK_ENABLED ? () => setMoreOpen(true) : () => setSkillsPanelOpen(true);
   const skillPillRef = useRef<HTMLButtonElement | null>(null);
   // Anchors the v8 slash-menu portal to the field block (see the slash-menu mount).
   const slashAnchorRef = useRef<HTMLDivElement | null>(null);
@@ -867,10 +910,73 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   const [evidenceError, setEvidenceError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [profiling, setProfiling] = useState(false);
+  // New look (review, fix round 3): the field always says what the send does. `onSubmitForm` runs
+  // a staged evidence file before anything else, so a skill selected while one is staged (a pill,
+  // More, `/`, the Home chips, a card's handoff) would light its pill while send ran the profile
+  // read. Under the flag, the moment the selected tool becomes anything but chat, staged evidence
+  // is cleared (both evidence states, as the chip's remove does). Adjusted during render, React's
+  // pattern for state that follows other state, so the stale chip never paints. Returning to chat
+  // (staging evidence does that itself) keeps it. Flag-off this never runs.
+  //
+  // Final review (4): a message under the field belongs to the moment it was said. Any change of
+  // the selected tool clears the composer's two (the upload's and the evidence's), as the field
+  // clears its own; the text's onChange clears them too (`buildNextField`). A send that bails
+  // (an expired session, a failed upload) keeps the arm, so its message stays until then.
+  const [nextToolSeen, setNextToolSeen] = useState<ToolId>(activeTool);
+  if (NEW_LOOK_ENABLED && nextToolSeen !== activeTool) {
+    setNextToolSeen(activeTool);
+    if (submitError !== null) setSubmitError(null);
+    if (evidenceError !== null) setEvidenceError(null);
+    if (activeTool !== DEFAULT_TOOL && evidenceFile !== null) setEvidenceFile(null);
+  }
+
+  // Final review (2): ONE RUN PER SEND. `handleSubmit` awaits the new thread's POST before any
+  // run sets `submitting` or starts streaming, and for that round trip send stayed enabled: a
+  // second tap in a new chat started a second run. Under the flag the field's submit (the send
+  // button and Enter, which is the same form submit) holds a latch from its first line: the ref
+  // refuses a second submit at once, the state disables send. It is released when the run it
+  // started has come and gone (`submitting`, `profiling` or a stream went true, then false), and
+  // whenever the submit call itself returns, early returns included (`holdNextSend`). The token
+  // keeps an older call's release from freeing a newer send. Flag-off none of this runs.
+  //
+  // Residual fix, round 2: the state carries its send's token. Hooks, ideas and script turn
+  // `isStreaming` off on `done`, before their stream closes, so the run can be over (state `off`,
+  // send enabled) while the submit call is still pending and has not released. The `running → off`
+  // step keeps the token, and the effect below then frees the ref only if it still holds that
+  // token, so a newer send's token is never cleared.
+  const nextSendRef = useRef<number | null>(null);
+  const nextSendSeqRef = useRef(0);
+  const [nextSendLatch, setNextSendLatch] = useState<{
+    phase: "off" | "held" | "running";
+    token: number | null;
+  }>({ phase: "off", token: null });
+  const nextRunActive = submitting || profiling || isAnyStreaming;
+  if (NEW_LOOK_ENABLED && nextSendLatch.phase === "held" && nextRunActive)
+    setNextSendLatch({ phase: "running", token: nextSendLatch.token });
+  if (NEW_LOOK_ENABLED && nextSendLatch.phase === "running" && !nextRunActive)
+    setNextSendLatch({ phase: "off", token: nextSendLatch.token });
+  useEffect(() => {
+    if (nextSendLatch.phase === "off" && nextSendLatch.token !== null && nextSendRef.current === nextSendLatch.token) {
+      nextSendRef.current = null;
+    }
+  }, [nextSendLatch]);
   // (evidenceInputRef is declared above, near activeTool, so handleUserSelectTool
   //  can open the Profile evidence picker within the user-gesture call stack.)
   /** Optimistic echo of the last submitted composer draft (presentation-only). */
   const [lastUserTurn, setLastUserTurn] = useState<string | null>(null);
+
+  // Final review (1): under the flag the staged video and the hook brief are a run's inputs, and
+  // a run that sealed its card has used them: selecting Simulate again must not bring the clip
+  // back (and send would upload it again, 10 credits, ahead of a pasted link). So the seal's
+  // success clears them (the seal effect below), as long as they are still the ones the run
+  // sent. Residual fix: the record is taken where a run is armed, next to `pendingSealRef`, in
+  // each path that arms it: `handleSubmit`'s upload branch (`{ file, brief }`), its link branch
+  // (`{ file: null, brief }`) and `runBroughtVideo` (`{ file: null, brief: null }`: the field's
+  // clip and brief are not its inputs). It used to be read off `lastUserTurn` changing, which a
+  // clip named like the last turn never changes, and which a brought video or a chat send also
+  // set. A clip or brief staged during the run is the next run's and stays. A failed run clears
+  // nothing: its Retry re-arms and re-reads both. Flag-off this is never written.
+  const nextRunInputsRef = useRef<{ file: File | null; brief: typeof testBrief } | null>(null);
 
   // True when the user has sent or the model has generated thread content.
   // Unlike hasThread, does NOT flip on tool selection alone (Explore/Chat idle views).
@@ -1054,6 +1160,12 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       setPersistedExploreBlocks([]);
       setScriptAnchorHook(null);
       setOpenThreadId(null);
+      // New look (final review 1): a staged video and a hook brief belong to the thread they were
+      // staged in; on another thread, Simulate starts empty.
+      if (NEW_LOOK_ENABLED) {
+        setFile(null);
+        setTestBrief(null);
+      }
       // The ambient room's typed-thought focus, ask ledger, and drill flag are PER-THREAD
       // state — without this wipe the previous thread's read (thought + score) stays in
       // focus over the fresh/re-opened thread, and the idle "meet your room" cast never
@@ -1817,6 +1929,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     sealHandledRef.current = true;
     pendingSealRef.current = false;
     const id = stream.analysisId;
+    // New look (final review 1): this run's inputs, as recorded when it was armed. Read now, not
+    // after the awaits below, so a run armed while this one cards cannot lend it its inputs.
+    const sent = NEW_LOOK_ENABLED ? nextRunInputsRef.current : null;
     void (async () => {
       setCarding(true);
       try {
@@ -1828,13 +1943,19 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         const data = (await res.json().catch(() => ({}))) as { degraded?: string };
         if (!res.ok || data.degraded) {
           // No honest craft card to drop → the full breakdown page is the honest fallback.
-          router.push(`/analyze/${id}`);
+          router.push(resultHref(id));
           return;
         }
         // Surface the freshly-sealed card in the unified stream (no navigate-out).
         await reloadChatThread();
+        // New look (final review 1): the run is carded, so its video and brief are spent. Only
+        // those: whatever is staged now and is not the run's own stays.
+        if (sent) {
+          setFile((f) => (f !== null && f === sent.file ? null : f));
+          setTestBrief((b) => (b !== null && b === sent.brief ? null : b));
+        }
       } catch {
-        router.push(`/analyze/${id}`);
+        router.push(resultHref(id));
       } finally {
         setCarding(false);
       }
@@ -2215,6 +2336,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         // sealHandledRef reset so this fresh run's complete fires the seal once.
         pendingSealRef.current = true;
         sealHandledRef.current = false;
+        // New look (final review 1): what this run sent, cleared at its seal (`nextRunInputsRef`).
+        if (NEW_LOOK_ENABLED) nextRunInputsRef.current = { file, brief: testBrief };
         armFired();
         // WR-04: no client-side storage cleanup on failure here (unlike the profile path).
         // /api/analyze consumes video_storage_path in a background job, so deleting the blob
@@ -2243,6 +2366,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       // Arm the in-thread seal for this real submission (see upload path above).
       pendingSealRef.current = true;
       sealHandledRef.current = false;
+      // New look (final review 1): a link run sends no file; the brief is its own.
+      if (NEW_LOOK_ENABLED) nextRunInputsRef.current = { file: null, brief: testBrief };
       armFired();
       await stream
         .start({
@@ -2257,7 +2382,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       setSubmitting(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTool, file, isValidTikTok, trimmedUrl, stream, ideas, hooks, chat, script, remix, explore, platform, intent, persistedHookBlocks, persistedIdeaBlocks, hooksBlocks, ideasBlocks, selectedAudience, router, reloadProfileThread, queryClient, setActiveThreadId, scrollThreadToBottom]);
+  }, [activeTool, file, testBrief, isValidTikTok, trimmedUrl, stream, ideas, hooks, chat, script, remix, explore, platform, intent, persistedHookBlocks, persistedIdeaBlocks, hooksBlocks, ideasBlocks, selectedAudience, router, reloadProfileThread, queryClient, setActiveThreadId, scrollThreadToBottom]);
 
   // ── Seam 4 — the launch-seed inlet (THE-CONTRACT.md §3) ────────────────────────
   // A surface (the start page's embedded composer) hands a composed intent off as a
@@ -2340,6 +2465,33 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     void handleSubmit();
   };
 
+  // New look (final review 2): the field's submit — `onSubmitForm`'s routing, behind the latch
+  // (see `nextSendRef`). Evidence first, as the send button says; then the composer's own gate.
+  const holdNextSend = (run: () => Promise<unknown>) => {
+    const token = ++nextSendSeqRef.current;
+    nextSendRef.current = token;
+    setNextSendLatch({ phase: "held", token });
+    const release = () => {
+      if (nextSendRef.current !== token) return;
+      nextSendRef.current = null;
+      setNextSendLatch({ phase: "off", token: null });
+    };
+    void run().finally(release);
+  };
+  const onSubmitNextField = (e: React.FormEvent) => {
+    e.preventDefault();
+    // The send button's own checks (`ThreadField`: online, not busy, Stop while a stream runs),
+    // repeated because Enter submits this form whatever the button shows (residual fix).
+    if (!online || submitting || profiling || isAnyStreaming) return;
+    if (nextSendRef.current !== null) return; // the first send is still starting
+    if (evidenceFile) {
+      holdNextSend(handleProfileSubmit);
+      return;
+    }
+    if (!canSubmit) return;
+    holdNextSend(() => handleSubmit());
+  };
+
   // ── `/` slash entry (UX-01) — THE skill picker now ─────────────────────────
   // Typing `/` in the field opens the skill list as a command menu, filterable; selecting
   // ARMS the skill (for one send) and clears the `/`. A URL never starts with `/`, so this
@@ -2394,6 +2546,16 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     // Enter submits (Shift+Enter = newline) — textarea needs this explicitly.
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
+      // New look (final review 7): Enter is the send button — the form's submit, so a staged
+      // evidence file runs first, as the button says, and the send latch applies.
+      if (NEW_LOOK_ENABLED) {
+        const form = e.currentTarget.form;
+        // Safari 15 and older have no `requestSubmit`: a cancelable, bubbling submit event reaches
+        // the same React `onSubmit`.
+        if (typeof form?.requestSubmit === "function") form.requestSubmit();
+        else form?.dispatchEvent(new Event("submit", { cancelable: true, bubbles: true }));
+        return;
+      }
       if (canSubmit) void handleSubmit();
     }
   };
@@ -2437,6 +2599,40 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // <xl — "same ui design as it was before" for both. So the flag no longer gates this.
   const useHeader = homeThreadMode && !isXl;
 
+  // New look: the thread's bottom reserve follows the real height of the block under it — the
+  // example chips (empty thread), Explore's Search control (while Explore is selected) and the
+  // field's outer element, which grows with the text, a video tile, the brief, an error. Watched
+  // through a callback ref: it observes when the block attaches and disconnects when it goes
+  // (React 19 ref cleanup). Flag-off the block is never rendered, so none of this runs.
+  //
+  // A pinned thread stays pinned: the reserve grows with the field, but the scroll position does
+  // not (the autoscroll hook watches the thread's content, not its padding), so the newest line
+  // would end up under the taller field. Whether the creator was at the end is read BEFORE the
+  // reserve changes (PIN_THRESHOLD_PX, the hook's own rule), and the scroll follows after.
+  const nextThreadRegionRef = useRef<HTMLElement | null>(null);
+  const nextFollowOnResizeRef = useRef(false);
+  const [nextFieldHeight, setNextFieldHeight] = useState(NEXT_FIELD_REST_HEIGHT);
+  const observeNextFieldBlock = useCallback((el: HTMLDivElement | null) => {
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      const height = Math.ceil(entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height);
+      if (height <= 0) return;
+      const region = nextThreadRegionRef.current;
+      nextFollowOnResizeRef.current =
+        !!region && region.scrollHeight - region.clientHeight - region.scrollTop <= PIN_THRESHOLD_PX;
+      setNextFieldHeight(height);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+  useLayoutEffect(() => {
+    if (!NEW_LOOK_ENABLED || !nextFollowOnResizeRef.current) return;
+    nextFollowOnResizeRef.current = false;
+    scrollThreadToBottom();
+  }, [nextFieldHeight, scrollThreadToBottom]);
+
   // ── Ambient presence focus (Plan 13-04 — AMBIENT-01, D-01/D-02/D-03/D-04) ──
   // The room's card ledger + the batch's kind label for the anchored-focus stepper
   // (‹ Hook N of M ›), built from the blocks the MOUNTED thread view already rendered
@@ -2477,6 +2673,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     (el: HTMLDivElement | null) => {
       registerThreadRegion(el);
       registerScrollRegion(el);
+      // New look: the field's reserve reads whether the creator is at the thread's end.
+      if (NEW_LOOK_ENABLED) nextThreadRegionRef.current = el;
     },
     [registerThreadRegion, registerScrollRegion],
   );
@@ -2607,6 +2805,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         // Arm the in-thread seal for THIS run (a hydration-sourced complete never arms it).
         pendingSealRef.current = true;
         sealHandledRef.current = false;
+        // New look (final review 1): the brought video is not the field's clip, and carries no
+        // brief, so its seal clears nothing staged in the field.
+        if (NEW_LOOK_ENABLED) nextRunInputsRef.current = { file: null, brief: null };
         await stream
           .start(
             storagePath
@@ -2887,6 +3088,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       onOpenChange={handleRoomExpandedChange}
       // It hangs off the composer now, not the top row — the plate in the dock owns the surface.
       attached
+      // New look: no plate and no strip above the field — the sheet stays mounted for its room
+      // only, so a card's door still opens it.
+      barless={NEW_LOOK_ENABLED}
     />
   ) : (
     <AudiencePresence {...presenceCommonProps} variant="header" />
@@ -3011,8 +3215,13 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // the whole wait the moment it started. This is the read that made the one-shot safe.
   const testSubmitPending =
     runningTool === "test" && (submitting || testAnalyzing || carding);
+  // New look: the video this turn sent, as a tile above the bubble (plan 2026-11-20, Task 4). Only
+  // while `file` is still that video: the upload path echoes `file.name` as the turn
+  // (captureUserTurn), so the names match. A clip staged after the send (or a link run) never
+  // shows on this turn; a removed or replaced one leaves it without a tile.
+  const testTurnVideo = NEW_LOOK_ENABLED && file && file.name.trim() === lastUserTurn ? file : undefined;
   const testSubmitTurn = testSubmitPending ? (
-    <ThreadShell userTurn={lastUserTurn}>
+    <ThreadShell userTurn={lastUserTurn} userVideoFile={testTurnVideo}>
       <ThreadAssistantTurn>
         {/* Staging (a file is uploading, before the stream connects) has no clock yet — a lone
             spinner reads honestly there. Once analyzing/carding, the 3-step spine carries the wait. */}
@@ -3069,7 +3278,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   const testRunCause = runFailureCauseOf(stream.error);
   const testRunCauseCopy = runErrorCopy(stream.error, "test");
   const testFailedTurn = testRunFailed ? (
-    <ThreadShell userTurn={lastUserTurn}>
+    // The sent video only, as on testSubmitTurn above (`testTurnVideo`).
+    <ThreadShell userTurn={lastUserTurn} userVideoFile={testTurnVideo}>
       <ThreadAssistantTurn>
         <SkillRunError
           headline={
@@ -3590,6 +3800,209 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       </form>
   );
 
+  // ── THE NEW LOOK'S FIELD (NEW_LOOK_ENABLED — plan 2026-11-20, the thread field) ─────────────
+  //
+  // Takes THE BOX's place under the flag (the plate, the veil and the legacy box chrome go with
+  // it). Presentational: every value below is the composer's existing state, and every handler is
+  // the one the legacy box calls — no request path moves. The send button is the field's own
+  // `type="submit"` inside a form whose submit is `onSubmitForm` (evidence first, as today); Enter
+  // is `onFieldKeyDown` (the slash menu, then `handleSubmit`), as today; Stop cancels the click's
+  // default action inside the field before `stopActive` (composer-stop-disc.test.tsx).
+  //
+  // Copy (spec 2026-11-20 §4.1, §4.3, review rulings A and B): the placeholders are the new
+  // look's short ones (NEXT_PLACEHOLDER_BY_TOOL); the field's name and the send button's are
+  // TODAY's strings, verbatim (the legacy textarea's aria-label and the send disc's, in
+  // `composerForm` above), except "Send to simulate" while Simulate is selected.
+  //
+  // ONE ATTACHMENT AT A TIME (review, fix round 1). `onSubmitForm` runs a staged evidence file
+  // before anything else, so a screenshot staged before a video would have sent the profile read
+  // under "Simulate · 10". Under the flag, staging a video clears the evidence (as the evidence
+  // chip's remove does) and staging evidence (More's "Read a file", a dropped file) clears the
+  // video. The legacy box keeps today's behaviour.
+  //
+  // Flag-off nothing here is built: `nextField` is null and the builder never runs.
+  const buildNextField = () => {
+    const placeholder =
+      activeTool === "test"
+        ? file
+          ? NEXT_SIMULATE_PLACEHOLDER.video
+          : NEXT_SIMULATE_PLACEHOLDER.empty
+        : NEXT_PLACEHOLDER_BY_TOOL[activeTool] ?? PLACEHOLDER_BY_TOOL[activeTool];
+    const ariaLabel =
+      activeTool === "idea"
+        ? "Idea topic or angle (leave empty for Auto)"
+        : activeTool === "hooks"
+          ? "Hook topic (leave empty for Auto)"
+          : activeTool === "chat"
+            ? "Ask anything about your content"
+            : activeTool === "script"
+              ? "Script topic or leave empty to carry in a hook"
+              : activeTool === "remix"
+                ? "Paste a TikTok URL to decode and remix"
+                : hasSimulation
+                  ? "Ask about this simulation"
+                  : "Paste a TikTok link";
+    // "Stop the run" is the field's own name for the disc while a run streams.
+    const sendLabel = evidenceFile ? "Read this evidence" : activeTool === "test" ? "Send to simulate" : activeTool === "idea" ? "Generate ideas" : activeTool === "hooks" ? "Generate hooks" : activeTool === "chat" ? "Send message" : activeTool === "script" ? "Generate script" : activeTool === "remix" ? "Remix video" : activeTool === "explore" ? "Run Explore" : activeTool === "account" ? "Read my account" : "Simulate";
+    // A skill picked in More (Ideas, Explore, Your account) has no pill: the More button names
+    // it, with its price, while it is selected — so the field always says what the next send spends.
+    // Your account reads "Account" there (review ruling, fix round 2: "Your account · 5" overflows
+    // row 2 on a 393 phone); More's own row keeps "Your account".
+    const moreArmed = MORE_SKILLS.some((s) => s.id === activeTool)
+      ? { label: activeTool === "account" ? "Account" : getSkill(activeTool).label, price: priceOfTool(activeTool) }
+      : null;
+    // With a video staged the text is not the link to read (the file wins, `handleSubmit`), so a
+    // non-TikTok text is no error there.
+    const urlError = showUrlError && !file;
+    // Evidence staged (More's input, a drop): today's `acceptEvidenceFile`, then the video goes and
+    // the field returns to chat (review ruling, fix round 2), so no pill is lit while send reads
+    // "Read this evidence" and runs the profile read. An unsupported file stages nothing, so it
+    // leaves the video and the selected skill where they are.
+    const stageEvidence = (f: File) => {
+      acceptEvidenceFile(f);
+      if (classifyEvidence(f) === null) return;
+      setFile(null);
+      handleUserSelectTool(DEFAULT_TOOL);
+    };
+    // The v8 example chips (an empty thread) ride inside the measured block, so the reserve is
+    // their real height too. Branch A only: in Branch B (the centred column, AMBIENT_V2 off) the
+    // chips render where they always did, above the dock, and no reserve reads them.
+    const chips = homeThreadMode && CONCEPT_V8_ENABLED && !hasConversationContent && !roomExpanded;
+    return (
+      <div className="relative w-full">
+        {/* The phone's room (<xl thread): the barless sheet (see `audienceHeader`), mounted for its
+            full-screen room only — a card's door sets `roomExpanded` and it opens. No plate.
+            With AMBIENT_V2 off (not run under the new look) `audienceHeader` is the legacy
+            `AudiencePresence variant="header"`, whose own bar then shows above the field. */}
+        {useHeader ? <div data-testid="audience-header-slot">{audienceHeader}</div> : null}
+        {/* Measured for the thread's bottom reserve (`observeNextFieldBlock`). `flow-root` keeps
+            the chips' top margin inside the block, so the measurement includes it. */}
+        <div ref={observeNextFieldBlock} className="flow-root">
+          {chips ? (
+            <div className="mb-2.5">
+              <ChipsRow onArm={handleUserSelectTool} onMore={openChipsMore} />
+            </div>
+          ) : null}
+          {/* Explore's params popover (Search) stays reachable while Explore is selected; it
+              renders nothing under every other skill. */}
+          {activeTool === "explore" ? (
+            <div className="mb-1.5 flex px-2">
+              <ComposerControls activeTool={activeTool} onRunExplore={(params) => void explore.start(params)} />
+            </div>
+          ) : null}
+          <ThreadField
+            value={url}
+            onChange={(next) => {
+              setUrl(next);
+              // Final review (4): typing moves on from the last message under the field.
+              if (submitError !== null) setSubmitError(null);
+              if (evidenceError !== null) setEvidenceError(null);
+            }}
+            onKeyDown={onFieldKeyDown}
+            // `onSubmitForm`'s routing behind the send latch (final review 2); Enter submits this
+            // same form (final review 7).
+            onSubmit={onSubmitNextField}
+            tool={activeTool}
+            onSelectTool={handleUserSelectTool}
+            priceOf={priceOfTool}
+            canSend={(evidenceFile ? !profiling : canSubmit) && nextSendLatch.phase === "off"}
+            busy={submitting || profiling}
+            online={online}
+            streaming={isAnyStreaming}
+            onStop={() => stopActive()}
+            // The staged video shows only while Simulate is selected. A failed run keeps it (the
+            // failure turn's retry re-reads it); a sealed run and a thread switch clear it
+            // (final review 1, `nextRunInputsRef`).
+            video={activeTool === "test" ? file : null}
+            onVideoChange={(f) => {
+              setFile(f);
+              if (f) {
+                // One attachment at a time: the video replaces a staged evidence file.
+                setEvidenceFile(null);
+                setEvidenceError(null);
+                // A video in the field can only be simulated (spec §4.2).
+                handleUserSelectTool("test");
+              }
+            }}
+            evidence={evidenceFile}
+            onRemoveEvidence={() => {
+              setEvidenceFile(null);
+              setEvidenceError(null);
+            }}
+            onDropFile={stageEvidence}
+            errors={[urlError ? ERROR_NON_TIKTOK : null, submitError]}
+            // The evidence's reject and run error stay quiet, as the legacy box shows them (D-09).
+            notes={[evidenceError]}
+            invalid={urlError}
+            placeholder={placeholder}
+            ariaLabel={ariaLabel}
+            sendLabel={sendLabel}
+            brief={testBrief ? { hookLine: testBrief.hookLine } : null}
+            onDismissBrief={() => setTestBrief(null)}
+            // The `/` skill list, portaled above the field (the v8 menu, on every flag).
+            slashMenu={
+              slashActive ? (
+                <UpwardPopover open anchorRef={slashAnchorRef} ariaLabel="Skills" className="w-[320px]">
+                  <SkillRows
+                    active={activeTool}
+                    filter={slashQuery}
+                    onSelect={selectSkill}
+                    activeMode={selectedAudience?.mode ?? "socials"}
+                    hideIds={CONCEPT_V8_ENABLED ? V8_SLASH_HIDDEN : undefined}
+                  />
+                </UpwardPopover>
+              ) : null
+            }
+            // The field's outer element: the slash menu, More (desktop popover) and the audience
+            // sheet stand on it.
+            anchorRef={slashAnchorRef}
+            moreArmed={moreArmed}
+            moreOpen={moreOpen}
+            onOpenMore={() => setMoreOpen(true)}
+          />
+        </div>
+        {/* The evidence input stays mounted: More's "Read a file", `handleUserSelectTool("profile")`
+            and the build chooser all click it inside the user's tap. Same input as the legacy box. */}
+        <input
+          ref={evidenceInputRef}
+          type="file"
+          accept={EVIDENCE_ACCEPT}
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) stageEvidence(f);
+            e.target.value = ""; // allow re-selecting the same file
+          }}
+        />
+        <MoreSheet
+          open={moreOpen}
+          onOpenChange={setMoreOpen}
+          skills={MORE_SKILLS.map((s) => ({ ...s, price: priceOfTool(s.id) }))}
+          onSelectSkill={handleUserSelectTool}
+          // The profile read: the evidence picker, clicked synchronously in the tap — never
+          // `handleUserSelectTool("profile")` (the General verb).
+          onReadFile={() => evidenceInputRef.current?.click()}
+          readFilePrice={creditCost("profile")}
+          // `audienceToMeta(a).name` is `a.name`: the chip's name.
+          audienceLabel={effectiveAudience.name}
+          // Final review (5): today's audience sheet takes no focus of its own, so once it opens
+          // focus moves into it (`nextFocusAudienceRef`); More does not take it back.
+          onOpenAudience={() => {
+            nextFocusAudienceRef.current = true;
+            setAudienceSheetOpen(true);
+          }}
+          // The lens sets the next run's platform only with CONCEPT_V8 on (`platform`, above);
+          // with it off (not run under the new look) the control shows but changes nothing.
+          lens={platformLens}
+          onLensChange={setPlatformLens}
+          anchorRef={slashAnchorRef}
+        />
+        {buildChooser}
+      </div>
+    );
+  };
+  const nextField = NEW_LOOK_ENABLED ? buildNextField() : null;
+
   // Bottom dock — the composer is ONE clean surface. On empty / permalink home the audience
   // room stays closed (no composer-row chip); thread mode hosts presence in the rail (≥xl) or
   // header (<xl). `roomExpanded` still blooms the dock panel when triggered programmatically.
@@ -3604,11 +4017,17 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           (2026-08-10) — and the owner rejected both on live review: "change back that the
           audience sim is in a rail next to the thread". This is the pre-v8 chain, restored
           verbatim; the flag no longer appears in it. */}
+      {/* New look: `!useHeader && roomExpanded` (≥xl without a rail host, or Branch B with AMBIENT_V2
+          off — neither is run under the new look) still blooms the legacy docked presence here,
+          directly above the field; the field's measured block does not include it, so the thread's
+          reserve does not grow with it. */}
       {useRail && railHost
         ? createPortal(AMBIENT_V2_ENABLED ? audienceRailV2 : audienceRail, railHost)
         : useHeader || !roomExpanded
           ? null
           : audiencePresence}
+      {/* New look: the field (`nextField`) in place of the veil, the plate and THE BOX. */}
+      {NEW_LOOK_ENABLED ? nextField : (
       <div className="relative w-full">
         {/* Opaque page-bg backdrop — thread mode ONLY, where the dock floats over the scroll.
             The card is opaque, but its rounded corners and the 16px strip below it are not, so
@@ -3694,6 +4113,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           </div>
         </div>
       </div>
+      )}
 
       {/* The quota wall (402). A modal, unlike every other error here, on purpose: the run did
           not fail — it was refused, and the only way forward is a decision (upgrade, or wait
@@ -3731,8 +4151,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           want. we already had the exact simulation room in the rail before" — and with the
           rail restored it had no job left: it read `roomExpanded`, which is now the ROOM's
           own open flag, so leaving it mounted opened both surfaces on one tap. The room is
-          the sim's one home again, on every viewport. */}
-      {CONCEPT_V8_ENABLED && (
+          the sim's one home again, on every viewport.
+          New look: also mounted without v8 — it is what More's audience row opens. */}
+      {(CONCEPT_V8_ENABLED || NEW_LOOK_ENABLED) && (
         <>
           <AudienceSheetV8
             open={audienceSheetOpen}
@@ -3894,12 +4315,18 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           // `pointer-events-auto`, so it ate the tap as well.
           className={cn(
             "flex-1 min-h-0 overflow-y-auto mt-[var(--nav-mt)] pt-[var(--nav-pt)] md:mt-0 md:pt-0",
-            showV8Chips ? "pb-[240px]" : "pb-[184px]",
+            // New look: the measured block under the thread (the field, and the example chips or
+            // Explore's Search when they show) plus the space under it — see NEXT_THREAD_RESERVE
+            // and `observeNextFieldBlock`. The legacy reserve is unchanged.
+            NEW_LOOK_ENABLED ? NEXT_THREAD_RESERVE : showV8Chips ? "pb-[240px]" : "pb-[184px]",
           )}
           style={
             {
               "--nav-mt": `-${MOBILE_NAV_BAND}px`,
               "--nav-pt": `${MOBILE_NAV_BAND}px`,
+              ...(NEW_LOOK_ENABLED
+                ? { "--field-reserve": `${nextFieldHeight}px` }
+                : null),
             } as React.CSSProperties
           }
         >
@@ -4001,8 +4428,12 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             corners; the opaque page-bg backdrop that hides scrolled content lives on the composer
             BOX (see composerDock), which is where the card actually starts. Content is re-centered
             at 760px to align with the thread column above. */}
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 pb-4">
-          <div className="w-full max-w-[760px] mx-auto px-2.5 sm:px-4">
+        {/* New look: the field's own place (NEXT_DOCK / NEXT_DOCK_COLUMN, as drawn). */}
+        <div
+          className={NEW_LOOK_ENABLED ? NEXT_DOCK : "pointer-events-none absolute inset-x-0 bottom-0 pb-4"}
+          data-testid={NEW_LOOK_ENABLED ? "next-field-dock" : undefined}
+        >
+          <div className={NEW_LOOK_ENABLED ? NEXT_DOCK_COLUMN : "w-full max-w-[760px] mx-auto px-2.5 sm:px-4"}>
             {/* The six quick actions live ABOVE the field, never below it (owner call 2026-07-24):
                 below, they read as results of a chat that hasn't happened. Only on the post-pick
                 empty chat — once real content lands, the thread is the offer. */}
@@ -4014,12 +4445,14 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
                 Hidden while the room is open: this dock is bottom-anchored, so anything
                 blooming off the composer's top edge would shove the chips over the shelf.
                 ⚠️ `showV8Chips`, not the expression inline — the scroll region above reserves
-                its bottom pad off the same boolean, and the two must never disagree. */}
-            {showV8Chips ? (
+                its bottom pad off the same boolean, and the two must never disagree.
+                New look: the chips render inside the field's measured block instead (`nextField`),
+                so the reserve measures them rather than reading this boolean. */}
+            {showV8Chips && !NEW_LOOK_ENABLED ? (
               <div className="pointer-events-auto mb-2.5">
                 <ChipsRow
                   onArm={handleUserSelectTool}
-                  onMore={() => setSkillsPanelOpen(true)}
+                  onMore={openChipsMore}
                 />
               </div>
             ) : null}
@@ -4092,7 +4525,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         )}
         {CONCEPT_V8_ENABLED && !hasConversationContent ? (
           <div className="mb-2.5">
-            <ChipsRow onArm={handleUserSelectTool} onMore={() => setSkillsPanelOpen(true)} />
+            <ChipsRow onArm={handleUserSelectTool} onMore={openChipsMore} />
           </div>
         ) : null}
         {composerDock}
@@ -4105,7 +4538,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         <>
           {CONCEPT_V8_ENABLED && !hasConversationContent ? (
             <div className="mb-2.5">
-              <ChipsRow onArm={handleUserSelectTool} onMore={() => setSkillsPanelOpen(true)} />
+              <ChipsRow onArm={handleUserSelectTool} onMore={openChipsMore} />
             </div>
           ) : null}
           {composerDock}

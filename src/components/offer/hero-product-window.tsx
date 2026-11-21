@@ -271,7 +271,8 @@ export function HeroProductWindow() {
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     transition={{ duration: 0.42, ease: REVEAL_EASE }}
                   >
-                    <ThreadUserTurn text={USER_MSG} />
+                    {/* `legacyLook`: the offer page keeps its current look under the new look. */}
+                    <ThreadUserTurn text={USER_MSG} legacyLook />
                   </motion.div>
                 )}
               </AnimatePresence>
@@ -286,7 +287,7 @@ export function HeroProductWindow() {
                     initial={{ opacity: 0, y: 4 }}
                     animate={{ opacity: 1, y: 0 }}
                   >
-                    <ThreadAssistantTurn>
+                    <ThreadAssistantTurn legacyLook>
                       {phase === "thinking" && (
                         <span className="flex h-4 items-center gap-1">
                           {[0, 1, 2].map((d) => (
