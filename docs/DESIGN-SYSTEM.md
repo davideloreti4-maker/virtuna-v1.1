@@ -345,6 +345,24 @@ stalled, not found, no audience, result), `VideoResult` (phone column / desktop 
   page's stream carries none, so the screen names none. Its moments on the dev page:
   `/dev/result?fixture=early&processing=1&elapsed=<s>&groups=<n>[&arriving=<k>][&runframes=<n>][&own=1]`.
 
+The message field and the thread frame (`src/components/thread-next`; spec
+`docs/superpowers/specs/2026-11-20-thread-field-design.md`): `ThreadField` (row 1 `+` · text · send,
+row 2 the pills Simulate · Hooks · Script · Remix · More), `MoreSheet` (the other skills with prices,
+the audience and the platform lens), `NextUserTurn` (the bubble, with a video tile), the "Maven" label
+and `FollowupChips`. Rules of these parts:
+
+- The field is the only glass in a thread (it floats over it); blur as an inline style only, and the
+  folder's guard (`thread-next-guard.test.ts`) refuses colour literals, palette names and backdrop
+  utilities.
+- A pill's accessible name is the skill's name and never changes; its price is drawn when selected
+  and read as a description ("1 credit"). A skill picked from More shows on More the same way.
+- The field holds one attachment at a time and always says what the send does: a video selects
+  Simulate, a file for a profile read returns the field to chat, picking a skill clears a staged file.
+- Next-step chips sit under the last answer only.
+- To look at it: `/dev/field?state=rest|hooks|typed|video|simulate|more|streaming`. To send from it in
+  a browser on the dev server, open `localhost`, not `127.0.0.1` (the cross-site check refuses POSTs
+  from a different host name).
+
 Rules that are not in the spec:
 
 - Navigation glyphs come from `src/components/shell/icons.tsx` (the reference's own drawings),

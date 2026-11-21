@@ -11,6 +11,13 @@
  */
 
 import { cn } from '@/lib/utils';
+import { NEW_LOOK_ENABLED } from '@/lib/flags/new-look';
+import {
+  NextUserTurn,
+  NextUserTurnFromFile,
+  type UserTurnVideo,
+} from '@/components/thread-next/user-turn';
+import { NextAssistantTurn } from '@/components/thread-next/assistant-label';
 
 export interface ThreadShellProps {
   /** Optimistic echo of the user's submitted prompt (presentation-only). */
@@ -19,20 +26,33 @@ export interface ThreadShellProps {
   before?: React.ReactNode;
   children?: React.ReactNode;
   className?: string;
+  /**
+   * New look only: the video the echoed turn sends (the composer's staged file, on its live
+   * Simulate turns). Shown as a tile above the bubble; ignored with the flag off.
+   */
+  userVideoFile?: File | null;
 }
 
-export function ThreadShell({ userTurn, before, children, className }: ThreadShellProps) {
+/**
+ * New look: the thread column is the message field's column (reference `.f1-col`): its edges sit on
+ * the field's, so 6 inside the composer's own 10 on the phone (16 from the screen edge) and none
+ * from 640, where both are the composer column less 16 a side, 720 at most. 12 under the phone's
+ * header, 32 from the top on desktop, and 16 above the field at the thread's end.
+ */
+const NEXT_COLUMN = 'w-full max-w-[720px] mx-auto flex flex-col gap-5 px-1.5 sm:px-0 pt-3 md:pt-8 pb-4';
+
+export function ThreadShell({ userTurn, before, children, className, userVideoFile }: ThreadShellProps) {
   const trimmed = userTurn?.trim();
 
   return (
     <div
       className={cn(
-        'w-full max-w-[760px] mx-auto flex flex-col gap-5 px-4 py-6',
+        NEW_LOOK_ENABLED ? NEXT_COLUMN : 'w-full max-w-[760px] mx-auto flex flex-col gap-5 px-4 py-6',
         className,
       )}
     >
       {before}
-      {trimmed ? <ThreadUserTurn text={trimmed} /> : null}
+      {trimmed ? <ThreadUserTurn text={trimmed} videoFile={userVideoFile} /> : null}
       {children}
     </div>
   );
@@ -55,7 +75,23 @@ export function ThreadShell({ userTurn, before, children, className }: ThreadShe
  * `<span>` — same text, same classes, zero visual change. The user's is `sr-only`: the bubble
  * is the message, and a heading that repeats it would be read twice.
  */
-export function ThreadUserTurn({ text }: { text: string }) {
+export function ThreadUserTurn({
+  text,
+  video,
+  videoFile,
+  legacyLook = false,
+}: {
+  text: string;
+  /** New look only: the turn's video (a reloaded turn's card), as a tile above the bubble. */
+  video?: UserTurnVideo | null;
+  /** New look only: the live turn's staged file, read in the browser for the same tile. */
+  videoFile?: File | null;
+  /** Keep the legacy bubble under the new look (the offer page's sample thread, spec §9). */
+  legacyLook?: boolean;
+}) {
+  if (NEW_LOOK_ENABLED && !legacyLook) {
+    return videoFile ? <NextUserTurnFromFile text={text} file={videoFile} /> : <NextUserTurn text={text} video={video} />;
+  }
   return (
     <div className="flex justify-end">
       <h2 className="sr-only">You</h2>
@@ -66,7 +102,15 @@ export function ThreadUserTurn({ text }: { text: string }) {
   );
 }
 
-export function ThreadAssistantTurn({ children }: { children: React.ReactNode }) {
+export function ThreadAssistantTurn({
+  children,
+  legacyLook = false,
+}: {
+  children: React.ReactNode;
+  /** Keep the legacy label under the new look (the offer page's sample thread, spec §9). */
+  legacyLook?: boolean;
+}) {
+  if (NEW_LOOK_ENABLED && !legacyLook) return <NextAssistantTurn>{children}</NextAssistantTurn>;
   return (
     <div className="flex flex-col gap-1">
       <h2 className="text-caption font-medium uppercase tracking-[0.05em] text-foreground-muted">

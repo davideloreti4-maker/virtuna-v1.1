@@ -26,6 +26,7 @@
  */
 
 import { Fragment } from 'react';
+import { NEW_LOOK_ENABLED } from '@/lib/flags/new-look';
 import { ThreadShell } from '@/components/thread/thread-shell';
 import { ThreadTurn, type LiveRun } from '@/components/thread/thread-turn';
 import type { RehydrateTurn } from '@/components/app/home/rehydrate-thread';
@@ -65,6 +66,15 @@ export function PersistedThreadStream({
     persistedTurns.slice(0, turnIndex).reduce((n, t) => n + t.blocks.length, 0);
   const liveBaseIndex = persistedTurns.reduce((n, t) => n + t.blocks.length, 0);
 
+  // New look: the next-step chips sit under the last ANSWER only (spec 2026-11-20 §4.4). That is
+  // the live turn while it runs or once it has blocks; else the last persisted turn with blocks. A
+  // question saved with no answer (a failed Simulate, a stopped chat) draws none, so it never takes
+  // them, and neither does a live run that ended empty. Flag off: every settled turn, as before.
+  const liveHasAnswer = !!liveTurn && (liveTurn.live.isStreaming || liveTurn.blocks.length > 0);
+  const lastAnswer = liveHasAnswer ? -1 : persistedTurns.findLastIndex((t) => t.blocks.length > 0);
+  const chipsOn = (i: number | 'live') =>
+    !NEW_LOOK_ENABLED || (i === 'live' ? liveHasAnswer : i === lastAnswer);
+
   return (
     <ThreadShell userTurn={undefined}>
       {persistedTurns.map((turn, i) => (
@@ -73,6 +83,7 @@ export function PersistedThreadStream({
             userTurn={turn.userTurn}
             blocks={turn.blocks}
             blockOrigins={turn.blockOrigins}
+            showFollowups={chipsOn(i)}
             ambientBaseIndex={
               ambientBaseIndex === undefined ? undefined : ambientBaseIndex + turnBaseIndex(i)
             }
@@ -84,6 +95,7 @@ export function PersistedThreadStream({
           userTurn={liveTurn.userTurn}
           blocks={liveTurn.blocks}
           live={liveTurn.live}
+          showFollowups={chipsOn('live')}
           ambientBaseIndex={
             ambientBaseIndex === undefined ? undefined : ambientBaseIndex + liveBaseIndex
           }

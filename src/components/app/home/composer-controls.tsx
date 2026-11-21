@@ -163,6 +163,20 @@ export const MAX_BILLABLE_BY_TOOL: Partial<Record<ToolId, BillableAction>> = {
   test: "score",
 };
 
+// The billable action EVERY priced skill spends — the new-look field's pills and More sheet
+// read their price through this map (CREDIT_COSTS stays the only source of a number). `chat`
+// has no entry: a plain message is free. Explore shows its cached-corpus price; the live scan
+// (`explore_scrape`) is offered later, in the thread (outliers-offer.tsx), not from the field.
+export const BILLABLE_BY_TOOL: Partial<Record<ToolId, BillableAction>> = {
+  test: "score",
+  hooks: "hooks",
+  idea: "ideas",
+  script: "script",
+  remix: "remix",
+  explore: "explore",
+  account: "account",
+};
+
 // ─── Line-icon SVGs (premium, no emoji) — paths from sketch 006 ──────────────
 const ICONS: Record<string, string> = {
   plus: '<path d="M8 3v10M3 8h10"/>',

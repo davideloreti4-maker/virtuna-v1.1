@@ -20,6 +20,8 @@
 
 import type { ChatFollowup } from '@/lib/tools/chat-followups';
 import { useFollowupHandler } from '@/lib/followup-context';
+import { NEW_LOOK_ENABLED } from '@/lib/flags/new-look';
+import { FollowupChips } from '@/components/thread-next/followup-chips';
 
 export function FollowupRow({
   followups,
@@ -44,6 +46,16 @@ export function FollowupRow({
   const ctxHandler = useFollowupHandler();
   const handler = onFollowup ?? ctxHandler;
   if (!followups.length) return null;
+  // A chip with no pack to carry calls the handler with exactly the arity it always did:
+  // Stage B is invisible to every chip that is not a rewrite, and to every rewrite chip
+  // sitting under a turn that produced no cards.
+  const pick = (f: ChatFollowup) => {
+    const pack = f.carryCards && cardLines?.length ? cardLines : null;
+    if (pack) handler?.(f.prompt, f.skill, { cards: pack });
+    else handler?.(f.prompt, f.skill);
+  };
+  // New look (plan 2026-11-20, thread field): the card Chip, same names, same sends.
+  if (NEW_LOOK_ENABLED) return <FollowupChips followups={followups} onPick={pick} className={className} />;
   return (
     // `pointer-coarse:gap-y-4` is LOAD-BEARING, not spacing taste. The chips below carry
     // `.tap-44`, whose halo is 44px tall around a 29px pill — 7.5px of overhang each side. At
@@ -56,14 +68,7 @@ export function FollowupRow({
         <button
           key={f.label}
           type="button"
-          onClick={() => {
-            // A chip with no pack to carry calls the handler with exactly the arity it always did:
-            // Stage B is invisible to every chip that is not a rewrite, and to every rewrite chip
-            // sitting under a turn that produced no cards.
-            const pack = f.carryCards && cardLines?.length ? cardLines : null;
-            if (pack) handler?.(f.prompt, f.skill, { cards: pack });
-            else handler?.(f.prompt, f.skill);
-          }}
+          onClick={() => pick(f)}
           // `tap-44`: measured 29px tall on a phone (F-19). The pill's drawn height is the row's
           // rhythm, so the halo grows and the pill does not. See the wrap-gap note above.
           className="tap-44 inline-flex items-center rounded-full border border-white/[0.08] bg-transparent px-3 py-1.5 text-label font-medium leading-snug text-foreground-secondary transition-colors hover:border-white/[0.14] hover:bg-white/[0.05] hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/15"
