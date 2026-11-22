@@ -670,6 +670,33 @@ describe('Composer — "Ask the room" is gone from the field (step 4)', () => {
   });
 });
 
+// ── One user turn per send ────────────────────────────────────────────────────
+// The ideas, hooks and script routes persist the send as a user row themselves (Stage A, N-8).
+// The composer used to post the same turn to /api/threads/user-turn as well, so every such send
+// was stored twice and a reloaded thread showed the question twice.
+describe('Composer — an Ideas, Hooks or Script send stores its question once', () => {
+  beforeEach(() => {
+    installFetchMock();
+    hooksStart.mockClear();
+  });
+  afterEach(() => vi.restoreAllMocks());
+
+  it.each([
+    ['hooks', '/api/tools/hooks'],
+    ['idea', '/api/tools/ideas'],
+    ['script', '/api/tools/script'],
+  ])('/%s: the route stores the turn; the composer does not post it again', async (skill, route) => {
+    const { container } = renderWithClient(<Composer />);
+    selectSkillBySlash(skill);
+    const field = screen.getByRole('textbox') as HTMLTextAreaElement;
+    fireEvent.change(field, { target: { value: 'meal prep for busy students' } });
+    fireEvent.click(submitBtn(container));
+    if (skill === 'hooks') await waitFor(() => expect(hooksStart).toHaveBeenCalledTimes(1));
+    else await waitFor(() => expect(calledWith(route)).toBe(true));
+    expect(calledWith('/api/threads/user-turn')).toBe(false);
+  });
+});
+
 // ── F-019: the paid video-Test card must land in a thread the UI can open ────
 // A Test sent as the FIRST send of a new thread used to strand its own result. Two
 // independent breaks, one symptom (a ~4.5-min paid Max run completing into a blank screen):

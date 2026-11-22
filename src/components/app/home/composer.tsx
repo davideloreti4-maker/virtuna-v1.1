@@ -1905,15 +1905,15 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     };
 
     // Skills that persist into the open chat thread AND whose user turn must be
-    // persisted client-side (chat is the exception — it persists its own turn
-    // server-side to keep its refine anchor). Kept in sync with the ensureThreadForSend
-    // set below — every tool here creates its thread lazily on first send.
+    // persisted client-side. Not here: the skills whose route persists the turn itself —
+    // chat (its refine anchor), and idea / hooks / script since Stage A (N-8: "the action
+    // is now a real user row"). Posting theirs too stored every such send twice, and a
+    // reloaded thread showed the question twice. Every tool here also creates its thread
+    // lazily on first send (the ensureThreadForSend set below).
     // `test` belongs here since the D-05 seal-in-thread rework: the run ends as a
     // video-test-card IN the thread, so a reload without this shows a card with no
     // question above it (upload path persists the file name, URL path the URL).
-    const USER_TURN_TOOLS: ToolId[] = [
-      "idea", "hooks", "script", "remix", "explore", "simulate", "predict", "test",
-    ];
+    const USER_TURN_TOOLS: ToolId[] = ["remix", "explore", "simulate", "predict", "test"];
     const captureUserTurn = (raw: string) => {
       const t = raw.trim();
       setLastUserTurn(t || null);
