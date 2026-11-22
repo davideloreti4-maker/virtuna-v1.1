@@ -77,7 +77,7 @@ const GRAPHIC: Pair[] = [
 
 /** Names @theme must know, so Tailwind generates their utilities. */
 const NEW_NAMES = [
-  '--color-track', '--color-above', '--color-above-soft', '--color-below', '--color-below-text',
+  '--color-track', '--color-gauge-track', '--color-above', '--color-above-soft', '--color-below', '--color-below-text',
   '--color-below-soft', '--color-glass', '--color-scrim',
   '--text-ui', '--text-meta', '--text-figure', '--text-figure-lg',
   '--radius-4xl', '--shadow-sheet',

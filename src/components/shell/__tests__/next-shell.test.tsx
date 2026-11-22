@@ -182,3 +182,44 @@ describe('NextShell — keyboard', () => {
     expect(useBoardStore.getState().activeThreadId).toBe('t1');
   });
 });
+
+// Thread answers step 1 (Task 6; drawing `.scratch/next-look/part3/answers/answers.html`, `nav()`
+// with `.ax-sub`): the phone's thread header names the audience the thread is for, under the title.
+// The composer publishes it in the shell store (`threadAudience`); the shell only reads it.
+describe('NextShell — the thread header names its audience', () => {
+  beforeEach(() => {
+    useShellStore.setState({ threadAudience: '' });
+  });
+
+  it('in a thread: "For {audience}" as a second line under the title, and the title is the page heading', () => {
+    pathname = '/home';
+    useShellStore.setState({ threadOpen: true, threadAudience: '@nia.tests' });
+    useBoardStore.setState({ activeThreadId: 't1' });
+    renderShell();
+    const header = pushedHeader();
+    const title = within(header).getByRole('heading', { level: 1, name: 'Three hooks for the gym video' });
+    const sub = within(header).getByText('For @nia.tests');
+    // Stacked: the line follows the title, inside the same centred cell of the 40px band.
+    expect(title.compareDocumentPosition(sub) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(title.parentElement).toBe(sub.parentElement);
+    expect(header.className).toContain('h-10');
+    // 12 / 500 in the muted ink (`.ax-sub`); the title keeps its tracking as an <h1> (inline).
+    expect(sub.className.split(/\s+/)).toEqual(expect.arrayContaining(['text-label', 'font-medium', 'text-foreground-muted', 'truncate']));
+    expect(title.style.letterSpacing).toBe('-0.014em');
+  });
+
+  it('no audience published: the title alone', () => {
+    pathname = '/home';
+    useShellStore.setState({ threadOpen: true });
+    useBoardStore.setState({ activeThreadId: 't1' });
+    renderShell();
+    expect(pushedHeader().textContent).toBe('Three hooks for the gym video');
+  });
+
+  it('a pushed screen that is not a thread shows no audience line', () => {
+    pathname = '/settings';
+    useShellStore.setState({ threadAudience: '@nia.tests' });
+    renderShell();
+    expect(within(pushedHeader()).queryByText(/^For /)).toBeNull();
+  });
+});

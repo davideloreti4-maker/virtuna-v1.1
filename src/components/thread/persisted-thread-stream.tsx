@@ -52,14 +52,30 @@ export interface PersistedThreadStreamProps {
    * `buildAmbientDescriptors`. Undefined → no anchors (concept-text room fallback).
    */
   ambientBaseIndex?: number;
+  /**
+   * New look only (thread answers step 1): turns the composer renders itself, drawn after the
+   * history and the live turn inside the same column. The live and the failed video run are not
+   * stream turns (the video run is not in `useActiveRun`), so they ride here: where the thread ends,
+   * spaced like every other turn. Unset with the flag off.
+   */
+  tail?: React.ReactNode;
+  /**
+   * New look only: the `tail` is a video run still in flight. Like a live skill run, it is the
+   * thread's answer on its way, so no turn shows the next-step chips while it runs. A tail that is
+   * not running (the failed video turn) is a question with no answer: the chips stay under the last
+   * answer above it, as for a failed live run.
+   */
+  tailRunning?: boolean;
 }
 
 export function PersistedThreadStream({
   persistedTurns,
   liveTurn,
   ambientBaseIndex,
+  tail,
+  tailRunning = false,
 }: PersistedThreadStreamProps) {
-  if (persistedTurns.length === 0 && !liveTurn) return null;
+  if (persistedTurns.length === 0 && !liveTurn && !tail) return null;
 
   // Per-turn offset into the flat ledger: the count of blocks in every earlier turn, plus the base.
   const turnBaseIndex = (turnIndex: number) =>
@@ -70,10 +86,13 @@ export function PersistedThreadStream({
   // the live turn while it runs or once it has blocks; else the last persisted turn with blocks. A
   // question saved with no answer (a failed Simulate, a stopped chat) draws none, so it never takes
   // them, and neither does a live run that ended empty. Flag off: every settled turn, as before.
+  // A running video `tail` is the answer on its way too: while it runs, no turn takes the row.
   const liveHasAnswer = !!liveTurn && (liveTurn.live.isStreaming || liveTurn.blocks.length > 0);
-  const lastAnswer = liveHasAnswer ? -1 : persistedTurns.findLastIndex((t) => t.blocks.length > 0);
+  const videoRuns = !!tail && tailRunning;
+  const lastAnswer =
+    liveHasAnswer || videoRuns ? -1 : persistedTurns.findLastIndex((t) => t.blocks.length > 0);
   const chipsOn = (i: number | 'live') =>
-    !NEW_LOOK_ENABLED || (i === 'live' ? liveHasAnswer : i === lastAnswer);
+    !NEW_LOOK_ENABLED || (i === 'live' ? liveHasAnswer && !videoRuns : i === lastAnswer);
 
   return (
     <ThreadShell userTurn={undefined}>
@@ -101,6 +120,7 @@ export function PersistedThreadStream({
           }
         />
       )}
+      {tail}
     </ThreadShell>
   );
 }

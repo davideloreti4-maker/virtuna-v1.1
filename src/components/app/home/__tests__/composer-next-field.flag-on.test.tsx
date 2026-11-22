@@ -44,6 +44,9 @@ import { creditCost } from "@/lib/pricing";
 import { dropCardToRemixBlocks } from "@/lib/surfaces/drop-seed";
 import { useBoardStore } from "@/stores/board-store";
 import { ACTIVE_THREAD_COOKIE, NEW_THREAD_SENTINEL } from "@/lib/threads/active-thread-cookie";
+import { reactRequestBody } from "../v8/fire-sim";
+import { MEAL_PREP_HOOKS, population } from "@/components/thread-next/__tests__/fixtures/answers";
+import { useShellStore } from "@/stores/shell-store";
 
 // ── the network ──────────────────────────────────────────────────────────────
 type Call = { url: string; init?: RequestInit };
@@ -112,6 +115,8 @@ const send = () => field().querySelector('button[type="submit"]') as HTMLButtonE
 /** The block the composer measures for the bottom reserve: around the field's outer element. */
 const fieldBlock = () => field().parentElement!.parentElement!;
 const evidenceInput = () => document.querySelector('input[type="file"][accept*=".txt"]') as HTMLInputElement;
+/** The seeded remix card's gauge slot: on screen once the reloaded thread has drawn. */
+const remixSlot = () => screen.findByRole("button", { name: /^Simulate the hook: / });
 const priceOf = (tool: keyof typeof BILLABLE_BY_TOOL) => creditCost(BILLABLE_BY_TOOL[tool]!);
 
 async function renderComposer() {
@@ -191,9 +196,8 @@ describe("the composer renders the new field under the flag", () => {
     expect(screen.queryByTestId("composer-skill-pill")).toBeNull();
     expect(screen.queryByTestId("sim-model-selector")).toBeNull();
     expect(screen.queryByTestId("composer-armed-skill")).toBeNull();
-    // The plate's chrome: the slot that holds the room carries no box of its own.
-    const slot = screen.getByTestId("audience-header-slot");
-    expect(slot.parentElement?.className ?? "").not.toMatch(/rounded|border|bg-surface/);
+    // Thread answers step 1 (Task 6): the room is gone, so the phone's room slot is not mounted.
+    expect(screen.queryByTestId("audience-header-slot")).toBeNull();
     // At rest: chat, "Message Maven", today's field and send names.
     expect(text().placeholder).toBe("Message Maven");
     expect(text()).toHaveAttribute("aria-label", "Ask anything about your content");
@@ -430,18 +434,113 @@ describe("the composer renders the new field under the flag", () => {
 });
 
 describe("the phone's audience room under the flag", () => {
-  it("the room's sheet stays mounted without its legacy bar", async () => {
+  // Thread answers step 1 (Task 6): the side panel and the phone's room are off under the flag.
+  it("no room: no sheet, no rail, no docked presence, no room bar", async () => {
+    threadFixture = seededThread();
     await renderComposer();
-    expect(screen.getByTestId("ambient-overview-sheet")).toBeInTheDocument();
+    await remixSlot();
+    expect(screen.queryByTestId("ambient-overview-sheet")).toBeNull();
+    expect(screen.queryByTestId("ambient-overview")).toBeNull();
+    expect(screen.queryByTestId("audience-header-slot")).toBeNull();
     expect(screen.queryByRole("button", { name: "Open your audience" })).toBeNull();
   });
 
-  it("a card's door still opens the room", async () => {
+  // Thread answers step 1: the room is gone under the flag (Task 4: no `openRoomForCard`), and the
+  // remix is the new card (Task 5), which has no room door at all. Its slot simulates the hook
+  // through the thread's one queue: one `react`, and nothing opens the room.
+  it("the remix card's \"Simulate the hook\" fires `react` once and opens no room", async () => {
     threadFixture = seededThread();
     await renderComposer();
-    fireEvent.click(await screen.findByText(/simulate with your audience/i));
-    const panel = await screen.findByTestId("ambient-sheet-panel");
-    expect(panel.parentElement).toBe(document.body);
+    fireEvent.click(await remixSlot());
+    expect(screen.queryByText(/simulate with your audience/i)).toBeNull();
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50));
+    });
+    expect(requests("/api/tools/react")).toHaveLength(1);
+    expect(bodyOf(requests("/api/tools/react")[0]!)).toEqual(
+      reactRequestBody({ text: "I sit 10 hours a day. Stretching didn't fix me — this did.", kind: "remix" }),
+    );
+    expect(screen.queryByTestId("ambient-sheet-panel")).toBeNull();
+  });
+});
+
+// Thread answers step 1 (Task 5): a reloaded thread renders through the new turn, and a hook pack's
+// gauges spend through the composer's one queue (`TextSimProvider` over the thread), whose results
+// merge into the seal map the thread reloads with.
+describe("a reloaded hooks thread under the new turn", () => {
+  const HOOKS = MEAL_PREP_HOOKS.map((b) => b.props.hookLine);
+  const ASK = "3 hooks for a video about meal prep for busy students";
+
+  /** A reloaded hooks run: the question, the run stamp and three cards, then the closing line. */
+  function hooksThread() {
+    const at = "2026-11-21T00:00:00.000Z";
+    return {
+      threadId: "t1",
+      messages: [
+        { id: "u1", thread_id: "t1", role: "user", blocks: [{ type: "markdown", props: { text: ASK } }], created_at: at },
+        {
+          id: "m1",
+          thread_id: "t1",
+          role: "assistant",
+          blocks: [{ type: "run-header", props: { skill: "hooks", audienceLabel: "@nia.tests", platform: "tiktok", hookLine: null } }, ...MEAL_PREP_HOOKS],
+          created_at: at,
+        },
+        { id: "m2", thread_id: "t1", role: "assistant", blocks: [{ type: "markdown", props: { text: "#1 is your strongest." } }], created_at: at },
+      ],
+      simSeals: {},
+    };
+  }
+
+  /** `react` held until the test answers it, so "one at a time" can be seen. */
+  function holdReact() {
+    const held: { body: Record<string, unknown>; answer: (stopPct: number) => void }[] = [];
+    const base = global.fetch;
+    global.fetch = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+      if (!String(input).includes("/api/tools/react")) return base(input, init);
+      calls.push({ url: String(input), init });
+      return new Promise<Response>((resolve) => {
+        held.push({
+          body: JSON.parse(String(init?.body ?? "{}")) as Record<string, unknown>,
+          answer: (stopPct) => resolve(json({ fraction: "6/10 stop", scrollQuote: "", personas: [], population: population(stopPct), slice: null })),
+        });
+      });
+    }) as typeof fetch;
+    return held;
+  }
+
+  const gauge = (hook: string) => screen.getByRole("button", { name: new RegExp(`^Simulate: ${hook.slice(0, 24).replace(/[$.]/g, "\\$&")}`) });
+  const settleQueue = () => act(async () => { await new Promise((r) => setTimeout(r, 30)); });
+
+  it("one card, no intro, receipt or outro; each gauge tap runs one `react`, one at a time, and shows its number", async () => {
+    const held = holdReact();
+    threadFixture = hooksThread();
+    await renderComposer();
+    await screen.findByText(ASK, { selector: "p" });
+    await waitFor(() => expect(screen.getAllByRole("button", { name: /^Simulate: / })).toHaveLength(3));
+    expect(document.querySelectorAll('[data-answer="card"]')).toHaveLength(1);
+    for (const gone of [/Pulled hooks/, /Ran your audience/, /#1 is your strongest/, /Write a script from/]) {
+      expect(screen.queryByText(gone)).toBeNull();
+    }
+    expect(screen.queryByTestId("run-receipt")).toBeNull();
+
+    fireEvent.click(gauge(HOOKS[0]!));
+    fireEvent.click(gauge(HOOKS[1]!));
+    await settleQueue();
+    expect(requests("/api/tools/react")).toHaveLength(1);
+    expect(held[0]!.body).toEqual(reactRequestBody({ text: HOOKS[0]!, kind: "hook" }));
+
+    await act(async () => held[0]!.answer(30));
+    expect(await screen.findByRole("img", { name: "30% would stop to watch" })).toBeInTheDocument();
+    await waitFor(() => expect(requests("/api/tools/react")).toHaveLength(2));
+    expect(held[1]!.body).toEqual(reactRequestBody({ text: HOOKS[1]!, kind: "hook" }));
+
+    await act(async () => held[1]!.answer(22));
+    expect(await screen.findByRole("img", { name: "22% would stop to watch" })).toBeInTheDocument();
+    await settleQueue();
+    expect(requests("/api/tools/react")).toHaveLength(2);
+    // Two of three: no sentence yet, and the third row still offers its gauge.
+    expect(screen.queryByText(/leads by|No clear winner/)).toBeNull();
+    expect(gauge(HOOKS[2]!)).toBeEnabled();
   });
 });
 
@@ -465,7 +564,7 @@ describe("the thread's bottom reserve under the flag", () => {
     );
     threadFixture = seededThread(); // a thread, so no example chips sit above the field
     await renderComposer();
-    await screen.findByText(/simulate with your audience/i);
+    await remixSlot();
 
     const region = screen.getByTestId("composer-thread-region");
     expect(region.className).toContain("pb-[calc(var(--field-reserve)+30px)]");
@@ -647,7 +746,7 @@ describe("fix round 1: the measured block", () => {
     const ro = stubResizeObserver();
     threadFixture = seededThread();
     await renderComposer();
-    await screen.findByText(/simulate with your audience/i);
+    await remixSlot();
     const region = screen.getByTestId("composer-thread-region");
     let scrollHeight = 2000;
     Object.defineProperty(region, "scrollHeight", { configurable: true, get: () => scrollHeight });
@@ -664,7 +763,7 @@ describe("fix round 1: the measured block", () => {
     const ro = stubResizeObserver();
     threadFixture = seededThread();
     await renderComposer();
-    await screen.findByText(/simulate with your audience/i);
+    await remixSlot();
     const region = screen.getByTestId("composer-thread-region");
     Object.defineProperty(region, "scrollHeight", { configurable: true, get: () => 2068 });
     Object.defineProperty(region, "clientHeight", { configurable: true, get: () => 800 });
@@ -833,6 +932,96 @@ describe("the live Simulate turn shows the staged video above the bubble", () =>
   });
 });
 
+// ── Thread answers step 1, Task 7: the running card survives the hand-off from the read to the card ──
+describe("the running video card from the read to the card", () => {
+  /** /api/analyze stays open and is fed by `push`; /api/tools/test/card never answers (still carding). */
+  function holdAnalyze() {
+    let controller: ReadableStreamDefaultController<Uint8Array> | null = null;
+    const enc = new TextEncoder();
+    const base = global.fetch;
+    global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/api/analyze")) {
+        calls.push({ url, init });
+        const body = new ReadableStream<Uint8Array>({ start: (c) => void (controller = c) });
+        return { ok: true, status: 200, body, json: async () => ({}) } as unknown as Response;
+      }
+      if (url.includes("/api/tools/test/card")) {
+        calls.push({ url, init });
+        return new Promise<Response>(() => {});
+      }
+      return base(input, init);
+    }) as typeof fetch;
+    return {
+      push(event: string, data: unknown) {
+        controller!.enqueue(enc.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+      },
+      close() {
+        controller!.close();
+      },
+    };
+  }
+
+  it("is one element from the run to the card request, and its clock counts from the send", async () => {
+    const t0 = new Date("2026-11-22T10:00:00Z").getTime();
+    vi.useFakeTimers({ shouldAdvanceTime: true, now: t0 });
+    try {
+      const analyze = holdAnalyze();
+      await renderComposer();
+      fireEvent.change(inField().getByLabelText("Choose a video file"), { target: { files: [clip()] } });
+      fireEvent.click(send());
+      await waitFor(() => expect(requests("/api/analyze")).toHaveLength(1));
+      act(() => analyze.push("started", { id: "a1" }));
+      const running = await screen.findByText("running");
+      const card = running.closest('[data-answer="card"]') as HTMLElement;
+      expect(card).toBeTruthy();
+
+      // 49 s into the read, it completes: the composer asks for the card (held open).
+      await act(async () => {
+        vi.setSystemTime(t0 + 49_000);
+        analyze.push("complete", { overall_score: 50 });
+        analyze.close();
+      });
+      await waitFor(() => expect(requests("/api/tools/test/card")).toHaveLength(1));
+      await act(async () => {
+        vi.advanceTimersByTime(1_000);
+      });
+
+      // The same card, never remounted, and its clock still counts from the send.
+      expect(card.isConnected).toBe(true);
+      expect(within(card).getByText("running")).toBeInTheDocument();
+      expect(within(card).getByText(/^0:(49|5\d)$/)).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("the first video of an empty chat is thread content from the send (the page takes the thread layout)", async () => {
+    holdAnalyze();
+    const onThreadChange = vi.fn();
+    renderWithClient(<Composer onThreadChange={onThreadChange} />);
+    await screen.findByTestId("thread-field");
+    expect(onThreadChange).toHaveBeenLastCalledWith(false);
+    fireEvent.change(inField().getByLabelText("Choose a video file"), { target: { files: [clip()] } });
+    fireEvent.click(send());
+    await waitFor(() => expect(onThreadChange).toHaveBeenLastCalledWith(true));
+    await waitFor(() => expect(requests("/api/analyze")).toHaveLength(1));
+    expect(onThreadChange).toHaveBeenLastCalledWith(true);
+  });
+
+  it("an upload that fails before the run starts shows no turn: the error by the field, the clip still staged, the arrival layout", async () => {
+    upload.mockResolvedValue({ error: { message: "storage down" } });
+    const onThreadChange = vi.fn();
+    renderWithClient(<Composer onThreadChange={onThreadChange} />);
+    await screen.findByTestId("thread-field");
+    fireEvent.change(inField().getByLabelText("Choose a video file"), { target: { files: [clip()] } });
+    fireEvent.click(send());
+    expect(await screen.findByRole("alert")).toHaveTextContent("That upload didn't go through.");
+    expect(requests("/api/analyze")).toHaveLength(0);
+    expect(onThreadChange).toHaveBeenLastCalledWith(false);
+  });
+});
+
 // ── Task 4, fix round 1 (2): the tile is the video THIS turn sent, never the one staged now ─────
 describe("a failed Simulate turn keeps only its own video", () => {
   /** /api/analyze refuses: the run fails and the failure turn stays on screen. */
@@ -900,7 +1089,7 @@ function succeedAnalyze() {
 }
 
 describe("final review: a finished video does not come back (1)", () => {
-  /** A thread holding a script card: its "Test this script" hands the opener over as the brief. */
+  /** A thread holding a script card: its "Add your take" hands the opener over as the brief. */
   function scriptThread() {
     return {
       threadId: "t1",
@@ -936,8 +1125,9 @@ describe("final review: a finished video does not come back (1)", () => {
       simSeals: {},
     };
   }
+  // The new script card (Task 5): "Add your take" is the handoff the legacy "Test full script" was.
   const takeTheBrief = async () => {
-    fireEvent.click(await screen.findByRole("button", { name: "Test the full script on the deeper SIM-1 Max pipeline" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Add your take" }));
     expect(await screen.findByTestId("field-brief")).toHaveTextContent("I stopped editing my videos");
   };
 
@@ -1229,7 +1419,11 @@ describe("residual fix: a run's inputs are recorded where it is armed", () => {
     expect(upload).toHaveBeenCalledTimes(1);
   });
 
-  it("a video brought through the ＋ door does not clear the clip staged in the field (even after that clip's run failed)", async () => {
+  // Thread answers step 1 (Task 4): the ＋ door lived in the room, and a card's door was its only
+  // way in from the thread. With the room off under the flag, that door cannot be reached, so the
+  // case this pinned (a brought link run leaving the field's clip alone) cannot happen; what is
+  // left to pin is that the way in is closed and the failed clip stays staged.
+  it("the room's ＋ door is gone with the room: a card's door reaches no ＋ door, and the failed clip stays staged", async () => {
     // The first /api/analyze (the field's clip) is refused; every later one starts and completes.
     succeedAnalyze();
     const sealing = global.fetch;
@@ -1254,26 +1448,19 @@ describe("residual fix: a run's inputs are recorded where it is armed", () => {
     expect(screen.getByTestId("field-video")).toBeInTheDocument();
     expect(upload).toHaveBeenCalledTimes(1);
 
-    // The room's ＋: a TikTok link brought through the door runs the same /api/analyze pipeline.
-    fireEvent.click(await screen.findByText(/simulate with your audience/i));
-    fireEvent.click(await screen.findByTestId("ambient-sim-door"));
-    const door = within(await screen.findByTestId("sim-door-host"));
-    fireEvent.click(door.getByText("Test a real video"));
-    fireEvent.change(door.getByLabelText("Paste a TikTok link"), { target: { value: link } });
-    fireEvent.click(door.getByText("Continue →"));
-    fireEvent.click(door.getByText("Simulate"));
-
-    const reloads = requests("/api/threads/open").length;
-    await waitFor(() => expect(requests("/api/tools/test/card")).toHaveLength(1));
-    expect(bodyOf(requests("/api/tools/test/card")[0]!)).toEqual({ analysisId: "run-1" });
-    expect(bodyOf(requests("/api/analyze")[1]!)).toMatchObject({ input_mode: "tiktok_url", tiktok_url: link });
-    await waitFor(() => expect(requests("/api/threads/open").length).toBeGreaterThan(reloads));
+    // The room's ＋ was reached through a card's door, which opened the room. The remix is the new
+    // card now (Task 5): no door; its slot simulates the hook (one `react`), and no room, ＋ door or
+    // second read appears.
+    expect(screen.queryByText(/simulate with your audience/i)).toBeNull();
+    fireEvent.click(await remixSlot());
     await settle();
-
-    // The brought run sealed; the field's clip was never its input, so it is still staged.
-    if (pill("Simulate").getAttribute("aria-pressed") !== "true") fireEvent.click(pill("Simulate"));
+    expect(requests("/api/tools/react")).toHaveLength(1);
+    expect(screen.queryByTestId("ambient-sheet-panel")).toBeNull();
+    expect(screen.queryByTestId("ambient-sim-door")).toBeNull();
+    expect(screen.queryByTestId("sim-door-host")).toBeNull();
+    expect(requests("/api/analyze")).toHaveLength(1);
     expect(screen.getByTestId("field-video")).toBeInTheDocument();
-    expect(upload).toHaveBeenCalledTimes(1); // the link run uploaded nothing
+    expect(upload).toHaveBeenCalledTimes(1);
   });
 
   it("Enter while offline sends nothing (back online, the same Enter sends)", async () => {
@@ -1454,5 +1641,285 @@ describe("residual fix, round 2: a chat sent while a run seals does not become t
     await waitFor(() => expect(pill("Simulate")).toHaveAttribute("aria-pressed", "true"));
     expect(screen.getByTestId("field-video")).toBeInTheDocument();
     expect(upload).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ── Thread answers step 1, Task 6: the frame around the thread ────────────────────────────────
+
+/** A reloaded hooks thread whose run named its audience (`run-header.audienceLabel`). */
+function mealPrepThread(audienceLabel: string | null = "@nia.tests", simSeals: Record<string, unknown> = {}) {
+  const at = "2026-11-21T00:00:00.000Z";
+  return {
+    threadId: "t1",
+    messages: [
+      { id: "u1", thread_id: "t1", role: "user", blocks: [{ type: "markdown", props: { text: "3 hooks for a video about meal prep for busy students" } }], created_at: at },
+      {
+        id: "m1",
+        thread_id: "t1",
+        role: "assistant",
+        blocks: [{ type: "run-header", props: { skill: "hooks", audienceLabel, platform: "tiktok", hookLine: null } }, ...MEAL_PREP_HOOKS],
+        created_at: at,
+      },
+    ],
+    simSeals,
+  };
+}
+
+/** One settled turn of history: a question and a plain answer. */
+function historyThread() {
+  const at = "2026-11-21T00:00:00.000Z";
+  return {
+    threadId: "t1",
+    messages: [
+      { id: "u1", thread_id: "t1", role: "user", blocks: [{ type: "markdown", props: { text: "first ask" } }], created_at: at },
+      { id: "m1", thread_id: "t1", role: "assistant", blocks: [{ type: "markdown", props: { text: "First answer." } }], created_at: at },
+    ],
+    simSeals: {},
+  };
+}
+
+/** Answer one URL with a JSON body; everything else as before. */
+function answer(path: string, body: unknown) {
+  const base = global.fetch;
+  global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    if (String(input).includes(path)) {
+      calls.push({ url: String(input), init });
+      return json(body);
+    }
+    return base(input, init);
+  }) as typeof fetch;
+}
+
+/** /api/analyze starts the run (`started`, its id) and stays open: a video run in flight. */
+function holdAnalyzeStarted(id = "run-1") {
+  const base = global.fetch;
+  global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+    if (!String(input).includes("/api/analyze")) return base(input, init);
+    calls.push({ url: String(input), init });
+    const body = new ReadableStream<Uint8Array>({
+      start(c) {
+        c.enqueue(new TextEncoder().encode(`event: started\ndata: {"id":"${id}"}\n\n`));
+        init?.signal?.addEventListener("abort", () => c.error(new DOMException("The operation was aborted.", "AbortError")));
+      },
+    });
+    return { ok: true, status: 200, body, json: async () => ({}) } as unknown as Response;
+  }) as typeof fetch;
+}
+
+const runDial = () => document.querySelector('[data-part="run-dial"]') as HTMLElement | null;
+const pickAndSend = () => {
+  fireEvent.change(inField().getByLabelText("Choose a video file"), { target: { files: [clip()] } });
+  fireEvent.click(send());
+};
+const follows = (a: Node, b: Node) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
+
+describe("task 6: the live video turn", () => {
+  it("one card from the upload to the run: its clock is not restarted, and 'Watch it run' opens the run once it has an id", async () => {
+    let releaseUpload: () => void = () => {};
+    upload.mockImplementation(() => new Promise((r) => (releaseUpload = () => r({ error: null }))));
+    holdAnalyzeStarted("run-1");
+    await renderComposer();
+    pickAndSend();
+
+    await waitFor(() => expect(runDial()).not.toBeNull());
+    const dial = runDial()!;
+    expect(dial).toHaveTextContent("uploading");
+    expect(screen.queryByRole("link", { name: /Watch it run/ })).toBeNull();
+    // Not the legacy wait: no spinner line, no "Testing your video", no checklist.
+    expect(screen.queryByText(/Uploading your video/)).toBeNull();
+    expect(screen.queryByText(/Testing your video/)).toBeNull();
+
+    await act(async () => releaseUpload());
+    await waitFor(() => expect(dial).toHaveTextContent("running"));
+    expect(runDial()).toBe(dial); // the same element: mounted once
+    expect(screen.getByRole("link", { name: /Watch it run/ })).toHaveAttribute("href", "/simulation/run-1");
+  });
+
+  it("in a thread with history, the live turn comes after the history, in the same column", async () => {
+    holdAnalyzeStarted();
+    threadFixture = historyThread();
+    await renderComposer();
+    const history = await screen.findByText("First answer.");
+    pickAndSend();
+
+    const bubble = await screen.findByText("take.mp4", { selector: "p" });
+    await waitFor(() => expect(runDial()).not.toBeNull());
+    expect(follows(history, bubble)).toBe(true);
+    expect(follows(bubble, runDial()!)).toBe(true);
+    const column = (el: Element) => el.closest('[class*="max-w-[720px]"]');
+    expect(column(runDial()!)).toBe(column(history));
+  });
+
+  // Fix round 1: the running video is the thread's answer on its way, so no turn above it offers the
+  // next-step chips (a chip would start a second run in the middle of this one).
+  it("while the video runs, the answer above it shows no chips", async () => {
+    holdAnalyzeStarted();
+    threadFixture = mealPrepThread("@nia.tests");
+    await renderComposer();
+    expect(await screen.findByTestId("followup-row")).toBeInTheDocument();
+    pickAndSend();
+    await waitFor(() => expect(runDial()).not.toBeNull());
+    expect(screen.queryByTestId("followup-row")).toBeNull();
+  });
+
+  it("a failed run: its turn comes after the history, with today's copy and Retry", async () => {
+    const base = global.fetch;
+    global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes("/api/analyze")) {
+        calls.push({ url: String(input), init });
+        return { ok: false, status: 500, json: async () => ({ error: "boom" }) } as unknown as Response;
+      }
+      return base(input, init);
+    }) as typeof fetch;
+    threadFixture = historyThread();
+    await renderComposer();
+    const history = await screen.findByText("First answer.");
+    pickAndSend();
+
+    const headline = await screen.findByText(/Couldn’t finish that read/);
+    expect(follows(history, headline)).toBe(true);
+    expect(follows(screen.getByText("take.mp4", { selector: "p" }), headline)).toBe(true);
+    expect(screen.getByRole("button", { name: /Retry the video test/ })).toBeInTheDocument();
+  });
+});
+
+describe("task 6: the thread's header", () => {
+  const listed = (title: string) => answer("/api/threads/list", { threads: [{ id: "t1", title, updated_at: "", created_at: "", pinned_at: null }] });
+
+  it("desktop: the thread's title as the page heading, then 'For {audience}', above the scroll region", async () => {
+    listed("Meal prep for busy students");
+    threadFixture = mealPrepThread("@nia.tests");
+    await renderComposer();
+    const title = await screen.findByRole("heading", { level: 1, name: "Meal prep for busy students" });
+    const row = title.parentElement as HTMLElement;
+    expect(within(row).getByText("For @nia.tests")).toBeInTheDocument();
+    expect(row.className.split(/\s+/)).toEqual(expect.arrayContaining(["hidden", "md:flex", "shrink-0"]));
+    expect(row.parentElement).toBe(screen.getByTestId("composer-shell"));
+    expect(follows(row, screen.getByTestId("composer-thread-region"))).toBe(true);
+    // The generic sr-only "Conversation" heading is replaced, not doubled.
+    expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
+  });
+
+  it("publishes the audience for the phone's header, and withdraws it when the composer goes", async () => {
+    threadFixture = mealPrepThread("@nia.tests");
+    const { unmount } = renderWithClient(<Composer />);
+    await waitFor(() => expect(useShellStore.getState().threadAudience).toBe("@nia.tests"));
+    unmount();
+    expect(useShellStore.getState().threadAudience).toBe("");
+  });
+
+  it("a run that named no audience (General): no line", async () => {
+    listed("Meal prep for busy students");
+    threadFixture = mealPrepThread("General");
+    await renderComposer();
+    await screen.findByRole("heading", { level: 1, name: "Meal prep for busy students" });
+    expect(screen.queryByText(/^For /)).toBeNull();
+    expect(useShellStore.getState().threadAudience).toBe("");
+  });
+
+  it("while a run is in flight, its audience wins over the thread's last one", async () => {
+    const id = "6a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d";
+    answer("/api/audiences", {
+      audiences: [
+        { id, name: "@dij.arc", mode: "socials", is_general: false, is_preset: false, platform: "tiktok", goal_label: null, goal_intent: null, personas: [], source_account_id: "acct-1" },
+      ],
+      lastAudienceId: id,
+    });
+    holdHooksOpen = true;
+    threadFixture = mealPrepThread("@nia.tests");
+    await renderComposer();
+    expect(await screen.findByText("For @nia.tests")).toBeInTheDocument();
+    await waitFor(() => expect(requests("/api/audiences").length).toBeGreaterThan(0));
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20));
+    });
+
+    fireEvent.click(pill("Hooks"));
+    fireEvent.change(text(), { target: { value: "gym hooks" } });
+    fireEvent.click(send());
+    await waitFor(() => expect(requests("/api/tools/hooks")).toHaveLength(1));
+    expect(await screen.findByText("For @dij.arc")).toBeInTheDocument();
+    expect(screen.queryByText("For @nia.tests")).toBeNull();
+    expect(useShellStore.getState().threadAudience).toBe("@dij.arc");
+  });
+});
+
+describe("task 6: a solid base under the field", () => {
+  it("behind the field, the shell's full width, from the field's top edge to the bottom plus a 24px fade; the dock's padding is unchanged", async () => {
+    threadFixture = seededThread();
+    await renderComposer();
+    await remixSlot();
+    const dock = screen.getByTestId("next-field-dock");
+    const base = dock.firstElementChild as HTMLElement;
+    expect(base.getAttribute("aria-hidden")).toBe("true");
+    expect(base.contains(field())).toBe(false);
+    const classes = base.className.split(/\s+/);
+    expect(classes).toEqual(
+      expect.arrayContaining([
+        "pointer-events-none",
+        "absolute",
+        "inset-x-0",
+        "bottom-0",
+        "bg-background",
+        // Solid from 24px down, fading in over its top 24px (`.composer-veil`'s mask pattern).
+        "[-webkit-mask-image:linear-gradient(to_bottom,transparent_0,black_24px)]",
+        "[mask-image:linear-gradient(to_bottom,transparent_0,black_24px)]",
+      ]),
+    );
+    // Its height is the whole measured block plus the space under the field (the dock's own bottom
+    // padding) plus the fade, on the phone and from md up: solid from the field's top edge.
+    const dockClasses = dock.className.split(/\s+/);
+    for (const prefix of ["", "md:"] as const) {
+      const pb = dockClasses.find((c) => c.startsWith(`${prefix}pb-[`) && (prefix || !c.includes(":")))!;
+      const under = Number(pb.match(/pb-\[(\d+)px\]$/)![1]);
+      const h = classes.find((c) => c.startsWith(`${prefix}h-[`) && (prefix || !c.includes(":")))!;
+      expect(h).toBe(`${prefix}h-[calc(var(--field-reserve)_+_${under + 24}px)]`);
+    }
+    // The dock reads the same measurement the thread reserve does.
+    expect(dock.style.getPropertyValue("--field-reserve")).toBe(
+      screen.getByTestId("composer-thread-region").style.getPropertyValue("--field-reserve"),
+    );
+    // The field's column paints above the base (positioned, later in the tree).
+    expect((base.nextElementSibling as HTMLElement).className).toContain("relative");
+  });
+});
+
+describe("task 6: nothing opens the room any more", () => {
+  it("the funnel's return (?claimed=1) toasts and opens no room: the example chips stay", async () => {
+    window.history.replaceState({}, "", "/home?claimed=1");
+    try {
+      threadFixture = {
+        threadId: "t1",
+        messages: [],
+        simSeals: { "analysis-1": { sealed: true, at: "2026-07-27T00:00:00.000Z", video: { analysisId: "analysis-1", craftScore: 77 } } },
+      };
+      await renderComposer();
+      expect(await screen.findByText("Account linked")).toBeInTheDocument();
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 30));
+      });
+      expect(screen.getByTestId("composer-chips-row")).toBeInTheDocument();
+      expect(screen.queryByTestId("ambient-overview-sheet")).toBeNull();
+    } finally {
+      window.history.replaceState({}, "", "/home");
+    }
+  });
+
+  it("the arrival's room line states the room; it is not a door to a room that is gone", async () => {
+    await renderComposer();
+    expect((await screen.findByTestId("arrival-room-line")).tagName).toBe("P");
+  });
+
+  it("a switch to another thread does not carry the old thread's numbers", async () => {
+    const hook = MEAL_PREP_HOOKS[0]!.props.hookLine;
+    threadFixture = mealPrepThread("@nia.tests", {
+      [hook.trim()]: { fraction: "3/10 stop", scrollQuote: "", personas: [], population: population(30), at: "2026-11-21T00:00:00.000Z" },
+    });
+    await renderComposer();
+    expect(await screen.findByRole("img", { name: "30% would stop to watch" })).toBeInTheDocument();
+    threadFixture = { ...mealPrepThread("@nia.tests"), threadId: "t2" };
+    act(() => useBoardStore.getState().switchThread());
+    await waitFor(() => expect(screen.getAllByRole("button", { name: /^Simulate: / })).toHaveLength(3));
+    expect(screen.queryByRole("img", { name: "30% would stop to watch" })).toBeNull();
   });
 });

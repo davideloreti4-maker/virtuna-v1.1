@@ -109,6 +109,12 @@ import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 import { ThreadField } from "@/components/thread-next/thread-field";
 import { MORE_SKILLS, MoreSheet } from "@/components/thread-next/more-sheet";
 import { NEXT_PLACEHOLDER_BY_TOOL, NEXT_SIMULATE_PLACEHOLDER } from "@/components/thread-next/field-copy";
+import { TextSimProvider } from "@/components/thread-next/text-sim";
+import { VideoRunning } from "@/components/thread-next/video-running";
+import { ThreadHeader } from "@/components/thread-next/thread-header";
+import { threadAudienceOf } from "@/lib/thread-next/thread-audience";
+import { reloadedSeals } from "@/lib/thread-next/seal-reload";
+import { useShellStore } from "@/stores/shell-store";
 import { SkillPill, SkillsPanel } from "./v8/skills-panel";
 import { AudienceLensChip } from "./v8/audience-lens-chip";
 
@@ -140,7 +146,7 @@ import { useRemixStream } from "@/hooks/queries/use-remix-stream";
 import { useExploreStream } from "@/hooks/queries/use-explore-stream";
 import { useAccountReadStream } from "@/hooks/queries/use-account-read-stream";
 import { ThreadLoadingSkeleton } from "@/components/thread/thread-loading";
-import { ThreadShell, ThreadAssistantTurn } from "@/components/thread/thread-shell";
+import { ThreadShell, ThreadAssistantTurn, ThreadUserTurn } from "@/components/thread/thread-shell";
 import { ProgressChecklist } from "@/components/thread/progress-checklist";
 import { SKILL_RUN_META } from "@/components/thread/run-capsule";
 import { useTestRunStages } from "@/components/thread/use-test-run-stages";
@@ -276,8 +282,21 @@ function priceOfTool(tool: ToolId): number | null {
 // out, not derived: the 30 and the 24 in both are pinned by the composer test "the dock and the
 // reserve agree" (composer-next-field.flag-on.test.tsx).
 const NEXT_DOCK = "pointer-events-none absolute inset-x-0 bottom-0 pb-[30px] md:pb-[24px]";
-const NEXT_DOCK_COLUMN = "w-full max-w-[752px] mx-auto px-4";
+// `relative`: the column paints above the dock's base (`NEXT_DOCK_BASE`), which comes first.
+const NEXT_DOCK_COLUMN = "relative w-full max-w-[752px] mx-auto px-4";
 const NEXT_THREAD_RESERVE = "pb-[calc(var(--field-reserve)+30px)] md:pb-[calc(var(--field-reserve)+24px)]";
+// Keyboard focus (thread answers step 1, Task 7): a control reached by Tab scrolls clear of the docked
+// field (its block plus the space under it, plus 12) and of the phone's header band, never under them.
+const NEXT_THREAD_SCROLL_PAD =
+  "scroll-pb-[calc(var(--field-reserve)+42px)] md:scroll-pb-[calc(var(--field-reserve)+36px)] scroll-pt-[var(--nav-pt)] md:scroll-pt-0";
+// A solid page-colour base behind the docked field (thread answers step 1), so text scrolled down
+// to the field never shows under it or beside it (not even at its rounded top corners; Task 7
+// critic): the shell's full width, from the field's top (the whole measured block, plus the dock's
+// 30 / 24 under it) to the bottom, and a 24px fade above that. The fade is `.composer-veil`'s
+// pattern (globals.css): a MASK on a `bg-background` layer, so the page colour is stated once, as the
+// token, and follows the theme.
+const NEXT_DOCK_BASE =
+  "pointer-events-none absolute inset-x-0 bottom-0 bg-background h-[calc(var(--field-reserve)_+_54px)] md:h-[calc(var(--field-reserve)_+_48px)] [-webkit-mask-image:linear-gradient(to_bottom,transparent_0,black_24px)] [mask-image:linear-gradient(to_bottom,transparent_0,black_24px)]";
 // The field at rest as drawn (96), until the first measurement lands.
 const NEXT_FIELD_REST_HEIGHT = 96;
 // The new look's short placeholders: `@/components/thread-next/field-copy` (shared with /dev/field).
@@ -623,6 +642,12 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // Captured on mount from GET /api/threads/open (returns threadId).
   // Null before first thread is created (first Ideas/Hooks send creates it).
   const [openThreadId, setOpenThreadId] = useState<string | null>(null);
+  // New look: the open thread, for the async seal reloads below (a callback that awaits a read sees
+  // the thread that is open when the read returns, not the one it closed over).
+  const openThreadIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    openThreadIdRef.current = openThreadId;
+  }, [openThreadId]);
 
   // Keep the newest turn in view. Keyed on the open thread so switching threads always lands on
   // the latest turn rather than inheriting a pin the creator released in the previous one.
@@ -862,10 +887,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // The idle offer for those three skills is the starter (THE STARTER CONTRACT), which the
   // composer renders in BOTH branches — so nothing is lost by not lying here.
 
-  // Notify parent whenever thread presence changes (HomePageLayout uses this).
-  useEffect(() => {
-    onThreadChange?.(hasThread);
-  }, [hasThread, onThreadChange]);
+  // Notify parent whenever thread presence changes (HomePageLayout uses this): the effect sits below,
+  // after the video run's own state (`threadShown`).
 
   // The RAIL gate. Separate from `hasThread` on purpose: the rail should open the moment a skill is
   // armed (owner call 2026-07-24) — you've committed to a run, so the room belongs on screen — but
@@ -895,6 +918,12 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // back to the honest full-breakdown page (setTestDegradeId → router.push), mirroring the
   // in-thread UploadField. See test-vs-simulation-split.
   const [carding, setCarding] = useState(false);
+  // New look (thread answers step 1, Task 7): the video run's card clock and its hand-off to the card.
+  // `testSentAt` = when the creator sent the run (the clock counts from it, so no remount restarts it);
+  // `cardedId` = the last run whose card request finished, so the moment between the read completing
+  // and `carding` turning on (one render, before the seal effect runs) still counts as running.
+  const [testSentAt, setTestSentAt] = useState<number | null>(null);
+  const [cardedId, setCardedId] = useState<string | null>(null);
 
   // WR-04 — Test upload pre-flight error (session-expired / storage-upload failure).
   // The URL path uses showUrlError; the analysis stream owns post-start errors. This
@@ -1130,6 +1159,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // Does NOT block the composer render (views already no-op when idle).
   useEffect(() => {
     let cancelled = false;
+    // New look: the thread open before this (re)load, so its seals can be told from another's.
+    const threadBefore = openThreadIdRef.current;
 
     // On a thread SWITCH (not the initial mount), wipe the current thread's
     // rendered content first so the previous conversation never bleeds into the
@@ -1204,7 +1235,15 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         if (cancelled) return;
         // Ambient v2: re-seal the v2 Overview rows AND repopulate the depth drill from the persisted
         // seals — trimmed concept text → the sealed sim, so both survive reload (AMBIENT_V2 only).
-        setPersistedSimSeals(data.simSeals ?? {});
+        // New look: a reload of the thread that was already open merges (a read that predates a
+        // seal's write must not wipe the seal a gauge just merged); another thread replaces.
+        if (NEW_LOOK_ENABLED) {
+          const fromServer = data.simSeals ?? {};
+          const same = threadBefore !== null && threadBefore === (data.threadId ?? null);
+          setPersistedSimSeals((prev) => reloadedSeals(prev, fromServer, same));
+        } else {
+          setPersistedSimSeals(data.simSeals ?? {});
+        }
         // Capture thread id for AudienceChip per-thread pin (07-05 / D-04) and sync
         // the sidebar active-row highlight (survives refresh: the pointer cookie
         // drives the server, this drives the client highlight). null → blank/new.
@@ -1958,6 +1997,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         router.push(resultHref(id));
       } finally {
         setCarding(false);
+        if (NEW_LOOK_ENABLED) setCardedId(id);
       }
     })();
   }, [stream.phase, stream.analysisId, router, reloadChatThread]);
@@ -2307,6 +2347,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       captureUserTurn(file.name);
       setSubmitError(null);
       setSubmitting(true);
+      if (NEW_LOOK_ENABLED) setTestSentAt(Date.now());
       try {
         const supabase = createClient();
         const { data: userData } = await supabase.auth.getUser();
@@ -2362,6 +2403,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     captureUserTurn(trimmedUrl); // A3 optimistic echo (drives testSubmitTurn)
     setSubmitError(null);
     setSubmitting(true);
+    if (NEW_LOOK_ENABLED) setTestSentAt(Date.now());
     try {
       // Arm the in-thread seal for this real submission (see upload path above).
       pendingSealRef.current = true;
@@ -2597,7 +2639,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // in-composer ComposerRoom card. The owner reviewed both live and ruled the shipped shape
   // back: the sim room is the RAIL beside the thread ≥xl, and the dock fused to the composer
   // <xl — "same ui design as it was before" for both. So the flag no longer gates this.
-  const useHeader = homeThreadMode && !isXl;
+  // New look (thread answers step 1): the room is gone, so no phone room sheet and no slot for it.
+  const useHeader = !NEW_LOOK_ENABLED && homeThreadMode && !isXl;
 
   // New look: the thread's bottom reserve follows the real height of the block under it — the
   // example chips (empty thread), Explore's Search control (while Explore is selected) and the
@@ -2750,8 +2793,15 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     try {
       const res = await fetch("/api/threads/open", { cache: "no-store" });
       if (!res.ok) return;
-      const data = (await res.json()) as { simSeals?: WireSimSealMap };
-      setPersistedSimSeals(data.simSeals ?? {});
+      const data = (await res.json()) as { threadId?: string; simSeals?: WireSimSealMap };
+      if (NEW_LOOK_ENABLED) {
+        // The same open thread: merge, so a seal merged while this read was in flight survives.
+        const fromServer = data.simSeals ?? {};
+        const same = openThreadIdRef.current !== null && openThreadIdRef.current === (data.threadId ?? null);
+        setPersistedSimSeals((prev) => reloadedSeals(prev, fromServer, same));
+      } else {
+        setPersistedSimSeals(data.simSeals ?? {});
+      }
     } catch {
       // The card is already in the thread; the row just stays queued until the next load.
     }
@@ -2781,6 +2831,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
 
       setSubmitError(null);
       setSubmitting(true);
+      if (NEW_LOOK_ENABLED) setTestSentAt(Date.now());
       try {
         let storagePath: string | null = null;
         if (file) {
@@ -2865,7 +2916,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     funnelReturnRef.current = null;
     const entry = videoEntries[videoEntries.length - 1];
     if (!entry) return;
-    simulateVideoInRoom(entry[0]);
+    // New look: there is no room to open (spec 2026-11-21 §6); the toast still says what happened.
+    if (!NEW_LOOK_ENABLED) simulateVideoInRoom(entry[0]);
     if (marker === "claimed") {
       toast({
         variant: "success",
@@ -3213,19 +3265,57 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // ⚠️ runningTool, NOT activeTool. armFired() reverts the arm to chat the instant the Test is
   // dispatched — a ~2-minute run — so keying the progress spine on the arm would have blanked
   // the whole wait the moment it started. This is the read that made the one-shot safe.
+  //
+  // New look: the run is dispatched (`armFired`) only once the file is in storage, so a first video's
+  // upload is not yet `runningTool === "test"`. While Simulate is still the arm and a file is
+  // sending, that IS the video run, so its card shows from the send: one card from the upload on.
+  const testUploading = NEW_LOOK_ENABLED && submitting && file !== null && activeTool === "test";
+  // New look: the read is complete but its card request has not started yet (the seal effect sets
+  // `carding` one render later). Without this the running card unmounted for that render.
+  const testCardDue =
+    NEW_LOOK_ENABLED &&
+    runningTool === "test" &&
+    stream.phase === "complete" &&
+    stream.analysisId !== null &&
+    stream.analysisId !== cardedId;
   const testSubmitPending =
-    runningTool === "test" && (submitting || testAnalyzing || carding);
+    (runningTool === "test" || testUploading) && (submitting || testAnalyzing || carding || testCardDue);
   // New look: the video this turn sent, as a tile above the bubble (plan 2026-11-20, Task 4). Only
   // while `file` is still that video: the upload path echoes `file.name` as the turn
   // (captureUserTurn), so the names match. A clip staged after the send (or a link run) never
   // shows on this turn; a removed or replaced one leaves it without a tile.
   const testTurnVideo = NEW_LOOK_ENABLED && file && file.name.trim() === lastUserTurn ? file : undefined;
-  const testSubmitTurn = testSubmitPending ? (
-    <ThreadShell userTurn={lastUserTurn} userVideoFile={testTurnVideo}>
-      <ThreadAssistantTurn>
-        {/* Staging (a file is uploading, before the stream connects) has no clock yet — a lone
-            spinner reads honestly there. Once analyzing/carding, the 3-step spine carries the wait. */}
-        {submitting && file && !testAnalyzing && !carding ? (
+  // The video run's turn: its question, then the answer. New look (thread answers step 1): the two
+  // parts go into the thread's own column, after the history (`PersistedThreadStream`'s `tail`,
+  // below), so they sit where the thread ends and are spaced like every other turn. Flag off: its
+  // own column, above the history, as before.
+  const videoTurn = (answer: React.ReactNode) =>
+    NEW_LOOK_ENABLED ? (
+      <>
+        {lastUserTurn?.trim() ? <ThreadUserTurn text={lastUserTurn.trim()} videoFile={testTurnVideo} /> : null}
+        <ThreadAssistantTurn>{answer}</ThreadAssistantTurn>
+      </>
+    ) : (
+      <ThreadShell userTurn={lastUserTurn} userVideoFile={testTurnVideo}>
+        <ThreadAssistantTurn>{answer}</ThreadAssistantTurn>
+      </ThreadShell>
+    );
+  const testSubmitTurn = testSubmitPending
+    ? videoTurn(
+        NEW_LOOK_ENABLED ? (
+          // New look: the running video card (spec §4.5, P8), ONE element from the upload to the
+          // run, so its clock (counted from its mount) never restarts. "uploading" until the run has
+          // an id, then "running" and "Watch it run" (the run's result page).
+          <VideoRunning
+            // A new send is a new card (its own clock), even when the last run is still carding.
+            key={testSentAt ?? undefined}
+            file={testTurnVideo ?? null}
+            analysisId={stream.analysisId ?? null}
+            startedAt={testSentAt ?? undefined}
+          />
+        ) : submitting && file && !testAnalyzing && !carding ? (
+          /* Staging (a file is uploading, before the stream connects) has no clock yet — a lone
+             spinner reads honestly there. Once analyzing/carding, the 3-step spine carries the wait. */
           <div className="flex items-center gap-2 text-sm text-foreground-muted" aria-live="polite">
             <Spinner size="sm" />
             <span>Uploading your video…</span>
@@ -3241,10 +3331,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
               evidence={testRunEvidence}
             />
           </div>
-        )}
-      </ThreadAssistantTurn>
-    </ThreadShell>
-  ) : null;
+        ),
+      )
+    : null;
 
   // Test's FAILURE turn — the sibling of testSubmitTurn above.
   //
@@ -3268,6 +3357,15 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // The polling ceiling is the one error where the pipeline may still be ALIVE server-side, so a
   // "retry" there would start a second billed run on top of it. Offer the truth instead of a button.
   const testRunStillAlive = stream.error === STREAM_TIMEOUT_ERROR;
+  // Thread presence for the page layout (HomePageLayout). New look: a video run in flight, or its
+  // failure, is this thread's content too, so the first video of a new chat gets the thread layout
+  // (field docked at the bottom, header, no tab bar) from the send, not when its card lands.
+  // A send that fails before its stream starts (an expired session, a storage error) shows no turn,
+  // only the error by the field with the clip still staged, so the page goes back to the arrival.
+  const threadShown = hasThread || (NEW_LOOK_ENABLED && (testSubmitPending || testRunFailed));
+  useEffect(() => {
+    onThreadChange?.(threadShown);
+  }, [threadShown, onThreadChange]);
   // CAUSE BEATS SKILL (lib/net/run-failure.ts rule 1). This is a bespoke error surface — it writes
   // its own sentences instead of resolving them through `thread-turn.tsx` — so it did not inherit
   // that rule, and the skill copy below is an ACCUSATION: it blames a private, deleted or
@@ -3277,10 +3375,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // that was never the problem. So a named cause overrules it; an unnamed failure keeps it.
   const testRunCause = runFailureCauseOf(stream.error);
   const testRunCauseCopy = runErrorCopy(stream.error, "test");
-  const testFailedTurn = testRunFailed ? (
-    // The sent video only, as on testSubmitTurn above (`testTurnVideo`).
-    <ThreadShell userTurn={lastUserTurn} userVideoFile={testTurnVideo}>
-      <ThreadAssistantTurn>
+  const testFailedTurn = testRunFailed
+    ? // The sent video only, as on testSubmitTurn above (`testTurnVideo`).
+      videoTurn(
         <SkillRunError
           headline={
             testRunCause
@@ -3309,14 +3406,32 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           // inviting a tap that earns the same 401 forever.
           onRetry={testRunStillAlive ? undefined : () => void handleSubmit("test")}
           retryLabel={testRunCause ? testRunCauseCopy.retryLabel : "Retry the video test"}
-        />
-      </ThreadAssistantTurn>
-    </ThreadShell>
-  ) : null;
+        />,
+      )
+    : null;
 
-  const threadContent = (
+  // ── The thread's audience (thread answers step 1, spec §5) ───────────────────
+  // "For {audience}" beside the desktop header's title and under the phone header's. While a run is
+  // in flight (a skill's live turn, or the video run) it is that run's audience, the one its header
+  // will record; otherwise the last run header's in the thread. None for General (`threadAudienceOf`).
+  // The phone's header is the shell's, so the value is published to the shell store and withdrawn
+  // when the composer goes.
+  const runInFlight = liveTurn !== null || testSubmitPending;
+  const threadAudience = NEW_LOOK_ENABLED
+    ? runInFlight
+      ? threadAudienceOf([], threadAudienceLabel)
+      : threadAudienceOf(persistedStreamTurns)
+    : null;
+  useEffect(() => {
+    if (!NEW_LOOK_ENABLED) return;
+    useShellStore.getState().setThreadAudience(threadAudience ?? "");
+    return () => useShellStore.getState().setThreadAudience("");
+  }, [threadAudience]);
+
+  const threadTree = (
     <RemixRefreshContext.Provider value={remixRefreshValue}>
-    <OpenRoomContext.Provider value={openRoomForCard}>
+    {/* New look: the room is gone, so no card can open it (or spend a run on the way in). */}
+    <OpenRoomContext.Provider value={NEW_LOOK_ENABLED ? null : openRoomForCard}>
      <SimulateVideoContext.Provider value={simulateVideoInRoom}>
      <InThreadInputContext.Provider value={inThreadInputValue}>
       <FollowupContext.Provider value={sendChatFollowup}>
@@ -3330,8 +3445,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           <ScriptTestContext.Provider value={handleTestScript}>
            <RemixDevelopContext.Provider value={handleDevelopRemix}>
             <OutlierGridActionsContext.Provider value={outlierGridActions}>
-      {testSubmitTurn}
-      {testFailedTurn}
+      {/* Flag off: the video run's turns sit above the history. New look: the stream's `tail`. */}
+      {!NEW_LOOK_ENABLED && testSubmitTurn}
+      {!NEW_LOOK_ENABLED && testFailedTurn}
       {/* THE THREAD — history AND the live tail, through ONE renderer.
           Every turn (persisted or in-flight) renders via <ThreadTurn>: user bubble → intro →
           loading spine → cards → outro. This replaced seven per-skill views mounted behind
@@ -3346,6 +3462,16 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           persistedTurns={persistedStreamTurns}
           liveTurn={liveTurn}
           ambientBaseIndex={0}
+          tail={
+            NEW_LOOK_ENABLED && (testSubmitTurn || testFailedTurn) ? (
+              <>
+                {testSubmitTurn}
+                {testFailedTurn}
+              </>
+            ) : undefined
+          }
+          // The running video is the thread's answer on its way: no turn above it offers chips.
+          tailRunning={NEW_LOOK_ENABLED && testSubmitPending}
         />
       </ThreadIdContext.Provider>
             </OutlierGridActionsContext.Provider>
@@ -3359,6 +3485,19 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     </SimulateVideoContext.Provider>
     </OpenRoomContext.Provider>
     </RemixRefreshContext.Provider>
+  );
+  // New look: the cards' gauges run their text simulations through ONE queue that lives here,
+  // above the thread, so a turn's live → persisted remount keeps a run in flight. Each result is
+  // merged into the seal map the thread reloads with (`persistedSimSeals`).
+  const threadContent = NEW_LOOK_ENABLED ? (
+    <TextSimProvider
+      seals={persistedSimSeals}
+      onSealed={(key, seal) => setPersistedSimSeals((m) => ({ ...m, [key]: seal }))}
+    >
+      {threadTree}
+    </TextSimProvider>
+  ) : (
+    threadTree
   );
 
   // ── THE ARMED INDICATOR — what replaced the skill pill, and why it is not one ────────────
@@ -4021,11 +4160,15 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           off — neither is run under the new look) still blooms the legacy docked presence here,
           directly above the field; the field's measured block does not include it, so the thread's
           reserve does not grow with it. */}
-      {useRail && railHost
-        ? createPortal(AMBIENT_V2_ENABLED ? audienceRailV2 : audienceRail, railHost)
-        : useHeader || !roomExpanded
-          ? null
-          : audiencePresence}
+      {/* New look (thread answers step 1): no room anywhere: no rail portal (HomePageLayout mounts no
+          rail either) and no docked presence above the field. */}
+      {NEW_LOOK_ENABLED
+        ? null
+        : useRail && railHost
+          ? createPortal(AMBIENT_V2_ENABLED ? audienceRailV2 : audienceRail, railHost)
+          : useHeader || !roomExpanded
+            ? null
+            : audiencePresence}
       {/* New look: the field (`nextField`) in place of the veil, the plate and THE BOX. */}
       {NEW_LOOK_ENABLED ? nextField : (
       <div className="relative w-full">
@@ -4261,6 +4404,12 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           className,
         )}
       >
+        {/* New look (thread answers step 1): the desktop thread header, a row above the scroll
+            region (md and up; the phone's is the shell's pushed header). Its title is the page's
+            <h1>. Only while a conversation is on screen, or loading into one. */}
+        {NEW_LOOK_ENABLED && (hasConversationContent || rehydrating) ? (
+          <ThreadHeader audience={threadAudience} />
+        ) : null}
         {/* The <xl audience bar USED to live here — a row in the mobile top nav, laid out against
             `MOBILE_NAV` so it sat flush beside the sidebar opener tab. It moved into the dock on
             2026-07-31 (owner call): a room you consult while composing belongs against the field,
@@ -4319,6 +4468,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             // Explore's Search when they show) plus the space under it — see NEXT_THREAD_RESERVE
             // and `observeNextFieldBlock`. The legacy reserve is unchanged.
             NEW_LOOK_ENABLED ? NEXT_THREAD_RESERVE : showV8Chips ? "pb-[240px]" : "pb-[184px]",
+            NEW_LOOK_ENABLED && NEXT_THREAD_SCROLL_PAD,
           )}
           style={
             {
@@ -4341,7 +4491,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
                 the empty home renders the serif greeting, which already owns the page's `h1`
                 (a second one is the defect this is meant to fix, inverted) — and on a surface
                 with no messages "Conversation" would simply be false. */}
-            {hasConversationContent && <h1 className="sr-only">Conversation</h1>}
+            {/* New look: the desktop thread header's title is the page heading (see the shell row). */}
+            {hasConversationContent && !NEW_LOOK_ENABLED && <h1 className="sr-only">Conversation</h1>}
             {/* A1: while a switch is rehydrating and no content has landed yet, fill the
                 scroll with the branded skeleton — never the prior thread's emptied views
                 or the centered serif hero. When the persisted blocks arrive (or it's a
@@ -4389,7 +4540,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
                         states these facts, and the line hides itself there. */}
                     <ArrivalV8
                       audience={effectiveAudience}
-                      onOpenRoom={() => handleRoomExpandedChange(true)}
+                      // New look: no room to open, so the line states the room (no dead button).
+                      onOpenRoom={NEW_LOOK_ENABLED ? undefined : () => handleRoomExpandedChange(true)}
                     />
                     <DropShelf
                       cards={dropCards}
@@ -4432,7 +4584,10 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         <div
           className={NEW_LOOK_ENABLED ? NEXT_DOCK : "pointer-events-none absolute inset-x-0 bottom-0 pb-4"}
           data-testid={NEW_LOOK_ENABLED ? "next-field-dock" : undefined}
+          // New look: the base reads the measured block too (the scroll region is a sibling).
+          style={NEW_LOOK_ENABLED ? ({ "--field-reserve": `${nextFieldHeight}px` } as React.CSSProperties) : undefined}
         >
+          {NEW_LOOK_ENABLED ? <div aria-hidden className={NEXT_DOCK_BASE} /> : null}
           <div className={NEW_LOOK_ENABLED ? NEXT_DOCK_COLUMN : "w-full max-w-[760px] mx-auto px-2.5 sm:px-4"}>
             {/* The six quick actions live ABOVE the field, never below it (owner call 2026-07-24):
                 below, they read as results of a chat that hasn't happened. Only on the post-pick
@@ -4492,7 +4647,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           <>
             <ArrivalV8
               audience={effectiveAudience}
-              onOpenRoom={() => handleRoomExpandedChange(true)}
+              onOpenRoom={NEW_LOOK_ENABLED ? undefined : () => handleRoomExpandedChange(true)}
             />
             <DropShelf
               cards={dropCards}

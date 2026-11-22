@@ -23,6 +23,13 @@ interface ShellState {
    */
   pushedTitle: string;
   setPushedTitle: (title: string) => void;
+  /**
+   * New look: the audience the open thread is for (thread answers step 1, Task 6), shown as
+   * "For {audience}" under the title in the phone's thread header. Published by the composer, which
+   * knows the thread's runs, and cleared when it goes. Empty: no line. Not persisted.
+   */
+  threadAudience: string;
+  setThreadAudience: (audience: string) => void;
 }
 
 export const useShellStore = create<ShellState>()((set) => ({
@@ -38,4 +45,6 @@ export const useShellStore = create<ShellState>()((set) => ({
   setAutoRail: (v) => set({ autoRail: v }),
   pushedTitle: '',
   setPushedTitle: (title) => set({ pushedTitle: title }),
+  threadAudience: '',
+  setThreadAudience: (audience) => set({ threadAudience: audience }),
 }));

@@ -105,9 +105,11 @@ export function NextUserTurn({
 }) {
   const hasTile = !isLinkTurn(text) && (fileTile || (!!video && (!!video.posterUrl || !!video.durationLabel)));
   return (
-    // `-mb-0.5`: the thread column spaces turns 20 apart (ThreadShell `gap-5`); the label sits 18
-    // under the bubble as drawn. `mt-2` (not on the first turn): 28 from the answer above, as drawn.
-    <div className="-mb-0.5 mt-2 flex flex-col items-end first:mt-0">
+    // `-mb-0.5`: the thread column spaces its parts 14 apart, 16 from md (ThreadShell); the label
+    // sits 12 under the bubble, 14 from md, as the answer-system drawing has it (`.ax-msgs` and
+    // `.desk .thread` gaps). `mt-3.5` (not on the first turn): a later question sits 16 further down
+    // than that rhythm (`.ax-t2`), 28 under the answer above on a phone and 30 from md.
+    <div className="-mb-0.5 mt-3.5 flex flex-col items-end first:mt-0">
       <h2 className="sr-only">You</h2>
       {hasTile && <VideoTile posterUrl={video?.posterUrl} durationLabel={video?.durationLabel} />}
       <p className="max-w-[80%] whitespace-pre-wrap text-pretty rounded-3xl rounded-br-sm bg-surface-sunken px-[15px] pb-[11px] pt-2.5 text-ui text-foreground">

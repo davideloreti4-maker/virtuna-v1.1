@@ -20,7 +20,7 @@ export const NEXT_LOOK_THEMED = [
   '--color-border', '--color-border-hover',
   '--color-foreground', '--color-foreground-secondary', '--color-foreground-muted',
   '--color-action', '--color-action-foreground', '--color-hover', '--color-active',
-  '--color-track', '--color-above', '--color-above-soft',
+  '--color-track', '--color-gauge-track', '--color-above', '--color-above-soft',
   '--color-below', '--color-below-text', '--color-below-soft',
   '--color-glass', '--color-scrim',
   '--shadow-rest', '--shadow-lift', '--shadow-press', '--shadow-control', '--shadow-float', '--shadow-button',

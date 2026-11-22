@@ -23,6 +23,7 @@ import { ThreadTurn } from "@/components/thread/thread-turn";
 import { PersistedThreadStream } from "@/components/thread/persisted-thread-stream";
 import { FollowupContext } from "@/lib/followup-context";
 import { followupsForKind } from "@/lib/tools/chat-followups";
+import { nextFollowups } from "@/lib/thread-next/next-followups";
 
 function renderWithClient(ui: React.ReactElement) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
@@ -78,6 +79,8 @@ const videoCard = (keyframeUrl: string | null, durationLabel: string | null) => 
 });
 
 const HOOKS_CHIPS = followupsForKind("hooks").map((f) => f.label);
+/** The new turn's pair under a hooks answer (spec 2026-11-21 §4.7, `nextFollowups`). */
+const HOOKS_PAIR = nextFollowups("hooks").map((f) => f.label);
 
 afterEach(() => {
   cleanup();
@@ -208,14 +211,51 @@ describe("flag on: the live turn's tile (the composer's staged file)", () => {
 });
 
 describe("flag on: the thread column", () => {
-  it("is the field's column: 720 at most, its edges on the field's (6 inside the composer's 10 on the phone, none from 640), 12 / 32 above, 16 below", () => {
+  // Thread answers step 1 (Task 6): the desktop thread header now sits above the column, so the
+  // column starts 22 under it (`.desk .thread` padding-top), and its parts sit as the answer-system
+  // drawing spaces them: a question ends 12 above the "Maven" label on a phone (`.ax-msgs` gap), 14
+  // from md (`.desk .thread` gap). The bubble's own -2 bottom margin (`NextUserTurn`) is why the
+  // column's gap is 14 / 16.
+  it("is the field's column: 720 at most, its edges on the field's (6 inside the composer's 10 on the phone, none from 640), 12 / 22 above, 16 below, parts 14 / 16 apart", () => {
     const { container } = render(<ThreadShell userTurn="hi" />);
     const column = container.firstElementChild as HTMLElement;
     const classes = column.className.split(/\s+/);
-    expect(classes).toEqual(expect.arrayContaining(["max-w-[720px]", "px-1.5", "sm:px-0", "pt-3", "md:pt-8", "pb-4", "gap-5"]));
+    expect(classes).toEqual(
+      expect.arrayContaining(["max-w-[720px]", "px-1.5", "sm:px-0", "pt-3", "md:pt-[22px]", "pb-4", "gap-3.5", "md:gap-4"]),
+    );
+    expect(classes).not.toContain("gap-5");
+    expect(classes).not.toContain("md:pt-8");
     expect(classes).not.toContain("max-w-[760px]");
     expect(classes).not.toContain("px-4");
     expect(classes).not.toContain("py-6");
+  });
+
+  it("a question ends 12 above the answer's label on a phone, 14 from md (the column's gap less the bubble's -2)", () => {
+    const { container } = render(
+      <ThreadShell userTurn="3 hooks for a video about meal prep">
+        <ThreadAssistantTurn>
+          <p>An answer</p>
+        </ThreadAssistantTurn>
+      </ThreadShell>,
+    );
+    const column = container.firstElementChild as HTMLElement;
+    const question = screen.getByText("3 hooks for a video about meal prep").parentElement as HTMLElement;
+    expect(question.parentElement).toBe(column);
+    const px = (cls: string) =>
+      ({ "gap-3": 12, "gap-3.5": 14, "gap-4": 16, "gap-5": 20, "-mb-0.5": -2, "mt-2": 8, "mt-3": 12, "mt-3.5": 14 })[cls] ?? NaN;
+    const colClasses = column.className.split(/\s+/);
+    const turnClasses = question.className.split(/\s+/);
+    const mb = turnClasses.find((c) => c.startsWith("-mb-"))!;
+    const gap = px(colClasses.find((c) => /^gap-/.test(c))!);
+    const mdGap = px(colClasses.find((c) => c.startsWith("md:gap-"))!.slice(3));
+    expect(gap + px(mb)).toBe(12);
+    expect(mdGap + px(mb)).toBe(14);
+    // A later question sits 16 further down than the label rhythm (`.ax-t2` margin-top 16): 28 under
+    // the answer above on a phone (12 + 16), 30 from md (14 + 16). The first one does not.
+    const mt = px(turnClasses.find((c) => /^mt-/.test(c))!);
+    expect(gap + mt).toBe(28);
+    expect(mdGap + mt).toBe(30);
+    expect(turnClasses).toContain("first:mt-0");
   });
 
   it("a caller's className still wins", () => {
@@ -236,7 +276,23 @@ describe("flag on: the Maven label", () => {
     expect(heading.className).toContain("text-foreground-secondary");
     // Untracked, as drawn: the app-wide `h2` rule (-0.02em, unlayered) would beat a utility.
     expect(heading.style.letterSpacing).toBe("0px");
+    // The mark is the brand's coral (answer-system drawing 2026-11-21, `.who .ic`); the word stays grey.
+    expect(heading.querySelector("svg")?.getAttribute("class")).toContain("text-accent");
     expect(screen.getByText("Pulled hooks for @mrbeast.")).toBeTruthy();
+  });
+
+  // Answer-system drawing 2026-11-21 (`.ax-msgs` gap 12 with `.tq-card` margin -4 on a phone,
+  // `.desk .thread` gap 14 on a desk): the answer starts 8 under the label, 14 from md; its parts
+  // (card, sentence, chips) sit 12 apart, 14 from md.
+  it("the answer starts 8 under the label (14 from md), its parts 12 apart (14 from md)", () => {
+    render(
+      <ThreadAssistantTurn>
+        <p>An answer</p>
+      </ThreadAssistantTurn>,
+    );
+    const heading = screen.getByRole("heading", { level: 2, name: "Maven" });
+    expect((heading.parentElement as HTMLElement).className.split(/\s+/)).toEqual(expect.arrayContaining(["gap-2", "md:gap-3.5"]));
+    expect((heading.nextElementSibling as HTMLElement).className.split(/\s+/)).toEqual(expect.arrayContaining(["gap-3", "md:gap-3.5"]));
   });
 
   it("the offer page's opt-out keeps the legacy label", () => {
@@ -256,10 +312,12 @@ describe("flag on: the next-step chips", () => {
     const chips = within(row).getAllByRole("button");
     expect(chips.map((c) => c.getAttribute("aria-label"))).toEqual(HOOKS_CHIPS.map((l) => `Follow up: ${l}`));
     expect(chips.map((c) => c.textContent)).toEqual(HOOKS_CHIPS);
-    // The card Chip: a tint, 32 tall.
+    // Outlined, 32 tall (answer-system drawing 2026-11-21, `.ax .tq-nx > span`): no fill, an inset
+    // ring of the ink at 16%, so a chip never looks like the field's filled skill pills.
     for (const chip of chips) {
-      expect(chip.className).toContain("bg-surface-sunken");
-      expect(chip.className).toContain("h-8");
+      const classes = chip.className.split(/\s+/);
+      expect(classes).toEqual(expect.arrayContaining(["bg-transparent", "inset-ring", "inset-ring-foreground/16", "h-8"]));
+      expect(classes).not.toContain("bg-surface-sunken");
     }
   });
 
@@ -308,11 +366,21 @@ describe("flag on: a turn", () => {
     expect(screen.queryByRole("img", { name: /^Video/ })).toBeNull();
   });
 
-  it("showFollowups={false} hides the chips and keeps the rest of the outro", () => {
+  // Thread answers step 1 (Task 5): the new turn draws no outro text at all (the closing line is
+  // narration), with or without its chips.
+  it("showFollowups={false} hides the chips; the closing line shows in neither case", () => {
     const turn = hooksTurn("give me hooks", "Everyone lied about 5am");
-    renderWithClient(<ThreadTurn userTurn={turn.userTurn} blocks={turn.blocks} showFollowups={false} />);
+    const { rerender } = renderWithClient(<ThreadTurn userTurn={turn.userTurn} blocks={turn.blocks} showFollowups={false} />);
     expect(screen.queryByTestId("followup-row")).toBeNull();
-    expect(screen.getByText("#1 is your strongest.")).toBeTruthy();
+    expect(screen.queryByText("#1 is your strongest.")).toBeNull();
+    expect(screen.getByRole("button", { name: /^Simulate: Everyone lied about 5am/ })).toBeTruthy();
+    rerender(
+      <QueryClientProvider client={new QueryClient()}>
+        <ThreadTurn userTurn={turn.userTurn} blocks={turn.blocks} />
+      </QueryClientProvider>,
+    );
+    expect(screen.getByTestId("followup-row")).toBeTruthy();
+    expect(screen.queryByText("#1 is your strongest.")).toBeNull();
   });
 });
 
@@ -323,7 +391,7 @@ describe("flag on: chips under the last answer only", () => {
     renderWithClient(<PersistedThreadStream persistedTurns={turns} />);
     const rows = screen.getAllByTestId("followup-row");
     expect(rows).toHaveLength(1);
-    expect(within(rows[0]!).getAllByRole("button").map((b) => b.textContent)).toEqual(HOOKS_CHIPS);
+    expect(within(rows[0]!).getAllByRole("button").map((b) => b.textContent)).toEqual(HOOKS_PAIR);
     const secondAsk = screen.getByText("second ask");
     expect(secondAsk.compareDocumentPosition(rows[0]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
@@ -376,5 +444,76 @@ describe("flag on: chips under the last answer only", () => {
     expect(rows).toHaveLength(1);
     expect(screen.getByText("second ask").compareDocumentPosition(rows[0]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(rows[0]!.compareDocumentPosition(screen.getByText("third ask")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+});
+
+// Thread answers step 1 (Task 6): the composer's video run is not a stream turn (it is not in
+// `useActiveRun`), so it rides the stream's `tail`: after the history, in the same column, so it is
+// spaced like every other turn and sits where the thread's end is.
+describe("flag on: the stream's tail (the live video turn)", () => {
+  const history = [
+    { userTurn: "first ask", blocks: [{ type: "markdown", props: { text: "First answer." } }] },
+  ];
+  const tail = (
+    <>
+      <ThreadUserTurn text="take.mp4" />
+      <ThreadAssistantTurn>
+        <p>The video runs.</p>
+      </ThreadAssistantTurn>
+    </>
+  );
+
+  it("renders after the history, inside the history's column", () => {
+    const { container } = renderWithClient(<PersistedThreadStream persistedTurns={history} tail={tail} />);
+    const column = container.firstElementChild as HTMLElement;
+    expect(container.children).toHaveLength(1);
+    const answer = screen.getByText("First answer.");
+    const video = screen.getByText("The video runs.");
+    expect(answer.compareDocumentPosition(screen.getByText("take.mp4")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(column.contains(video)).toBe(true);
+    expect(screen.getByText("take.mp4").parentElement?.parentElement).toBe(column);
+  });
+
+  it("a new chat (no history, no live turn): the tail alone still renders", () => {
+    renderWithClient(<PersistedThreadStream persistedTurns={[]} tail={tail} />);
+    expect(screen.getByText("The video runs.")).toBeInTheDocument();
+  });
+
+  // Task 6, fix round 1: a running video is the thread's answer on its way, as a live skill run is.
+  // No turn shows the next-step chips while it runs (a live skill turn hides every row the same
+  // way); once it is gone the chips are back under the last answer.
+  it("a running video tail: no chips anywhere; with the tail gone, the chips are back under the last answer", () => {
+    const turns = [hooksTurn("first ask", "First hook line")];
+    const { rerender } = renderWithClient(<PersistedThreadStream persistedTurns={turns} tail={tail} tailRunning />);
+    expect(screen.queryByTestId("followup-row")).toBeNull();
+    rerender(
+      <QueryClientProvider client={new QueryClient()}>
+        <PersistedThreadStream persistedTurns={turns} />
+      </QueryClientProvider>,
+    );
+    const rows = screen.getAllByTestId("followup-row");
+    expect(rows).toHaveLength(1);
+    expect(screen.getByText("first ask").compareDocumentPosition(rows[0]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("a running video tail after a settled live turn: the live turn shows no chips either", () => {
+    renderWithClient(
+      <PersistedThreadStream
+        persistedTurns={[hooksTurn("first ask", "First hook line")]}
+        liveTurn={{ userTurn: "second ask", blocks: hooksTurn("second ask", "Second hook line").blocks, live: { skill: "hooks", isStreaming: false, stages: [] } }}
+        tail={tail}
+        tailRunning
+      />,
+    );
+    expect(screen.queryByTestId("followup-row")).toBeNull();
+  });
+
+  // The failed video turn keeps slice 1's rule for a question with no answer: it never takes the
+  // chips, so they stay under the last answer above it (as for a failed live run).
+  it("a failed video tail (not running): the chips stay under the last answer above it", () => {
+    renderWithClient(<PersistedThreadStream persistedTurns={[hooksTurn("first ask", "First hook line")]} tail={tail} />);
+    const rows = screen.getAllByTestId("followup-row");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.compareDocumentPosition(screen.getByText("take.mp4")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

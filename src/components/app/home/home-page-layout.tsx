@@ -18,6 +18,7 @@ import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { HomeGreeting } from "./home-greeting";
 import { AMBIENT_V2_ENABLED } from "@/lib/flags/ambient-v2";
 import { CONCEPT_V8_ENABLED } from "@/lib/flags/concept-v8";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 import { useShellStore } from "@/stores/shell-store";
 import { Composer } from "./composer";
 
@@ -125,7 +126,9 @@ export function HomePageLayout() {
   // The right column, otherwise, exists only in thread mode (the flag-off rail portal). The v8
   // report is an EVENT — sheet or overlay, never docked — so nothing else ever mounts this column
   // (2026-08-09 rail ruling: the pinned report was a rejected third shape).
-  const railMounted = threadMode || arrivalRail;
+  // New look (thread answers step 1): the audience side panel is gone, in a thread and on the
+  // arrival, so the column never mounts and the composer gets no portal host.
+  const railMounted = !NEW_LOOK_ENABLED && (threadMode || arrivalRail);
 
   return (
     // P2 (A2a): the audience is a property of the THREAD, so ≥xl in thread mode it gets its own
@@ -190,9 +193,10 @@ export function HomePageLayout() {
           // The arrival keeps its centered 760 column under xl; at xl it flexes beside the rail and
           // owns the vertical centering the parent gave up. The Composer caps its own content at
           // 760 with `mx-auto` in this branch too, so it re-centres inside whatever it's given.
+          // New look: no rail, but a thread still fills the row (the composer centres its content).
           arrivalRail
             ? "max-w-[760px] xl:max-w-none xl:min-w-0 xl:min-h-0 xl:flex-1 xl:justify-center"
-            : railMounted
+            : railMounted || (NEW_LOOK_ENABLED && threadMode)
               ? "min-w-0 flex-1 min-h-0"
               : "max-w-[760px]",
         )}

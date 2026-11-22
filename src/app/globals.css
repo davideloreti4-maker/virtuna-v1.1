@@ -362,6 +362,7 @@
    * in the scoped block after @theme, never here.
    * Spec: docs/superpowers/specs/2026-11-18-foundation-look-and-shell-design.md */
   --color-track: rgba(18, 18, 17, 0.07);
+  --color-gauge-track: rgba(18, 18, 17, 0.12);
   --color-above: #17783b;
   --color-above-soft: #e3f3e8;
   --color-below: #ec4a35;
@@ -434,6 +435,7 @@
   --color-hover: rgba(18, 18, 17, 0.04);
   --color-active: rgba(18, 18, 17, 0.08);
   --color-track: rgba(18, 18, 17, 0.07);
+  --color-gauge-track: rgba(18, 18, 17, 0.12);
   --color-above: #17783b;
   --color-above-soft: #e3f3e8;
   --color-below: #ec4a35;
@@ -488,6 +490,7 @@
   --color-hover: rgba(255, 255, 255, 0.05);
   --color-active: rgba(255, 255, 255, 0.1);
   --color-track: rgba(255, 255, 255, 0.09);
+  --color-gauge-track: rgba(255, 255, 255, 0.17);
   --color-above: #62d892;
   --color-above-soft: rgba(98, 216, 146, 0.14);
   --color-below: #ff5f4c;

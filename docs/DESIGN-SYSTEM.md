@@ -261,6 +261,7 @@ landmarks, chrome screenshots) and `scripts/next-look-compare.cjs` compares two 
 | `--color-hover` | overlay tint on hover | `rgba(18, 18, 17, 0.04)` | `rgba(255, 255, 255, 0.05)` |
 | `--color-active` | overlay tint, pressed or selected | `rgba(18, 18, 17, 0.08)` | `rgba(255, 255, 255, 0.1)` |
 | `--color-track` | empty part of a gauge or progress line | `rgba(18, 18, 17, 0.07)` | `rgba(255, 255, 255, 0.09)` |
+| `--color-gauge-track` | empty part of a thread gauge, the pack's progress line and the mini curve | `rgba(18, 18, 17, 0.12)` | `rgba(255, 255, 255, 0.17)` |
 | `--color-above` | 6+ above usual, graphic and text | `#17783b` | `#62d892` |
 | `--color-above-soft` | its pill background | `#e3f3e8` | `rgba(98, 216, 146, 0.14)` |
 | `--color-below` | 6+ below usual, graphic | `#ec4a35` | `#ff5f4c` |

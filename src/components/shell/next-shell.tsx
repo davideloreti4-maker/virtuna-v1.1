@@ -5,12 +5,10 @@ import { AuthGuard } from "@/components/app/auth-guard";
 import { useCommandItems } from "@/components/app/use-command-items";
 import { CommandPalette } from "@/components/primitives/CommandPalette";
 import { MOBILE_NAV_BAND } from "@/components/sidebar/Sidebar";
-import { useThreadList } from "@/hooks/queries";
 import { useIsMobileHydrated } from "@/hooks/useIsMobile";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { useThemeSync } from "@/lib/theme/use-theme";
 import { cn } from "@/lib/utils";
-import { useBoardStore } from "@/stores/board-store";
 import { useShellStore } from "@/stores/shell-store";
 import { useSidebarStore } from "@/stores/sidebar-store";
 import { IconButton } from "@/components/ui/icon-button";
@@ -22,6 +20,7 @@ import { TabBar } from "./tab-bar";
 import { useShellShortcuts } from "./use-shell-shortcuts";
 import { useSideNavCollapse } from "./use-side-nav-collapse";
 import { useThreadActions } from "./use-thread-actions";
+import { useThreadTitle } from "./use-thread-title";
 
 /**
  * The app frame of the new look (spec §6). Desktop: the sidebar, content beside it. Phone: the
@@ -40,13 +39,13 @@ export function NextShell({ children }: { children: React.ReactNode }) {
   const commandItems = useCommandItems();
   const threadOpen = useShellStore((s) => s.threadOpen);
   const pushedTitle = useShellStore((s) => s.pushedTitle);
+  // The audience the open thread is for, published by the composer (thread answers step 1).
+  const threadAudience = useShellStore((s) => s.threadAudience);
   // The sidebar's width as it is drawn: the creator's choice, or the rail the app starts with
   // on a narrow window. The same hook drives SideNav, so the two cannot disagree.
   const { collapsed: isCollapsed } = useSideNavCollapse();
   const commandOpen = useSidebarStore((s) => s.commandOpen);
   const setCommandOpen = useSidebarStore((s) => s.setCommandOpen);
-  const activeThreadId = useBoardStore((s) => s.activeThreadId);
-  const { data: threads } = useThreadList();
   const { isMobile, hydrated } = useIsMobileHydrated();
   const reducedMotion = usePrefersReducedMotion();
   useShellShortcuts(actions);
@@ -62,10 +61,7 @@ export function NextShell({ children }: { children: React.ReactNode }) {
       : () => router.push(backTarget(pathname));
   const showBar = tabBarVisible(pathname, threadOpen);
   // While the list loads the title stays empty, so the header does not flash "New chat" first.
-  const threadTitle =
-    threads === undefined
-      ? ""
-      : threads.find((t) => t.id === activeThreadId)?.title?.trim() || "New chat";
+  const threadTitle = useThreadTitle();
 
   // Until the viewport is measured assume desktop, as the legacy shell does, so the first paint
   // does not start at 0 and jump by the sidebar's width.
@@ -92,8 +88,12 @@ export function NextShell({ children }: { children: React.ReactNode }) {
               // A thread's title names the screen; a screen that names itself from its data sets
               // `pushedTitle` (the result page); the others carry their own heading.
               title={inThread ? threadTitle : pushedTitle}
-              // A screen named through `pushedTitle` has no heading of its own on the phone: this is it.
-              titleAs={!inThread && pushedTitle ? "h1" : "div"}
+              // Under the title in a thread: who it is for (thread answers step 1, Task 6).
+              subtitle={inThread && threadAudience ? `For ${threadAudience}` : undefined}
+              // A screen named through `pushedTitle` has no heading of its own on the phone: this is
+              // it. Nor does a thread any more: its page heading is the desktop thread header's
+              // title, which is not shown on a phone (and this band is not shown from md up).
+              titleAs={inThread || pushedTitle ? "h1" : "div"}
               onBack={back}
               // As in the reference: a new chat is one tap away on every pushed screen.
               trailing={

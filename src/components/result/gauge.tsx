@@ -25,8 +25,12 @@ const LINE = 21;
  * the track in `--color-track` and the value in ink; inside it the number with a small "%" and,
  * under it, the label. 148 in the phone hero (stroke 13), 180 on desktop (stroke 14). The box is
  * 0.88 of the size tall: the arc's open bottom needs no room. No "usual" line and no tick (slice B).
+ *
+ * `lines` draws the label in those lines, one under the other at 1.24 of its size (the thread's
+ * video card at 140, where "watch to the end" on one line runs into the arc; the answers drawing's
+ * `axBig`). The gauge's name is the headline's label either way.
  */
-export function Gauge({ headline, size }: { headline: Headline; size: number }) {
+export function Gauge({ headline, size, lines }: { headline: Headline; size: number; lines?: readonly string[] }) {
   const { value, label } = headline;
   const stroke = size >= 160 ? 14 : 13;
   const m = size / 2;
@@ -76,16 +80,19 @@ export function Gauge({ headline, size }: { headline: Headline; size: number }) 
             %
           </tspan>
         </text>
-        <text
-          x={m}
-          y={labelBase.toFixed(2)}
-          textAnchor="middle"
-          fontSize={labelSize}
-          fontWeight={430}
-          fill="var(--color-foreground-secondary)"
-        >
-          {label}
-        </text>
+        {(lines ?? [label]).map((line, i) => (
+          <text
+            key={i}
+            x={m}
+            y={(labelBase + i * labelSize * 1.24).toFixed(2)}
+            textAnchor="middle"
+            fontSize={labelSize}
+            fontWeight={430}
+            fill="var(--color-foreground-secondary)"
+          >
+            {line}
+          </text>
+        ))}
       </svg>
     </div>
   );

@@ -25,6 +25,8 @@
  */
 
 import { Skeleton } from '@/components/ui/skeleton';
+import { AssistantLabel } from '@/components/thread-next/assistant-label';
+import { NEW_LOOK_ENABLED } from '@/lib/flags/new-look';
 import { cn } from '@/lib/utils';
 
 export interface ThreadLoadingSkeletonProps {
@@ -32,6 +34,17 @@ export interface ThreadLoadingSkeletonProps {
   variant?: 'chat' | 'skill';
   /** Optional muted caption (status message / stage name). */
   caption?: string;
+}
+
+/** The answer's label in the outline. New look: the thread's own label (the mark and "Maven",
+ *  sentence case), as a plain span: a placeholder heads nothing. */
+function MavenEyebrow() {
+  if (NEW_LOOK_ENABLED) return <AssistantLabel as="span" />;
+  return (
+    <span className="text-caption font-medium uppercase tracking-[0.05em] text-foreground-muted/70">
+      Maven
+    </span>
+  );
 }
 
 export function ThreadLoadingSkeleton({
@@ -55,9 +68,7 @@ export function ThreadLoadingSkeleton({
           {/* The assistant's: the real "Maven" eyebrow (it is a constant, so there is nothing to
               guess) over prose lines in descending widths — the shape a written answer has. */}
           <div className="flex flex-col gap-2">
-            <span className="text-caption font-medium uppercase tracking-[0.05em] text-foreground-muted/70">
-              Maven
-            </span>
+            <MavenEyebrow />
             <Skeleton className="h-3.5 w-full rounded-md" />
             <Skeleton className="h-3.5 w-[88%] rounded-md" />
             <Skeleton className="h-3.5 w-[62%] rounded-md" />
@@ -65,9 +76,7 @@ export function ThreadLoadingSkeleton({
         </>
       ) : (
         <div className="flex flex-col gap-2">
-          <span className="text-caption font-medium uppercase tracking-[0.05em] text-foreground-muted/70">
-            Maven
-          </span>
+          <MavenEyebrow />
           <Skeleton className="h-24 w-full rounded-xl" />
         </div>
       )}

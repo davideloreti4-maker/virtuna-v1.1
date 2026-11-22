@@ -1,10 +1,15 @@
 /**
  * The answer's "Maven" label (new look, spec 2026-11-20 §4.4; reference
- * `.scratch/next-look/part3/design/field.html`, `.f1-who`): the small mark and the word, in the
- * secondary ink, above each answer. Not coral: the brand mark's accent stays in the side nav.
+ * `.scratch/next-look/part3/design/field.html`, `.f1-who`): the small mark and the word above each
+ * answer. The word is in the secondary ink; the mark is the brand's coral (`--color-accent`), as the
+ * answer-system drawing approved on 2026-11-21 draws it (`answers.html`, `.who .ic`). That drawing
+ * supersedes slice 1's "not coral": the label is one of the two places the accent is allowed
+ * (spec 2026-11-21 §3 rule 3).
  *
- * Geometry as drawn: 18 tall, 13 / 18 at 560, the mark 16 square with 6 after it; the answer
- * starts 6 under the label and its parts sit 14 apart (the reference's say → cards → chips).
+ * Geometry as drawn: 18 tall, 13 / 18 at 560, the mark 16 square with 6 after it. Under the
+ * answer-system drawing the answer starts 8 under the label on a phone (`.ax-msgs` gap 12 less the
+ * card's -4) and 14 from md (`.desk .thread` gap 14), and its parts (card, sentence, chips) sit 12
+ * apart, 14 from md.
  *
  * Rendered by `ThreadAssistantTurn` (`src/components/thread/thread-shell.tsx`) under the flag. It
  * keeps the turn's `<h2>` "Maven" (the F-14 heading contract); the mark is hidden from screen
@@ -24,7 +29,7 @@ function MarkGlyph() {
       strokeWidth={2.3}
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="shrink-0"
+      className="shrink-0 text-accent"
     >
       <path d="M2.5 15.2C5.2 8 9.3 8 12 13.4 14.7 8 18.8 8 21.5 15.2" />
     </svg>
@@ -35,25 +40,26 @@ function MarkGlyph() {
  *  globals.css is unlayered, so it beats any tracking utility. */
 const UNTRACKED: React.CSSProperties = { letterSpacing: 0 };
 
-/** The label alone: the turn's `<h2>`. */
-function AssistantLabel() {
+/** The label alone: the turn's `<h2>`, or a plain `<span>` where it heads no answer (the thread's
+ *  loading outline, `ThreadLoadingSkeleton`). */
+export function AssistantLabel({ as: Tag = "h2" }: { as?: "h2" | "span" }) {
   return (
-    <h2
+    <Tag
       style={UNTRACKED}
       className="inline-flex h-[18px] items-center gap-1.5 self-start text-meta font-[560] text-foreground-secondary"
     >
       <MarkGlyph />
       Maven
-    </h2>
+    </Tag>
   );
 }
 
 /** An answer: the label, then its parts. */
 export function NextAssistantTurn({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-2 md:gap-3.5">
       <AssistantLabel />
-      <div className="flex flex-col gap-3.5">{children}</div>
+      <div className="flex flex-col gap-3 md:gap-3.5">{children}</div>
     </div>
   );
 }

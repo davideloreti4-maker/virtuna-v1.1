@@ -64,6 +64,7 @@ import {
 import { useOnWriteScriptHook } from '@/lib/hook-test-context';
 import type { BlockOrigin } from '@/components/app/home/rehydrate-thread';
 import { videoOfTurn } from '@/components/thread-next/user-turn';
+import { ThreadTurnNext } from '@/components/thread-next/thread-turn-next';
 import { NEW_LOOK_ENABLED } from '@/lib/flags/new-look';
 
 /** The four skills that have an authored intro line (conversational-frame `introLine`). */
@@ -209,7 +210,16 @@ function topCard(blocks: unknown[]): { type: string; props: Record<string, unkno
   return null;
 }
 
-export function ThreadTurn({
+/**
+ * The fork (thread answers step 1, plan 2026-11-21 Task 5): the new look draws every turn through
+ * `ThreadTurnNext`; the flag-off build keeps this file's renderer, unchanged. The flag is a
+ * build-time constant, so the two never swap at runtime, and no hook runs before the branch.
+ */
+export function ThreadTurn(props: ThreadTurnProps) {
+  return NEW_LOOK_ENABLED ? <ThreadTurnNext {...props} /> : <ThreadTurnLegacy {...props} />;
+}
+
+function ThreadTurnLegacy({
   userTurn,
   blocks,
   live,

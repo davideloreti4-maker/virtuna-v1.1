@@ -37,9 +37,14 @@ export interface ThreadShellProps {
  * New look: the thread column is the message field's column (reference `.f1-col`): its edges sit on
  * the field's, so 6 inside the composer's own 10 on the phone (16 from the screen edge) and none
  * from 640, where both are the composer column less 16 a side, 720 at most. 12 under the phone's
- * header, 32 from the top on desktop, and 16 above the field at the thread's end.
+ * header, 22 under the desktop thread header (answer-system drawing, `.desk .thread` padding-top),
+ * and 16 above the field at the thread's end.
+ *
+ * Its parts are 14 apart on a phone and 16 from md: with the bubble's own -2 (`NextUserTurn`), a
+ * question ends 12 above the answer's label on a phone and 14 from md, as the answer-system drawing
+ * spaces them (`.ax-msgs` gap 12, `.desk .thread` gap 14).
  */
-const NEXT_COLUMN = 'w-full max-w-[720px] mx-auto flex flex-col gap-5 px-1.5 sm:px-0 pt-3 md:pt-8 pb-4';
+const NEXT_COLUMN = 'w-full max-w-[720px] mx-auto flex flex-col gap-3.5 md:gap-4 px-1.5 sm:px-0 pt-3 md:pt-[22px] pb-4';
 
 export function ThreadShell({ userTurn, before, children, className, userVideoFile }: ThreadShellProps) {
   const trimmed = userTurn?.trim();

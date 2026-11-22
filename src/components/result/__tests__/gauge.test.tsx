@@ -60,6 +60,20 @@ describe("Gauge", () => {
     expect(desk.container.querySelector('[data-part="track"]')!.getAttribute("stroke-width")).toBe("14");
   });
 
+  it("the label in given lines, one under the other (the thread's 140 card); the name stays whole", () => {
+    const { container } = render(<Gauge headline={modelOf(early).headline} size={140} lines={["watch to", "the end"]} />);
+    expect(screen.getByRole("img", { name: "46% watch to the end" })).toBeInTheDocument();
+    const texts = [...container.querySelectorAll("text")].slice(1);
+    expect(texts.map((t) => t.textContent)).toEqual(["watch to", "the end"]);
+    const [a, b] = texts.map((t) => Number(t.getAttribute("y")));
+    expect(b! - a!).toBeCloseTo(11 * 1.24, 1);
+  });
+
+  it("without lines the label is one line, as before", () => {
+    const { container } = render(<Gauge headline={modelOf(early).headline} size={148} />);
+    expect([...container.querySelectorAll("text")].slice(1).map((t) => t.textContent)).toEqual(["watch to the end"]);
+  });
+
   it("no 'usual' line and no tick in this slice", () => {
     const { container } = render(<Gauge headline={modelOf(early).headline} size={148} />);
     expect(container.textContent).not.toMatch(/usual/i);
