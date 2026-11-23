@@ -22,6 +22,8 @@ import { DevAnswers, type DevAnswersSkin, type DevAnswersState } from "./dev-ans
  *   real `videoStateOf`; the layout follows the window by CSS (d3 is p9 at 1440 wide)
  * - p10: the script, the opening not simulated · p11: the remix · p13: the fallback card (the
  *   account read; the chat answer above it in the drawing is not a card)
+ * - p7: the hook's result page, from `HOOK_1_POPULATION` · p7l: loading · p7n: not found
+ * - p6: hook 1 opened, simulated (P6) · p6b: the same, not simulated · p6i: an idea opened
  * - Not drawn, for looking at: p9b the video's row still loading · p10b the script's opening
  *   simulated · p11b three remixes on the pager
  * - skin: paints that theme on <html> for this page without storing it
@@ -34,7 +36,7 @@ const one = (value: string | string[] | undefined) => (Array.isArray(value) ? va
 
 // Kept here, not imported from the client module: a server file gets a client module's values as
 // references, not as the array.
-const STATES: readonly DevAnswersState[] = ["p3", "p4", "p5", "p12", "p8", "p9", "p9b", "p10", "p10b", "p11", "p11b", "p13", "d3"];
+const STATES: readonly DevAnswersState[] = ["p3", "p4", "p5", "p12", "p8", "p9", "p9b", "p10", "p10b", "p11", "p11b", "p13", "d3", "p7", "p7l", "p7n", "p6", "p6b", "p6i"];
 const SKINS: readonly DevAnswersSkin[] = ["light", "dark"];
 const isState = (value: string): value is DevAnswersState => (STATES as readonly string[]).includes(value);
 const isSkin = (value: string): value is DevAnswersSkin => (SKINS as readonly string[]).includes(value);

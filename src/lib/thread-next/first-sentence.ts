@@ -25,3 +25,27 @@ export function firstSentence(text: string): string | null {
   }
   return t;
 }
+
+/** The longest a folded lead runs before "More": about two lines of a phone's sheet. */
+export const FOLD_MAX = 120;
+
+/**
+ * What a folded text shows before "More", or null when it needs no fold.
+ *
+ * Its first sentence, when the text goes on after it and the sentence fits in `max`. A text that is
+ * one long sentence, or opens on one, is cut at the last whole word inside `max` and ends on "…":
+ * real "why it works" lines are a single 40-word sentence, which a fold by sentence alone showed in
+ * full (review 2026-11-23). A text that fits in `max` and is one sentence needs no fold.
+ */
+export function foldLead(text: string, max: number = FOLD_MAX): string | null {
+  const whole = text.trim();
+  if (!whole) return null;
+  const first = firstSentence(whole) ?? whole;
+  if (first !== whole && first.length <= max) return first;
+  if (whole.length <= max) return null;
+  const head = whole.slice(0, max + 1);
+  const lastSpace = head.lastIndexOf(" ");
+  // No space in the second half: one long token; cut it at `max`.
+  const lead = lastSpace >= max / 2 ? head.slice(0, lastSpace) : whole.slice(0, max);
+  return `${lead.replace(/[\s,;:.!?–—(-]+$/, "")}…`;
+}

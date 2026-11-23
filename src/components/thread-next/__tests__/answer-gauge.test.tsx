@@ -11,7 +11,7 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 
 vi.mock("@/lib/flags/new-look", () => ({ NEW_LOOK_ENABLED: true }));
 
-import { SmallGauge } from "../answer-gauge";
+import { GaugeSlot, SmallGauge } from "../answer-gauge";
 
 afterEach(cleanup);
 
@@ -47,6 +47,11 @@ describe("SmallGauge", () => {
     expect(gauge).toHaveTextContent("45");
   });
 
+  it("the number alone in the ring, no unit (a 7 px '%' read as dirt; the pack's header says 'out of 100')", () => {
+    render(<SmallGauge state={{ kind: "done", value: 45 }} label={HOOK} />);
+    expect(screen.getByRole("img").querySelector("text")!.textContent).toBe("45");
+  });
+
   it("done at 0: the number, no arc", () => {
     const { container } = render(<SmallGauge state={{ kind: "done", value: 0 }} label="A hook" />);
     expect(screen.getByRole("img", { name: "0% would stop to watch" })).toHaveTextContent("0");
@@ -80,5 +85,51 @@ describe("SmallGauge", () => {
     const svg = container.querySelector("svg");
     expect(svg?.getAttribute("width")).toBe("30");
     expect(svg?.getAttribute("height")).toBe("30");
+  });
+});
+
+describe("SmallGauge — a simulated gauge links to its result (step 2, fix round 1)", () => {
+  it("done with an href: ONE link named after the text, described by the number, its data kept", () => {
+    render(<SmallGauge state={{ kind: "done", value: 30 }} label={HOOK} href="/simulation/hook/t/k" />);
+    const link = screen.getByRole("link");
+    const name = link.getAttribute("aria-label") ?? "";
+    expect(name.startsWith("Open the result: I spent $40 on meal prep")).toBe(true);
+    expect(name.length).toBeLessThanOrEqual("Open the result: ".length + 60);
+    expect(link).toHaveAccessibleDescription("30% would stop to watch");
+    expect(link).toHaveAttribute("href", "/simulation/hook/t/k");
+    expect(link).toHaveAttribute("data-gauge", "done");
+    expect(link).toHaveAttribute("data-value", "30");
+    expect(link.className.split(/\s+/)).toEqual(expect.arrayContaining(["tap-44", "rounded-full", "pointer-events-auto"]));
+  });
+
+  it("done without an href: the number as before, no link", () => {
+    render(<SmallGauge state={{ kind: "done", value: 30 }} label={HOOK} href={null} />);
+    expect(screen.getByRole("img", { name: "30% would stop to watch" })).toBeInTheDocument();
+    expect(screen.queryByRole("link")).toBeNull();
+  });
+});
+
+describe("GaugeSlot — the link to the result (step 2)", () => {
+  const OPENER = "I fed 10 million viral videos into an AI to simulate your exact audience.";
+
+  it("simulated with a page: 'would stop to watch' and a chevron, one link named after the text", () => {
+    render(<GaugeSlot state={{ kind: "done", value: 41 }} label="Simulate the opening" text={OPENER} href="/simulation/hook/t/k?as=opening" />);
+    const link = screen.getByRole("link", { name: /^Open the result: I fed 10 million/ });
+    expect(link).toHaveAttribute("href", "/simulation/hook/t/k?as=opening");
+    expect(link).toHaveTextContent("would stop to watch");
+    // The name replaces the content, so the number is read as the link's description (fix round 1).
+    expect(link).toHaveAccessibleDescription("41% would stop to watch");
+  });
+
+  it("simulated without a page (key not known yet): no link", () => {
+    render(<GaugeSlot state={{ kind: "done", value: 41 }} label="Simulate the opening" text={OPENER} href={null} />);
+    expect(screen.getByText("would stop to watch")).toBeInTheDocument();
+    expect(screen.queryByRole("link")).toBeNull();
+  });
+
+  it("not simulated: still the Simulate button, whatever the href", () => {
+    render(<GaugeSlot state={{ kind: "empty" }} label="Simulate the opening" text={OPENER} href="/x" onSimulate={() => {}} />);
+    expect(screen.getByRole("button", { name: /^Simulate the opening: / })).toBeInTheDocument();
+    expect(screen.queryByRole("link")).toBeNull();
   });
 });

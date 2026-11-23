@@ -24,11 +24,14 @@ import { FollowupContext, type FollowupHandler } from "@/lib/followup-context";
 import { HookWriteScriptContext, type OnWriteScriptFn } from "@/lib/hook-test-context";
 import { ScriptTestContext, type OnTestScriptFn } from "@/lib/script-test-context";
 import { runErrorCopy } from "@/lib/net/run-failure";
+import { ThreadIdContext } from "@/lib/save-provenance-context";
 import { scriptBrief } from "@/lib/script-utils";
 import { nextFollowups } from "@/lib/thread-next/next-followups";
+import { sealHashOf } from "@/lib/thread-next/seal-hash";
 import type { WireSimSealMap } from "@/lib/onboarding/verdict-seal";
 import {
   IDEAS_4,
+  IDEA_SHEET,
   MEAL_PREP_HOOKS,
   REMIX_CAMERA,
   SCRIPT_AI,
@@ -45,6 +48,20 @@ import {
   script,
   video,
 } from "./fixtures/answers";
+
+import { settleClock } from "../answer-sheet";
+
+// A sheet takes no click in its first moment (a double-tap's second tap); that window has its own test
+// (answer-sheet.test.tsx). Here its clock jumps a second at every read, so a click right after a
+// sheet opens counts.
+let settleTick = 0;
+beforeEach(() => {
+  settleTick = 0;
+  settleClock.now = () => (settleTick += 1000);
+});
+afterEach(() => {
+  settleClock.now = () => performance.now();
+});
 
 // ─── The network stand-in ────────────────────────────────────────────────────
 
@@ -95,6 +112,7 @@ interface Opts {
   writeScript?: OnWriteScriptFn;
   testScript?: OnTestScriptFn;
   followup?: FollowupHandler;
+  threadId?: string | null;
 }
 
 function renderTurn(props: ThreadTurnProps, opts: Opts = {}) {
@@ -104,9 +122,11 @@ function renderTurn(props: ThreadTurnProps, opts: Opts = {}) {
       <FollowupContext.Provider value={opts.followup}>
         <HookWriteScriptContext.Provider value={opts.writeScript ?? null}>
           <ScriptTestContext.Provider value={opts.testScript ?? null}>
-            <Seals initial={opts.seals ?? {}}>
-              <ThreadTurn {...p} />
-            </Seals>
+            <ThreadIdContext.Provider value={opts.threadId ?? null}>
+              <Seals initial={opts.seals ?? {}}>
+                <ThreadTurn {...p} />
+              </Seals>
+            </ThreadIdContext.Provider>
           </ScriptTestContext.Provider>
         </HookWriteScriptContext.Provider>
       </FollowupContext.Provider>
@@ -207,7 +227,7 @@ describe("the hook pack's numbers and actions", () => {
     const two: WireSimSealMap = { [HOOK_1]: SEALS_DONE[HOOK_1]!, [HOOK_3]: SEALS_DONE[HOOK_3]! };
     renderTurn({ userTurn: ASK, blocks: HOOKS_TURN }, { seals: two });
     expect(screen.getByRole("img", { name: "45% would stop to watch" })).toBeInTheDocument();
-    expect(screen.queryByText(/leads by|No clear winner/)).toBeNull();
+    expect(screen.queryByText(/leads by|is ahead by|a tie/)).toBeNull();
   });
 
   it("a gauge tap runs one `react` with the hook's legacy body; a second tap waits its turn", async () => {
@@ -230,6 +250,22 @@ describe("the hook pack's numbers and actions", () => {
     expect(reacts()).toHaveLength(1);
     expect(screen.getByRole("progressbar", { name: "Simulating" })).toHaveAttribute("aria-valuetext", "1 of 3");
     expect(screen.queryByRole("button", { name: /Simulate all/ })).toBeNull();
+  });
+
+  it("while 'Simulate all' runs a landed number is not a link yet (leaving would stop the rows still waiting); it is once the batch ends", async () => {
+    renderTurn({ userTurn: ASK, blocks: HOOKS_TURN }, { threadId: "00000000-0000-4000-8000-0000000000bb" });
+    fireEvent.click(screen.getByRole("button", { name: "Simulate all 3, 3 credits" }));
+    await settle();
+    await act(async () => reacts()[0]!.resolve(reacted(30)));
+    await waitFor(() => expect(reacts()).toHaveLength(2));
+    // The first number is in; its key has had time to resolve; the queue still runs.
+    await settle();
+    expect(document.querySelector('[data-gauge="done"][data-value="30"]')).not.toBeNull();
+    expect(screen.queryByRole("link", { name: /^Open the result: / })).toBeNull();
+    await act(async () => reacts()[1]!.resolve(reacted(22)));
+    await waitFor(() => expect(reacts()).toHaveLength(3));
+    await act(async () => reacts()[2]!.resolve(reacted(45)));
+    await waitFor(() => expect(screen.getAllByRole("link", { name: /^Open the result: / })).toHaveLength(3));
   });
 
   it("no chips while the answer's rows simulate (drawing P4); they come back once the batch ends", async () => {
@@ -289,7 +325,7 @@ describe("the idea pack", () => {
     expect(screen.getByText("The first take is short.")).toBeInTheDocument();
     expect(screen.queryByText(/A long angle about A/)).toBeNull();
     expect(screen.getByText("Angle of B")).toBeInTheDocument();
-    expect(screen.getByText("No clear winner.")).toBeInTheDocument();
+    expect(screen.getByText("It's close. Idea 1 is ahead by 5 points.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Script idea 1, 2 credits" }));
     expect(writeScript).toHaveBeenCalledWith("Seed of A", "");
   });
@@ -345,6 +381,246 @@ describe("the remix", () => {
     expect(reacts()[0]!.body).toEqual(reactRequestBody({ text: hookText, kind: "remix" }));
     fireEvent.click(screen.getByRole("button", { name: "Script it, 2 credits" }));
     expect(writeScript).toHaveBeenCalledWith(hookText, "");
+  });
+});
+
+describe("step 2: a pack row opens its details", () => {
+  const THREAD = "00000000-0000-4000-8000-0000000000bb";
+  const HOOK_1 = MEAL_PREP_HOOKS[0]!.props.hookLine;
+  const seal = (n: number) => ({ pct: 70, band: null, at: "2026-11-22T00:00:00Z", population: population(n) });
+  const hooksTurn = (): ThreadTurnProps => ({ userTurn: "3 hooks", blocks: [runHeader("hooks"), ...MEAL_PREP_HOOKS] });
+  const rowButton = (text: string) => screen.getByRole("button", { name: (name) => name.startsWith(`Open: ${text.slice(0, 30)}`) });
+
+  it("a double click on the card's primary writes one script (2 credits), not two", () => {
+    const writeScript = vi.fn();
+    const seals: WireSimSealMap = Object.fromEntries(MEAL_PREP_HOOKS.map((b, k) => [b.props.hookLine, seal([30, 22, 45][k]!)]));
+    renderTurn(hooksTurn(), { seals, writeScript });
+    const primary = screen.getByRole("button", { name: "Script the best, 2 credits" });
+    fireEvent.click(primary);
+    fireEvent.click(primary);
+    expect(writeScript).toHaveBeenCalledTimes(1);
+  });
+
+  it("a tap on a row opens its sheet: the hook large, why, visual, proof; none of the old card's numbers", () => {
+    renderTurn(hooksTurn());
+    fireEvent.click(rowButton(HOOK_1));
+    const dialog = screen.getByRole("dialog", { name: HOOK_1 });
+    expect(within(dialog).getByRole("heading", { level: 2, name: HOOK_1 })).toBeInTheDocument();
+    expect(within(dialog).getByText("Why it works")).toBeInTheDocument();
+    expect(within(dialog).getByText("Sad grey food next to textbooks")).toBeInTheDocument();
+    expect(within(dialog).getByRole("link", { name: /^Proven: @dij\.arc/ })).toHaveAttribute("target", "_blank");
+    expect(within(dialog).queryByText("5/10 stop")).toBeNull();
+    expect(within(dialog).queryByText("Mixed")).toBeNull();
+  });
+
+  it("Simulate in the sheet runs the thread's one queue once (1 credit); the number lands and the link names the thread and the key", async () => {
+    renderTurn(hooksTurn(), { threadId: THREAD });
+    const row = rowButton(HOOK_1);
+    fireEvent.click(row);
+    const dialog = screen.getByRole("dialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: /^Simulate: I spent \$40/ }));
+    expect(reacts()).toHaveLength(1);
+    expect(reacts()[0]!.body).toEqual(reactRequestBody({ text: HOOK_1, kind: "hook" }));
+    expect(within(dialog).getByText("Simulating")).toBeInTheDocument();
+    // The row's own gauge runs too: one queue (`hidden`: the open dialog hides the thread behind it).
+    expect(within(row.closest("li")!).getByRole("img", { name: "Simulating", hidden: true })).toBeInTheDocument();
+    await act(async () => reacts()[0]!.resolve(reacted(30)));
+    const link = await within(dialog).findByRole("link", { name: /^Open the result: I spent \$40/ });
+    expect(link).toHaveAttribute("href", `/simulation/hook/${THREAD}/${await sealHashOf(HOOK_1)}`);
+    // The name replaces the content, so the number is read as the link's description (fix round 1).
+    expect(link).toHaveAccessibleDescription("30% would stop to watch");
+    expect(within(dialog).getByRole("img", { name: "30% would stop to watch" })).toBeInTheDocument();
+    expect(reacts()).toHaveLength(1);
+  });
+
+  it("no dead link: a simulated text's link appears only once its key is known", async () => {
+    const fresh = "A hook no other test hashes, for the link's first tick.";
+    renderTurn({ userTurn: "x", blocks: [runHeader("hooks"), hook(fresh)] }, { threadId: THREAD, seals: { [fresh]: seal(41) } });
+    fireEvent.click(rowButton(fresh));
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("would stop to watch")).toBeInTheDocument();
+    expect(within(dialog).queryByRole("link", { name: /^Open the result/ })).toBeNull();
+    expect(await within(dialog).findByRole("link", { name: /^Open the result/ })).toHaveAttribute(
+      "href",
+      `/simulation/hook/${THREAD}/${await sealHashOf(fresh)}`,
+    );
+  });
+
+  it("without a thread id the number shows and nothing links", async () => {
+    renderTurn(hooksTurn(), { seals: SEALS_DONE });
+    fireEvent.click(rowButton(HOOK_1));
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20));
+    });
+    expect(within(screen.getByRole("dialog")).queryByRole("link", { name: /^Open the result/ })).toBeNull();
+  });
+
+  it("Save keeps the row's own ref and the thread", async () => {
+    renderTurn(
+      { ...hooksTurn(), blockOrigins: [0, 1, 2, 3].map((index) => ({ messageId: "m1", index })) },
+      { threadId: THREAD },
+    );
+    fireEvent.click(rowButton(MEAL_PREP_HOOKS[1]!.props.hookLine));
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(calls.some((c) => c.url === "/api/saved" && c.body)).toBe(true));
+    expect(calls.find((c) => c.url === "/api/saved" && c.body)!.body).toMatchObject({
+      item_type: "hook",
+      ref_id: "m1:2",
+      thread_id: THREAD,
+      title: MEAL_PREP_HOOKS[1]!.props.hookLine,
+    });
+  });
+
+  // Controller ruling: the pack's context is its FIRST item's origin; the sheet must save the open row's own.
+  describe("Save acts on the open row's own item", () => {
+    const ORIGINS = [0, 1, 2, 3].map((index) => ({ messageId: "m1", index }));
+    const HOOK_3 = MEAL_PREP_HOOKS[2]!.props.hookLine;
+    const posts = () => calls.filter((c) => c.url === "/api/saved" && c.body);
+    const lists = () => calls.filter((c) => c.url.startsWith("/api/saved") && !c.body);
+    const saveIn = () => within(screen.getByRole("dialog")).getByRole("button", { name: "Save" });
+    async function close() {
+      fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    }
+
+    it("hook 3 open: Save sends hook 3's ref, not hook 1's", async () => {
+      renderTurn({ ...hooksTurn(), blockOrigins: ORIGINS }, { threadId: THREAD });
+      fireEvent.click(rowButton(HOOK_3));
+      fireEvent.click(saveIn());
+      await waitFor(() => expect(posts()).toHaveLength(1));
+      expect(posts()[0]!.body).toMatchObject({ item_type: "hook", ref_id: "m1:3", thread_id: THREAD, title: HOOK_3 });
+    });
+
+    it("hook 3 saved elsewhere: its sheet shows saved, hook 1's does not", async () => {
+      renderTurn({ ...hooksTurn(), blockOrigins: ORIGINS }, { threadId: THREAD });
+      fireEvent.click(rowButton(HOOK_3));
+      await waitFor(() => expect(lists().length).toBeGreaterThan(0));
+      const shelf = {
+        items: [
+          { id: "row-3", user_id: "u1", item_type: "hook", ref_id: "m1:3", thread_id: THREAD, project_id: null, title: HOOK_3, snapshot: {}, created_at: "2026-11-22T00:00:00Z" },
+        ],
+      };
+      await act(async () => {
+        for (const c of lists()) c.resolve(json(shelf));
+      });
+      await waitFor(() => expect(saveIn()).toHaveAttribute("aria-pressed", "true"));
+      await close();
+      fireEvent.click(rowButton(HOOK_1));
+      expect(saveIn()).toHaveAttribute("aria-pressed", "false");
+    });
+
+    it("a live run (no message yet): each row keeps its own saved state across visits, and nothing saves twice", async () => {
+      const HOOK_2 = MEAL_PREP_HOOKS[1]!.props.hookLine;
+      renderTurn(hooksTurn(), { threadId: THREAD });
+      fireEvent.click(rowButton(HOOK_1));
+      fireEvent.click(saveIn());
+      await waitFor(() => expect(posts()).toHaveLength(1));
+      expect(posts()[0]!.body).toMatchObject({ ref_id: null, title: HOOK_1 });
+      await act(async () => posts()[0]!.resolve(json({ item: { id: "row-1", item_type: "hook", ref_id: null } })));
+      await waitFor(() => expect(saveIn()).toHaveAttribute("aria-pressed", "true"));
+      await close();
+      // Hook 2 is not saved.
+      fireEvent.click(rowButton(HOOK_2));
+      expect(saveIn()).toHaveAttribute("aria-pressed", "false");
+      await close();
+      // Back to hook 1: still saved, and a second tap writes no duplicate.
+      fireEvent.click(rowButton(HOOK_1));
+      expect(saveIn()).toHaveAttribute("aria-pressed", "true");
+      fireEvent.click(saveIn());
+      await settle();
+      expect(posts()).toHaveLength(1);
+      await close();
+      // Hook 2 saves as itself.
+      fireEvent.click(rowButton(HOOK_2));
+      fireEvent.click(saveIn());
+      await waitFor(() => expect(posts()).toHaveLength(2));
+      expect(posts()[1]!.body).toMatchObject({ ref_id: null, title: HOOK_2 });
+    });
+  });
+
+  // Fix round 1, design ruling: a simulated row's gauge links to its result page; the row opens the sheet.
+  it("once a row is simulated and its key known, its gauge links to the result; the row still opens the sheet", async () => {
+    renderTurn(hooksTurn(), { threadId: THREAD });
+    fireEvent.click(screen.getByRole("button", { name: /^Simulate: I spent \$40/ }));
+    expect(reacts()).toHaveLength(1);
+    expect(screen.queryByRole("link", { name: /^Open the result/ })).toBeNull();
+    await act(async () => reacts()[0]!.resolve(reacted(30)));
+    const link = await screen.findByRole("link", { name: /^Open the result: I spent \$40/ });
+    expect(link).toHaveAttribute("href", `/simulation/hook/${THREAD}/${await sealHashOf(HOOK_1)}`);
+    expect(link).toHaveAccessibleDescription("30% would stop to watch");
+    fireEvent.click(rowButton(HOOK_1));
+    expect(screen.getByRole("dialog", { name: HOOK_1 })).toBeInTheDocument();
+  });
+
+  it("an idea row's gauge links with ?as=idea", async () => {
+    const title = IDEA_SHEET.props.title;
+    renderTurn({ userTurn: "ideas", blocks: [runHeader("ideas"), IDEA_SHEET, IDEAS_4[0]!] }, { threadId: THREAD, seals: { [title]: seal(44) } });
+    expect(await screen.findByRole("link", { name: /^Open the result: The Two-Hour Study Lie/ })).toHaveAttribute(
+      "href",
+      `/simulation/hook/${THREAD}/${await sealHashOf(title)}?as=idea`,
+    );
+    expect(screen.getAllByRole("link", { name: /^Open the result/ })).toHaveLength(1);
+  });
+
+  it("without a thread id a simulated row's gauge is its number, not a link", async () => {
+    renderTurn(hooksTurn(), { seals: SEALS_DONE });
+    await settle();
+    expect(screen.queryAllByRole("link", { name: /^Open the result/ })).toHaveLength(0);
+    for (const n of [30, 22, 45]) expect(screen.getByRole("img", { name: `${n}% would stop to watch` })).toBeInTheDocument();
+  });
+
+  it("Script this one writes the script from this hook, closes the sheet and gives focus back to the row", async () => {
+    const writeScript = vi.fn();
+    renderTurn(hooksTurn(), { writeScript });
+    const row = rowButton(HOOK_1);
+    fireEvent.click(row);
+    fireEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Script this one, 2 credits" }));
+    expect(writeScript).toHaveBeenCalledWith(HOOK_1, "lurker");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(document.activeElement).toBe(row);
+  });
+
+  it("Escape closes it and focus goes back to the row", async () => {
+    renderTurn(hooksTurn());
+    const row = rowButton(HOOK_1);
+    fireEvent.click(row);
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(document.activeElement).toBe(row);
+  });
+
+  it("an idea row: the take, why it fits, format; Script this one starts from its seed hook; its link says ?as=idea", async () => {
+    const writeScript = vi.fn();
+    const title = IDEA_SHEET.props.title;
+    renderTurn({ userTurn: "ideas", blocks: [runHeader("ideas"), IDEA_SHEET, IDEAS_4[0]!] }, { writeScript, threadId: THREAD, seals: { [title]: seal(44) } });
+    fireEvent.click(rowButton(title));
+    const dialog = screen.getByRole("dialog", { name: title });
+    expect(within(dialog).getByText("The take")).toBeInTheDocument();
+    expect(within(dialog).getByText("Why it fits")).toBeInTheDocument();
+    expect(within(dialog).getByText("Format")).toBeInTheDocument();
+    expect(await within(dialog).findByRole("link", { name: /^Open the result/ })).toHaveAttribute(
+      "href",
+      `/simulation/hook/${THREAD}/${await sealHashOf(title)}?as=idea`,
+    );
+    fireEvent.click(within(dialog).getByRole("button", { name: "Script this one, 2 credits" }));
+    expect(writeScript).toHaveBeenCalledWith(IDEA_SHEET.props.seedHook, "");
+  });
+
+  it("a simulated script opener links as an opening line; a simulated remix hook as a hook", async () => {
+    const opener = SCRIPT_AI.props.openingBeatSeed!;
+    const adapted = REMIX_CAMERA.props.adaptedHook;
+    renderTurn(
+      { userTurn: "both", blocks: [runHeader("script"), SCRIPT_AI, REMIX_CAMERA] },
+      { threadId: THREAD, seals: { [opener]: seal(41), [adapted]: seal(33) } },
+    );
+    expect(await screen.findByRole("link", { name: /^Open the result: I fed 10 million/ })).toHaveAttribute(
+      "href",
+      `/simulation/hook/${THREAD}/${await sealHashOf(opener)}?as=opening`,
+    );
+    expect(await screen.findByRole("link", { name: /^Open the result: I’m gonna show/ })).toHaveAttribute(
+      "href",
+      `/simulation/hook/${THREAD}/${await sealHashOf(adapted)}`,
+    );
   });
 });
 

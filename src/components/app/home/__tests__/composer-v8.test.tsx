@@ -419,3 +419,22 @@ describe("composer v8 (flag on)", () => {
     expect(reactCalls()).toBe(before);
   });
 });
+
+describe("thread answers step 2: the 'Script this one' hand-off is new-look only", () => {
+  it("with the flag off, a text left for the open thread runs nothing and is never read", async () => {
+    const thread = seededThread();
+    const entry = JSON.stringify({ threadId: thread.threadId, text: "Write me a script", at: Date.now() });
+    sessionStorage.setItem("maven:script-from", entry);
+    try {
+      threadFixture = thread;
+      renderWithClient(<Composer />);
+      await screen.findByText(/simulate with your audience/i); // the thread has loaded
+      await new Promise((r) => setTimeout(r, 30));
+      const urls = (global.fetch as ReturnType<typeof vi.fn>).mock.calls.map((c) => String(c[0]));
+      expect(urls.some((u) => u.includes("/api/tools/chat"))).toBe(false);
+      expect(sessionStorage.getItem("maven:script-from")).toBe(entry);
+    } finally {
+      sessionStorage.clear();
+    }
+  });
+});

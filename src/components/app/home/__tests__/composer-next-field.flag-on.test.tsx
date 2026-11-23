@@ -169,6 +169,13 @@ function seededThread() {
 
 const clip = () => new File(["video-bytes"], "take.mp4", { type: "video/mp4" });
 
+/**
+ * A row's gauge once it has its number. In a real thread it is the picture first and, once the
+ * thread id and the text's key are known, a link to the result page (thread answers step 2); both
+ * carry the number, so the tests that only care that it landed read it here.
+ */
+const simulatedGauge = (value: number) => document.querySelector(`[data-gauge="done"][data-value="${value}"]`);
+
 beforeEach(() => {
   cleanup();
   holdHooksOpen = false;
@@ -530,16 +537,16 @@ describe("a reloaded hooks thread under the new turn", () => {
     expect(held[0]!.body).toEqual(reactRequestBody({ text: HOOKS[0]!, kind: "hook" }));
 
     await act(async () => held[0]!.answer(30));
-    expect(await screen.findByRole("img", { name: "30% would stop to watch" })).toBeInTheDocument();
+    await waitFor(() => expect(simulatedGauge(30)).not.toBeNull());
     await waitFor(() => expect(requests("/api/tools/react")).toHaveLength(2));
     expect(held[1]!.body).toEqual(reactRequestBody({ text: HOOKS[1]!, kind: "hook" }));
 
     await act(async () => held[1]!.answer(22));
-    expect(await screen.findByRole("img", { name: "22% would stop to watch" })).toBeInTheDocument();
+    await waitFor(() => expect(simulatedGauge(22)).not.toBeNull());
     await settleQueue();
     expect(requests("/api/tools/react")).toHaveLength(2);
     // Two of three: no sentence yet, and the third row still offers its gauge.
-    expect(screen.queryByText(/leads by|No clear winner/)).toBeNull();
+    expect(screen.queryByText(/leads by|is ahead by|a tie/)).toBeNull();
     expect(gauge(HOOKS[2]!)).toBeEnabled();
   });
 });
@@ -972,7 +979,7 @@ describe("the running video card from the read to the card", () => {
       fireEvent.click(send());
       await waitFor(() => expect(requests("/api/analyze")).toHaveLength(1));
       act(() => analyze.push("started", { id: "a1" }));
-      const running = await screen.findByText("running");
+      const running = await screen.findByText("of about a minute");
       const card = running.closest('[data-answer="card"]') as HTMLElement;
       expect(card).toBeTruthy();
 
@@ -989,7 +996,7 @@ describe("the running video card from the read to the card", () => {
 
       // The same card, never remounted, and its clock still counts from the send.
       expect(card.isConnected).toBe(true);
-      expect(within(card).getByText("running")).toBeInTheDocument();
+      expect(within(card).getByText("of about a minute")).toBeInTheDocument();
       expect(within(card).getByText(/^0:(49|5\d)$/)).toBeInTheDocument();
     } finally {
       vi.useRealTimers();
@@ -1730,7 +1737,7 @@ describe("task 6: the live video turn", () => {
     expect(screen.queryByText(/Testing your video/)).toBeNull();
 
     await act(async () => releaseUpload());
-    await waitFor(() => expect(dial).toHaveTextContent("running"));
+    await waitFor(() => expect(dial).toHaveTextContent("of about a minute"));
     expect(runDial()).toBe(dial); // the same element: mounted once
     expect(screen.getByRole("link", { name: /Watch it run/ })).toHaveAttribute("href", "/simulation/run-1");
   });
@@ -1916,10 +1923,111 @@ describe("task 6: nothing opens the room any more", () => {
       [hook.trim()]: { fraction: "3/10 stop", scrollQuote: "", personas: [], population: population(30), at: "2026-11-21T00:00:00.000Z" },
     });
     await renderComposer();
-    expect(await screen.findByRole("img", { name: "30% would stop to watch" })).toBeInTheDocument();
+    await waitFor(() => expect(simulatedGauge(30)).not.toBeNull());
     threadFixture = { ...mealPrepThread("@nia.tests"), threadId: "t2" };
     act(() => useBoardStore.getState().switchThread());
     await waitFor(() => expect(screen.getAllByRole("button", { name: /^Simulate: / })).toHaveLength(3));
-    expect(screen.queryByRole("img", { name: "30% would stop to watch" })).toBeNull();
+    expect(simulatedGauge(30)).toBeNull();
+  });
+});
+
+describe("step 2: 'Script this one' from a result page lands in its thread", () => {
+  const hook = MEAL_PREP_HOOKS[0]!.props.hookLine;
+  const leave = (threadId: string, text: string, at = Date.now()) =>
+    sessionStorage.setItem("maven:script-from", JSON.stringify({ threadId, text, at }));
+  afterEach(() => {
+    sessionStorage.clear();
+    window.history.replaceState({}, "", "/home");
+  });
+
+  /** /api/threads/open waits until the test lets it answer; the chat stream stays open (the live turn,
+   *  with its question, stays drawn). */
+  function holdLoadAndChat(): () => void {
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    const base = global.fetch;
+    global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/api/threads/open")) {
+        calls.push({ url, init });
+        await held;
+        return json(threadFixture);
+      }
+      if (url.includes("/api/tools/chat")) {
+        calls.push({ url, init });
+        return sse(init?.signal, true);
+      }
+      return base(input, init);
+    }) as typeof fetch;
+    return release;
+  }
+
+  it("runs one write-script turn with the text once its thread has loaded, and the hand-off is gone", async () => {
+    const thread = mealPrepThread();
+    threadFixture = thread;
+    leave(thread.threadId, hook); // the open thread's id, as /api/threads/open answers it
+    const release = holdLoadAndChat();
+    await renderComposer();
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 30));
+    });
+    // Not before the thread is in: the turn must land after its history.
+    expect(requests("/api/tools/chat")).toHaveLength(0);
+    expect(sessionStorage.getItem("maven:script-from")).not.toBeNull();
+    await act(async () => release());
+    await waitFor(() => expect(requests("/api/tools/chat")).toHaveLength(1));
+    expect(bodyOf(requests("/api/tools/chat")[0]!)).toMatchObject({
+      ask: "Write the script from this hook.",
+      skill: "script",
+      anchor: hook,
+    });
+    expect(sessionStorage.getItem("maven:script-from")).toBeNull();
+    // The script's turn sits after the thread's history.
+    const historyRow = screen.getByText(hook);
+    const ask = await screen.findByText("Write the script from this hook.");
+    expect(historyRow.compareDocumentPosition(ask) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // Once: nothing more fires.
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 30));
+    });
+    expect(requests("/api/tools/chat")).toHaveLength(1);
+  });
+
+  it("a text left for another thread runs nothing here, and is gone", async () => {
+    threadFixture = mealPrepThread();
+    leave("00000000-0000-4000-8000-00000000dead", hook);
+    await renderComposer();
+    await screen.findAllByRole("button", { name: /^Simulate: / });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 30));
+    });
+    expect(requests("/api/tools/chat")).toHaveLength(0);
+    expect(sessionStorage.getItem("maven:script-from")).toBeNull();
+  });
+
+  it("a text left more than a minute ago runs nothing, and is gone", async () => {
+    const thread = mealPrepThread();
+    threadFixture = thread;
+    leave(thread.threadId, hook, Date.now() - 61_000);
+    await renderComposer();
+    await screen.findAllByRole("button", { name: /^Simulate: / });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 30));
+    });
+    expect(requests("/api/tools/chat")).toHaveLength(0);
+    expect(sessionStorage.getItem("maven:script-from")).toBeNull();
+  });
+
+  it("an address can never start it: /home?scriptFrom= runs nothing", async () => {
+    window.history.replaceState({}, "", `/home?scriptFrom=${encodeURIComponent(hook)}`);
+    threadFixture = mealPrepThread();
+    await renderComposer();
+    await screen.findAllByRole("button", { name: /^Simulate: / });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 30));
+    });
+    expect(requests("/api/tools/chat")).toHaveLength(0);
   });
 });

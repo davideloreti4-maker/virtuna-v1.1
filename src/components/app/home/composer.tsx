@@ -114,6 +114,7 @@ import { VideoRunning } from "@/components/thread-next/video-running";
 import { ThreadHeader } from "@/components/thread-next/thread-header";
 import { threadAudienceOf } from "@/lib/thread-next/thread-audience";
 import { reloadedSeals } from "@/lib/thread-next/seal-reload";
+import { takeScriptFrom } from "@/lib/thread-next/script-from";
 import { useShellStore } from "@/stores/shell-store";
 import { SkillPill, SkillsPanel } from "./v8/skills-panel";
 import { AudienceLensChip } from "./v8/audience-lens-chip";
@@ -1523,6 +1524,26 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     // ask empty — the carried hookLine anchors the script generation.
     void script.start("", platform, hookLine, intent);
   }, [script, chat, platform, intent, scrollThreadToBottom]);
+
+  // ── New look: "Script this one" from a text's result page (thread answers step 2) ──────────────
+  // The page (/simulation/hook/…) left the text for its thread in sessionStorage (`leaveScriptFrom`),
+  // pointed the active-thread cookie at that thread and came back to /home. Once a thread has loaded
+  // (`openThreadId` is null on every mount and is set in the same batch as the thread's turns;
+  // `!rehydrating` keeps a switch in progress from counting), take what was left for THAT thread and
+  // run today's write-script turn with it, once. Nothing left, or left for another thread: nothing.
+  // Never read from the address: a link must not be able to start a paid turn. Flag off: nothing.
+  // Read once per mount: the entry is only ever written on the result page, where this composer is
+  // not mounted, and coming back remounts it. (If /home were ever kept alive across routes, the ref
+  // would already be set and the turn would silently not run: fails safe, but would need a re-read.)
+  const scriptFromReadRef = useRef(false);
+  useEffect(() => {
+    if (!NEW_LOOK_ENABLED || scriptFromReadRef.current) return;
+    if (openThreadId === null || rehydrating) return;
+    scriptFromReadRef.current = true;
+    const text = takeScriptFrom(openThreadId);
+    if (text === null) return;
+    handleWriteScript(text, "");
+  }, [openThreadId, rehydrating, handleWriteScript]);
 
   // ── Script → Test handoff (Plan 06-05 — D-05/D-06, SCRIPT-01) ─────────────
   // Invoked by ScriptCardRenderer via ScriptTestContext when "Test full →" is clicked.

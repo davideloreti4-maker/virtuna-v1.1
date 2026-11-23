@@ -5,11 +5,11 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import type { ResultState } from "@/lib/result/types";
 import { cn } from "@/lib/utils";
-import { useShellStore } from "@/stores/shell-store";
 import { NoAudience } from "./no-audience";
 import { PlayheadProvider, usePlayhead } from "./playhead";
 import { ResultHeader } from "./result-header";
 import { Running, type RunningPreview } from "./running";
+import { usePushedTitle } from "./use-pushed-title";
 import { ResultFrame, VideoResult } from "./video-result";
 
 /** What the page can show: the row's state, or that the row could not be fetched. */
@@ -28,13 +28,6 @@ function titleOf(state: ResultPageState): string {
     default:
       return "";
   }
-}
-
-/** Names the screen in the phone's pushed header (NextShell) and clears the name on the way out. */
-function usePushedTitle(title: string) {
-  const setPushedTitle = useShellStore((s) => s.setPushedTitle);
-  useEffect(() => setPushedTitle(title), [title, setPushedTitle]);
-  useEffect(() => () => setPushedTitle(""), [setPushedTitle]);
 }
 
 /** Moves the playhead once, on arrival (the dev page's `?t=`). */

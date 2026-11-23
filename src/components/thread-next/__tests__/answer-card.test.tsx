@@ -23,6 +23,15 @@ describe("AnswerPrimary", () => {
     expect(screen.getByRole("button", { name: /Simulate all 1/ }).querySelector("em")).toHaveTextContent(/^1 credit$/);
   });
 
+  it("the card's width on a phone; in a thread card from md, its content's width (248 at least)", () => {
+    render(<AnswerPrimary icon={null} label="Script the best" price={2} onClick={() => {}} />);
+    const classes = screen.getByRole("button", { name: /Script the best/ }).className.split(/\s+/);
+    expect(classes).toContain("w-full");
+    expect(classes).toEqual(
+      expect.arrayContaining(["md:[[data-answer=card]_&]:w-auto", "md:[[data-answer=card]_&]:min-w-[248px]"]),
+    );
+  });
+
   it("a free action carries no price", () => {
     render(<AnswerPrimary icon={null} label="Add your take" onClick={() => {}} trailingArrow />);
     const button = screen.getByRole("button", { name: "Add your take" });

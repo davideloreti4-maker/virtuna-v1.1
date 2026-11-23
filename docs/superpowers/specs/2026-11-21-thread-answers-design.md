@@ -43,7 +43,9 @@ phone and desktop, plus an independent critic. This spec is step 1, the base. St
 5. Simulating several runs one after another ("2 of 3"), never in parallel. One text simulation at a time in
    the whole thread; a second request waits its turn.
 6. "Best" only when every row of the pack is simulated and the leader is at least 10 points ahead of the second.
-   The sentence under a fully simulated pack is computed: "Hook 3 leads by 15 points." or "No clear winner."
+   The sentence under a fully simulated pack is computed: "Hook 3 leads by 15 points.", "It's close. Hook 1 is
+   ahead by 7 points." or "It's a tie." (changed 2026-11-23 from "No clear winner."; the other changes of that
+   review are listed in `2026-11-22-thread-answers-step2-design.md` §8).
    (ideas: "Idea 2 leads by …"). The app has no source for a reason, so none is written.
 7. Chips: two of the existing curated follow-ups per kind (§4.7), under the last answer only (slice 1). No "···".
 

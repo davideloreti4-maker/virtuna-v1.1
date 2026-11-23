@@ -109,7 +109,7 @@ beforeEach(() => {
   archive.mockReset();
   signOut.mockReset();
   useSidebarStore.setState({ isCollapsed: false });
-  useShellStore.setState({ autoRail: false });
+  useShellStore.setState({ autoRail: false, threadOpen: false });
   useBoardStore.setState({ activeThreadId: null });
   // Last: resetting sidebar-store above writes its persist key.
   localStorage.clear();
@@ -125,6 +125,43 @@ describe('SideNav — places', () => {
     expect(within(nav()).getAllByRole('link').map(nameOf)).toEqual([
       'Maven home', 'Home', 'Discover', 'Audience', 'Library',
     ]);
+  });
+
+  it('on Home with no thread open, Home is the current place', () => {
+    renderNav();
+    const current = within(nav()).getAllByRole('link').filter((a) => a.getAttribute('aria-current') === 'page');
+    expect(current.map(nameOf)).toEqual(['Home']);
+  });
+
+  it('inside a thread the thread is the current thing, not Home: one highlight', () => {
+    useBoardStore.setState({ activeThreadId: 't3' });
+    useShellStore.setState({ threadOpen: true });
+    renderNav();
+    const marked = [...nav().querySelectorAll('[aria-current="page"]')];
+    expect(marked.map(nameOf)).toEqual(['Why did Tuesday flop']);
+    expect(screen.getByRole('link', { name: 'Home' })).not.toHaveAttribute('aria-current');
+  });
+
+  it('inside a thread whose row is not on screen (the rail, or a thread that is not recent), Home keeps the mark', () => {
+    useBoardStore.setState({ activeThreadId: 't3' });
+    useShellStore.setState({ threadOpen: true });
+    useSidebarStore.setState({ isCollapsed: true });
+    const { unmount } = renderNav();
+    expect([...nav().querySelectorAll('[aria-current="page"]')].map(nameOf)).toEqual(['Home']);
+    unmount();
+
+    useSidebarStore.setState({ isCollapsed: false });
+    useBoardStore.setState({ activeThreadId: 'not-in-the-list' });
+    renderNav();
+    expect([...nav().querySelectorAll('[aria-current="page"]')].map(nameOf)).toEqual(['Home']);
+  });
+
+  it('a thread left open while on another place does not unmark that place', () => {
+    useShellStore.setState({ threadOpen: true });
+    pathname = '/library';
+    renderNav();
+    const current = within(nav()).getAllByRole('link').filter((a) => a.getAttribute('aria-current') === 'page');
+    expect(current.map(nameOf)).toEqual(['Library']);
   });
 
   it('marks the place the creator is in, including behind a redirect door', () => {

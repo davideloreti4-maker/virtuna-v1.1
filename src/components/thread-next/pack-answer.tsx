@@ -1,23 +1,33 @@
 "use client";
 
+import { useId } from "react";
+
 import { creditCost } from "@/lib/pricing";
 import { leadOf } from "@/lib/thread-next/pack-lead";
 import { cn } from "@/lib/utils";
 
 import { AnswerCard, AnswerFoot, AnswerPrimary, CardHeader, PROSE, creditsLabel, keepHyphens } from "./answer-card";
-import { PulseGlyph, SmallGauge, type GaugeState } from "./answer-gauge";
-import { DocIcon } from "./field-icons";
+import { PulseGlyph, SmallGauge, clipName, type GaugeState } from "./answer-gauge";
+import { ChevronIcon, DocIcon } from "./field-icons";
 
 /**
  * The hook pack and the idea pack (spec §4.1, §4.2; drawing
  * `.scratch/next-look/part3/answers/answers.html`, `axHooks` and `axIdeas`, `.tq-hook`, `.ax-gc`,
  * `.ax-best`, `.tq-prog`, `.tq-f`, `.ax-id`): one card, a gauge on every row.
  *
- * - Header "Would stop to watch", and "1 credit each" while any row is not simulated (empty).
- * - Rows: the gauge, then the text (a hook's line; an idea's title and its one grey line). No
- *   chevron: nothing opens from a row in step 1. A waiting row's text is in the secondary ink.
- * - "Best" under the leader's gauge only when every row is simulated and it leads by 10 or more
- *   (`leadOf`).
+ * - Header "Would stop to watch", with "1 credit each" while any row is not simulated (empty) and
+ *   "out of 100" once every row is: the numbers' scale, said once instead of a "%" in each ring.
+ * - Rows: the gauge, then the text (a hook's line; an idea's title and its one grey line). A waiting
+ *   row's text is in the secondary ink. With `onOpen` (step 2) the row is ONE button ("Open: <text>",
+ *   a dialog's opener) holding its text and a 14 chevron, described by the lines its name leaves out
+ *   (an idea's grey line, "Couldn't simulate"); its `::after` covers the whole row. The gauge column
+ *   sits above it and passes every tap through (`pointer-events-none`) but the gauge's own: an empty
+ *   gauge simulates, and a simulated one with its result page (`href`) is a link to it (design ruling,
+ *   fix round 1); a simulated gauge without one, "Best" and the space beside them open the row.
+ *   Without `onOpen`, no chevron (step 1).
+ * - Under the leader's gauge, once every row is simulated: "Best" when it leads by 10 or more
+ *   (`leadOf`), "Ahead" on a smaller lead (the row "Script hook K" and the sentence name; rows carry
+ *   no numbers of their own), nothing on a tie.
  * - The one primary: "Simulate all N" with "N credits" (N = the rows not simulated) while any row
  *   is empty ("Simulate the rest" once some are simulated); while a queue runs, a thin progress line and "2 of 3" instead; once every row is
  *   simulated, "Script the best" (a clear best) or "Script hook K" / "Script idea K" (K = the
@@ -42,6 +52,8 @@ export interface PackRow {
   state: GaugeState;
   /** Its last simulation failed: billed or not, there is no number. */
   failed?: boolean;
+  /** Its result page, once simulated and its key is known (step 2): the gauge links there. */
+  href?: string | null;
 }
 
 /** A queue in flight: `done` runs finished of `total`. The label counts the run in flight. */
@@ -76,6 +88,45 @@ function ProgressLine({ queue }: { queue: PackQueue }) {
   );
 }
 
+/** A row's words: a hook's line, or an idea's title and its grey line; a failed row's note. The ids
+ *  let the row's button be described by the lines its name leaves out. */
+function RowText({
+  kind,
+  row,
+  waiting,
+  subId,
+  failedId,
+}: {
+  kind: "hook" | "idea";
+  row: PackRow;
+  waiting: boolean;
+  subId?: string;
+  failedId?: string;
+}) {
+  const ink = waiting ? "text-foreground-secondary" : "text-foreground";
+  return (
+    <>
+      {kind === "idea" ? (
+        <>
+          <span className={cn("block text-ui font-[620] leading-5 tracking-[-0.012em]", ink)}>{keepHyphens(row.text)}</span>
+          {row.sub && (
+            <span id={subId} className="mt-0.5 block text-pretty text-meta leading-[18px] text-foreground-secondary">
+              {keepHyphens(row.sub)}
+            </span>
+          )}
+        </>
+      ) : (
+        <span className={cn("block text-pretty text-ui font-[520] leading-5 tracking-[-0.01em]", ink)}>{keepHyphens(row.text)}</span>
+      )}
+      {row.failed && (
+        <span id={failedId} className="mt-0.5 block text-meta text-foreground-secondary">
+          Couldn&apos;t simulate
+        </span>
+      )}
+    </>
+  );
+}
+
 export function PackAnswer({
   kind,
   rows,
@@ -83,6 +134,7 @@ export function PackAnswer({
   onSimulate,
   onSimulateAll,
   onScript,
+  onOpen,
 }: {
   kind: "hook" | "idea";
   rows: PackRow[];
@@ -92,11 +144,17 @@ export function PackAnswer({
   onSimulateAll?: () => void;
   /** The row to script (0-based): the best, else the highest. */
   onScript?: (rowIndex: number) => void;
+  /** Opens the row's details (step 2): the row becomes one button with a chevron. */
+  onOpen?: (rowIndex: number, trigger: HTMLButtonElement) => void;
 }) {
+  const ids = useId();
   const lead = leadOf(rows.map((r) => (r.state.kind === "done" ? r.state.value : null)));
   const emptyRows = rows.filter((r) => r.state.kind === "empty").length;
   const simulatePrice = creditCost("react");
   const scriptRow = lead.allDone ? (lead.best ?? lead.top) : null;
+  // The row the sentence and the primary name ("Hook 1 is ahead", "Script hook 1") is marked, since
+  // rows carry no numbers of their own: "Best" on a clear lead, "Ahead" on a small one, nothing on a tie.
+  const tagRow = lead.best ?? (lead.allDone && lead.lead !== null && lead.lead > 0 ? lead.top : null);
 
   let footer: React.ReactNode = null;
   if (queue) {
@@ -127,52 +185,59 @@ export function PackAnswer({
 
   return (
     <AnswerCard>
-      <CardHeader left="Would stop to watch" right={emptyRows > 0 ? `${creditsLabel(simulatePrice)} each` : undefined} />
+      <CardHeader
+        left="Would stop to watch"
+        right={emptyRows > 0 ? `${creditsLabel(simulatePrice)} each` : lead.allDone && rows.length > 0 ? "out of 100" : undefined}
+      />
       <ul className="m-0 list-none p-0">
         {rows.map((row, i) => {
           const waiting = row.state.kind === "waiting";
+          const subId = `${ids}-${i}-sub`;
+          const failedId = `${ids}-${i}-failed`;
+          const described = [kind === "idea" && row.sub ? subId : null, row.failed ? failedId : null].filter(Boolean).join(" ");
           return (
             // Two rows can carry the same text (they share one seal), so the place is in the key.
-            <li key={`${i}:${row.key}`} data-row={i} className="flex items-center gap-[13px] border-t border-border px-0.5 py-2.5">
-              <span className="flex shrink-0 flex-col items-center gap-[5px]">
+            <li
+              key={`${i}:${row.key}`}
+              data-row={i}
+              className={cn("flex items-center gap-[13px] border-t border-border px-0.5 py-2.5", onOpen && "relative")}
+            >
+              <span className={cn("flex shrink-0 flex-col items-center gap-[5px]", onOpen && "pointer-events-none relative z-[1]")}>
                 <SmallGauge
                   state={row.state}
                   label={row.text}
                   onSimulate={onSimulate ? () => onSimulate(row.key) : undefined}
+                  href={row.href ?? null}
                 />
-                {lead.best === i && (
-                  <span className="inline-flex h-5 items-center whitespace-nowrap rounded-full bg-[color-mix(in_srgb,var(--color-foreground)_7%,transparent)] px-[7px] text-label font-[650] leading-none tracking-normal text-foreground">
-                    Best
+                {tagRow === i && (
+                  <span
+                    data-part="lead-tag"
+                    className="inline-flex h-5 items-center whitespace-nowrap rounded-full bg-[color-mix(in_srgb,var(--color-foreground)_7%,transparent)] px-[7px] text-label font-[650] leading-none tracking-normal text-foreground"
+                  >
+                    {lead.best !== null ? "Best" : "Ahead"}
                   </span>
                 )}
               </span>
-              <div className={cn("min-w-0 flex-1", PROSE)}>
-                {kind === "idea" ? (
-                  <>
-                    <p
-                      className={cn(
-                        "text-ui font-[620] leading-5 tracking-[-0.012em]",
-                        waiting ? "text-foreground-secondary" : "text-foreground",
-                      )}
-                    >
-                      {keepHyphens(row.text)}
-                    </p>
-                    {row.sub && (
-                      <p className="mt-0.5 text-pretty text-meta leading-[18px] text-foreground-secondary">{keepHyphens(row.sub)}</p>
-                    )}
-                  </>
-                ) : (
-                  <p
-                    className={cn(
-                      "text-pretty text-ui font-[520] leading-5 tracking-[-0.01em]",
-                      waiting ? "text-foreground-secondary" : "text-foreground",
-                    )}
-                  >
-                    {keepHyphens(row.text)}
-                  </p>
-                )}
-                {row.failed && <p className="mt-0.5 text-meta text-foreground-secondary">Couldn&apos;t simulate</p>}
-              </div>
+              {onOpen ? (
+                <button
+                  type="button"
+                  aria-label={`Open: ${clipName(row.text)}`}
+                  aria-haspopup="dialog"
+                  aria-describedby={described || undefined}
+                  onClick={(e) => onOpen(i, e.currentTarget)}
+                  // Its ::after covers the whole row, so a tap anywhere but the gauge opens the sheet.
+                  className={cn("flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-xl text-left after:absolute after:inset-0", PROSE)}
+                >
+                  <span className="block min-w-0 flex-1">
+                    <RowText kind={kind} row={row} waiting={waiting} subId={subId} failedId={failedId} />
+                  </span>
+                  <ChevronIcon size={14} strokeWidth={2.1} aria-hidden className="shrink-0 text-foreground-muted" />
+                </button>
+              ) : (
+                <div className={cn("min-w-0 flex-1", PROSE)}>
+                  <RowText kind={kind} row={row} waiting={waiting} />
+                </div>
+              )}
             </li>
           );
         })}

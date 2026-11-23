@@ -3,7 +3,10 @@
 import { useState } from "react";
 
 import { useVideoMeta } from "@/hooks/use-video-meta";
+import { cn } from "@/lib/utils";
 import { formatLength } from "@/lib/video-file";
+
+import { VideoIcon } from "./answer-icons";
 
 /**
  * Your message (new look, spec 2026-11-20 §4.4; reference
@@ -13,6 +16,10 @@ import { formatLength } from "@/lib/video-file";
  * Geometry as drawn: the bubble at most 80% of the column, padding 10 / 15 / 11, text 15 / 21,
  * the sunken tint, corners 22 with the end-bottom one tucked to 6 (built 24 and 6: the radius
  * scale has no 22). The tile 52 × 70, radius 12, the hairline, 6 above the bubble.
+ *
+ * A video sent without words is stored as its file's name. That name is not a message: the turn
+ * is then the tile alone, and the name stays in the turn for a screen reader only (review
+ * 2026-11-23: a bubble reading "test-30s.mp4" under the tile).
  *
  * Rendered by `ThreadUserTurn` (`src/components/thread/thread-shell.tsx`) under the flag, which
  * keeps the turn's `<h2 className="sr-only">You</h2>` (the F-14 heading contract).
@@ -41,27 +48,43 @@ export function videoOfTurn(blocks: readonly unknown[]): UserTurnVideo | null {
   return null;
 }
 
+/** A video file's name and nothing else ("take 3.mp4"): what a turn without words is stored as. */
+const FILE_NAME = /^[^\n/\\]{1,200}\.(mp4|mov|m4v|webm|mkv|avi|3gp)$/i;
+export const isVideoFileName = (text: string) => FILE_NAME.test(text.trim());
+
 /**
  * The tile. The still is optional: a stored frame address can expire (the card's schema says so),
- * and a frame that fails to load leaves the tile with its length only, never a broken image. The
- * failure is remembered per address, so a new address gets its own try.
+ * and a frame that fails to load leaves the tile with the video mark and its length, never a broken
+ * image or an empty box. The failure is remembered per address, so a new address gets its own try.
+ * `alone` (a turn that is only its video) drops the gap a bubble would follow.
  */
-function VideoTile({ posterUrl, durationLabel }: UserTurnVideo) {
+function VideoTile({ posterUrl, durationLabel, alone = false }: UserTurnVideo & { alone?: boolean }) {
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
   const showPicture = !!posterUrl && failedUrl !== posterUrl;
   return (
     <div
       role="img"
       aria-label={durationLabel ? `Video, ${durationLabel}` : "Video"}
-      className="relative mb-1.5 h-[70px] w-[52px] shrink-0 overflow-hidden rounded-lg bg-surface-sunken shadow-[0_0_0_1px_var(--color-border)]"
+      className={cn(
+        "relative h-[70px] w-[52px] shrink-0 overflow-hidden rounded-lg bg-surface-sunken shadow-[0_0_0_1px_var(--color-border)]",
+        !alone && "mb-1.5",
+      )}
     >
-      {showPicture && (
+      {showPicture ? (
         // eslint-disable-next-line @next/next/no-img-element -- a stored frame (or a frame drawn in the browser); next/image has nothing to optimise
         <img
           src={posterUrl}
           alt=""
           onError={() => setFailedUrl(posterUrl)}
           className="block size-full object-cover"
+        />
+      ) : (
+        // No picture: the video mark, centred in the room above the length.
+        <VideoIcon
+          size={18}
+          aria-hidden
+          data-part="video-mark"
+          className={cn("absolute inset-x-0 top-0 m-auto text-foreground-muted", durationLabel ? "bottom-5" : "bottom-0")}
         />
       )}
       {durationLabel && (
@@ -92,7 +115,7 @@ const isLinkTurn = (text: string) => LINK.test(text.trim());
 /**
  * The bubble and, when there is one, the video's tile above it. A tile needs a still or a length;
  * `fileTile` shows it before either is known (the live turn's staged file is a video already).
- * Never on a link turn.
+ * Never on a link turn. A turn whose text is only the video's file name is the tile alone.
  */
 export function NextUserTurn({
   text,
@@ -104,6 +127,7 @@ export function NextUserTurn({
   fileTile?: boolean;
 }) {
   const hasTile = !isLinkTurn(text) && (fileTile || (!!video && (!!video.posterUrl || !!video.durationLabel)));
+  const tileOnly = hasTile && isVideoFileName(text);
   return (
     // `-mb-0.5`: the thread column spaces its parts 14 apart, 16 from md (ThreadShell); the label
     // sits 12 under the bubble, 14 from md, as the answer-system drawing has it (`.ax-msgs` and
@@ -111,10 +135,17 @@ export function NextUserTurn({
     // than that rhythm (`.ax-t2`), 28 under the answer above on a phone and 30 from md.
     <div className="-mb-0.5 mt-3.5 flex flex-col items-end first:mt-0">
       <h2 className="sr-only">You</h2>
-      {hasTile && <VideoTile posterUrl={video?.posterUrl} durationLabel={video?.durationLabel} />}
-      <p className="max-w-[80%] whitespace-pre-wrap text-pretty rounded-3xl rounded-br-sm bg-surface-sunken px-[15px] pb-[11px] pt-2.5 text-ui text-foreground">
-        {text}
-      </p>
+      {hasTile && <VideoTile posterUrl={video?.posterUrl} durationLabel={video?.durationLabel} alone={tileOnly} />}
+      {tileOnly ? (
+        // The file's name: in the turn for a screen reader, not painted.
+        <p data-part="file-name" className="sr-only">
+          {text}
+        </p>
+      ) : (
+        <p className="max-w-[80%] whitespace-pre-wrap text-pretty rounded-3xl rounded-br-sm bg-surface-sunken px-[15px] pb-[11px] pt-2.5 text-ui text-foreground">
+          {text}
+        </p>
+      )}
     </div>
   );
 }

@@ -48,15 +48,64 @@ function SheetOverlay({
   )
 }
 
+/**
+ * The grab handle as a control (new look): a 28 tall band across the sheet with the handle 10 down it
+ * (where it is drawn). A tap, or a pull down of 24 or more that starts on it, dismisses. Pointer only:
+ * Escape is the keyboard's way, and the band stays hidden from assistive tech.
+ *
+ * Why 28 tall and not `tap-44`: the band spans the sheet's full width, is for a pointer only, and sits
+ * directly under the scrim, which dismisses too, so the area that closes the sheet is far larger than
+ * 44; Escape closes it from the keyboard. A taller band would make taps on the title's top edge close
+ * the sheet.
+ */
+function SheetHandleZone({ onDismiss }: { onDismiss: () => void }) {
+  const startY = React.useRef<number | null>(null)
+  // A drag that dismissed: pointer capture makes the band the target of its `pointerup`, so the browser
+  // then fires `click` on it too. That click is the same gesture, not a second dismissal.
+  const dragDismissed = React.useRef(false)
+  return (
+    <div
+      data-slot="sheet-handle-zone"
+      aria-hidden
+      onPointerDown={(e) => {
+        startY.current = e.clientY
+        dragDismissed.current = false
+        e.currentTarget.setPointerCapture?.(e.pointerId)
+      }}
+      onPointerUp={(e) => {
+        const from = startY.current
+        startY.current = null
+        if (from !== null && e.clientY - from >= 24) {
+          dragDismissed.current = true
+          onDismiss()
+        }
+      }}
+      onClick={() => {
+        if (dragDismissed.current) {
+          dragDismissed.current = false
+          return
+        }
+        onDismiss()
+      }}
+      className="flex h-7 w-full shrink-0 cursor-grab touch-none justify-center"
+    >
+      <div data-slot="sheet-handle" className="mt-2.5 h-[5px] w-[38px] rounded-full bg-foreground-muted/50" />
+    </div>
+  )
+}
+
 function SheetContent({
   className,
   children,
   side = "right",
   showCloseButton = true,
+  onHandleDismiss,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left"
   showCloseButton?: boolean
+  /** New look, bottom sheet: a tap on the grab handle, or a pull down from it, dismisses. */
+  onHandleDismiss?: () => void
 }) {
   return (
     <SheetPortal>
@@ -81,13 +130,16 @@ function SheetContent({
         )}
         {...props}
       >
-        {NEW_LOOK_ENABLED && side === "bottom" && (
-          <div
-            data-slot="sheet-handle"
-            aria-hidden
-            className="mx-auto mt-2 h-[5px] w-[38px] shrink-0 rounded-full bg-foreground-muted/50"
-          />
-        )}
+        {NEW_LOOK_ENABLED && side === "bottom" &&
+          (onHandleDismiss ? (
+            <SheetHandleZone onDismiss={onHandleDismiss} />
+          ) : (
+            <div
+              data-slot="sheet-handle"
+              aria-hidden
+              className="mx-auto mt-2 h-[5px] w-[38px] shrink-0 rounded-full bg-foreground-muted/50"
+            />
+          ))}
         {children}
         {showCloseButton && (
           <SheetPrimitive.Close className="absolute top-4 right-4 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-secondary">

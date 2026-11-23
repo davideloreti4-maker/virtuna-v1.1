@@ -76,6 +76,7 @@ export function SideNav({ actions }: { actions: ThreadActions }) {
   const { data: profile } = useProfile();
   const { usage } = useSubscription();
   const current = activePlace(pathname);
+  const threadOpen = useShellStore((s) => s.threadOpen);
 
   // Below 1100px the sidebar starts as the rail, unless the creator already chose. This is the
   // app's default, so it goes to the unpersisted autoRail, never to the saved choice. The store
@@ -92,6 +93,11 @@ export function SideNav({ actions }: { actions: ThreadActions }) {
   const recent = (threads ?? [])
     .filter((thread, index) => index === 0 || Boolean(thread.title?.trim()))
     .slice(0, RECENT_LIMIT);
+  // Inside a thread the thread's own row is the current thing, not Home: two highlights said two
+  // things (review 2026-11-23; the reference marks the thread only). Only while that row is on
+  // screen to be marked: on the rail, or for a thread that is not among the recent ones, Home keeps
+  // the mark, so something always says where the creator is.
+  const inThread = threadOpen && pathname === "/home" && !collapsed && recent.some((thread) => thread.id === activeThreadId);
 
   // A blank name must not render as nothing: fall back to the email, then "Account".
   const profileName = profile?.name?.trim() ?? "";
@@ -166,7 +172,7 @@ export function SideNav({ actions }: { actions: ThreadActions }) {
         const place = PLACES.find((candidate) => candidate.id === id);
         if (!place) return null;
         const Glyph = place.icon;
-        const active = current === place.id;
+        const active = current === place.id && !(place.id === "home" && inThread);
         return (
           <Hint key={place.id} label={place.label} show={collapsed}>
             <Link

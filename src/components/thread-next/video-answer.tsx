@@ -1,9 +1,11 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { Gauge } from "@/components/result/gauge";
+import { useSignedVideo } from "@/components/result/use-signed-video";
 import { useSimulationRow } from "@/hooks/queries/use-simulation-row";
+import { timecode } from "@/lib/result/format";
 import { resultHref } from "@/lib/result/href";
 import type { ResultState, VideoModel } from "@/lib/result/types";
 import { videoStateOf } from "@/lib/result/video-model";
@@ -12,7 +14,7 @@ import { cn } from "@/lib/utils";
 
 import { AnswerCard, AnswerPrimary, PROSE } from "./answer-card";
 import { arcPath } from "./answer-gauge";
-import { ExpandIcon } from "./answer-icons";
+import { ExpandIcon, VideoIcon } from "./answer-icons";
 import { MiniCurve } from "./mini-curve";
 
 /**
@@ -41,10 +43,12 @@ import { MiniCurve } from "./mini-curve";
  * height sets the second row, so the line sits at the picture's foot as drawn). The line is drawn
  * to the box CSS gives it, measured before paint.
  *
- * The thumbnail: the first scene frame the run stored, else the card's first filmstrip frame,
- * else a plain tile (stored frame addresses expire; one that fails to load leaves the tile). The
- * gauge's track is the thread's stronger `--color-gauge-track`, as drawn (the drawing's answers
- * re-value `--track` for every gauge).
+ * The thumbnail: the first scene frame the run stored, else the card's first filmstrip frame.
+ * Stored frame addresses expire and a local run has none, while the video itself is kept: with no
+ * frame (or one that fails to load) the tile shows the stored video's own first frame
+ * (`StoredStill`), and the video mark until that is there or when the file is gone too. Never an
+ * empty box (review 2026-11-23). The gauge's track is the thread's stronger `--color-gauge-track`,
+ * as drawn (the drawing's answers re-value `--track` for every gauge).
  */
 
 const GAUGE_SIZE = 140;
@@ -57,12 +61,18 @@ export function bigArc(size: number) {
   return { stroke, m, r, d: arcPath(m, r, 135, 405), height: Math.round(size * 0.88) };
 }
 
-/** The picture of the video: a frame, or a plain tile. Decorative: the turn above shows the video. */
-export function VideoThumb({ src, className }: { src: string | null; className?: string }) {
+/**
+ * The picture of the video: a frame; without one, the video mark and over it `still` (the stored
+ * video's own first frame, when the caller has one to offer). Decorative: the turn above shows the
+ * video.
+ */
+export function VideoThumb({ src, still, className }: { src: string | null; still?: React.ReactNode; className?: string }) {
   const [failed, setFailed] = useState<string | null>(null);
   const show = !!src && failed !== src;
+  const [tile, seen] = useSeen<HTMLDivElement>();
   return (
     <div
+      ref={tile}
       data-part="thumb"
       aria-hidden
       className={cn(
@@ -70,11 +80,63 @@ export function VideoThumb({ src, className }: { src: string | null; className?:
         className,
       )}
     >
-      {show && (
+      {show ? (
         // eslint-disable-next-line @next/next/no-img-element -- a stored frame's signed address (or a frame drawn in the browser); next/image has nothing to optimise
         <img src={src} alt="" onError={() => setFailed(src)} className="block size-full object-cover object-[50%_10%]" />
+      ) : (
+        <>
+          <VideoIcon size={22} aria-hidden data-part="video-mark" className="absolute inset-0 m-auto text-foreground-muted" />
+          {/* Only once the tile is on screen: an old thread's cards must not all ask at once. */}
+          {seen && still}
+        </>
       )}
     </div>
+  );
+}
+
+/**
+ * True once the element has come within 200 px of the screen, and from then on. Where the browser
+ * cannot watch for that (no IntersectionObserver), true from the start.
+ */
+function useSeen<T extends Element>() {
+  const ref = useRef<T>(null);
+  const [seen, setSeen] = useState(() => typeof IntersectionObserver === "undefined");
+  useEffect(() => {
+    const el = ref.current;
+    if (seen || !el) return;
+    const watcher = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) setSeen(true);
+      },
+      { rootMargin: "200px" },
+    );
+    watcher.observe(el);
+    return () => watcher.disconnect();
+  }, [seen]);
+  return [ref, seen] as const;
+}
+
+/**
+ * The stored video's own first frame, for a tile whose frame is gone. Rendered by `VideoThumb` only
+ * when it has no picture and is on screen (`useSeen`), so a card with a frame never asks for the file's
+ * address and a long thread's cards ask as they are scrolled to, not all at once. The address is
+ * signed for an hour (`useSignedVideo`); `#t=0.1` makes a phone browser draw that frame without
+ * playing; `preload="metadata"` fetches the start of the file, not the video. A file that is gone
+ * (retention) answers nothing, and the video mark under it stays.
+ */
+function StoredStill({ path }: { path: string }) {
+  const { src } = useSignedVideo(path);
+  if (!src) return null;
+  return (
+    <video
+      data-part="still"
+      src={`${src}#t=0.1`}
+      muted
+      playsInline
+      preload="metadata"
+      tabIndex={-1}
+      className="absolute inset-0 block size-full object-cover object-[50%_10%]"
+    />
   );
 }
 
@@ -145,18 +207,39 @@ function useBoxSize<T extends HTMLElement>(fallback: { width: number; height: nu
   return [ref, size] as const;
 }
 
-/** The line, drawn to the box it gets. */
-function CurveBox({ model, className }: { model: VideoModel; className?: string }) {
+/**
+ * The line, drawn to the box it gets, and under it the clip's two ends ("0:00", "0:29"): the sentence
+ * names a moment ("by 0:03") that a line with no time on it could not place (critic 2026-11-23).
+ * `className` places the whole; `boxClassName` is the line's own box (its height).
+ */
+function CurveBox({ model, className, boxClassName }: { model: VideoModel; className?: string; boxClassName?: string }) {
   const [ref, size] = useBoxSize<HTMLDivElement>(CURVE_FALLBACK);
   const band = model.moment ? { t0: model.moment.t0, t1: model.moment.t1 } : null;
   return (
-    <div ref={ref} data-part="curve-box" className={className}>
-      <MiniCurve points={model.audience.points} clipS={model.clipS} band={band} width={size.width} height={size.height} />
+    <div data-part="curve-wrap" className={className}>
+      <div ref={ref} data-part="curve-box" className={boxClassName}>
+        <MiniCurve points={model.audience.points} clipS={model.clipS} band={band} width={size.width} height={size.height} />
+      </div>
+      <div aria-hidden data-part="curve-ends" className="mt-1 flex justify-between text-caption leading-[14px] tracking-normal text-foreground-muted tabular-nums">
+        <span>0:00</span>
+        <span>{timecode(model.clipS)}</span>
+      </div>
     </div>
   );
 }
 
-export function VideoAnswerView({ state, posterUrl, href }: { state: ResultState; posterUrl: string | null; href: string }) {
+export function VideoAnswerView({
+  state,
+  posterUrl,
+  still,
+  href,
+}: {
+  state: ResultState;
+  posterUrl: string | null;
+  /** For a tile with no frame: the stored video's first frame (`StoredStill`). */
+  still?: React.ReactNode;
+  href: string;
+}) {
   const model = state.kind === "result" ? state.model : null;
   const pending = state.kind === "loading" || state.kind === "running";
   const dial = model ? <BigGauge model={model} /> : pending ? <TrackOnly label={state.kind === "loading" ? "Loading" : "Simulating"} /> : null;
@@ -164,7 +247,7 @@ export function VideoAnswerView({ state, posterUrl, href }: { state: ResultState
   return (
     <AnswerCard>
       <div className="grid grid-cols-[96px_minmax(0,1fr)] items-center gap-x-2.5 pt-2.5 md:grid-cols-[120px_auto_minmax(0,1fr)] md:grid-rows-[auto_1fr] md:items-start md:gap-x-0">
-        <VideoThumb src={posterUrl} className="col-start-1 row-start-1 w-24 md:row-[1/3] md:w-[120px]" />
+        <VideoThumb src={posterUrl} still={still} className="col-start-1 row-start-1 w-24 md:row-[1/3] md:w-[120px]" />
         {dial && (
           <div data-part="dial" className="col-start-2 row-start-1 justify-self-center md:ml-7 md:justify-self-start">
             {dial}
@@ -174,7 +257,8 @@ export function VideoAnswerView({ state, posterUrl, href }: { state: ResultState
           <>
             <CurveBox
               model={model}
-              className="col-[1/3] row-start-2 mt-3 h-[72px] md:col-[2/4] md:row-start-2 md:ml-7 md:mt-2 md:h-16 md:self-end"
+              className="col-[1/3] row-start-2 mt-3 md:col-[2/4] md:row-start-2 md:ml-7 md:mt-2 md:self-end"
+              boxClassName="h-[72px] md:h-16"
             />
             <p
               data-part="say"
@@ -211,5 +295,13 @@ export function VideoAnswer({ block }: { block: VideoTestCardBlock }) {
   const { row, notFound } = useSimulationRow(id);
   const state: ResultState = notFound ? { kind: "stalled", id } : videoStateOf(row);
   const poster = posterOf(state, block.props.filmstrip?.[0]?.keyframeUrl ?? null);
-  return <VideoAnswerView state={state} posterUrl={poster} href={resultHref(id)} />;
+  const videoPath = state.kind === "result" ? state.model.videoPath : state.kind === "no-audience" ? state.videoPath : null;
+  return (
+    <VideoAnswerView
+      state={state}
+      posterUrl={poster}
+      still={videoPath ? <StoredStill path={videoPath} /> : null}
+      href={resultHref(id)}
+    />
+  );
 }

@@ -33,20 +33,20 @@ describe("RemixAnswer — one remix", () => {
   it("the source row: '@handle' and '{multiplier}× {basis} · {views} views'", () => {
     render(<RemixAnswer items={[REMIX_CAMERA]} hookOf={empty} />);
     expect(screen.getByText("@lacapture")).toBeInTheDocument();
-    expect(screen.getByText("10.4× their average · 154K views")).toBeInTheDocument();
+    expect(screen.getByText("10× their average · 154K views")).toBeInTheDocument();
   });
 
   // Fix round 1 (3): the stored `baselineLabel` is never printed (the runners write "vs their usual
   // views", and spec §3.3 bans "usual"). It is read for its meaning only.
   it.each([
-    ["vs their usual views", "10.4× their average · 154K views"],
-    ["their average", "10.4× their average · 154K views"],
-    ["vs median views", "10.4× their average · 154K views"],
-    ["Typical reach", "10.4× their average · 154K views"],
-    ["vs followers", "10.4× their followers · 154K views"],
-    ["their followers", "10.4× their followers · 154K views"],
-    ["vs the niche", "10.4× · 154K views"],
-    [null, "10.4× · 154K views"],
+    ["vs their usual views", "10× their average · 154K views"],
+    ["their average", "10× their average · 154K views"],
+    ["vs median views", "10× their average · 154K views"],
+    ["Typical reach", "10× their average · 154K views"],
+    ["vs followers", "10× their followers · 154K views"],
+    ["their followers", "10× their followers · 154K views"],
+    ["vs the niche", "10× · 154K views"],
+    [null, "10× · 154K views"],
   ] as const)("a stored basis %j reads as \"%s\"", (baselineLabel, line) => {
     const r = remix("A hook", { proof: proof({ handle: "lacapture", views: 154000, multiplier: 10.4, baselineLabel }) });
     render(<RemixAnswer items={[r]} hookOf={empty} />);
@@ -74,6 +74,25 @@ describe("RemixAnswer — one remix", () => {
     expect(onSimulate).toHaveBeenCalledTimes(1);
     const steps = within(screen.getByRole("list")).getAllByRole("listitem");
     expect(steps.map((s) => s.textContent)).toEqual(["1Visual Hook", "2Concept", "3Tools", "4Footage"]);
+  });
+
+  it("short step names sit in two columns as drawn; a long one makes it one column on a phone, two from md", () => {
+    const hookOf = () => ({ state: { kind: "empty" } as GaugeState });
+    const { unmount } = render(<RemixAnswer items={[REMIX_CAMERA]} hookOf={hookOf} />);
+    const short = document.querySelector('[data-part="steps"]')!.className.split(/\s+/);
+    expect(short).toContain("grid-cols-2");
+    expect(short).not.toContain("grid-cols-1");
+    unmount();
+
+    render(
+      <RemixAnswer
+        items={[remix("Turn any photo into a movie", { formatBorrowed: "Visual Hook → Concept Definition → Tools Required → Footage Preparation" })]}
+        hookOf={hookOf}
+      />,
+    );
+    const long = document.querySelector('[data-part="steps"]')!.className.split(/\s+/);
+    expect(long).toEqual(expect.arrayContaining(["grid-cols-1", "md:grid-cols-2"]));
+    expect(long).not.toContain("grid-cols-2");
   });
 
   it("the hook simulated: its number and 'would stop to watch'", () => {
@@ -117,6 +136,11 @@ describe("RemixAnswer — one remix", () => {
     // @ts-expect-error -- vitest-axe matcher type augmentation not picked up
     expect(await axe(container)).toHaveNoViolations();
   });
+
+  it("a simulated remix hook with its page links there (step 2)", () => {
+    render(<RemixAnswer items={[REMIX_CAMERA]} hookOf={() => ({ state: { kind: "done", value: 33 }, href: "/simulation/hook/t/k" })} />);
+    expect(screen.getByRole("link", { name: /^Open the result: / })).toHaveAttribute("href", "/simulation/hook/t/k");
+  });
 });
 
 describe("RemixAnswer — several remixes", () => {
@@ -158,12 +182,27 @@ describe("RemixAnswer — several remixes", () => {
     expect(onScript).toHaveBeenCalledWith(THREE[1]!.props.adaptedHook);
   });
 
-  it("the dots mark the current page and are hidden from screen readers", () => {
+  it("under ten the multiplier keeps one decimal; from ten it is whole; views from 100K drop theirs", () => {
+    const item = (multiplier: number, views: number) => remix("A hook", { proof: proof({ handle: "x", multiplier, baselineLabel: "their average", views }) });
+    const { rerender } = render(<RemixAnswer items={[item(5.24, 21000)]} hookOf={empty} />);
+    expect(screen.getByText("5.2× their average · 21K views")).toBeInTheDocument();
+    rerender(<RemixAnswer items={[item(40.2, 849100)]} hookOf={empty} />);
+    expect(screen.getByText("40× their average · 849K views")).toBeInTheDocument();
+    rerender(<RemixAnswer items={[item(9.96, 1_540_000)]} hookOf={empty} />);
+    expect(screen.getByText("10× their average · 1.5M views")).toBeInTheDocument();
+    rerender(<RemixAnswer items={[item(12, 99_940)]} hookOf={empty} />);
+    expect(screen.getByText("12× their average · 99.9K views")).toBeInTheDocument();
+  });
+
+  it("the pager says what it pages, in words, and follows the page; the words are hidden from a screen reader (the section is named)", () => {
     const { container } = render(<RemixAnswer items={THREE} hookOf={empty} />);
-    const dots = container.querySelectorAll('[data-part="dot"]');
-    expect(dots).toHaveLength(3);
-    expect([...dots].map((d) => d.getAttribute("data-current"))).toEqual(["true", "false", "false"]);
-    for (const dot of dots) expect(dot.closest('[aria-hidden="true"]')).not.toBeNull();
+    const label = () => container.querySelector('[data-part="pager-label"]')!;
+    expect(label()).toHaveTextContent("Remix 1 of 3");
+    expect(label()).toHaveAttribute("aria-hidden", "true");
+    expect(container.querySelector('[data-part="dot"]')).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(label()).toHaveTextContent("Remix 2 of 3");
+    expect(screen.getByRole("region", { name: "Remix 2 of 3" })).toBeInTheDocument();
   });
 
   it("has no axe violations", async () => {

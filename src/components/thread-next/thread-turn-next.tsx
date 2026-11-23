@@ -26,7 +26,14 @@
  * hooks as "hook", ideas as "idea", a script's opening as "script", a remix hook as "remix", keyed
  * by the text itself (`sealKey`). Outside the provider (and without the composer's handoffs) the
  * cards draw their controls disabled.
+ *
+ * Step 2: a pack row opens its details sheet (`PackSheet`), which saves with that row's OWN origin;
+ * a simulated text links to its result page (`resultLinkOf`) once the thread id (`ThreadIdContext`)
+ * and its key (`useSealKeys`) are known: a pack row's gauge as a hook or an idea, a script's opener as
+ * an opening line, a remix hook as a hook.
  */
+
+import { useContext, useState } from "react";
 
 import { FollowupRow } from "@/components/thread/followup-row";
 import { MarkdownBlockRenderer } from "@/components/thread/markdown-block";
@@ -37,7 +44,7 @@ import { ThreadUserTurn } from "@/components/thread/thread-shell";
 import type { LiveRun, ThreadTurnProps } from "@/components/thread/thread-turn";
 import { useOnWriteScriptHook } from "@/lib/hook-test-context";
 import { runErrorCopy } from "@/lib/net/run-failure";
-import { BlockOriginContext } from "@/lib/save-provenance-context";
+import { BlockOriginContext, ThreadIdContext } from "@/lib/save-provenance-context";
 import { useOnTestScript } from "@/lib/script-test-context";
 import { scriptBrief } from "@/lib/script-utils";
 import { hasResultCard, partsOf, type AnswerPart } from "@/lib/thread-next/answer-parts";
@@ -48,6 +55,7 @@ import { sealKey } from "@/lib/threads/sim-seals";
 import { blockTypesOf, cardLinesOf, classifyTurn, type ChatTurnKind } from "@/lib/tools/chat-followups";
 import type { ScriptCardBlock } from "@/lib/tools/blocks";
 import type { BlockOrigin } from "@/components/app/home/rehydrate-thread";
+import type { TextResultAs } from "@/lib/result/text-result";
 
 import { NextAssistantTurn } from "./assistant-label";
 import { PROSE } from "./answer-card";
@@ -55,9 +63,12 @@ import type { GaugeState } from "./answer-gauge";
 import { PackSentence } from "./answer-sentence";
 import { FallbackAnswer } from "./fallback-answer";
 import { PackAnswer, type PackRow } from "./pack-answer";
+import { PackSheet } from "./pack-sheet";
 import { RemixAnswer } from "./remix-answer";
 import { ScriptAnswer } from "./script-answer";
 import { useTextSim, type TextKind, type TextSimApi } from "./text-sim";
+import { resultLinkOf, useSealKeys } from "./use-seal-keys";
+import { useOncePerBurst } from "./use-once-per-burst";
 import { videoOfTurn } from "./user-turn";
 import { VideoAnswer } from "./video-answer";
 import { WaitingRow } from "./waiting-row";
@@ -105,15 +116,34 @@ function rowOf(sim: TextSimApi | null, text: string): PackRow {
 
 // ─── The parts ───────────────────────────────────────────────────────────────
 
-function PackPart({ part }: { part: Extract<AnswerPart, { kind: "hooks" | "ideas" }> }) {
+function PackPart({ part, origins }: { part: Extract<AnswerPart, { kind: "hooks" | "ideas" }>; origins: readonly (BlockOrigin | null)[] }) {
   const sim = useTextSim();
-  const writeScript = useOnWriteScriptHook();
+  // A script costs 2 credits: a tap that lands twice must write one (`useOncePerBurst`).
+  const writeScript = useOncePerBurst(useOnWriteScriptHook());
+  const threadId = useContext(ThreadIdContext);
   const kind: TextKind = part.kind === "hooks" ? "hook" : "idea";
-  const rows: PackRow[] =
+  const as: TextResultAs = part.kind === "hooks" ? "hook" : "idea";
+  const plain: PackRow[] =
     part.kind === "hooks"
       ? part.items.map(({ block }) => rowOf(sim, block.props.hookLine))
       : part.items.map(({ block }) => ({ ...rowOf(sim, block.props.title), sub: ideaLineOf(block.props) }));
-  const texts = rows.map((r) => r.text);
+  const texts = plain.map((r) => r.text);
+  const keys = useSealKeys(texts);
+  const queue = sim?.progress(texts) ?? null;
+  // A simulated row's gauge links to its result page, once the thread and its key are known. Not while
+  // the pack's queue runs: the page is another route, leaving unmounts the queue, and the rows still
+  // waiting would never run ("Simulate all" would stop without a word).
+  const rows: PackRow[] = plain.map((r) => ({
+    ...r,
+    href: queue ? null : resultLinkOf(r.state, threadId, keys.get(r.text.trim()), as),
+  }));
+  // The row whose sheet is open (kept while it animates closed) and the button that opened it.
+  const [sheet, setSheet] = useState<{ index: number; open: boolean; trigger: HTMLElement | null } | null>(null);
+  // Every row opened so far keeps its own sheet for the life of the pack: its saved state (a live run's
+  // lives only there) and "Copied" survive a visit to another row, and a closing sheet finishes its
+  // animation while the next one opens. ("More" does not: it lives in the sheet's content, which
+  // Radix removes on close, so a reopened sheet is folded again.)
+  const [opened, setOpened] = useState<readonly number[]>([]);
 
   // What a script starts from: a hook's line and its audience tag; an idea's seed hook, else its title.
   const scriptFrom = (i: number): [string, string] | null => {
@@ -124,25 +154,43 @@ function PackPart({ part }: { part: Extract<AnswerPart, { kind: "hooks" | "ideas
     const p = part.items[i]?.block.props;
     return p ? [p.seedHook || p.title, ""] : null;
   };
+  // ONE script call for a row: the card's primary and the sheet's "Script this one" both make it.
+  const scriptRow = writeScript
+    ? (i: number) => {
+        const from = scriptFrom(i);
+        if (from) writeScript(...from);
+      }
+    : undefined;
 
   return (
     <>
       <PackAnswer
         kind={kind}
         rows={rows}
-        queue={sim?.progress(texts) ?? null}
+        queue={queue}
         onSimulate={sim ? (key) => sim.fire(key, kind) : undefined}
         onSimulateAll={sim ? () => sim.fireAll(texts.map((text) => ({ text, kind }))) : undefined}
-        onScript={
-          writeScript
-            ? (i) => {
-                const from = scriptFrom(i);
-                if (from) writeScript(...from);
-              }
-            : undefined
-        }
+        onScript={scriptRow}
+        onOpen={(index, trigger) => {
+          setOpened((o) => (o.includes(index) ? o : [...o, index]));
+          setSheet({ index, open: true, trigger });
+        }}
       />
       <PackSentence kind={kind} rows={rows} />
+      {opened.map((i) => (
+        <PackSheet
+          key={i}
+          part={part}
+          index={i}
+          origin={origins[i] ?? null}
+          open={sheet?.index === i && sheet.open}
+          // Set, never toggled, and only for this row: a close can be reported twice (the handle and the shell).
+          onOpenChange={(open) => setSheet((s) => (s?.index === i ? { ...s, open } : s))}
+          // A sheet closing while another opens hands focus to no one: the new sheet takes it.
+          returnFocus={sheet?.index === i ? sheet.trigger : null}
+          onScript={scriptRow ? () => scriptRow(i) : undefined}
+        />
+      ))}
     </>
   );
 }
@@ -155,12 +203,19 @@ function openerOf(block: ScriptCardBlock): string {
 function ScriptPart({ block }: { block: ScriptCardBlock }) {
   const sim = useTextSim();
   const testScript = useOnTestScript();
+  const threadId = useContext(ThreadIdContext);
   const { beats } = block.props;
   const opener = openerOf(block);
+  const keys = useSealKeys(opener ? [opener] : []);
+  const state = sim?.stateOf(opener) ?? EMPTY;
   return (
     <ScriptAnswer
       block={block}
-      opener={{ state: sim?.stateOf(opener) ?? EMPTY, onSimulate: sim && opener ? () => sim.fire(opener, "script") : undefined }}
+      opener={{
+        state,
+        onSimulate: sim && opener ? () => sim.fire(opener, "script") : undefined,
+        href: resultLinkOf(state, threadId, keys.get(opener.trim()), "opening"),
+      }}
       onAddTake={testScript ? () => testScript(opener, scriptBrief(beats)) : undefined}
     />
   );
@@ -168,11 +223,21 @@ function ScriptPart({ block }: { block: ScriptCardBlock }) {
 
 function RemixPart({ part }: { part: Extract<AnswerPart, { kind: "remix" }> }) {
   const sim = useTextSim();
-  const writeScript = useOnWriteScriptHook();
+  // A script costs 2 credits: a tap that lands twice must write one (`useOncePerBurst`).
+  const writeScript = useOncePerBurst(useOnWriteScriptHook());
+  const threadId = useContext(ThreadIdContext);
+  const keys = useSealKeys(part.items.map((i) => i.block.props.adaptedHook));
   return (
     <RemixAnswer
       items={part.items.map((i) => i.block)}
-      hookOf={(hook) => ({ state: sim?.stateOf(hook) ?? EMPTY, onSimulate: sim ? () => sim.fire(hook, "remix") : undefined })}
+      hookOf={(hook) => {
+        const state = sim?.stateOf(hook) ?? EMPTY;
+        return {
+          state,
+          onSimulate: sim ? () => sim.fire(hook, "remix") : undefined,
+          href: resultLinkOf(state, threadId, keys.get(hook.trim()), "hook"),
+        };
+      }}
       onScript={writeScript ? (hook) => writeScript(hook, "") : undefined}
     />
   );
@@ -214,11 +279,22 @@ function originalIndexOf(part: AnswerPart): number {
   }
 }
 
-function PartView({ part, origin, live }: { part: AnswerPart; origin: BlockOrigin | null; live: boolean }) {
+function PartView({
+  part,
+  origin,
+  origins,
+  live,
+}: {
+  part: AnswerPart;
+  origin: BlockOrigin | null;
+  /** The turn's block origins: a pack's sheet saves with its row's own. */
+  origins: readonly BlockOrigin[] | undefined;
+  live: boolean;
+}) {
   switch (part.kind) {
     case "hooks":
     case "ideas":
-      return <PackPart part={part} />;
+      return <PackPart part={part} origins={part.items.map((i) => origins?.[i.index] ?? null)} />;
     case "script":
       return <ScriptPart block={part.item.block} />;
     case "remix":
@@ -308,7 +384,7 @@ export function ThreadTurnNext({ userTurn, blocks, live, blockOrigins, showFollo
             const origin = blockOrigins?.[index] ?? null;
             return (
               <BlockOriginContext.Provider key={`${part.kind}-${index}`} value={origin}>
-                <PartView part={part} origin={origin} live={runLive} />
+                <PartView part={part} origin={origin} origins={blockOrigins} live={runLive} />
               </BlockOriginContext.Provider>
             );
           })}

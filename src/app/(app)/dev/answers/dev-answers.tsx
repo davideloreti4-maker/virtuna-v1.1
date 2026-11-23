@@ -2,19 +2,25 @@
 
 import { useEffect, useState } from "react";
 
+import { TextResultView, type TextResultState } from "@/components/result/text-result";
 import { NextAssistantTurn } from "@/components/thread-next/assistant-label";
 import type { GaugeState } from "@/components/thread-next/answer-gauge";
+import { AnswerSheet } from "@/components/thread-next/answer-sheet";
 import { PackSentence } from "@/components/thread-next/answer-sentence";
 import { FallbackAnswer } from "@/components/thread-next/fallback-answer";
 import { FollowupChips } from "@/components/thread-next/followup-chips";
 import { PackAnswer, type PackQueue, type PackRow } from "@/components/thread-next/pack-answer";
 import { RemixAnswer } from "@/components/thread-next/remix-answer";
 import { ScriptAnswer } from "@/components/thread-next/script-answer";
+import { CopyButton, SaveButton } from "@/components/thread-next/sheet-actions";
+import { HookSheetBody, IdeaSheetBody, type SheetGauge } from "@/components/thread-next/sheet-body";
 import { NextUserTurn, type UserTurnVideo } from "@/components/thread-next/user-turn";
 import { VideoAnswerView, posterOf } from "@/components/thread-next/video-answer";
 import { VideoRunning } from "@/components/thread-next/video-running";
 import {
+  HOOK_1_POPULATION,
   IDEAS_4,
+  IDEA_SHEET,
   MEAL_PREP_HOOKS,
   REMIX_CAMERA,
   SCRIPT_AI,
@@ -27,6 +33,7 @@ import {
 import middle from "@/lib/result/__tests__/fixtures/middle.json";
 import { timecode } from "@/lib/result/format";
 import { resultHref } from "@/lib/result/href";
+import { textResultOf } from "@/lib/result/text-result";
 import type { ResultRow, ResultState } from "@/lib/result/types";
 import { videoStateOf } from "@/lib/result/video-model";
 import type { ChatTurnKind } from "@/lib/tools/chat-followups";
@@ -57,7 +64,13 @@ export type DevAnswersState =
   | "p11"
   | "p11b"
   | "p13"
-  | "d3";
+  | "d3"
+  | "p7"
+  | "p7l"
+  | "p7n"
+  | "p6"
+  | "p6b"
+  | "p6i";
 export type DevAnswersSkin = "light" | "dark";
 
 const empty: GaugeState = { kind: "empty" };
@@ -66,8 +79,14 @@ const sealed = (key: string): GaugeState => {
   return value === null ? empty : { kind: "done", value };
 };
 
+/** The result page a simulated text opens here (the drawing's P7): a row's gauge and the sheet's link. */
+const RESULT_HREF = "/dev/answers?state=p7";
+
 const hookRows = (states: (key: string, i: number) => GaugeState): PackRow[] =>
-  MEAL_PREP_HOOKS.map((b, i) => ({ key: b.props.hookLine, text: b.props.hookLine, state: states(b.props.hookLine, i) }));
+  MEAL_PREP_HOOKS.map((b, i) => {
+    const state = states(b.props.hookLine, i);
+    return { key: b.props.hookLine, text: b.props.hookLine, state, href: state.kind === "done" ? RESULT_HREF : null };
+  });
 
 const ideaRows = (): PackRow[] =>
   IDEAS_4.map((b) => ({ key: b.props.title, text: b.props.title, sub: b.props.angle || b.props.take || null, state: empty }));
@@ -114,13 +133,14 @@ const emptyHook = () => ({ state: empty, onSimulate: noop });
 function packTurn(ask: string, kind: "hook" | "idea", rows: PackRow[], queue: PackQueue | null, chips: ChatTurnKind | null): DevTurn {
   return {
     ask,
-    answer: <PackAnswer kind={kind} rows={rows} queue={queue} onSimulate={noop} onSimulateAll={noop} onScript={noop} />,
+    // `onOpen`: the rows as the thread draws them since step 2, each one button with its chevron.
+    answer: <PackAnswer kind={kind} rows={rows} queue={queue} onSimulate={noop} onSimulateAll={noop} onScript={noop} onOpen={noop} />,
     sentence: <PackSentence kind={kind} rows={rows} />,
     chips,
   };
 }
 
-function turnOf(state: DevAnswersState, ctx: { frames: string | null; startedAt: number }): DevTurn {
+function turnOf(state: DevAnswersState, ctx: { frames: string | null; startedAt: number }): DevTurn | null {
   const row = recordedRow(ctx.frames);
   const firstFrame = ctx.frames ? `${ctx.frames.replace(/\/+$/, "")}/0.jpg` : null;
   const recorded = videoStateOf(row);
@@ -137,6 +157,7 @@ function turnOf(state: DevAnswersState, ctx: { frames: string | null; startedAt:
 
   switch (state) {
     case "p3":
+    case "p6b":
       return packTurn(HOOKS_ASK, "hook", hookRows(() => empty), null, "hooks");
     // Hook 1 landed (its seal), hook 2 runs, hook 3 waits its turn: "2 of 3". The drawing shows no chips here.
     case "p4":
@@ -148,8 +169,10 @@ function turnOf(state: DevAnswersState, ctx: { frames: string | null; startedAt:
         null,
       );
     case "p5":
+    case "p6":
       return packTurn(HOOKS_ASK, "hook", hookRows(sealed), null, "hooks");
     case "p12":
+    case "p6i":
       return packTurn("4 ideas for next week", "idea", ideaRows(), null, "ideas");
     case "p8":
       return {
@@ -188,7 +211,55 @@ function turnOf(state: DevAnswersState, ctx: { frames: string | null; startedAt:
       const { title, lines } = fallbackOf(accountRead());
       return { ask: "Read my account", answer: <FallbackAnswer title={title} lines={lines} />, chips: null };
     }
+    case "p7":
+    case "p7l":
+    case "p7n":
+      return null;
   }
+}
+
+/** The sheet, open when the page opens; it holds its own state, so Escape, the scrim and the handle close it. */
+function DevSheet({ title, children }: { title: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(true);
+  return (
+    <AnswerSheet open={open} onOpenChange={setOpen} title={title}>
+      {children}
+    </AnswerSheet>
+  );
+}
+
+/** The sheet open over its pack (P6): presentational, so nothing is sent, copied or saved. */
+function sheetOf(state: DevAnswersState): React.ReactNode {
+  const actions = (
+    <>
+      <CopyButton copied={false} onCopy={noop} />
+      <SaveButton saved={false} onToggle={noop} />
+    </>
+  );
+  if (state === "p6" || state === "p6b") {
+    const hook = MEAL_PREP_HOOKS[0]!.props;
+    const gauge: SheetGauge = {
+      state: state === "p6" ? sealed(hook.hookLine) : empty,
+      failed: false,
+      text: hook.hookLine,
+      href: state === "p6" ? RESULT_HREF : null,
+      onSimulate: noop,
+    };
+    return (
+      <DevSheet title={hook.hookLine}>
+        <HookSheetBody hook={hook} gauge={gauge} actions={actions} onScript={noop} />
+      </DevSheet>
+    );
+  }
+  if (state === "p6i") {
+    const idea = IDEA_SHEET.props;
+    return (
+      <DevSheet title={idea.title}>
+        <IdeaSheetBody idea={idea} gauge={{ state: empty, failed: false, text: idea.title, href: null, onSimulate: noop }} actions={actions} onScript={noop} />
+      </DevSheet>
+    );
+  }
+  return null;
 }
 
 export function DevAnswers({ state, skin, frames }: { state: DevAnswersState; skin: DevAnswersSkin; frames: string | null }) {
@@ -202,7 +273,20 @@ export function DevAnswers({ state, skin, frames }: { state: DevAnswersState; sk
   // The running card's clock, as drawn: 41 seconds in when the page opens.
   const [startedAt] = useState(() => Date.now() - 41_000);
 
-  const s = turnOf(state, { frames, startedAt });
+  if (state === "p7" || state === "p7l" || state === "p7n") {
+    const view: TextResultState =
+      state === "p7"
+        ? { kind: "result", text: MEAL_PREP_HOOKS[0]!.props.hookLine, model: textResultOf(HOOK_1_POPULATION)! }
+        : state === "p7l"
+          ? { kind: "loading" }
+          : { kind: "not-found" };
+    return (
+      <div className="min-h-full bg-background">
+        <TextResultView state={view} as="hook" onScript={noop} />
+      </div>
+    );
+  }
+  const s = turnOf(state, { frames, startedAt })!;
 
   return (
     <div className="min-h-full bg-background">
@@ -216,6 +300,7 @@ export function DevAnswers({ state, skin, frames }: { state: DevAnswersState; sk
           {s.chips && <FollowupChips followups={nextFollowups(s.chips)} onPick={noop} className="-mt-0.5" />}
         </NextAssistantTurn>
       </div>
+      {sheetOf(state)}
     </div>
   );
 }

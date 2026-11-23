@@ -1,3 +1,5 @@
+import { MavenMark } from "@/components/brand/maven-logo";
+
 /**
  * The answer's "Maven" label (new look, spec 2026-11-20 §4.4; reference
  * `.scratch/next-look/part3/design/field.html`, `.f1-who`): the small mark and the word above each
@@ -6,7 +8,8 @@
  * supersedes slice 1's "not coral": the label is one of the two places the accent is allowed
  * (spec 2026-11-21 §3 rule 3).
  *
- * Geometry as drawn: 18 tall, 13 / 18 at 560, the mark 16 square with 6 after it. Under the
+ * Geometry as drawn: 18 tall, 13 / 18 at 560, the mark with 6 after it (drawn 16 square; built 20 × 8,
+ * the brand mark's own 2.5 : 1). Under the
  * answer-system drawing the answer starts 8 under the label on a phone (`.ax-msgs` gap 12 less the
  * card's -4) and 14 from md (`.desk .thread` gap 14), and its parts (card, sentence, chips) sit 12
  * apart, 14 from md.
@@ -16,24 +19,13 @@
  * readers, so the heading's name stays the word.
  */
 
-/** The reference's mark glyph (`I.mark`): one stroke, two arches. 24 viewBox, drawn at 16. */
+/**
+ * The mark: the brand's own (`MavenMark`, the owner's pick of 2026-11-19), 8 tall and so 20 wide, in
+ * the accent. The reference drew a stand-in glyph of two arches here; beside the sidebar's real mark
+ * that read as a second logo (critic 2026-11-23).
+ */
 function MarkGlyph() {
-  return (
-    <svg
-      aria-hidden
-      width={16}
-      height={16}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2.3}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="shrink-0 text-accent"
-    >
-      <path d="M2.5 15.2C5.2 8 9.3 8 12 13.4 14.7 8 18.8 8 21.5 15.2" />
-    </svg>
-  );
+  return <MavenMark size={8} className="shrink-0 text-accent" />;
 }
 
 /** Untracked, as drawn. Inline: the app-wide `h1, h2, h3 { letter-spacing: -0.02em }` in

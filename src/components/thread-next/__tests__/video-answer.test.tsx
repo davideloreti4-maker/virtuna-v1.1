@@ -19,7 +19,7 @@ import noAudience from "@/lib/result/__tests__/fixtures/no-audience.json";
 import type { ResultRow, ResultState, VideoModel } from "@/lib/result/types";
 import { videoStateOf } from "@/lib/result/video-model";
 import { renderWithClient } from "@/test/render-with-client";
-import { MiniCurve } from "../mini-curve";
+import { MIN_BAND, MiniCurve, bandSpan } from "../mini-curve";
 import { VideoAnswer, VideoAnswerView } from "../video-answer";
 import { video } from "./fixtures/answers";
 
@@ -27,6 +27,22 @@ afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
 });
+
+/** The browser's watcher, stood in for: `onScreen` says whether a watched tile is in view. */
+function watcher(onScreen: boolean) {
+  const watched: Element[] = [];
+  class Watcher {
+    constructor(private readonly notify: (entries: Array<{ isIntersecting: boolean; target: Element }>) => void) {}
+    observe(el: Element) {
+      watched.push(el);
+      if (onScreen) this.notify([{ isIntersecting: true, target: el }]);
+    }
+    disconnect() {}
+    unobserve() {}
+  }
+  vi.stubGlobal("IntersectionObserver", Watcher);
+  return watched;
+}
 
 const ROW = middle as unknown as ResultRow;
 const resultState = (): Extract<ResultState, { kind: "result" }> => {
@@ -64,10 +80,11 @@ describe("VideoAnswerView — a finished run", () => {
     expect(cls('[data-part="dial"]')).toEqual(expect.arrayContaining(["col-start-2", "justify-self-center", "md:ml-7", "md:justify-self-start"]));
     // The sentence: under the line on a phone, beside the gauge on a desk.
     expect(cls('[data-part="say"]')).toEqual(expect.arrayContaining(["row-start-3", "md:row-start-1", "md:col-[3/4]"]));
-    // The line: the card's width × 72 on a phone, the right column's foot × 64 on a desk.
-    expect(cls('[data-part="curve-box"]')).toEqual(
-      expect.arrayContaining(["col-[1/3]", "h-[72px]", "md:col-[2/4]", "md:row-start-2", "md:h-16", "md:self-end"]),
-    );
+    // The line: the card's width × 72 on a phone, the right column's foot × 64 on a desk; its two
+    // ends are named under it, so the whole (line + ends) is what the grid places.
+    expect(cls('[data-part="curve-wrap"]')).toEqual(expect.arrayContaining(["col-[1/3]", "md:col-[2/4]", "md:row-start-2", "md:self-end"]));
+    expect(cls('[data-part="curve-box"]')).toEqual(expect.arrayContaining(["h-[72px]", "md:h-16"]));
+    expect(doc.querySelector('[data-part="curve-ends"]')?.textContent).toBe("0:000:29");
     expect(doc.querySelector('[data-part="curve"]')).not.toBeNull();
     // One tree: no second layout in the markup.
     expect(doc.querySelectorAll('[data-part="thumb"]')).toHaveLength(1);
@@ -90,15 +107,31 @@ describe("VideoAnswerView — a finished run", () => {
     expect(container.querySelector('[data-part="band"]')).toBeInTheDocument();
   });
 
-  it("shows the poster, and a plain tile when it fails", () => {
+  it("shows the poster, and the video mark when it fails: never an empty box", () => {
     const { container } = render(
       <VideoAnswerView state={resultState()} posterUrl="/frames/0.jpg" href="/simulation/fixture-middle" />,
     );
     const img = container.querySelector<HTMLImageElement>('[data-part="thumb"] img');
     expect(img).toHaveAttribute("src", "/frames/0.jpg");
+    expect(container.querySelector('[data-part="thumb"] [data-part="video-mark"]')).toBeNull();
     fireEvent.error(img!);
     expect(container.querySelector('[data-part="thumb"] img')).toBeNull();
-    expect(container.querySelector('[data-part="thumb"]')).toBeInTheDocument();
+    expect(container.querySelector('[data-part="thumb"] [data-part="video-mark"]')).toBeInTheDocument();
+  });
+
+  it("the stored video's frame stands in only when there is no picture", () => {
+    watcher(true);
+    const still = <i data-testid="still" />;
+    const withPoster = render(
+      <VideoAnswerView state={resultState()} posterUrl="/frames/0.jpg" still={still} href="/simulation/fixture-middle" />,
+    );
+    expect(withPoster.queryByTestId("still")).toBeNull();
+    fireEvent.error(withPoster.container.querySelector('[data-part="thumb"] img')!);
+    expect(withPoster.getByTestId("still")).toBeInTheDocument();
+    withPoster.unmount();
+
+    const without = render(<VideoAnswerView state={resultState()} posterUrl={null} still={still} href="/simulation/fixture-middle" />);
+    expect(without.getByTestId("still")).toBeInTheDocument();
   });
 
   it("has no axe violations", async () => {
@@ -154,6 +187,16 @@ describe("MiniCurve", () => {
     expect(d.startsWith("M0.00 3.00")).toBe(true);
   });
 
+  it("a short named scene still gets a band 12 wide, about its middle and inside the chart", () => {
+    expect(bandSpan(100, 190, 290)).toEqual({ x0: 100, x1: 190 });
+    expect(bandSpan(100, 105, 290)).toEqual({ x0: 96.5, x1: 108.5 });
+    expect(bandSpan(0, 4, 290)).toEqual({ x0: 0, x1: 12 });
+    expect(bandSpan(286, 290, 290)).toEqual({ x0: 278, x1: 290 });
+    const m = model();
+    const { container } = render(<MiniCurve points={m.audience.points} clipS={m.clipS} band={{ t0: 2, t1: 2.4 }} width={290} height={72} />);
+    expect(Number(container.querySelector('[data-part="band"]')!.getAttribute("width"))).toBeCloseTo(MIN_BAND, 1);
+  });
+
   it("without a named scene: no band and no coral", () => {
     const m = model();
     const { container } = render(<MiniCurve points={m.audience.points} clipS={m.clipS} band={null} width={290} height={72} />);
@@ -183,6 +226,65 @@ describe("VideoAnswer — the stored row behind the card", () => {
     expect(await screen.findByText("Half leave by 0:17.")).toBeInTheDocument();
     expect(screen.getByRole("img", { name: "46% watch to the end" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Open simulation" })).toHaveAttribute("href", "/simulation/fixture-middle");
+  });
+
+  it("a run with no stored frame shows its own video's first frame, signed once", async () => {
+    watcher(true);
+    const calls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        calls.push(url);
+        if (url.startsWith("/api/videos/sign")) return json({ url: "https://files.test/v.mp4?token=t" });
+        return json({ ...middle, input_mode: "video_upload", video_storage_path: "u-1/clip.mp4" });
+      }),
+    );
+    const { container } = renderWithClient(<VideoAnswer block={video("fixture-middle")} />);
+    await screen.findByText("Half leave by 0:17.");
+    await waitFor(() => expect(container.querySelector('[data-part="thumb"] video')).toBeInTheDocument());
+    const still = container.querySelector<HTMLVideoElement>('[data-part="thumb"] video')!;
+    expect(still.getAttribute("src")).toBe("https://files.test/v.mp4?token=t#t=0.1");
+    expect(still.getAttribute("preload")).toBe("metadata");
+    expect(still.muted).toBe(true);
+    expect(calls.filter((u) => u.startsWith("/api/videos/sign"))).toEqual(["/api/videos/sign?path=u-1%2Fclip.mp4"]);
+  });
+
+  it("a tile that is not on screen does not ask: no address signed, no video, the mark stays", async () => {
+    const watched = watcher(false);
+    const calls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        calls.push(url);
+        if (url.startsWith("/api/videos/sign")) return json({ url: "https://files.test/v.mp4?token=t" });
+        return json({ ...middle, input_mode: "video_upload", video_storage_path: "u-1/clip.mp4" });
+      }),
+    );
+    const { container } = renderWithClient(<VideoAnswer block={video("fixture-middle")} />);
+    await screen.findByText("Half leave by 0:17.");
+    // The tile is watched (once per mount of the card's states), and never seen.
+    expect(watched.length).toBeGreaterThan(0);
+    expect(container.querySelector('[data-part="thumb"] video')).toBeNull();
+    expect(container.querySelector('[data-part="thumb"] [data-part="video-mark"]')).toBeInTheDocument();
+    expect(calls.some((u) => u.startsWith("/api/videos/sign"))).toBe(false);
+  });
+
+  it("a run with a stored frame never asks for the file's address", async () => {
+    const calls: string[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        calls.push(url);
+        return json({ ...middle, input_mode: "video_upload", video_storage_path: "u-1/clip.mp4" });
+      }),
+    );
+    const block = video("fixture-middle");
+    const withFrame = { ...block, props: { ...block.props, filmstrip: [{ idx: 0, label: "Beat 1", atMs: 0, mark: null, keyframeUrl: "/frames/0.jpg" }] } } as typeof block;
+    const { container } = renderWithClient(<VideoAnswer block={withFrame} />);
+    await screen.findByText("Half leave by 0:17.");
+    expect(container.querySelector('[data-part="thumb"] img')).toHaveAttribute("src", "/frames/0.jpg");
+    expect(container.querySelector('[data-part="thumb"] video')).toBeNull();
+    expect(calls.some((u) => u.startsWith("/api/videos/sign"))).toBe(false);
   });
 
   it("while the row loads: the track, no number", () => {

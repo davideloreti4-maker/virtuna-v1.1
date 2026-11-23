@@ -401,6 +401,43 @@ export function population(stopPct: number): PopulationAggregate {
   return { total, stop, scroll: total - stop, stopPct, segments: [], reasons: [] };
 }
 
+/**
+ * A population with the given segments, `[archetype, share (0..1), stopPct]`, weightiest share first as
+ * stored. The whole's `stopPct` is their share-weighted mean to one decimal. `displayNames` sets a stored
+ * display name (the page must never print it).
+ */
+export function segmentsPopulation(
+  rows: readonly (readonly [string, number, number])[],
+  displayNames: Partial<Record<string, string>> = {},
+): PopulationAggregate {
+  const total = 1000;
+  const segments = rows.map(([archetype, share, stopPct]) => {
+    const n = Math.round(share * total);
+    return { archetype, displayName: displayNames[archetype] ?? archetype, share, total: n, stop: Math.round((stopPct / 100) * n), stopPct };
+  });
+  const stopPct = Math.round(rows.reduce((sum, [, share, pct]) => sum + share * pct, 0) * 10) / 10;
+  const stop = Math.round((stopPct / 100) * total);
+  return { total, stop, scroll: total - stop, stopPct, segments, reasons: [] };
+}
+
+/** Hook 1's real run as drawn (`AXGR`: share of the audience, % that would stop; weighted 30). "Quiet
+ *  Watchers" is an old era's stored display name: the page shows "Quiet watchers" (`groupName`). */
+export const HOOK_1_POPULATION: PopulationAggregate = segmentsPopulation(
+  [
+    ["loyalist", 0.18, 1],
+    ["lurker", 0.14, 52],
+    ["high_engager", 0.12, 6],
+    ["sharer", 0.12, 36],
+    ["tough_crowd", 0.09, 27],
+    ["saver", 0.09, 100],
+    ["cross_niche_curiosity", 0.08, 38],
+    ["purposeful_viewer", 0.06, 5],
+    ["niche_deep_buyer", 0.06, 3],
+    ["niche_deep_scout", 0.06, 42],
+  ],
+  { lurker: "Quiet Watchers" },
+);
+
 // ─── The drawing's content ───────────────────────────────────────────────────
 
 const HOOK_1 = "I spent $40 on meal prep and it tasted like regret. Here is the $5 version that actually keeps me alive during finals.";
@@ -413,7 +450,7 @@ export const MEAL_PREP_HOOKS: readonly HookCardBlock[] = [
     rank: 1,
     mechanism: "It breaks the idea that meal prep means expensive wellness culture.",
     visualHook: { technique: "Cold open", onScreen: "Sad grey food next to textbooks" },
-    proof: proof({ handle: "dij.arc", coverUrl: "/covers/c8.jpg", multiplier: 50.2, baselineLabel: "their followers", views: 21000 }),
+    proof: proof({ handle: "dij.arc", coverUrl: "/covers/c8.jpg", videoUrl: "/clips/dij-arc", multiplier: 50.2, baselineLabel: "their followers", views: 21000 }),
   }),
   hook(HOOK_2, { rank: 2 }),
   hook(HOOK_3, { rank: 3 }),
@@ -426,6 +463,14 @@ export const IDEAS_4: readonly IdeaCardBlock[] = [
   idea("Your To-Do List Is a Mood Board", "Writing a task down is not doing it."),
   idea("Rest Is Part of the Work", "A burnout week costs more."),
 ];
+
+/** An idea opened (P12's second idea, with a take, a why and a format to show; invented). */
+export const IDEA_SHEET: IdeaCardBlock = idea("The Two-Hour Study Lie", "Short sessions stick better.", {
+  take: "Long study blocks feel productive, but most of the second hour is gone by the next morning. Three short sessions beat one long one.",
+  whyItFits: "Your audience saves study advice that admits a habit was wrong. They comment when a routine they keep gets questioned.",
+  format: "Talking head with an on-screen timer",
+  seedHook: "I studied two hours a day for a month. Here is how much I remembered.",
+});
 
 const SCRIPT_OPENING = "I fed 10 million viral videos into an AI to simulate your exact audience.";
 

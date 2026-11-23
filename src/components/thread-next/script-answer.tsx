@@ -1,22 +1,36 @@
 "use client";
 
+import { IconButton } from "@/components/ui/icon-button";
 import type { ScriptCardBlock } from "@/lib/tools/blocks";
 import { clockLabel, timingEnd, timingStart } from "@/lib/thread-next/beat-timing";
 import { cn } from "@/lib/utils";
 
 import { AnswerCard, AnswerFoot, AnswerPrimary, CardHeader, PROSE, keepHyphens } from "./answer-card";
 import { GaugeSlot, type GaugeState } from "./answer-gauge";
-import { UploadIcon } from "./answer-icons";
+import { CheckIcon, CopyIcon, UploadIcon } from "./answer-icons";
+import { useCopyText } from "./sheet-actions";
+
+/** The script as plain text: each beat's words, a blank line between beats, no times. */
+export function scriptText(beats: readonly { content: string }[]): string {
+  return beats
+    .map((beat) => beat.content.trim())
+    .filter((content) => content.length > 0)
+    .join("\n\n");
+}
 
 /**
  * The script card (spec §4.3; drawing `.scratch/next-look/part3/answers/answers.html`, `axScript`,
  * `.tq-beat`, `.ax-b0`, `.ax-slot`): one card, the beats on a time rail.
  *
- * - Header "Script" and, when the last beat's timing has an end, the total ("0:24").
+ * - Header "Script" and, when the last beat's timing has an end, the total ("0:24"), then Copy: the
+ *   whole script as plain text, a blank line between beats, no times (`scriptText`). The script is
+ *   what the creator takes away; without Copy the only way out was selecting it by hand (review
+ *   2026-11-23). The icon is a check for a moment after, and "Copied" is announced.
  * - A beat: its start ("0:03") when its timing parses, else no time; the rail; its `content`.
  * - Under the opening beat the slot "Simulate the opening" · "1 credit" (`GaugeSlot`): the text it
  *   simulates is `openingBeatSeed`, else the first beat's content (the text today's door fires and
- *   looks its seal up by). Simulated: the gauge with its number and "would stop to watch".
+ *   looks its seal up by). Simulated: the gauge with its number and "would stop to watch", a link to
+ *   its result page once the thread and its key are known (step 2, `opener.href`).
  * - The one primary "Add your take" (upload icon, free, the arrow).
  *
  * Geometry as drawn: rows 2 / 2 on a 28 · 3 · 1fr grid 10 apart; the time 12 / 21 in the muted ink
@@ -29,19 +43,37 @@ export function ScriptAnswer({
   onAddTake,
 }: {
   block: ScriptCardBlock;
-  opener: { state: GaugeState; onSimulate?: () => void };
+  /** The opening's gauge; `href`, its result page once simulated and its key is known (step 2). */
+  opener: { state: GaugeState; onSimulate?: () => void; href?: string | null };
   onAddTake?: () => void;
 }) {
   const { beats, openingBeatSeed } = block.props;
   const last = beats[beats.length - 1];
   const end = last ? timingEnd(last.timing) : null;
   const openingText = openingBeatSeed || beats[0]?.content || "";
+  const text = scriptText(beats);
+  const { copied, copy } = useCopyText(text);
 
   return (
     <AnswerCard>
       <CardHeader
         left={<b className="block text-reading font-[640] leading-[21px] text-foreground">Script</b>}
-        right={end !== null ? clockLabel(end) : undefined}
+        right={
+          <span className="flex items-center gap-1.5">
+            {end !== null ? clockLabel(end) : null}
+            {text.length > 0 && (
+              <>
+                {/* 32 on a 21 line: the negative margins keep the header's height as drawn. */}
+                <IconButton surface="quiet" aria-label="Copy script" onClick={copy} className="-my-1.5 -mr-1.5 h-8 w-8">
+                  {copied ? <CheckIcon aria-hidden data-part="copied-mark" /> : <CopyIcon aria-hidden />}
+                </IconButton>
+                <span role="status" className="sr-only">
+                  {copied ? "Copied" : ""}
+                </span>
+              </>
+            )}
+          </span>
+        }
       />
       <ol className="m-0 list-none p-0">
         {beats.map((beat, i) => {
@@ -62,6 +94,7 @@ export function ScriptAnswer({
                     label="Simulate the opening"
                     text={openingText}
                     onSimulate={opener.onSimulate}
+                    href={opener.href ?? null}
                     className="mb-1"
                   />
                 )}

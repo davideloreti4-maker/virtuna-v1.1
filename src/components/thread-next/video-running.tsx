@@ -18,7 +18,10 @@ import { VideoThumb, bigArc } from "./video-answer";
  * - The staged file's thumbnail (`useVideoMeta`), a plain tile until the browser has drawn it.
  * - In the gauge's place, its track as dots (28 along the arc, the ink at 22%) and a clock counting
  *   from the moment the card appeared (or `startedAt`): "0:41". Under it "uploading" until the run
- *   has an id, then "running". Only the label is a live region; the clock ticks silently.
+ *   has an id, then what to expect: "of about a minute" (a run takes 45 to 90 seconds, measured
+ *   2026-11-19/20), and "taking longer" past 90 seconds (`runLabel`). A clock that only counts up
+ *   gave the wait no end (review 2026-11-23). Only the label is a live region; the clock ticks
+ *   silently.
  * - The one primary "Watch it run" (play icon, free, the arrow) opens the run's page once the run
  *   has an id; before that there is none.
  *
@@ -31,6 +34,16 @@ import { VideoThumb, bigArc } from "./video-answer";
 
 const SIZE = 140;
 const DOTS = 28;
+
+/** A run usually lands inside this many seconds (45 to 90 measured). */
+const USUAL_RUN_S = 90;
+
+/** Under the clock: what is happening, then what to expect. */
+function runLabel(running: boolean, elapsedS: number): string {
+  if (!running) return "uploading";
+  // "of": the clock above counts up, so the line reads "0:44 of about a minute", never as time left.
+  return elapsedS <= USUAL_RUN_S ? "of about a minute" : "taking longer";
+}
 
 /** Inter's ascent and content area per em: where a line's baseline sits. */
 const ASCENT = 0.96875;
@@ -99,6 +112,11 @@ export function VideoRunning({
     return () => clearInterval(id);
   }, []);
   const { thumbnail } = useVideoMeta(file);
+  // The run's own start: the moment its id arrived (a card that mounts with an id counts from its
+  // start). "taking longer" is about the run, so a slow upload before it does not count against it.
+  const [runStart, setRunStart] = useState<number | null>(() => (analysisId ? start : null));
+  if (analysisId && runStart === null) setRunStart(now);
+  const runElapsedS = runStart === null ? 0 : (now - runStart) / 1000;
 
   return (
     <AnswerCard>
@@ -107,7 +125,7 @@ export function VideoRunning({
         {/* Desktop: the dial sits where the done card's gauge lands (the start of the right column),
             so the result does not jump sideways (Task 7 critic). Phone: centred, as drawn (P8). */}
         <div className="flex min-w-0 flex-1 justify-center md:justify-start">
-          <RunDial clock={clockLabel((now - start) / 1000)} label={analysisId ? "running" : "uploading"} />
+          <RunDial clock={clockLabel((now - start) / 1000)} label={runLabel(!!analysisId, runElapsedS)} />
         </div>
       </div>
       {analysisId && (

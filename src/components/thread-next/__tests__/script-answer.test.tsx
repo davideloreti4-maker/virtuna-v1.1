@@ -7,13 +7,13 @@
  */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { axe } from "vitest-axe";
 
 vi.mock("@/lib/flags/new-look", () => ({ NEW_LOOK_ENABLED: true }));
 
 import type { GaugeState } from "../answer-gauge";
-import { ScriptAnswer } from "../script-answer";
+import { ScriptAnswer, scriptText } from "../script-answer";
 import { SCRIPT_AI, script } from "./fixtures/answers";
 
 afterEach(cleanup);
@@ -82,6 +82,39 @@ describe("ScriptAnswer", () => {
     expect(screen.queryByRole("button", { name: /Simulate the opening/ })).toBeNull();
   });
 
+  it("Copy takes the whole script as plain text, a blank line between beats, no times; a check and 'Copied' for a moment", async () => {
+    const writeText = vi.fn(async (_text: string) => {});
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    try {
+      render(<ScriptAnswer block={SCRIPT_AI} opener={{ state: empty }} />);
+      const button = screen.getByRole("button", { name: "Copy script" });
+      expect(document.querySelector('[data-part="copied-mark"]')).toBeNull();
+      await act(async () => {
+        fireEvent.click(button);
+      });
+      expect(writeText).toHaveBeenCalledTimes(1);
+      const copied = writeText.mock.calls[0]![0];
+      expect(copied).toBe(scriptText(SCRIPT_AI.props.beats));
+      expect(copied.split("\n\n")).toHaveLength(5);
+      expect(copied.startsWith("I fed 10 million viral videos into an AI to simulate your exact audience.")).toBe(true);
+      expect(copied).not.toMatch(/0:0\d/);
+      expect(screen.getByRole("status")).toHaveTextContent("Copied");
+      expect(document.querySelector('[data-part="copied-mark"]')).toBeInTheDocument();
+    } finally {
+      Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true });
+    }
+  });
+
+  it("scriptText drops empty beats and trims each", () => {
+    expect(scriptText([{ content: "  One. " }, { content: "   " }, { content: "Two." }])).toBe("One.\n\nTwo.");
+    expect(scriptText([])).toBe("");
+  });
+
+  it("a script with no words has no Copy", () => {
+    render(<ScriptAnswer block={script([{ content: "  ", timing: "0-3s" }])} opener={{ state: empty }} />);
+    expect(screen.queryByRole("button", { name: "Copy script" })).toBeNull();
+  });
+
   it("'Add your take' is free and calls onAddTake", () => {
     const onAddTake = vi.fn();
     render(<ScriptAnswer block={SCRIPT_AI} opener={{ state: empty }} onAddTake={onAddTake} />);
@@ -97,5 +130,10 @@ describe("ScriptAnswer", () => {
     );
     // @ts-expect-error -- vitest-axe matcher type augmentation not picked up
     expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("a simulated opening with its page links there (step 2)", () => {
+    render(<ScriptAnswer block={SCRIPT_AI} opener={{ state: { kind: "done", value: 41 }, href: "/simulation/hook/t/k?as=opening" }} />);
+    expect(screen.getByRole("link", { name: /^Open the result: / })).toHaveAttribute("href", "/simulation/hook/t/k?as=opening");
   });
 });

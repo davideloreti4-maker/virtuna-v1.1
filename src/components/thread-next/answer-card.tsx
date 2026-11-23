@@ -103,8 +103,17 @@ export function creditsLabel(n: number): string {
   return `${n} credit${n === 1 ? "" : "s"}`;
 }
 
-/** Drawn `padding: 0 10px 0 18px`; with an arrow `0 16px 0 18px` (`CTA1`, `CTA2`). */
-const PRIMARY = "w-full justify-between gap-3 px-0 pl-[18px] tracking-[-0.014em]";
+/**
+ * Drawn `padding: 0 10px 0 18px`; with an arrow `0 16px 0 18px` (`CTA1`, `CTA2`).
+ *
+ * The card's full width on a phone, as drawn. In a thread card from md the button is as wide as its
+ * content (248 at least) and sits at the card's start: a bar across a 720 card is the phone's
+ * button stretched, and the label ended up 500 px from its price (review 2026-11-23; the drawing's
+ * desktop cards show the bar). Only inside an `AnswerCard` (`data-answer="card"`): the sheet's and
+ * the result page's primary keep their card's width.
+ */
+const PRIMARY =
+  "w-full justify-between gap-3 px-0 pl-[18px] tracking-[-0.014em] md:[[data-answer=card]_&]:w-auto md:[[data-answer=card]_&]:min-w-[248px]";
 
 /**
  * The card's one primary (`cta()`). A price makes it paid ("2 credits" in the `em`); a free one may

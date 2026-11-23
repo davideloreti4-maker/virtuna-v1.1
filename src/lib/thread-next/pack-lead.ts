@@ -4,7 +4,8 @@
  *
  * "Best" only when EVERY row is simulated and the leader is at least 10 points ahead of the
  * second. The sentence is computed from the numbers; the app has no source for a reason, so none
- * is written.
+ * is written. It always says who is ahead and by how much (review 2026-11-23: "No clear winner."
+ * left the creator with nothing after paying for the runs, while the button still named a row).
  *
  * Pure: no React.
  */
@@ -46,9 +47,16 @@ export function leadOf(values: readonly (number | null)[]): Lead {
   return { allDone, top, best: lead >= BEST_MARGIN ? top : null, lead };
 }
 
-/** "Hook 3 leads by 15 points." / "No clear winner." — null until every row (of 2 or more) is done. */
+/**
+ * The sentence under a pack, null until every row (of 2 or more) is done:
+ * - a clear lead (10 or more): "Hook 3 leads by 15 points."
+ * - a small lead: "It's close. Hook 1 is ahead by 7 points." (the row the primary scripts)
+ * - the top two level: "It's a tie."
+ */
 export function leadSentence(kind: "hook" | "idea", l: Lead): string | null {
-  if (!l.allDone || l.lead === null) return null;
-  if (l.best === null) return "No clear winner.";
-  return `${kind === "hook" ? "Hook" : "Idea"} ${l.best + 1} leads by ${l.lead} points.`;
+  if (!l.allDone || l.lead === null || l.top === null) return null;
+  const noun = kind === "hook" ? "Hook" : "Idea";
+  if (l.best !== null) return `${noun} ${l.best + 1} leads by ${l.lead} points.`;
+  if (l.lead === 0) return "It's a tie.";
+  return `It's close. ${noun} ${l.top + 1} is ahead by ${l.lead} ${l.lead === 1 ? "point" : "points"}.`;
 }

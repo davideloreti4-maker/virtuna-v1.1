@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useId } from "react";
 
 import { circles } from "@/components/result/audience-ring";
@@ -9,6 +10,7 @@ import { ringDots, type RingLayout } from "@/lib/result/ring-layout";
 import { cn } from "@/lib/utils";
 
 import { creditsLabel } from "./answer-card";
+import { ChevronIcon } from "./field-icons";
 
 /**
  * The small gauge (spec §3 rule 4; drawing `.scratch/next-look/part3/answers/answers.html`, `mg()`
@@ -20,7 +22,10 @@ import { creditsLabel } from "./answer-card";
  * - waiting: the track alone, dimmed. Queued behind another run; not a control.
  * - running: the audience ring in small, half lit (`rl(s, 52)`), turning slowly. Not with reduced
  *   motion: then it stands still.
- * - done: the ink arc and the number, "would stop to watch". Not a link in step 1.
+ * - done: the ink arc and the number, "would stop to watch". With its result page (`href`, step 2) it
+ *   is ONE link around the same picture, named "Open the result: <text>" and described by the number
+ *   (the name replaces the content, so the number is read as the description). Without one, not a
+ *   control.
  *
  * Geometry as drawn, for any size (46 in a pack row, 30 in a script or remix slot): a 270° arc
  * from 135°, stroke 9.8% of the size, 1.5 inside the box; no tick (no "usual"). The track is
@@ -42,9 +47,14 @@ const NAME_CHARS = 60;
 const ASCENT = 0.96875;
 const CONTENT = 1.2109;
 
-function clip(text: string): string {
+export function clipName(text: string): string {
   const t = text.trim().replace(/\s+/g, " ");
   return t.length <= NAME_CHARS ? t : `${t.slice(0, NAME_CHARS - 1).trimEnd()}…`;
+}
+
+/** A simulated text's number in words: the done gauge's name, and a result link's description. */
+export function stopWords(value: number): string {
+  return `${Math.round(value)}% would stop to watch`;
 }
 
 /** An arc on a circle, clockwise from `a0` to `a1` degrees (0° points right). The drawing's `arcP`. */
@@ -156,13 +166,17 @@ export function SmallGauge({
   size = 46,
   label,
   onSimulate,
+  href,
 }: {
   state: GaugeState;
   size?: number;
-  /** The text the gauge simulates: it names the empty gauge's button. */
+  /** The text the gauge simulates: it names the empty gauge's button (and a done gauge's link). */
   label: string;
   onSimulate?: () => void;
+  /** A simulated gauge's result page (step 2): the gauge becomes a link to it. */
+  href?: string | null;
 }) {
+  const numberId = useId();
   const box = { width: size, height: size };
 
   if (state.kind === "running") {
@@ -179,42 +193,57 @@ export function SmallGauge({
     const fill = Math.max(0, Math.min(100, value));
     const fontSize = Math.round(size * 0.31);
     const baseline = m + (ASCENT - CONTENT / 2) * fontSize;
+    const picture = (
+      <svg aria-hidden width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="block overflow-visible">
+        <Track size={size} />
+        {fill > 0 && (
+          <path
+            data-part="value"
+            d={d}
+            pathLength={100}
+            fill="none"
+            stroke="var(--color-foreground)"
+            strokeWidth={stroke}
+            strokeLinecap="round"
+            strokeDasharray={`${fill} 100`}
+          />
+        )}
+        <text
+          x={m}
+          y={baseline.toFixed(2)}
+          textAnchor="middle"
+          fontSize={fontSize}
+          fontWeight={700}
+          letterSpacing="-0.03em"
+          fill="var(--color-foreground)"
+          className="tabular-nums"
+        >
+          {value}
+        </text>
+      </svg>
+    );
+    if (href) {
+      // `pointer-events-auto`: a pack's gauge column passes every other tap through to its row.
+      return (
+        <Link
+          href={href}
+          data-gauge="done"
+          data-value={value}
+          aria-label={`Open the result: ${clipName(label)}`}
+          aria-describedby={numberId}
+          className="tap-44 pointer-events-auto relative block shrink-0 rounded-full"
+          style={box}
+        >
+          {picture}
+          <span id={numberId} className="sr-only">
+            {stopWords(value)}
+          </span>
+        </Link>
+      );
+    }
     return (
-      <span
-        role="img"
-        aria-label={`${value}% would stop to watch`}
-        data-gauge="done"
-        data-value={value}
-        className="relative block shrink-0"
-        style={box}
-      >
-        <svg aria-hidden width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="block overflow-visible">
-          <Track size={size} />
-          {fill > 0 && (
-            <path
-              data-part="value"
-              d={d}
-              pathLength={100}
-              fill="none"
-              stroke="var(--color-foreground)"
-              strokeWidth={stroke}
-              strokeLinecap="round"
-              strokeDasharray={`${fill} 100`}
-            />
-          )}
-          <text
-            x={m}
-            y={baseline.toFixed(2)}
-            textAnchor="middle"
-            fontSize={fontSize}
-            fontWeight={700}
-            letterSpacing="-0.03em"
-            fill="var(--color-foreground)"
-            className="tabular-nums"
-          >
-            {value}
-          </text>
-        </svg>
+      <span role="img" aria-label={stopWords(value)} data-gauge="done" data-value={value} className="relative block shrink-0" style={box}>
+        {picture}
       </span>
     );
   }
@@ -235,10 +264,10 @@ export function SmallGauge({
     <button
       type="button"
       data-gauge="empty"
-      aria-label={`Simulate: ${clip(label)}`}
+      aria-label={`Simulate: ${clipName(label)}`}
       disabled={!onSimulate}
       onClick={onSimulate}
-      className="tap-44 relative block shrink-0 cursor-pointer rounded-full text-foreground-muted transition-[color,scale] duration-150 hover:text-foreground motion-safe:active:scale-[0.96] disabled:cursor-default disabled:hover:text-foreground-muted"
+      className="tap-44 pointer-events-auto relative block shrink-0 cursor-pointer rounded-full text-foreground-muted transition-[color,scale] duration-150 hover:text-foreground motion-safe:active:scale-[0.96] disabled:cursor-default disabled:hover:text-foreground-muted"
       style={box}
     >
       <EmptyArt size={size} />
@@ -247,7 +276,7 @@ export function SmallGauge({
 }
 
 /** The empty gauge's picture: the track and the pulse glyph, 15 in a 46 gauge and 12 in a 30 slot, as drawn. */
-function EmptyArt({ size }: { size: number }) {
+export function EmptyArt({ size }: { size: number }) {
   return (
     <>
       <svg aria-hidden width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="block overflow-visible">
@@ -276,7 +305,10 @@ const SLOT_CAPTION: Record<Exclude<GaugeState["kind"], "empty">, string> = {
  *   "<label>: <the text it simulates>" (cut to 60 characters, as the gauge is), the price as its
  *   description.
  * - running / waiting / done: the small gauge at 30 (the ring, the dimmed track, the number) and
- *   "Simulating", "Waiting" or "would stop to watch". Not a control.
+ *   "Simulating", "Waiting" or "would stop to watch". Not a control, except (step 2) a simulated slot
+ *   with its result page (`href`): then ONE link, "would stop to watch" and a chevron, named
+ *   "Open the result: <the text>" and described by the number. No `href` (its key not known yet): the
+ *   words alone, never a dead link.
  *
  * Geometry as drawn: 40 tall, 9 between the gauge and the text, 13 / 570 (drawn 13.5), the price
  * 500 in the muted ink. Margins are the caller's (`className`).
@@ -286,6 +318,7 @@ export function GaugeSlot({
   label,
   text,
   onSimulate,
+  href,
   className,
 }: {
   state: GaugeState;
@@ -294,12 +327,33 @@ export function GaugeSlot({
   /** The text the slot simulates. */
   text: string;
   onSimulate?: () => void;
+  /** A simulated slot's result page (step 2): the caption becomes a link. */
+  href?: string | null;
   className?: string;
 }) {
   const priceId = useId();
+  const numberId = useId();
   const row = "flex h-10 items-center gap-[9px] text-meta font-[570] text-foreground";
 
   if (state.kind !== "empty") {
+    if (state.kind === "done" && href) {
+      return (
+        <Link
+          href={href}
+          data-slot="done"
+          aria-label={`Open the result: ${clipName(text)}`}
+          aria-describedby={numberId}
+          className={cn(row, "tap-44 -mx-1.5 rounded-xl px-1.5", className)}
+        >
+          <SmallGauge state={state} size={30} label={text} />
+          <span>{SLOT_CAPTION.done}</span>
+          <ChevronIcon size={14} strokeWidth={2.1} aria-hidden className="-ml-1 shrink-0 text-foreground-muted" />
+          <span id={numberId} className="sr-only">
+            {stopWords(state.value)}
+          </span>
+        </Link>
+      );
+    }
     return (
       <div data-slot={state.kind} className={cn(row, className)}>
         <SmallGauge state={state} size={30} label={text} />
@@ -312,12 +366,18 @@ export function GaugeSlot({
     <button
       type="button"
       data-slot="empty"
-      aria-label={`${label}: ${clip(text)}`}
+      aria-label={`${label}: ${clipName(text)}`}
       aria-describedby={priceId}
       disabled={!onSimulate}
       onClick={onSimulate}
-      // -mx/px: the focus ring gets 6 of room on either side; the gauge and text stay where drawn.
-      className={cn(row, "tap-44 group -mx-1.5 cursor-pointer rounded-xl px-1.5 text-left disabled:cursor-default", className)}
+      // A pill with the next-step chips' outline (the ink at 16%, inside): the control that spends a
+      // credit read as a caption when it was a ring and a line of text (critic 2026-11-23). The gauge
+      // sits 5 in, concentric with the pill's cap; the pill is as wide as its words.
+      className={cn(
+        row,
+        "tap-44 group w-fit cursor-pointer rounded-full pl-[5px] pr-3.5 text-left inset-ring inset-ring-foreground/16 transition-colors duration-150 hover:bg-surface-sunken disabled:cursor-default disabled:hover:bg-transparent",
+        className,
+      )}
     >
       <span
         aria-hidden

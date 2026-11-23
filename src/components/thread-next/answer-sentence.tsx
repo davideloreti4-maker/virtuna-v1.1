@@ -5,7 +5,7 @@ import type { PackRow } from "./pack-answer";
 /**
  * The one sentence under a hook or idea pack (spec 2026-11-21 §3 rule 6; drawing
  * `.scratch/next-look/part3/answers/answers.html`, `axLine`): computed from the rows' numbers,
- * "Hook 3 leads by 15 points." or "No clear winner.", and nothing until every row (of 2 or more)
+ * "Hook 3 leads by 15 points.", "It's close. Hook 1 is ahead by 7 points." or "It's a tie.", and nothing until every row (of 2 or more)
  * has one (`leadSentence`). The app has no source for a reason, so none is written.
  *
  * Drawn 15.5 / 22 in the ink: 15 / 22 here (the type roles have no half pixel), in proportional

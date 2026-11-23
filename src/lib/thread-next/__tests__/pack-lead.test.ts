@@ -30,11 +30,13 @@ describe("leadSentence", () => {
   it("writes the sentence", () => {
     expect(leadSentence("hook", leadOf([30, 22, 45]))).toBe("Hook 3 leads by 15 points.");
     expect(leadSentence("idea", leadOf([50, 30]))).toBe("Idea 1 leads by 20 points.");
-    expect(leadSentence("hook", leadOf([30, 22, 38]))).toBe("No clear winner.");
+    expect(leadSentence("hook", leadOf([30, 22, 38]))).toBe("It's close. Hook 3 is ahead by 8 points.");
+    expect(leadSentence("idea", leadOf([41, 40]))).toBe("It's close. Idea 1 is ahead by 1 point.");
     expect(leadSentence("hook", leadOf([30, null]))).toBeNull();
     expect(leadSentence("hook", leadOf([30]))).toBeNull();
   });
-  it("a tie is no clear winner", () => {
-    expect(leadSentence("idea", leadOf([40, 40]))).toBe("No clear winner.");
+  it("the top two level is a tie", () => {
+    expect(leadSentence("idea", leadOf([40, 40]))).toBe("It's a tie.");
+    expect(leadSentence("hook", leadOf([12, 40, 40]))).toBe("It's a tie.");
   });
 });

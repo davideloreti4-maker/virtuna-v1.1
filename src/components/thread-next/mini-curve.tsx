@@ -57,6 +57,17 @@ function monotonePath(xs: readonly number[], ys: readonly number[]): string {
   return p;
 }
 
+/** The named scene's band is never thinner than this: a 3-second scene of a minute-long clip was a 5 px sliver. */
+export const MIN_BAND = 12;
+
+/** The band's edges: the scene's own, widened about its middle to `MIN_BAND` and kept inside the chart. */
+export function bandSpan(x0: number, x1: number, width: number): { x0: number; x1: number } {
+  if (x1 - x0 >= MIN_BAND || width <= MIN_BAND) return { x0, x1 };
+  const mid = (x0 + x1) / 2;
+  const start = Math.max(0, Math.min(width - MIN_BAND, mid - MIN_BAND / 2));
+  return { x0: start, x1: start + MIN_BAND };
+}
+
 export function MiniCurve({
   points,
   clipS,
@@ -85,7 +96,7 @@ export function MiniCurve({
   const base = height - 1;
   // Scene borders: every point but the first (0:00) and the last (the end of the clip).
   const ticks = points.slice(1, -1).map(([t]) => x(t));
-  const b = band && band.t1 > band.t0 ? { x0: x(band.t0), x1: x(band.t1) } : null;
+  const b = band && band.t1 > band.t0 ? bandSpan(x(band.t0), x(band.t1), width) : null;
 
   return (
     <svg

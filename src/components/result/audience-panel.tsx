@@ -11,6 +11,7 @@ import type { GroupRow, GroupStatus, VideoModel } from "@/lib/result/types";
 import { cn } from "@/lib/utils";
 import { AudienceRing } from "./audience-ring";
 import { usePlayhead } from "./playhead";
+import { STAGE } from "./stage";
 
 /**
  * The Audience panel (spec §5 "Audience"; the mock's `lens`, RUN branches, with `rrows`). The ring
@@ -29,11 +30,6 @@ const PHONE_RING = { r1: 74, R: 158 } as const;
 const DESKTOP_RING = { r1: 56, R: 124 } as const;
 /** The app's phone / desktop line (`useIsMobile`). */
 const DESKTOP_MIN = 768;
-
-/** The mock's `--stage`: a soft light in the middle of the card, from the theme's surfaces. */
-const STAGE =
-  "bg-[radial-gradient(90%_80%_at_50%_40%,var(--color-surface)_0%,color-mix(in_srgb,var(--color-surface-elevated)_50%,var(--color-surface))_100%)] " +
-  "dark:bg-[radial-gradient(80%_70%_at_50%_42%,color-mix(in_srgb,var(--color-surface-elevated)_55%,var(--color-surface))_0%,var(--color-surface)_100%)]";
 
 /**
  * The layout for the panel's width, measured before the first paint and followed as it changes.
