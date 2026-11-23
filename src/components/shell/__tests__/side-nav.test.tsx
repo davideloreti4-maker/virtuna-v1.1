@@ -43,9 +43,11 @@ vi.mock('@/hooks/queries/use-profile', () => ({
   useProfile: () => ({ data: profile }),
 }));
 
-let usage: { remaining: number | null } | null = null;
+let usage: { remaining: number | null; limit: number | null } | null = null;
+let tier = 'starter';
+let isTrial = false;
 vi.mock('@/hooks/use-subscription', () => ({
-  useSubscription: () => ({ usage }),
+  useSubscription: () => ({ usage, tier, isTrial }),
 }));
 
 const signOut = vi.fn();
@@ -92,6 +94,8 @@ beforeEach(() => {
   setWidth(1440);
   pathname = '/home';
   usage = null;
+  tier = 'starter';
+  isTrial = false;
   profile = { name: 'Nia Test', email: 'nia@example.com', avatar: null };
   threads = [
     row('t1', null),
@@ -362,15 +366,38 @@ describe('SideNav — a narrow window starts as the rail, and that is not a choi
 
 describe('SideNav — the account', () => {
   it('shows the name, and the balance only when the account has one', () => {
-    usage = { remaining: 3 };
+    usage = { remaining: 3, limit: 500 };
     const { unmount } = renderNav();
     expect(screen.getByText('Nia Test')).toBeInTheDocument();
-    expect(screen.getByText('3 left')).toBeInTheDocument();
+    // Final fix A4: the phone's words and the approved drawing's, not "3 left".
+    expect(screen.getByText('3 credits')).toBeInTheDocument();
     unmount();
 
-    usage = { remaining: null }; // unlimited
+    usage = { remaining: null, limit: null }; // unlimited
     renderNav();
+    expect(screen.queryByText(/credits?$/)).toBeNull();
+  });
+
+  it('one credit reads "1 credit"', () => {
+    usage = { remaining: 1, limit: 500 };
+    renderNav();
+    expect(screen.getByText('1 credit')).toBeInTheDocument();
+  });
+
+  it('no plan (free, not in a trial): no tag, the number is not a balance there (A4)', () => {
+    tier = 'free';
+    usage = { remaining: 0, limit: 0 };
+    renderNav();
+    expect(screen.queryByText(/credits?$/)).toBeNull();
     expect(screen.queryByText(/left$/)).toBeNull();
+  });
+
+  it('a trial pool shows what is left of it', () => {
+    tier = 'free';
+    isTrial = true;
+    usage = { remaining: 4, limit: 5 };
+    renderNav();
+    expect(screen.getByText('4 credits')).toBeInTheDocument();
   });
 
   it('names the account button after the account, and falls back to the email for a blank name', () => {

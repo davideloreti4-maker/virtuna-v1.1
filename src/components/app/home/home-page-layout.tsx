@@ -12,13 +12,14 @@
  *     the form stays pinned at the bottom (homeThreadMode branch in composer.tsx).
  */
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { HomeGreeting } from "./home-greeting";
 import { AMBIENT_V2_ENABLED } from "@/lib/flags/ambient-v2";
 import { CONCEPT_V8_ENABLED } from "@/lib/flags/concept-v8";
 import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
+import { opensIntoThread } from "@/lib/threads/opens-into-thread";
 import { useShellStore } from "@/stores/shell-store";
 import { Composer } from "./composer";
 
@@ -46,7 +47,10 @@ export function HomePageLayout() {
   // A1: true while the composer rehydrates a switched-to thread. Keeps the thread
   // shell mounted + suppresses the welcome hero across the load gap (so the layout
   // never collapses to the centered serif hero between threads).
-  const [rehydrating, setRehydrating] = useState(false);
+  // New look (Home plan 2026-11-23): the composer's first load counts from the first render,
+  // with the composer's own first value (`opensIntoThread`), so a reload into a chat is thread mode
+  // before the composer reports it. Flag off: false, as before.
+  const [rehydrating, setRehydrating] = useState(opensIntoThread);
   // P2 (A2a): the desktop right-rail portal host. A ref-callback into state (not a raw ref) so the
   // Composer re-renders once the aside mounts and can portal its room in. Only rendered ≥xl in
   // thread mode; null otherwise ⇒ the composer keeps the room in its dock.
@@ -99,7 +103,9 @@ export function HomePageLayout() {
   const threadMode = hasThread || rehydrating || engaged;
   // The new app shell hides the phone tab bar while a thread is open. It cannot see this
   // component's state, so the fact is published. Nothing reads it while NEXT_PUBLIC_NEW_LOOK is off.
-  useEffect(() => {
+  // A layout effect (Home plan 2026-11-23): published before the first paint, so a reload
+  // into a chat never shows the tab bar for a frame.
+  useLayoutEffect(() => {
     useShellStore.getState().setThreadOpen(threadMode);
     return () => useShellStore.getState().setThreadOpen(false);
   }, [threadMode]);
@@ -122,7 +128,10 @@ export function HomePageLayout() {
    * so the phone arrival must keep its centered column exactly as it is (the owner ruled mobile out
    * of this round). Flag-gated as well — flag-off stays byte-identical.
    */
-  const arrivalRail = CONCEPT_V8_ENABLED && emptyHome && !threadMode;
+  // New look: Home lays itself out (top row in the phone's band, a fixed start on desktop). Only with
+  // AMBIENT_V2 on, as the composer's own Home: with it off the composer draws its other branch.
+  const nextHome = NEW_LOOK_ENABLED && AMBIENT_V2_ENABLED && emptyHome && !threadMode;
+  const arrivalRail = !NEW_LOOK_ENABLED && CONCEPT_V8_ENABLED && emptyHome && !threadMode;
   // The right column, otherwise, exists only in thread mode (the flag-off rail portal). The v8
   // report is an EVENT — sheet or overlay, never docked — so nothing else ever mounts this column
   // (2026-08-09 rail ruling: the pinned report was a rejected third shape).
@@ -150,13 +159,13 @@ export function HomePageLayout() {
         // Thread mode: the work column FLEXES to fill (it self-centers its content at 760 via its own
         // mx-auto), so the rail is pushed flush to the page's right edge (owner call — the rail
         // connects to the right side completely). Not justify-center, which left a symmetric gap.
-        threadMode ? "h-full flex-row" : "min-h-full flex-col items-center",
+        threadMode ? "h-full flex-row" : nextHome ? "min-h-full flex-col" : "min-h-full flex-col items-center",
         // Arrival rail (≥xl): become the same row the thread uses, and take a DEFINITE height so
         // the full-height <aside> has something to fill. Under xl none of this applies and the
         // arrival keeps `min-h-full flex-col items-center` untouched — a hard height there once
         // pushed a hero taller than the viewport out the TOP, unreachably (see above).
         arrivalRail && "xl:h-full xl:min-h-0 xl:flex-row xl:items-stretch",
-        emptyHome && !railMounted && "justify-center",
+        emptyHome && !railMounted && !nextHome && "justify-center",
         // Same centering as the line above, but it has to survive `railMounted` now. Vertical while
         // the arrival is still a column; at xl the axis flips, where `justify-center` would centre
         // the pair HORIZONTALLY and pull the rail off the page's right edge. The work column takes
@@ -194,15 +203,18 @@ export function HomePageLayout() {
           // owns the vertical centering the parent gave up. The Composer caps its own content at
           // 760 with `mx-auto` in this branch too, so it re-centres inside whatever it's given.
           // New look: no rail, but a thread still fills the row (the composer centres its content).
-          arrivalRail
-            ? "max-w-[760px] xl:max-w-none xl:min-w-0 xl:min-h-0 xl:flex-1 xl:justify-center"
-            : railMounted || (NEW_LOOK_ENABLED && threadMode)
-              ? "min-w-0 flex-1 min-h-0"
-              : "max-w-[760px]",
+          // Home fills the column too: it caps and centres its own content.
+          nextHome
+            ? "flex-1"
+            : arrivalRail
+              ? "max-w-[760px] xl:max-w-none xl:min-w-0 xl:min-h-0 xl:flex-1 xl:justify-center"
+              : railMounted || (NEW_LOOK_ENABLED && threadMode)
+                ? "min-w-0 flex-1 min-h-0"
+                : "max-w-[760px]",
         )}
       >
         <Composer
-          className={cn(threadMode && "flex-1 min-h-0")}
+          className={cn(threadMode && "flex-1 min-h-0", nextHome && "flex-1")}
           onThreadChange={handleThreadChange}
           onEngagedChange={handleEngagedChange}
           onConversationChange={handleConversationChange}

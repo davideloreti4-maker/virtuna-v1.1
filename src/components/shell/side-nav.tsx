@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { GearSix, SidebarSimple, SignOut } from "@phosphor-icons/react";
 import { MavenMark } from "@/components/brand/maven-logo";
+import { creditsLabel } from "@/components/thread-next/thread-field";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -18,6 +19,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { usePinThread, useRenameThread, useThreadList } from "@/hooks/queries";
 import { useProfile } from "@/hooks/queries/use-profile";
 import { useSubscription } from "@/hooks/use-subscription";
+import { shownBalance } from "@/lib/pricing";
 import { initialAutoRail } from "@/lib/shell/side-nav-default";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
@@ -74,7 +76,7 @@ export function SideNav({ actions }: { actions: ThreadActions }) {
   const renameThread = useRenameThread();
   const pinThread = usePinThread();
   const { data: profile } = useProfile();
-  const { usage } = useSubscription();
+  const { usage, tier, isTrial } = useSubscription();
   const current = activePlace(pathname);
   const threadOpen = useShellStore((s) => s.threadOpen);
 
@@ -105,8 +107,9 @@ export function SideNav({ actions }: { actions: ThreadActions }) {
   const initials = profileName
     ? profileName.split(/\s+/).map((word) => word[0]).join("").slice(0, 2).toUpperCase()
     : "?";
-  // The existing balance (the app meters "Readings"). null = unlimited or not loaded: no tag.
-  const left = usage?.remaining ?? null;
+  // The balance, as the phone's Home shows it: only for a paid plan or a trial pool with a
+  // countable limit (`shownBalance`). null = no plan, unlimited or not loaded: no tag.
+  const left = shownBalance(usage, tier, isTrial);
 
   const collapseButton = (
     <IconButton
@@ -241,7 +244,7 @@ export function SideNav({ actions }: { actions: ThreadActions }) {
               {!collapsed && (
                 <>
                   <span className="min-w-0 flex-1 truncate text-ui font-[640] text-foreground">{name}</span>
-                  {left !== null && <Badge className="tabular-nums">{left} left</Badge>}
+                  {left !== null && <Badge className="tabular-nums">{creditsLabel(left)}</Badge>}
                 </>
               )}
             </button>

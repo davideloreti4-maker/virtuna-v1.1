@@ -30,6 +30,13 @@ interface ShellState {
    */
   threadAudience: string;
   setThreadAudience: (audience: string) => void;
+  /**
+   * New look: a counter the composer watches to put the cursor in its field (Home plan 2026-11-23).
+   * "New chat" on a Home that is already blank bumps it instead of reloading the screen.
+   * Not persisted.
+   */
+  fieldFocusSignal: number;
+  focusField: () => void;
 }
 
 export const useShellStore = create<ShellState>()((set) => ({
@@ -47,4 +54,6 @@ export const useShellStore = create<ShellState>()((set) => ({
   setPushedTitle: (title) => set({ pushedTitle: title }),
   threadAudience: '',
   setThreadAudience: (audience) => set({ threadAudience: audience }),
+  fieldFocusSignal: 0,
+  focusField: () => set((s) => ({ fieldFocusSignal: s.fieldFocusSignal + 1 })),
 }));

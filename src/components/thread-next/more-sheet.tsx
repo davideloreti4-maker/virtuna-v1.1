@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { useId, useRef } from "react";
+import { useId } from "react";
 
 import { getSkill, type ToolId } from "@/components/app/home/composer-controls";
 import { AudienceIcon, DiscoverIcon, type ShellIcon } from "@/components/shell/icons";
@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 
 import { BulbIcon, ChevronIcon, CloseIcon, DocIcon, PersonIcon } from "./field-icons";
 import { creditsLabel } from "./thread-field";
+import { useReturnFocus } from "./use-return-focus";
 
 /**
  * More (spec 2026-11-20 §4.3; reference `.f1-sheet`): the skills without a pill, each with its
@@ -26,14 +27,17 @@ import { creditsLabel } from "./thread-field";
  * More button is such a tap outside: it closes the popover, and the field does not reopen it.
  */
 
+/** The platform the next run is read for (the run lens). */
+export type Lens = "tiktok" | "instagram" | "youtube";
+
 export interface MoreSheetProps {
   open: boolean; onOpenChange(open: boolean): void;
   skills: Array<{ id: ToolId; label: string; line: string; price: number | null }>;   // Ideas, Explore, Your account
   onSelectSkill(id: ToolId): void;                                      // closes the sheet
   onReadFile(): void;                                                   // the profile read: must click the evidence input synchronously
   readFilePrice: number;                                                // creditCost("profile")
-  audienceLabel: string; onOpenAudience(): void;                        // opens today's audience sheet
-  lens: "tiktok" | "instagram" | "youtube"; onLensChange(lens: MoreSheetProps["lens"]): void;
+  audienceLabel: string; onOpenAudience(): void;                        // opens the audience sheet
+  lens: Lens; onLensChange(lens: Lens): void;
   /** The field's outer element (the same ref the field takes as `anchorRef`): on desktop the
    *  popover stands on it. Added to the planned props; absent, More is the bottom sheet. */
   anchorRef?: React.RefObject<HTMLElement | null>;
@@ -54,12 +58,37 @@ const ICON_BY_SKILL: Partial<Record<ToolId, ShellIcon>> = {
 };
 
 /** Named as drawn: where the content ships. */
-const LENSES: ReadonlyArray<readonly [MoreSheetProps["lens"], string]> = [
+const LENSES: ReadonlyArray<readonly [Lens, string]> = [
   ["tiktok", "TikTok"],
   ["instagram", "Instagram"],
   ["youtube", "YouTube"],
 ];
 
+/** The platform for the next run, as a segmented control. More and the audience sheet both show it. */
+export function LensControl({ lens, onLensChange }: { lens: Lens; onLensChange(lens: Lens): void }): React.JSX.Element {
+  return (
+    <div role="group" aria-label="Platform" className="mt-1 grid h-10 grid-cols-3 gap-0.5 rounded-full bg-surface-sunken p-[3px]">
+      {LENSES.map(([id, label]) => (
+        <button
+          key={id}
+          type="button"
+          aria-pressed={lens === id}
+          onClick={() => onLensChange(id)}
+          className={cn(
+            "tap-44 flex items-center justify-center rounded-full text-reading font-[560] leading-none transition-colors duration-150",
+            lens === id
+              ? "bg-surface text-foreground shadow-[var(--shadow-control)]"
+              : "text-foreground-secondary hover:text-foreground",
+          )}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** A row's leading icon on its sunken disc. */
 function IconDisc({ icon: Icon }: { icon: ShellIcon }) {
   return (
     <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-surface-sunken text-foreground">
@@ -163,8 +192,8 @@ function MoreBody({
         type="button"
         aria-label={`Audience: ${audienceLabel}`}
         onClick={() => {
-          // Today's audience sheet takes the focus from here (the composer moves it), so More
-          // does not hand it back to its button behind that sheet (final review 5).
+          // The audience sheet takes the focus from here, so More does not hand it back to its
+          // button behind that sheet (final review 5).
           onAudienceRow();
           close();
           onOpenAudience();
@@ -176,24 +205,7 @@ function MoreBody({
         <ChevronIcon size={16} strokeWidth={2.1} aria-hidden className="shrink-0 text-foreground-secondary" />
       </button>
 
-      <div role="group" aria-label="Platform" className="mt-1 grid h-10 grid-cols-3 gap-0.5 rounded-full bg-surface-sunken p-[3px]">
-        {LENSES.map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            aria-pressed={lens === id}
-            onClick={() => onLensChange(id)}
-            className={cn(
-              "tap-44 flex items-center justify-center rounded-full text-reading font-[560] leading-none transition-colors duration-150",
-              lens === id
-                ? "bg-surface text-foreground shadow-[var(--shadow-control)]"
-                : "text-foreground-secondary hover:text-foreground",
-            )}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <LensControl lens={lens} onLensChange={onLensChange} />
     </>
   );
 }
@@ -203,41 +215,11 @@ export function MoreSheet(props: MoreSheetProps): React.JSX.Element {
   const wide = useMediaQuery("(min-width: 768px)");
   const titleId = useId();
 
-  // More opens from the field's button, not from a Radix trigger, so on close Radix has nothing
-  // to hand focus back to and it would fall to the page. Remember what had focus when it opened
-  // and return there, unless something already took focus (the text, after a pick). The popover
-  // also skips it after a pointer outside, as Radix's non-modal popover does (focus stays where
-  // that tap left it); the sheet, a modal dialog, returns focus either way, as Radix's dialog does.
-  // The audience row is the exception (final review 5): it opens today's audience sheet, which
-  // the composer then focuses; focus handed back to More would sit behind that sheet.
-  const returnTo = useRef<HTMLElement | null>(null);
-  const closedFromOutside = useRef(false);
-  const handedOn = useRef(false);
-  const onAudienceRow = () => {
-    handedOn.current = true;
-  };
-  const sheetFocus = {
-    onOpenAutoFocus: () => {
-      returnTo.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-      closedFromOutside.current = false;
-      handedOn.current = false;
-    },
-    onCloseAutoFocus: (e: Event) => {
-      e.preventDefault();
-      const active = document.activeElement;
-      if (!closedFromOutside.current && !handedOn.current && (!active || active === document.body)) {
-        returnTo.current?.focus();
-      }
-      closedFromOutside.current = false;
-      handedOn.current = false;
-    },
-  };
-  const popoverFocus = {
-    ...sheetFocus,
-    onPointerDownOutside: () => {
-      closedFromOutside.current = true;
-    },
-  };
+  // More opens from the field's button, not from a Radix trigger, so on close focus goes back to
+  // what had it (`useReturnFocus`), unless something already took focus (the text, after a pick).
+  // The audience row is the exception (final review 5): it opens the audience sheet, which takes
+  // focus itself; focus handed back to More would sit behind that sheet.
+  const { sheetFocus, popoverFocus, handOn: onAudienceRow } = useReturnFocus();
 
   if (wide && anchorRef) {
     return (

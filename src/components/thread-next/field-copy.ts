@@ -1,4 +1,4 @@
-import type { ToolId } from "@/components/app/home/composer-controls";
+import { getSkill, type ToolId } from "@/components/app/home/composer-controls";
 
 /**
  * The field's placeholders under the new look, in one place: the composer and /dev/field both
@@ -23,3 +23,19 @@ export const NEXT_SIMULATE_PLACEHOLDER = {
   empty: "Add a video or paste a link",
   video: "Send to simulate this video",
 } as const;
+
+/** The field on Home (spec 2026-11-23): its placeholder at rest, and once a skill that takes
+ *  words is picked. A tool missing here keeps the thread's placeholder. */
+export const HOME_PLACEHOLDER_BY_TOOL: Partial<Record<ToolId, string>> = {
+  chat: "Ask anything, or pick a skill",
+  hooks: "What's the video about?",
+  script: "What's the video about?",
+  idea: "What do you want ideas about?",
+};
+
+/** A skill's name in the field: the pills' names, "Account" for Your account, else the skill's label. */
+export function fieldSkillLabel(tool: ToolId): string {
+  if (tool === "test") return "Simulate";
+  if (tool === "account") return "Account";
+  return getSkill(tool).label;
+}

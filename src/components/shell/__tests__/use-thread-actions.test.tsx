@@ -10,6 +10,16 @@ import {
   setActiveThreadCookie,
 } from '@/lib/threads/active-thread-cookie';
 import { useBoardStore } from '@/stores/board-store';
+import { useShellStore } from '@/stores/shell-store';
+
+// The build-time flag, switchable per test (a getter, so the hook reads it at call time). Off by
+// default: every case that does not set it is today's behaviour.
+let newLook = false;
+vi.mock('@/lib/flags/new-look', () => ({
+  get NEW_LOOK_ENABLED() {
+    return newLook;
+  },
+}));
 
 // Mocked: the router and the network. Real: the board store, the cookie, the toasts.
 const push = vi.fn();
@@ -44,8 +54,10 @@ beforeEach(() => {
   push.mockReset();
   archive.mockReset();
   pathname = '/home';
+  newLook = false;
   clearActiveThreadCookie();
   useBoardStore.setState({ activeThreadId: null });
+  useShellStore.setState({ threadOpen: false, fieldFocusSignal: 0 });
 });
 
 describe('useThreadActions', () => {
@@ -156,6 +168,150 @@ describe('useThreadActions', () => {
     expect(useBoardStore.getState().activeThreadId).toBe('t1');
     expect(getActiveThreadCookie()).toBe('t1');
     expect(screen.getByText("Couldn't delete that thread.")).toBeInTheDocument();
+  });
+
+  describe('newThread on a Home that is already blank', () => {
+    const signal = () => useBoardStore.getState().activeThreadSignal;
+    const focusSignal = () => useShellStore.getState().fieldFocusSignal;
+    /** /home on a blank new chat: the sentinel, and no thread on screen. */
+    const onBlankHome = () => {
+      pathname = '/home';
+      setActiveThreadCookie(NEW_THREAD_SENTINEL);
+      useShellStore.setState({ threadOpen: false });
+    };
+
+    it('new look: it is this screen, so the cursor goes to the field; no reload, no navigation', () => {
+      newLook = true;
+      onBlankHome();
+      const before = signal();
+      const result = actions();
+
+      act(() => result.current.newThread());
+
+      expect(signal()).toBe(before); // no switchThread: the composer does not wipe and reload
+      expect(push).not.toHaveBeenCalled();
+      expect(focusSignal()).toBe(1);
+      expect(getActiveThreadCookie()).toBe(NEW_THREAD_SENTINEL);
+    });
+
+    it('new look, no pointer at all (a new device): a blank Home is this screen too', () => {
+      newLook = true;
+      pathname = '/home';
+      clearActiveThreadCookie();
+      useShellStore.setState({ threadOpen: false });
+      const before = signal();
+      const result = actions();
+
+      act(() => result.current.newThread());
+
+      expect(signal()).toBe(before);
+      expect(push).not.toHaveBeenCalled();
+      expect(focusSignal()).toBe(1);
+      // Final fix B1: Home can be showing because the chat's load failed, so "New chat" must still
+      // mean a new chat: the pointer is set to the sentinel, and the next send makes one.
+      expect(getActiveThreadCookie()).toBe(NEW_THREAD_SENTINEL);
+    });
+
+    it('new look, the sentinel but a thread on screen (a first send landing): it goes the old way', () => {
+      newLook = true;
+      onBlankHome();
+      useShellStore.setState({ threadOpen: true });
+      const before = signal();
+      const result = actions();
+
+      act(() => result.current.newThread());
+
+      expect(signal()).toBe(before + 1);
+      expect(push).toHaveBeenCalledWith('/home');
+      expect(focusSignal()).toBe(0);
+    });
+
+    it('new look, no pointer and a thread on screen (the newest chat opened): it leaves it, as today', () => {
+      newLook = true;
+      pathname = '/home';
+      clearActiveThreadCookie();
+      useShellStore.setState({ threadOpen: true });
+      const before = signal();
+      const result = actions();
+
+      act(() => result.current.newThread());
+
+      expect(signal()).toBe(before + 1);
+      expect(push).toHaveBeenCalledWith('/home');
+      expect(getActiveThreadCookie()).toBe(NEW_THREAD_SENTINEL);
+      expect(focusSignal()).toBe(0);
+    });
+
+    it('new look, inside a thread (the pointer is a thread id): it leaves the thread, as today', () => {
+      newLook = true;
+      setActiveThreadCookie('t1');
+      useBoardStore.setState({ activeThreadId: 't1' });
+      useShellStore.setState({ threadOpen: true });
+      const before = signal();
+      const result = actions();
+
+      act(() => result.current.newThread());
+
+      expect(signal()).toBe(before + 1);
+      expect(push).toHaveBeenCalledWith('/home');
+      expect(getActiveThreadCookie()).toBe(NEW_THREAD_SENTINEL);
+      expect(useBoardStore.getState().activeThreadId).toBeNull();
+      expect(focusSignal()).toBe(0);
+    });
+
+    it('new look, the sentinel away from /home: it goes Home, as today', () => {
+      newLook = true;
+      onBlankHome();
+      pathname = '/library';
+      const before = signal();
+      const result = actions();
+
+      act(() => result.current.newThread());
+
+      expect(signal()).toBe(before + 1);
+      expect(push).toHaveBeenCalledWith('/home');
+      expect(focusSignal()).toBe(0);
+    });
+
+    it('flag off: no pointer on /home reloads as today', () => {
+      pathname = '/home';
+      clearActiveThreadCookie();
+      const before = signal();
+      const result = actions();
+
+      act(() => result.current.newThread());
+
+      expect(signal()).toBe(before + 1);
+      expect(push).toHaveBeenCalledWith('/home');
+      expect(focusSignal()).toBe(0);
+    });
+
+    it('flag off: a blank Home reloads as today', () => {
+      onBlankHome();
+      const before = signal();
+      const result = actions();
+
+      act(() => result.current.newThread());
+
+      expect(signal()).toBe(before + 1);
+      expect(push).toHaveBeenCalledWith('/home');
+      expect(focusSignal()).toBe(0);
+    });
+
+    it('flag off: inside a thread it leaves the thread as today', () => {
+      setActiveThreadCookie('t1');
+      useBoardStore.setState({ activeThreadId: 't1' });
+      useShellStore.setState({ threadOpen: true });
+      const before = signal();
+      const result = actions();
+
+      act(() => result.current.newThread());
+
+      expect(signal()).toBe(before + 1);
+      expect(push).toHaveBeenCalledWith('/home');
+      expect(getActiveThreadCookie()).toBe(NEW_THREAD_SENTINEL);
+      expect(focusSignal()).toBe(0);
+    });
   });
 
   it('returns the same object across renders, so effects that depend on it do not rebind', () => {

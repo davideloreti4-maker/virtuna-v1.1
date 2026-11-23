@@ -368,6 +368,22 @@ export function creditsRemainingLabel(balance: CreditBalance): string {
 }
 
 /**
+ * The balance worth showing as a number (the new look's "30 credits" tag), or null for none:
+ * what is left, only for a paid plan or a trial pool with a countable limit. The same rule as the
+ * legacy composer's balance line: `free` has an allowance of 0 by design (no free plan) while its
+ * skills still run, so "0 credits" there is not a balance; unlimited has no number worth showing.
+ */
+export function shownBalance(
+  usage: { remaining: number | null; limit: number | null } | null,
+  tier: string,
+  isTrial: boolean
+): number | null {
+  if (!usage || usage.limit === null) return null;
+  if (!isPaidPlanId(tier) && !isTrial) return null;
+  return usage.remaining;
+}
+
+/**
  * The monthly credit allowance for a persisted tier — the number the quota check
  * enforces. `free` (never subscribed / lapsed / cancelled) gets nothing: the $1 trial
  * is the way in, so there is no free tier to farm.

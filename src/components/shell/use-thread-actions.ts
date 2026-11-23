@@ -4,12 +4,15 @@ import { useEffect, useMemo, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/toast";
 import { useArchiveThread } from "@/hooks/queries";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 import {
   NEW_THREAD_SENTINEL,
   clearActiveThreadCookie,
+  getActiveThreadCookie,
   setActiveThreadCookie,
 } from "@/lib/threads/active-thread-cookie";
 import { useBoardStore } from "@/stores/board-store";
+import { useShellStore } from "@/stores/shell-store";
 
 export interface ThreadActions {
   /** Leave the open thread for a blank one. No row is created until the first message is sent. */
@@ -44,6 +47,24 @@ export function useThreadActions(): ThreadActions {
   return useMemo<ThreadActions>(
     () => ({
       newThread: () => {
+        // New look: already on a blank Home, a new chat is this screen. Reloading it blinked the tab bar
+        // and a loading outline; put the cursor in the field instead (the composer also starts the
+        // field over). No pointer at all is a blank Home too, once nothing is on screen (while the
+        // chat's load is out, `threadOpen` is true): the server had no chat to open, or its load
+        // failed and the composer fell back to Home. In that case the pointer is set to the sentinel,
+        // so "New chat" still means a new chat: with no pointer the next send would skip making one
+        // and land in the creator's newest existing chat.
+        const pointer = getActiveThreadCookie();
+        if (
+          NEW_LOOK_ENABLED &&
+          live.current.pathname === "/home" &&
+          (pointer === null || pointer === NEW_THREAD_SENTINEL) &&
+          !useShellStore.getState().threadOpen
+        ) {
+          if (pointer === null) setActiveThreadCookie(NEW_THREAD_SENTINEL);
+          useShellStore.getState().focusField();
+          return;
+        }
         // The sentinel makes /home render blank instead of re-opening the newest thread.
         setActiveThreadCookie(NEW_THREAD_SENTINEL);
         setActiveThreadId(null);

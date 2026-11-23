@@ -74,12 +74,13 @@ import {
   getActiveThreadCookie,
   NEW_THREAD_SENTINEL,
 } from "@/lib/threads/active-thread-cookie";
+import { opensIntoThread } from "@/lib/threads/opens-into-thread";
 import { Button } from "@/components/ui/button";
 import { VideoUpload } from "@/components/app/video-upload";
 import { useAnalysisStream } from "@/hooks/queries/use-analysis-stream";
 import { STREAM_TIMEOUT_ERROR } from "@/lib/engine/stream-errors";
 import { useSubscription } from "@/hooks/use-subscription";
-import { isPaidPlanId, creditsRemainingLabel, creditCost } from "@/lib/pricing";
+import { isPaidPlanId, creditsRemainingLabel, creditCost, shownBalance } from "@/lib/pricing";
 import { useBoardStore } from "@/stores/board-store";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { useToast } from "@/components/ui/toast";
@@ -101,6 +102,7 @@ import {
   type ToolId,
   type Intent,
   type SkillModel,
+  type ExploreParams,
 } from "./composer-controls";
 // ── Composer v8 (CONCEPT_V8_ENABLED — platform concept Phase 1) ──────────────
 import { CONCEPT_V8_ENABLED } from "@/lib/flags/concept-v8";
@@ -108,7 +110,16 @@ import { CONCEPT_V8_ENABLED } from "@/lib/flags/concept-v8";
 import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 import { ThreadField } from "@/components/thread-next/thread-field";
 import { MORE_SKILLS, MoreSheet } from "@/components/thread-next/more-sheet";
-import { NEXT_PLACEHOLDER_BY_TOOL, NEXT_SIMULATE_PLACEHOLDER } from "@/components/thread-next/field-copy";
+import { AudienceSheet } from "@/components/thread-next/audience-sheet";
+import { estimateNote } from "@/lib/thread-next/audience-choices";
+import { SlashMenu, slashMatches } from "@/components/thread-next/slash-menu";
+import {
+  HOME_PLACEHOLDER_BY_TOOL,
+  NEXT_PLACEHOLDER_BY_TOOL,
+  NEXT_SIMULATE_PLACEHOLDER,
+  fieldSkillLabel,
+} from "@/components/thread-next/field-copy";
+import { HomeNext } from "@/components/home-next/home-next";
 import { TextSimProvider } from "@/components/thread-next/text-sim";
 import { VideoRunning } from "@/components/thread-next/video-running";
 import { ThreadHeader } from "@/components/thread-next/thread-header";
@@ -128,7 +139,7 @@ import { ArrivalV8 } from "./v8/arrival";
 import { DropShelf } from "./v8/drop-shelf";
 import { useLazyWarm } from "@/lib/surfaces/use-lazy-warm";
 import type { LiveDropCard } from "@/lib/surfaces/live-cards";
-import { usePlatformLens, LENS_LABEL } from "./v8/platform-lens";
+import { usePlatformLens, LENS_LABEL, audienceProvenance } from "./v8/platform-lens";
 import type { Platform } from "./platform-chip";
 import type { Audience, AudiencePlatform } from "@/lib/audience/audience-types";
 import { goalIntentToLens } from "@/lib/audience/intent-lens";
@@ -590,21 +601,14 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // ── v8 composer state (CONCEPT_V8_ENABLED) ─────────────────────────────────
   const [skillsPanelOpen, setSkillsPanelOpen] = useState(false);
   const [audienceSheetOpen, setAudienceSheetOpen] = useState(false);
-  // New look (final review 5): opened from More's audience row, today's audience sheet gets the
-  // focus More gave up (it manages none itself): its first option, else its first button. Only
-  // a DOM focus here, after the sheet is in the document. Flag-off the ref is never set.
-  const nextFocusAudienceRef = useRef(false);
-  useEffect(() => {
-    if (!audienceSheetOpen || !nextFocusAudienceRef.current) return;
-    nextFocusAudienceRef.current = false;
-    const sheet = document.querySelector<HTMLElement>('[data-testid="audience-sheet"]');
-    (sheet?.querySelector<HTMLElement>('[role="option"]') ?? sheet?.querySelector<HTMLElement>("button"))?.focus();
-  }, [audienceSheetOpen]);
   // New look: the field's More sheet (it replaces the skill pill + skills panel). Unused flag-off.
   const [moreOpen, setMoreOpen] = useState(false);
-  // The example chips' "More ▸": the skills panel, or under the new look the More sheet (the
-  // panel lives in the legacy box, which the new look does not render).
-  const openChipsMore = NEW_LOOK_ENABLED ? () => setMoreOpen(true) : () => setSkillsPanelOpen(true);
+  // The example chips' "More ▸": the skills panel. Under the new look Home's cards are the skills and
+  // the field's own More (and Home's "More skills") opens the More sheet. The chips' other mounts are
+  // Branch B's, which renders whenever the composer is not in thread mode: with a route id (never:
+  // the composer is mounted on /home alone) or, with AMBIENT_V2 off, for the empty /home itself (not
+  // run under the new look; HomePageLayout does not lay out Home then either).
+  const openChipsMore = () => setSkillsPanelOpen(true);
   const skillPillRef = useRef<HTMLButtonElement | null>(null);
   // Anchors the v8 slash-menu portal to the field block (see the slash-menu mount).
   const slashAnchorRef = useRef<HTMLDivElement | null>(null);
@@ -705,7 +709,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // wipes) and cleared when loadPersistedBlocks settles. Keeps the thread shell
   // mounted + suppresses the welcome hero across the gap so the layout never snaps
   // to the centered serif hero between threads (the worst pre-fix flash).
-  const [rehydrating, setRehydrating] = useState(false);
+  // New look (Home plan 2026-11-23): the first load counts too, unless the pointer is a blank
+  // new chat (`opensIntoThread`, the same first value HomePageLayout takes). A reload into a chat (or
+  // with no pointer, where the server opens the newest chat) shows the loading outline until the load
+  // settles, never Home for a moment. The first load's `finally` clears it. Flag off: false, as before.
+  const [rehydrating, setRehydrating] = useState(opensIntoThread);
 
   // ── Ideas stream (Plan 04, Task 2) ────────────────────────────────────────
   // Provides SSE cards rendered above the composer in IdeasThreadView.
@@ -994,6 +1002,13 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   //  can open the Profile evidence picker within the user-gesture call stack.)
   /** Optimistic echo of the last submitted composer draft (presentation-only). */
   const [lastUserTurn, setLastUserTurn] = useState<string | null>(null);
+  // New look (Home plan 2026-11-23): `lastUserTurn` as last committed, for the upload path of
+  // `handleSubmit`, which puts it back when its run never starts. A ref rather than a dependency:
+  // `handleSubmit`'s identity is bound into effects, flag off included.
+  const lastUserTurnRef = useRef<string | null>(null);
+  useEffect(() => {
+    lastUserTurnRef.current = lastUserTurn;
+  }, [lastUserTurn]);
 
   // Final review (1): under the flag the staged video and the hook brief are a run's inputs, and
   // a run that sealed its card has used them: selecting Simulate again must not bring the clip
@@ -1049,8 +1064,10 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // cache (spec: the lens changes generation prompts only). The warm key advances
   // only AFTER an audience switch's persist settles (use-lazy-warm contract) —
   // see handleSelectAudience. Flag-off: enabled=false → the hook is inert.
+  // New look (Home, spec 2026-11-23): no drops on Home, so nothing warms them.
   const [warmAudienceKey, setWarmAudienceKey] = useState<string>("general");
   const dropsEnabled =
+    !NEW_LOOK_ENABLED &&
     CONCEPT_V8_ENABLED &&
     AMBIENT_V2_ENABLED &&
     !hasConversationContent &&
@@ -1163,6 +1180,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     // New look: the thread open before this (re)load, so its seals can be told from another's.
     const threadBefore = openThreadIdRef.current;
 
+    // New look: the chat id seeded for a first load (below), if any.
+    let seededId: string | null = null;
+
     // On a thread SWITCH (not the initial mount), wipe the current thread's
     // rendered content first so the previous conversation never bleeds into the
     // new/re-opened one. The fetch below repopulates persisted blocks for a
@@ -1218,13 +1238,34 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       hasUserSelectedToolRef.current = false;
       hasDispatchedRunRef.current = false;
       setRunningTool(null);
+    } else if (NEW_LOOK_ENABLED) {
+      // New look, a first load into a chat (the pointer is its id): the thread header shows from
+      // the first paint, so the board points at that chat now, not when the load lands. A chat
+      // list that answers first then names it in the phone header and marks it in the sidebar.
+      // The load's answer still sets the real id (below).
+      const pointer = getActiveThreadCookie();
+      if (pointer !== null && pointer !== NEW_THREAD_SENTINEL) {
+        seededId = pointer;
+        setActiveThreadId(pointer);
+      }
     }
     isFirstThreadLoadRef.current = false;
 
     async function loadPersistedBlocks() {
+      // New look: a first load that fails (a non-OK answer, a throw before its answer is applied)
+      // leaves Home on screen, so the id seeded for it goes too, while the store still holds it.
+      // Flag off nothing is seeded and this does nothing.
+      let applied = false;
+      const unseed = () => {
+        if (cancelled || applied || seededId === null) return;
+        if (useBoardStore.getState().activeThreadId === seededId) setActiveThreadId(null);
+      };
       try {
         const res = await fetch('/api/threads/open');
-        if (!res.ok) return; // 401 or other error — silent (user not logged in yet)
+        if (!res.ok) {
+          unseed();
+          return; // 401 or other error — silent (user not logged in yet)
+        }
         const data = await res.json() as {
           threadId?: string;
           messages?: Array<{ role?: string; blocks?: Array<{ type?: string; props?: unknown }> }>;
@@ -1254,6 +1295,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         } else {
           setActiveThreadId(null);
         }
+        applied = true;
         const messages = data.messages ?? [];
         // ── Restore the user's turn (issue 3 — "the user's message is missing") ──
         // User turns persist as role:"user" markdown. Restore the LAST one as
@@ -1347,6 +1389,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         }
       } catch {
         // Network error or parse error — silent (no crash, views stay idle)
+        unseed();
       } finally {
         // A1: clear the rehydrate flag once the load settles (success, 401, or error).
         // Guarded by `cancelled` so a stale fetch from a superseded switch never clears
@@ -2365,10 +2408,19 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     // echo + the run-capsule spine (testSubmitTurn) until the card lands.
     if (file !== null) {
       // Upload path — stage the file to Supabase storage, then start with the path.
+      // New look (Home plan 2026-11-23): the question on screen before this send, put back if
+      // the run never starts (below).
+      const turnBefore = lastUserTurnRef.current;
       captureUserTurn(file.name);
       setSubmitError(null);
       setSubmitting(true);
       if (NEW_LOOK_ENABLED) setTestSentAt(Date.now());
+      // New look: an exit before the run starts (an expired session, a refused upload, a throw) shows
+      // no turn of its own, so the captured question goes back to what was on screen: from Home that
+      // is none, so the screen is Home again; in a thread its last turn keeps its question. The error
+      // shows by the field and the clip stays staged for another try. Once the run has started, its
+      // failure is the failed turn with a retry, as before.
+      let runStarted = false;
       try {
         const supabase = createClient();
         const { data: userData } = await supabase.auth.getUser();
@@ -2405,6 +2457,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         // /api/analyze consumes video_storage_path in a background job, so deleting the blob
         // on a stream error would race the server that may still read it. Orphans on the Test
         // path are left to a server-side sweep.
+        runStarted = true;
         await stream
           .start({
             input_mode: "video_upload",
@@ -2414,7 +2467,15 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           .catch(() => {
             /* stream.phase -> error transition owns the UI */
           });
+      } catch (err) {
+        // Flag off: the throw goes on as before. New look: the storage client threw before the run
+        // started (`stream.start`'s own failures are caught above), which is the upload failing.
+        if (!NEW_LOOK_ENABLED || runStarted) throw err;
+        setSubmitError(ERROR_UPLOAD_FAILED);
       } finally {
+        if (NEW_LOOK_ENABLED && !runStarted) {
+          setLastUserTurn((cur) => (cur === file.name.trim() ? turnBefore : cur));
+        }
         setSubmitting(false);
       }
       return;
@@ -2541,17 +2602,42 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     };
     void run().finally(release);
   };
+  // New look: Explore's own "Run Explore" (its Search popover over the docked field)
+  // goes the way the field's send does: one at a time behind the send latch, and into a chat that
+  // exists before the run, so the result lands in the chat the client points at.
+  const runExploreFromControl = (params: ExploreParams) => {
+    // Explore's own search is streaming (its request is out, so its chat exists): a Run with new
+    // settings restarts it, as it always did (`explore.start` aborts the one in flight).
+    // The latch is held for that stream, so without this the press did nothing.
+    if (explore.isStreaming) {
+      void explore.start(params);
+      return;
+    }
+    // Every other send still starting, a second Run before the first request has gone out
+    // included: dropped, so two quick presses never pay twice.
+    if (nextSendRef.current !== null) return;
+    holdNextSend(async () => {
+      await ensureThreadForSend();
+      await explore.start(params);
+    });
+  };
+  // Home → thread remounts the field block (it moves from the page into the dock). A send made
+  // from the keyboard keeps typing where it was.
+  const sentFromTextRef = useRef(false);
   const onSubmitNextField = (e: React.FormEvent) => {
     e.preventDefault();
     // The send button's own checks (`ThreadField`: online, not busy, Stop while a stream runs),
     // repeated because Enter submits this form whatever the button shows (residual fix).
     if (!online || submitting || profiling || isAnyStreaming) return;
     if (nextSendRef.current !== null) return; // the first send is still starting
+    if (!evidenceFile && !canSubmit) return;
+    // Read only for a send that goes: an Enter that sends nothing must not move the cursor when the
+    // screen later leaves Home for another reason (a chat opened from Recent).
+    if (nextHomeShown) sentFromTextRef.current = document.activeElement instanceof HTMLTextAreaElement;
     if (evidenceFile) {
       holdNextSend(handleProfileSubmit);
       return;
     }
-    if (!canSubmit) return;
     holdNextSend(() => handleSubmit());
   };
 
@@ -2593,8 +2679,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     if (slashActive) {
       if (e.key === "Enter") {
         e.preventDefault();
-        const s = firstSlashSkill();
-        if (s) selectSkill(s.id);
+        // New look (Home plan 2026-11-23): Enter takes exactly the row the new "/" menu marks.
+        const id = NEW_LOOK_ENABLED ? slashMatches(slashQuery)[0]?.id : firstSlashSkill()?.id;
+        if (id) selectSkill(id);
         return;
       }
       if (e.key === "Escape") {
@@ -2663,9 +2750,10 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // New look (thread answers step 1): the room is gone, so no phone room sheet and no slot for it.
   const useHeader = !NEW_LOOK_ENABLED && homeThreadMode && !isXl;
 
-  // New look: the thread's bottom reserve follows the real height of the block under it — the
-  // example chips (empty thread), Explore's Search control (while Explore is selected) and the
-  // field's outer element, which grows with the text, a video tile, the brief, an error. Watched
+  // New look: the thread's bottom reserve follows the real height of the block under it — Explore's
+  // Search control (while Explore is selected) and the field's outer element, which grows with the
+  // text, a video tile, the brief, an error. No example chips ride in it (Home's cards are the
+  // skills, and Home has no thread to reserve under). Watched
   // through a callback ref: it observes when the block attaches and disconnects when it goes
   // (React 19 ref cleanup). Flag-off the block is never rendered, so none of this runs.
   //
@@ -3382,11 +3470,89 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // failure, is this thread's content too, so the first video of a new chat gets the thread layout
   // (field docked at the bottom, header, no tab bar) from the send, not when its card lands.
   // A send that fails before its stream starts (an expired session, a storage error) shows no turn,
-  // only the error by the field with the clip still staged, so the page goes back to the arrival.
+  // only the error by the field with the clip still staged; the upload path takes back the captured
+  // question too, so a send from Home goes back to Home (`nextHomeShown`).
   const threadShown = hasThread || (NEW_LOOK_ENABLED && (testSubmitPending || testRunFailed));
   useEffect(() => {
     onThreadChange?.(threadShown);
   }, [threadShown, onThreadChange]);
+  // New look (Home, spec 2026-11-23): `/home` with no chat open. The arrival's own condition
+  // (no content, nothing loading, no engaged start), and never while a send has claimed the thread.
+  const nextHomeShown =
+    NEW_LOOK_ENABLED && homeThreadMode && !rehydrating && !hasConversationContent && !startEngaged && !threadShown;
+  // The send from Home's text (`sentFromTextRef`): the cursor follows the field block, which remounts
+  // each time it moves. While the send is out (the latch is held or running), the thread showing
+  // puts it in the docked field's text. Once the send has settled (the latch is off), it goes back
+  // into Home's text if Home is there again (a video send that never started its run), and the
+  // flag is cleared either way, so a later exit from Home for another reason leaves the focus alone.
+  useEffect(() => {
+    if (!sentFromTextRef.current) return;
+    const settled = nextSendLatch.phase === "off";
+    if (settled) sentFromTextRef.current = false;
+    // Only a focus the remount dropped on the page is put back: one the creator has since moved
+    // (to a card, the sidebar, a sheet) stays where they put it.
+    const lost = document.activeElement === null || document.activeElement === document.body;
+    if (lost && (settled ? nextHomeShown : !nextHomeShown)) slashAnchorRef.current?.querySelector("textarea")?.focus();
+  }, [nextHomeShown, nextSendLatch.phase]);
+  // New look: two other exits from Home drop a keyboard user's focus on the page: a
+  // send activated on the send button (the field block remounts in the dock, and only the text's
+  // focus is carried over, above) and a Recent row opened with Enter (the row unmounts). So: was
+  // the last input the keyboard (a keydown since the last pointerdown)? Then, when Home gives way
+  // to the thread and the focus is on the page, it goes to the docked field's text. A pointer user
+  // is left alone. Capture listeners, so a handler that stops an event cannot hide it.
+  const lastInputKeyboardRef = useRef(false);
+  useEffect(() => {
+    if (!NEW_LOOK_ENABLED) return;
+    const onKeyDown = () => {
+      lastInputKeyboardRef.current = true;
+    };
+    const onPointerDown = () => {
+      lastInputKeyboardRef.current = false;
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    window.addEventListener("pointerdown", onPointerDown, true);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown, true);
+      window.removeEventListener("pointerdown", onPointerDown, true);
+    };
+  }, []);
+  const wasHomeShownRef = useRef(nextHomeShown);
+  useEffect(() => {
+    const leftHome = wasHomeShownRef.current && !nextHomeShown;
+    wasHomeShownRef.current = nextHomeShown;
+    if (!leftHome || !lastInputKeyboardRef.current) return;
+    const lost = document.activeElement === null || document.activeElement === document.body;
+    if (lost) slashAnchorRef.current?.querySelector("textarea")?.focus();
+  }, [nextHomeShown]);
+  // "New chat" on a Home that is already blank (`useThreadActions` → `focusField`): this screen is
+  // the new chat, so it starts over without the reload, as the thread switch did here: the staged
+  // clip, the hook brief, the evidence file and the errors by the field go, and the skill is plain
+  // chat again (as after a switch, not a pick: `hasUserSelectedToolRef` is reset). The typed text
+  // stays, as it did. Then the cursor goes to the field. A store subscription rather than an effect
+  // on the counter: only a bump made while this composer is mounted counts (one left from an earlier
+  // visit does not take the focus when Home mounts again), and the reset lands with the tap.
+  const nextHomeShownRef = useRef(nextHomeShown);
+  useEffect(() => {
+    nextHomeShownRef.current = nextHomeShown;
+  }, [nextHomeShown]);
+  useEffect(() => {
+    if (!NEW_LOOK_ENABLED) return;
+    return useShellStore.subscribe((state, prev) => {
+      if (state.fieldFocusSignal === prev.fieldFocusSignal) return;
+      // Not while a send from Home is still starting (making its chat): the clip and the skill on
+      // screen are that run's, and a send that fails before its run starts keeps them for a retry.
+      if (nextHomeShownRef.current && nextSendRef.current === null) {
+        setFile(null);
+        setTestBrief(null);
+        setEvidenceFile(null);
+        setEvidenceError(null);
+        setSubmitError(null);
+        hasUserSelectedToolRef.current = false;
+        setActiveTool(DEFAULT_TOOL);
+      }
+      slashAnchorRef.current?.querySelector("textarea")?.focus();
+    });
+  }, []);
   // CAUSE BEATS SKILL (lib/net/run-failure.ts rule 1). This is a bespoke error surface — it writes
   // its own sentences instead of resolving them through `thread-turn.tsx` — so it did not inherit
   // that rule, and the skill copy below is an ACCUSATION: it blames a private, deleted or
@@ -3988,6 +4154,10 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           ? NEXT_SIMULATE_PLACEHOLDER.video
           : NEXT_SIMULATE_PLACEHOLDER.empty
         : NEXT_PLACEHOLDER_BY_TOOL[activeTool] ?? PLACEHOLDER_BY_TOOL[activeTool];
+    // Home (spec 2026-11-23) has its own words at rest and for the skills that take a topic;
+    // Simulate keeps its pair, and a skill without Home words keeps the thread's.
+    const shownPlaceholder =
+      nextHomeShown && activeTool !== "test" ? HOME_PLACEHOLDER_BY_TOOL[activeTool] ?? placeholder : placeholder;
     const ariaLabel =
       activeTool === "idea"
         ? "Idea topic or angle (leave empty for Auto)"
@@ -3999,7 +4169,12 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
               ? "Script topic or leave empty to carry in a hook"
               : activeTool === "remix"
                 ? "Paste a TikTok URL to decode and remix"
-                : hasSimulation
+                // Explore and Your account had no name of their own and read "Paste a TikTok link".
+                : activeTool === "explore"
+                  ? "A niche to explore"
+                  : activeTool === "account"
+                    ? "Read your account (send to start)"
+                    : hasSimulation
                   ? "Ask about this simulation"
                   : "Paste a TikTok link";
     // "Stop the run" is the field's own name for the disc while a run streams.
@@ -4014,6 +4189,12 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     // With a video staged the text is not the link to read (the file wins, `handleSubmit`), so a
     // non-TikTok text is no error there.
     const urlError = showUrlError && !file;
+    // A video send that never started (a refused upload, an expired session) spent nothing: say so,
+    // by the field only. The shared sentences stay as they are (the legacy box shows them too).
+    const submitErrorShown =
+      submitError === ERROR_UPLOAD_FAILED || submitError === ERROR_SESSION_EXPIRED
+        ? `${submitError} No credits used.`
+        : submitError;
     // Evidence staged (More's input, a drop): today's `acceptEvidenceFile`, then the video goes and
     // the field returns to chat (review ruling, fix round 2), so no pill is lit while send reads
     // "Read this evidence" and runs the profile read. An unsupported file stages nothing, so it
@@ -4024,10 +4205,6 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       setFile(null);
       handleUserSelectTool(DEFAULT_TOOL);
     };
-    // The v8 example chips (an empty thread) ride inside the measured block, so the reserve is
-    // their real height too. Branch A only: in Branch B (the centred column, AMBIENT_V2 off) the
-    // chips render where they always did, above the dock, and no reserve reads them.
-    const chips = homeThreadMode && CONCEPT_V8_ENABLED && !hasConversationContent && !roomExpanded;
     return (
       <div className="relative w-full">
         {/* The phone's room (<xl thread): the barless sheet (see `audienceHeader`), mounted for its
@@ -4036,18 +4213,15 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             `AudiencePresence variant="header"`, whose own bar then shows above the field. */}
         {useHeader ? <div data-testid="audience-header-slot">{audienceHeader}</div> : null}
         {/* Measured for the thread's bottom reserve (`observeNextFieldBlock`). `flow-root` keeps
-            the chips' top margin inside the block, so the measurement includes it. */}
+            a child's margin inside the block, so the measurement includes it. The example chips
+            are gone under the new look (Home, spec 2026-11-23: its cards are the skills). */}
         <div ref={observeNextFieldBlock} className="flow-root">
-          {chips ? (
-            <div className="mb-2.5">
-              <ChipsRow onArm={handleUserSelectTool} onMore={openChipsMore} />
-            </div>
-          ) : null}
-          {/* Explore's params popover (Search) stays reachable while Explore is selected; it
-              renders nothing under every other skill. */}
-          {activeTool === "explore" ? (
+          {/* Explore's params popover (Search) stays reachable while Explore is selected in a
+              thread; it renders nothing under every other skill. Not on Home: there the field's
+              own send runs Explore. */}
+          {activeTool === "explore" && !nextHomeShown ? (
             <div className="mb-1.5 flex px-2">
-              <ComposerControls activeTool={activeTool} onRunExplore={(params) => void explore.start(params)} />
+              <ComposerControls activeTool={activeTool} onRunExplore={runExploreFromControl} />
             </div>
           ) : null}
           <ThreadField
@@ -4065,7 +4239,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             tool={activeTool}
             onSelectTool={handleUserSelectTool}
             priceOf={priceOfTool}
-            canSend={(evidenceFile ? !profiling : canSubmit) && nextSendLatch.phase === "off"}
+            // While the "/" skills are open the text is a search, not a message: Enter picks a skill,
+            // and a tap on send must not send the slash.
+            canSend={(evidenceFile ? !profiling : canSubmit) && nextSendLatch.phase === "off" && !slashActive}
             busy={submitting || profiling}
             online={online}
             streaming={isAnyStreaming}
@@ -4090,27 +4266,27 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
               setEvidenceError(null);
             }}
             onDropFile={stageEvidence}
-            errors={[urlError ? ERROR_NON_TIKTOK : null, submitError]}
+            errors={[urlError ? ERROR_NON_TIKTOK : null, submitErrorShown]}
             // The evidence's reject and run error stay quiet, as the legacy box shows them (D-09).
             notes={[evidenceError]}
             invalid={urlError}
-            placeholder={placeholder}
+            placeholder={shownPlaceholder}
             ariaLabel={ariaLabel}
             sendLabel={sendLabel}
             brief={testBrief ? { hookLine: testBrief.hookLine } : null}
             onDismissBrief={() => setTestBrief(null)}
-            // The `/` skill list, portaled above the field (the v8 menu, on every flag).
+            // The `/` menu in the new look (Home plan 2026-11-23): the seven skills with their lines and
+            // prices, above the docked field in a thread; on Home, where the field sits near the top
+            // of the page, below it. The legacy box keeps its own menu.
             slashMenu={
               slashActive ? (
-                <UpwardPopover open anchorRef={slashAnchorRef} ariaLabel="Skills" className="w-[320px]">
-                  <SkillRows
-                    active={activeTool}
-                    filter={slashQuery}
-                    onSelect={selectSkill}
-                    activeMode={selectedAudience?.mode ?? "socials"}
-                    hideIds={CONCEPT_V8_ENABLED ? V8_SLASH_HIDDEN : undefined}
-                  />
-                </UpwardPopover>
+                <SlashMenu
+                  query={slashQuery}
+                  onSelect={selectSkill}
+                  priceOf={priceOfTool}
+                  anchorRef={slashAnchorRef}
+                  side={nextHomeShown ? "bottom" : "top"}
+                />
               ) : null
             }
             // The field's outer element: the slash menu, More (desktop popover) and the audience
@@ -4119,6 +4295,18 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             moreArmed={moreArmed}
             moreOpen={moreOpen}
             onOpenMore={() => setMoreOpen(true)}
+            // Home (spec 2026-11-23): the field as Home's card. The audience control opens the
+            // same audience sheet; the picked skill is the arm (`tool` and this pill both read
+            // `activeTool`, so they change in the same render), and its cross puts back chat.
+            home={
+              nextHomeShown
+                ? {
+                    audience: { label: effectiveAudience.name, open: audienceSheetOpen, onOpen: () => setAudienceSheetOpen(true) },
+                    picked: activeTool === DEFAULT_TOOL ? null : { label: fieldSkillLabel(activeTool), price: priceOfTool(activeTool) },
+                    onClearPicked: () => handleUserSelectTool(DEFAULT_TOOL),
+                  }
+                : null
+            }
           />
         </div>
         {/* The evidence input stays mounted: More's "Read a file", `handleUserSelectTool("profile")`
@@ -4145,12 +4333,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           readFilePrice={creditCost("profile")}
           // `audienceToMeta(a).name` is `a.name`: the chip's name.
           audienceLabel={effectiveAudience.name}
-          // Final review (5): today's audience sheet takes no focus of its own, so once it opens
-          // focus moves into it (`nextFocusAudienceRef`); More does not take it back.
-          onOpenAudience={() => {
-            nextFocusAudienceRef.current = true;
-            setAudienceSheetOpen(true);
-          }}
+          // Final review (5): the audience sheet takes the focus itself; More does not take it back.
+          onOpenAudience={() => setAudienceSheetOpen(true)}
           // The lens sets the next run's platform only with CONCEPT_V8 on (`platform`, above);
           // with it off (not run under the new look) the control shows but changes nothing.
           lens={platformLens}
@@ -4316,8 +4500,30 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           rail restored it had no job left: it read `roomExpanded`, which is now the ROOM's
           own open flag, so leaving it mounted opened both surfaces on one tap. The room is
           the sim's one home again, on every viewport.
-          New look: also mounted without v8 — it is what More's audience row opens. */}
-      {(CONCEPT_V8_ENABLED || NEW_LOOK_ENABLED) && (
+          New look: its own audience sheet (spec 2026-11-23 §4), mounted with or without v8 —
+          it is what More's audience row opens. */}
+      {NEW_LOOK_ENABLED ? (
+        <AudienceSheet
+          open={audienceSheetOpen}
+          onOpenChange={setAudienceSheetOpen}
+          audiences={audiences}
+          selectedId={selectedAudienceId}
+          onSelect={(a) => {
+            // Same reground as every other switcher: a typed-thought read was against the previous audience.
+            focusByThought(null);
+            void handleSelectAudience(a);
+            setAudienceSheetOpen(false);
+          }}
+          onNewAudience={() => router.push("/audience/new")}
+          lens={platformLens}
+          onLensChange={setPlatformLens}
+          // The legacy note's facts in plain words (it reads "calibrated on X, extrapolating").
+          note={estimateNote(audienceProvenance(effectiveAudience), platformLens)}
+          anchorRef={slashAnchorRef}
+          // On Home the field sits near the top of the page: the desktop popover opens below it.
+          side={nextHomeShown ? "bottom" : "top"}
+        />
+      ) : CONCEPT_V8_ENABLED ? (
         <>
           <AudienceSheetV8
             open={audienceSheetOpen}
@@ -4338,7 +4544,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             placeAboveRef={slashAnchorRef}
           />
         </>
-      )}
+      ) : null}
     </div>
   );
 
@@ -4410,6 +4616,27 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   //   Original centered layout. Thread views + form inside one flex-col column,
   //   grows with content. Permalink pinning is handled by the Reading wrapper.
   //
+  // New look — Home (spec 2026-11-23), ahead of both: `/home` with no chat open.
+  //
+  if (nextHomeShown) {
+    // The field block is the thread's own (`composerDock`): same field, sheets and dialogs, placed
+    // in the page. It remounts when the first send turns the screen into a thread.
+    return (
+      <div data-testid="composer-shell" data-layout="home" className={cn("relative flex w-full flex-col", className)}>
+        <HomeNext
+          field={composerDock}
+          // A balance only where it means something: a paid plan or a trial pool with a countable
+          // limit (`readingsBalanceLabel`'s rule). An account with no plan still runs its skills.
+          credits={shownBalance(usage, billingTier, isTrial)}
+          // The cards go while a skill is picked and while the "/" list is open over them.
+          picked={activeTool !== DEFAULT_TOOL || slashActive}
+          onPickSkill={handleUserSelectTool}
+          // "More skills": the field's own More sheet; a pick there arms as a pill tap does.
+          onMore={() => setMoreOpen(true)}
+        />
+      </div>
+    );
+  }
   if (homeThreadMode) {
     return (
       <div
@@ -4485,9 +4712,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           // `pointer-events-auto`, so it ate the tap as well.
           className={cn(
             "flex-1 min-h-0 overflow-y-auto mt-[var(--nav-mt)] pt-[var(--nav-pt)] md:mt-0 md:pt-0",
-            // New look: the measured block under the thread (the field, and the example chips or
-            // Explore's Search when they show) plus the space under it — see NEXT_THREAD_RESERVE
-            // and `observeNextFieldBlock`. The legacy reserve is unchanged.
+            // New look: the measured block under the thread (the field, and Explore's Search while
+            // Explore is selected) plus the space under it — see NEXT_THREAD_RESERVE and
+            // `observeNextFieldBlock`. The legacy reserve is unchanged.
             NEW_LOOK_ENABLED ? NEXT_THREAD_RESERVE : showV8Chips ? "pb-[240px]" : "pb-[184px]",
             NEW_LOOK_ENABLED && NEXT_THREAD_SCROLL_PAD,
           )}
@@ -4522,9 +4749,12 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             {/* No starter here. It used to follow the creator into thread mode purely to keep
                 Account reachable (its in-view CTA was its only door); Account now rides the
                 send button, so the grid stays what it should be — a fresh-home affordance. */}
+            {/* New look: never the arm below. Home (`nextHomeShown`) takes its place, and the one
+                way here without a conversation is a run on screen (a video read that started after a
+                thread switch wiped its question), which is the thread's content. */}
             {rehydrating && !hasConversationContent ? (
               <ThreadLoadingSkeleton variant="chat" caption="Opening thread…" />
-            ) : AMBIENT_V2_ENABLED && !hasConversationContent && !startEngaged ? (
+            ) : !NEW_LOOK_ENABLED && AMBIENT_V2_ENABLED && !hasConversationContent && !startEngaged ? (
               // v2 Start (④) rides the SCROLL region — the artifact grid sits where the first
               // message would, with the composer docked below it. Picking a skill sets
               // startEngaged, this drops out, and you land on an empty chat.
@@ -4561,8 +4791,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
                         states these facts, and the line hides itself there. */}
                     <ArrivalV8
                       audience={effectiveAudience}
-                      // New look: no room to open, so the line states the room (no dead button).
-                      onOpenRoom={NEW_LOOK_ENABLED ? undefined : () => handleRoomExpandedChange(true)}
+                      // Flag-off only: under the new look Home (`nextHomeShown`) takes this place.
+                      onOpenRoom={() => handleRoomExpandedChange(true)}
                     />
                     <DropShelf
                       cards={dropCards}
@@ -4622,8 +4852,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
                 blooming off the composer's top edge would shove the chips over the shelf.
                 ⚠️ `showV8Chips`, not the expression inline — the scroll region above reserves
                 its bottom pad off the same boolean, and the two must never disagree.
-                New look: the chips render inside the field's measured block instead (`nextField`),
-                so the reserve measures them rather than reading this boolean. */}
+                New look: no chips at all (Home's cards are the skills); the reserve measures the
+                field's block (`observeNextFieldBlock`) rather than reading this boolean. */}
             {showV8Chips && !NEW_LOOK_ENABLED ? (
               <div className="pointer-events-auto mb-2.5">
                 <ChipsRow
@@ -4668,7 +4898,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           <>
             <ArrivalV8
               audience={effectiveAudience}
-              onOpenRoom={NEW_LOOK_ENABLED ? undefined : () => handleRoomExpandedChange(true)}
+              onOpenRoom={() => handleRoomExpandedChange(true)}
             />
             <DropShelf
               cards={dropCards}

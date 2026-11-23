@@ -13,6 +13,7 @@ import {
   creditsRemainingLabel,
   getPlan,
   isPaidPlanId,
+  shownBalance,
 } from "@/lib/pricing";
 
 /**
@@ -193,5 +194,31 @@ describe("the balance a customer is shown", () => {
       "Unlimited credits"
     );
     expect(creditsLabel(getPlan("studio"))).toBe("Unlimited credits");
+  });
+});
+
+describe("shownBalance: the number the new look shows as a balance (final fix A4)", () => {
+  const usage = (remaining: number | null, limit: number | null) => ({ remaining, limit });
+
+  it("a paid plan with a countable limit: what is left", () => {
+    expect(shownBalance(usage(30, 500), "starter", false)).toBe(30);
+    expect(shownBalance(usage(1, 2000), "pro", false)).toBe(1);
+    expect(shownBalance(usage(0, 500), "starter", false)).toBe(0);
+  });
+
+  it("a trial pool: what is left, whatever the tier says", () => {
+    expect(shownBalance(usage(4, 5), "free", true)).toBe(4);
+  });
+
+  it("no plan (free, not in a trial): none, the number is not a balance there", () => {
+    expect(shownBalance(usage(0, 0), "free", false)).toBeNull();
+  });
+
+  it("unlimited (no limit): none", () => {
+    expect(shownBalance(usage(null, null), "studio", false)).toBeNull();
+  });
+
+  it("not loaded: none", () => {
+    expect(shownBalance(null, "starter", false)).toBeNull();
   });
 });

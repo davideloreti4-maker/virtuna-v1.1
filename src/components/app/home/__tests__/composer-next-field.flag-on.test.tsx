@@ -9,7 +9,13 @@
  * Stop case), the storage upload (the Supabase client), the OS file picker (a file input's
  * `click`), object URLs and media decoding (the video tile's frame), and ResizeObserver's
  * measurements. matchMedia is the setup's no-op shim, so this is the phone (<640, <1280).
+ *
+ * The open thread is one settled exchange by default (`historyThread`), so the field is the
+ * thread's, docked under it. An empty chat is Home (Home plan 2026-11-23, Task 4; its own suite is
+ * composer-home.flag-on.test.tsx): the tests here that start from an empty chat say so and drive
+ * Home's field (`renderHome`).
  */
+import type { ReactElement } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, cleanup, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import { renderWithClient } from "@/test/render-with-client";
@@ -53,8 +59,24 @@ type Call = { url: string; init?: RequestInit };
 let calls: Call[] = [];
 /** Keep the hooks stream open until it is aborted (the Stop case). */
 let holdHooksOpen = false;
-let threadFixture: unknown = { threadId: "t1", messages: [] };
+let threadFixture: unknown = historyThread();
 let audiencesFixture: unknown[] = [];
+
+/** One settled turn of history: a question and a plain answer (the open thread by default). */
+function historyThread() {
+  const at = "2026-11-21T00:00:00.000Z";
+  return {
+    threadId: "t1",
+    messages: [
+      { id: "u1", thread_id: "t1", role: "user", blocks: [{ type: "markdown", props: { text: "first ask" } }], created_at: at },
+      { id: "m1", thread_id: "t1", role: "assistant", blocks: [{ type: "markdown", props: { text: "First answer." } }], created_at: at },
+    ],
+    simSeals: {},
+  };
+}
+
+/** An open thread with nothing in it yet: Home. */
+const emptyChat = () => ({ threadId: "t1", messages: [] });
 
 /** An SSE body: ends at once, or stays open until the request's signal aborts. */
 function sse(signal: AbortSignal | null | undefined, hold: boolean): Response {
@@ -119,9 +141,27 @@ const evidenceInput = () => document.querySelector('input[type="file"][accept*="
 const remixSlot = () => screen.findByRole("button", { name: /^Simulate the hook: / });
 const priceOf = (tool: keyof typeof BILLABLE_BY_TOOL) => creditCost(BILLABLE_BY_TOOL[tool]!);
 
+/** The composer on the open thread, once its content has loaded: the field docked under it.
+ *  (While the load is out the page is already the thread's: the loading outline, with the field
+ *  docked under it. No pointer in the cookie opens a chat, Home plan 2026-11-23, Task 5.) */
 async function renderComposer() {
-  renderWithClient(<Composer />);
-  return screen.findByTestId("thread-field");
+  const result = renderWithClient(<Composer />);
+  await waitFor(() => expect(requests("/api/threads/open").length).toBeGreaterThan(0));
+  await waitFor(() => expect(screen.queryByText("Opening thread…")).toBeNull());
+  await screen.findByTestId("next-field-dock");
+  return result;
+}
+
+/** The composer on an empty chat: Home, once the open thread's load has landed. */
+async function renderHome(ui: ReactElement = <Composer />) {
+  const result = renderWithClient(ui);
+  await screen.findByTestId("home-next");
+  await waitFor(() => expect(requests("/api/threads/open").length).toBeGreaterThan(0));
+  await act(async () => {
+    await new Promise((r) => setTimeout(r, 0));
+  });
+  expect(screen.getByTestId("composer-shell")).toHaveAttribute("data-layout", "home");
+  return result;
 }
 
 /** A thread carrying the remix stack the drop seed writes (the real producer, as composer-v8). */
@@ -179,7 +219,7 @@ const simulatedGauge = (value: number) => document.querySelector(`[data-gauge="d
 beforeEach(() => {
   cleanup();
   holdHooksOpen = false;
-  threadFixture = { threadId: "t1", messages: [] };
+  threadFixture = historyThread();
   audiencesFixture = [];
   upload.mockReset();
   upload.mockResolvedValue({ error: null });
@@ -421,21 +461,46 @@ describe("the composer renders the new field under the flag", () => {
     expect(fieldBlock().contains(search)).toBe(true);
   });
 
-  it("the example chips' More opens the More sheet (the skills panel is gone)", async () => {
-    await renderComposer();
-    const chips = await screen.findByTestId("composer-chips-row");
-    fireEvent.click(within(chips).getByRole("button", { name: /more/i }));
-    expect(await screen.findByRole("dialog")).toHaveTextContent("Read a file");
-    expect(screen.queryByTestId("skills-panel")).toBeNull();
-  });
-
   it("`/` still opens the skill list, and picking one selects it", async () => {
     await renderComposer();
     fireEvent.change(text(), { target: { value: "/hoo" } });
-    const menu = await screen.findByRole("menu", { name: "Skills" });
-    expect(menu.parentElement).toBe(document.body);
+    const menu = await screen.findByRole("dialog", { name: "Skills" });
+    // Portaled to the page (the dock cannot clip it), standing above the docked field.
+    expect(menu.closest("[data-radix-popper-content-wrapper]")?.parentElement).toBe(document.body);
+    expect(menu).toHaveAttribute("data-side", "top");
+    expect(within(menu).getByRole("button", { name: "Hooks" })).toHaveAttribute("data-enter", "true");
     fireEvent.keyDown(text(), { key: "Enter" });
     expect(pill("Hooks")).toHaveAttribute("aria-pressed", "true");
+    expect(text().value).toBe("");
+  });
+
+  it("`/` and a tap on a row selects that skill, as Enter does", async () => {
+    await renderComposer();
+    fireEvent.change(text(), { target: { value: "/" } });
+    const menu = await screen.findByRole("dialog", { name: "Skills" });
+    fireEvent.click(within(menu).getByRole("button", { name: "Script" }));
+    expect(pill("Script")).toHaveAttribute("aria-pressed", "true");
+    expect(text().value).toBe("");
+    expect(screen.queryByRole("dialog", { name: "Skills" })).toBeNull();
+  });
+
+  it("Escape is the composer's: it clears the `/` and the menu goes with it", async () => {
+    await renderComposer();
+    fireEvent.change(text(), { target: { value: "/hoo" } });
+    await screen.findByRole("dialog", { name: "Skills" });
+    fireEvent.keyDown(text(), { key: "Escape" });
+    expect(text().value).toBe("");
+    expect(screen.queryByRole("dialog", { name: "Skills" })).toBeNull();
+    expect(pill("Hooks")).toHaveAttribute("aria-pressed", "false");
+  });
+
+  it("Enter takes the row the menu marks: `/sim` is Simulate, the video test", async () => {
+    await renderComposer();
+    fireEvent.change(text(), { target: { value: "/sim" } });
+    const menu = await screen.findByRole("dialog", { name: "Skills" });
+    expect(within(menu).getByRole("button", { name: "Simulate" })).toHaveAttribute("data-enter", "true");
+    fireEvent.keyDown(text(), { key: "Enter" });
+    expect(pill("Simulate")).toHaveAttribute("aria-pressed", "true");
     expect(text().value).toBe("");
   });
 });
@@ -569,7 +634,7 @@ describe("the thread's bottom reserve under the flag", () => {
         disconnect() {}
       },
     );
-    threadFixture = seededThread(); // a thread, so no example chips sit above the field
+    threadFixture = seededThread();
     await renderComposer();
     await remixSlot();
 
@@ -739,16 +804,6 @@ describe("fix round 1: copy under the flag", () => {
 });
 
 describe("fix round 1: the measured block", () => {
-  it("the example chips sit inside the measured block, so the reserve is the measurement alone", async () => {
-    const ro = stubResizeObserver();
-    await renderComposer(); // an empty thread: the v8 example chips show
-    const chips = await screen.findByTestId("composer-chips-row");
-    expect(fieldBlock().contains(chips)).toBe(true);
-    ro.report(150);
-    const region = screen.getByTestId("composer-thread-region");
-    await waitFor(() => expect(region.style.getPropertyValue("--field-reserve")).toBe("150px"));
-  });
-
   it("the field growing keeps a pinned thread at its end", async () => {
     const ro = stubResizeObserver();
     threadFixture = seededThread();
@@ -782,8 +837,7 @@ describe("fix round 1: the measured block", () => {
 
   it("the observer lives with the block: disconnected when it goes", async () => {
     const ro = stubResizeObserver();
-    const { unmount } = renderWithClient(<Composer />);
-    await screen.findByTestId("thread-field");
+    const { unmount } = await renderComposer();
     const watcher = ro.block();
     unmount();
     expect(watcher.disconnected).toBe(true);
@@ -792,7 +846,7 @@ describe("fix round 1: the measured block", () => {
 
 describe("fix round 1: More's audience row", () => {
   const AUDIENCE_ID = "3f2a7c1e-5b6d-4e8f-9a0b-1c2d3e4f5a6b";
-  it("opens today's audience sheet, and a pick runs its path (persist + the thread pin)", async () => {
+  it("opens the audience sheet, and a pick runs its path (persist + the thread pin)", async () => {
     audiencesFixture = [
       {
         id: AUDIENCE_ID,
@@ -813,8 +867,8 @@ describe("fix round 1: More's audience row", () => {
     const sheet = await screen.findByRole("dialog");
     fireEvent.click(within(sheet).getByRole("button", { name: "Audience: General" }));
 
-    const audienceSheet = await screen.findByTestId("audience-sheet");
-    fireEvent.click(within(audienceSheet).getByRole("option", { name: /Gym beginners/ }));
+    const audienceSheet = await screen.findByRole("dialog", { name: "Audience" });
+    fireEvent.click(within(audienceSheet).getByRole("button", { name: "Gym beginners" }));
 
     await waitFor(() => expect(requests("/api/settings/last-audience")).toHaveLength(1));
     expect(bodyOf(requests("/api/settings/last-audience")[0]!)).toEqual({ audienceId: AUDIENCE_ID });
@@ -822,6 +876,46 @@ describe("fix round 1: More's audience row", () => {
     // More names the new audience.
     fireEvent.click(pill("More"));
     expect(within(await screen.findByRole("dialog")).getByRole("button", { name: "Audience: Gym beginners" })).toBeInTheDocument();
+  });
+});
+
+describe("the audience sheet (Home plan, Task 1)", () => {
+  const OWN_ID = "3f2a7c1e-5b6d-4e8f-9a0b-1c2d3e4f5a6b";
+  /** As `/api/audiences` answers: General and a preset first, then the creator's own. */
+  const LIST = [
+    { id: "general", name: "General", mode: "socials", is_general: true, is_preset: false, platform: "tiktok", personas: [] },
+    { id: "preset-growth", name: "Growth Audience", mode: "socials", is_general: false, is_preset: true, platform: "tiktok", personas: [] },
+    { id: OWN_ID, name: "Gym beginners", mode: "socials", is_general: false, is_preset: false, platform: "tiktok", personas: [], source_account_id: "acct-1" },
+  ];
+
+  async function openFromMore() {
+    await renderComposer();
+    await waitFor(() => expect(requests("/api/audiences").length).toBeGreaterThan(0));
+    fireEvent.click(pill("More"));
+    const more = await screen.findByRole("dialog", { name: "More" });
+    fireEvent.click(within(more).getByRole("button", { name: "Audience: General" }));
+    return screen.findByRole("dialog", { name: "Audience" });
+  }
+
+  it("lists the creator's own audience and General in use; a tap on the other persists it and closes the sheet", async () => {
+    audiencesFixture = LIST;
+    const sheet = await openFromMore();
+    expect(within(sheet).getByRole("button", { name: "Gym beginners" })).toHaveAttribute("aria-pressed", "false");
+    expect(within(sheet).getByRole("button", { name: "General" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(sheet).queryByRole("button", { name: "Growth Audience" })).toBeNull();
+
+    fireEvent.click(within(sheet).getByRole("button", { name: "Gym beginners" }));
+
+    await waitFor(() => expect(requests("/api/settings/last-audience")).toHaveLength(1));
+    const put = requests("/api/settings/last-audience")[0]!;
+    expect(put.init?.method).toBe("PUT");
+    expect(bodyOf(put)).toEqual({ audienceId: OWN_ID });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Audience" })).toBeNull());
+    // More's row is gone, so the sheet hands focus to the field's text, not to the page.
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 30));
+    });
+    expect(document.activeElement).toBe(text());
   });
 });
 
@@ -900,6 +994,8 @@ describe("fix round 3: selecting a skill clears staged evidence", () => {
     stageShot();
     expect(screen.getByTestId("field-evidence")).toBeInTheDocument();
     fireEvent.change(text(), { target: { value: "/scr" } });
+    const menu = await screen.findByRole("dialog", { name: "Skills" });
+    expect(within(menu).getByRole("button", { name: "Script" })).toHaveAttribute("data-enter", "true");
     fireEvent.keyDown(text(), { key: "Enter" });
     expect(pill("Script")).toHaveAttribute("aria-pressed", "true");
     expect(screen.queryByTestId("field-evidence")).toBeNull();
@@ -1005,9 +1101,9 @@ describe("the running video card from the read to the card", () => {
 
   it("the first video of an empty chat is thread content from the send (the page takes the thread layout)", async () => {
     holdAnalyze();
+    threadFixture = emptyChat(); // Home: its field's + and send
     const onThreadChange = vi.fn();
-    renderWithClient(<Composer onThreadChange={onThreadChange} />);
-    await screen.findByTestId("thread-field");
+    await renderHome(<Composer onThreadChange={onThreadChange} />);
     expect(onThreadChange).toHaveBeenLastCalledWith(false);
     fireEvent.change(inField().getByLabelText("Choose a video file"), { target: { files: [clip()] } });
     fireEvent.click(send());
@@ -1016,11 +1112,11 @@ describe("the running video card from the read to the card", () => {
     expect(onThreadChange).toHaveBeenLastCalledWith(true);
   });
 
-  it("an upload that fails before the run starts shows no turn: the error by the field, the clip still staged, the arrival layout", async () => {
+  it("an upload that fails before the run starts shows no turn: the error by the field, the clip still staged, not the thread layout", async () => {
     upload.mockResolvedValue({ error: { message: "storage down" } });
+    threadFixture = emptyChat(); // Home: its field's + and send
     const onThreadChange = vi.fn();
-    renderWithClient(<Composer onThreadChange={onThreadChange} />);
-    await screen.findByTestId("thread-field");
+    await renderHome(<Composer onThreadChange={onThreadChange} />);
     fireEvent.change(inField().getByLabelText("Choose a video file"), { target: { files: [clip()] } });
     fireEvent.click(send());
     expect(await screen.findByRole("alert")).toHaveTextContent("That upload didn't go through.");
@@ -1176,7 +1272,8 @@ describe("final review: a finished video does not come back (1)", () => {
     fireEvent.change(inField().getByLabelText("Choose a video file"), { target: { files: [clip()] } });
     expect(screen.getByTestId("field-video")).toBeInTheDocument();
 
-    threadFixture = { threadId: "t2", messages: [] };
+    // Another thread with content, so the field stays the docked one (an empty chat is Home).
+    threadFixture = { ...historyThread(), threadId: "t2" };
     act(() => useBoardStore.getState().switchThread());
     await waitFor(() => expect(pill("Simulate")).toHaveAttribute("aria-pressed", "false"));
     fireEvent.click(pill("Simulate"));
@@ -1193,6 +1290,8 @@ describe("final review: one run per send (2)", () => {
 
   it("two quick taps on send in a new chat: one new thread, one run", async () => {
     document.cookie = `${ACTIVE_THREAD_COOKIE}=${NEW_THREAD_SENTINEL}; path=/`;
+    // A blank new chat, as the server answers the sentinel: Home, its field's send.
+    threadFixture = { messages: [] };
     // The new thread's round trip is held open, so the second tap lands inside it.
     let release!: () => void;
     const held = new Promise<void>((r) => (release = r));
@@ -1205,7 +1304,7 @@ describe("final review: one run per send (2)", () => {
       }
       return base(input, init);
     }) as typeof fetch;
-    await renderComposer();
+    await renderHome();
     fireEvent.change(text(), { target: { value: "what should I post this week?" } });
     fireEvent.click(send());
     fireEvent.click(send());
@@ -1279,7 +1378,7 @@ describe("final review: errors do not stick (4)", () => {
 });
 
 describe("final review: More → Audience hands focus to the audience sheet (5)", () => {
-  it("focus lands on the audience sheet's first option, not on More behind it", async () => {
+  it("focus lands inside the audience sheet, not on More behind it", async () => {
     audiencesFixture = [
       {
         id: "3f2a7c1e-5b6d-4e8f-9a0b-1c2d3e4f5a6b",
@@ -1301,13 +1400,14 @@ describe("final review: More → Audience hands focus to the audience sheet (5)"
     fireEvent.click(more);
     const sheet = await screen.findByRole("dialog", { name: "More" });
     fireEvent.click(within(sheet).getByRole("button", { name: /^Audience: / }));
-    const audienceSheet = await screen.findByTestId("audience-sheet");
+    const audienceSheet = await screen.findByRole("dialog", { name: "Audience" });
     // Radix hands focus back on a timer once More's layer is gone.
     await act(async () => {
       await new Promise((r) => setTimeout(r, 30));
     });
-    const first = within(audienceSheet).getAllByRole("option")[0]!;
-    expect(document.activeElement).toBe(first);
+    // The audience sheet took the focus itself (Radix: its first control), and More did not pull it back.
+    expect(audienceSheet.contains(document.activeElement)).toBe(true);
+    expect(document.activeElement).not.toBe(pill("More"));
   });
 });
 
@@ -1328,6 +1428,8 @@ describe("final review: Enter submits like the send button (7)", () => {
     fireEvent.keyDown(text(), { key: "Enter", shiftKey: true });
     expect(requests("/api/tools/chat")).toHaveLength(0);
     fireEvent.change(text(), { target: { value: "/rem" } });
+    const menu = await screen.findByRole("dialog", { name: "Skills" });
+    expect(within(menu).getByRole("button", { name: "Remix" })).toHaveAttribute("data-enter", "true");
     fireEvent.keyDown(text(), { key: "Enter" });
     expect(pill("Remix")).toHaveAttribute("aria-pressed", "true");
     expect(requests("/api/tools/chat")).toHaveLength(0);
@@ -1389,6 +1491,9 @@ describe("residual fix: a run's inputs are recorded where it is armed", () => {
 
   it("the same file name twice: the second clip is gone after its success too, and a link then simulates the link", async () => {
     succeedAnalyze();
+    // A thread whose reloads restore no user turn (a drop's seeded stack), so the turn text stays
+    // the clip's name from the first run to the second, as this case needs.
+    threadFixture = seededThread();
     await renderComposer();
     await sendClip(new File(["first-take"], "take.mp4", { type: "video/mp4" }), 1);
     await expectNoStagedClip();
@@ -1491,8 +1596,9 @@ describe("residual fix: a run's inputs are recorded where it is armed", () => {
   });
 
   it("Enter during another skill's stream sends nothing", async () => {
-    // Explore's own "Run Explore" starts its stream directly (not through the field's send, so
-    // the send latch is not holding); the stream stays open until Stop.
+    // Explore's own "Run Explore" starts its stream (since the final fix round, B3, behind the
+    // same send latch as the field's send, which holds until the stream ends); the stream stays
+    // open until Stop.
     const base = global.fetch;
     global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       if (String(input).includes("/api/tools/explore")) {
@@ -1519,6 +1625,49 @@ describe("residual fix: a run's inputs are recorded where it is armed", () => {
     await settle();
     expect(requests("/api/tools/chat")).toHaveLength(0);
     expect(requests("/api/tools/explore")).toHaveLength(1);
+
+    fireEvent.click(stop);
+    await waitFor(() => expect(inField().queryByRole("button", { name: "Stop the run" })).toBeNull());
+    // Stop ended the run, so the latch is released: the same Enter now sends, once.
+    fireEvent.keyDown(text(), { key: "Enter" });
+    await waitFor(() => expect(requests("/api/tools/chat")).toHaveLength(1));
+    await settle();
+    expect(requests("/api/tools/chat")).toHaveLength(1);
+  });
+
+  it("Enter during a stream that does not hold the send latch (a failed turn's Retry) sends nothing", async () => {
+    // The streaming check on the field's send, on its own: a run turn's Retry starts its stream
+    // directly (`retryActiveRun`), outside the latch, so only `isAnyStreaming` stands between an
+    // Enter and a second billed run. The first hooks run is refused (a 500), its Retry stays open.
+    const base = global.fetch;
+    let hookRuns = 0;
+    global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes("/api/tools/hooks")) {
+        calls.push({ url: String(input), init });
+        hookRuns += 1;
+        if (hookRuns === 1) return { ok: false, status: 500, json: async () => ({ error: "boom" }) } as unknown as Response;
+        return sse(init?.signal, true);
+      }
+      return base(input, init);
+    }) as typeof fetch;
+    await renderComposer();
+    fireEvent.click(pill("Hooks"));
+    fireEvent.change(text(), { target: { value: "meal prep" } });
+    fireEvent.keyDown(text(), { key: "Enter" });
+    const retry = await screen.findByRole("button", { name: /retry/i });
+    // The failed send has settled: the latch is off before the Retry.
+    await waitFor(() => expect(inField().queryByRole("button", { name: "Stop the run" })).toBeNull());
+
+    fireEvent.click(retry);
+    const stop = await waitFor(() => inField().getByRole("button", { name: "Stop the run" }));
+    expect(requests("/api/tools/hooks")).toHaveLength(2);
+
+    // While the Retry streams: a message, Enter. Nothing goes out.
+    fireEvent.change(text(), { target: { value: "and one more thing" } });
+    fireEvent.keyDown(text(), { key: "Enter" });
+    await settle();
+    expect(requests("/api/tools/chat")).toHaveLength(0);
+    expect(requests("/api/tools/hooks")).toHaveLength(2);
 
     fireEvent.click(stop);
     await waitFor(() => expect(inField().queryByRole("button", { name: "Stop the run" })).toBeNull());
@@ -1669,19 +1818,6 @@ function mealPrepThread(audienceLabel: string | null = "@nia.tests", simSeals: R
       },
     ],
     simSeals,
-  };
-}
-
-/** One settled turn of history: a question and a plain answer. */
-function historyThread() {
-  const at = "2026-11-21T00:00:00.000Z";
-  return {
-    threadId: "t1",
-    messages: [
-      { id: "u1", thread_id: "t1", role: "user", blocks: [{ type: "markdown", props: { text: "first ask" } }], created_at: at },
-      { id: "m1", thread_id: "t1", role: "assistant", blocks: [{ type: "markdown", props: { text: "First answer." } }], created_at: at },
-    ],
-    simSeals: {},
   };
 }
 
@@ -1892,29 +2028,28 @@ describe("task 6: a solid base under the field", () => {
 });
 
 describe("task 6: nothing opens the room any more", () => {
-  it("the funnel's return (?claimed=1) toasts and opens no room: the example chips stay", async () => {
+  it("the funnel's return (?claimed=1) toasts and opens no room: Home stays", async () => {
     window.history.replaceState({}, "", "/home?claimed=1");
     try {
+      // An empty chat holding only the funnel's sealed video: Home.
       threadFixture = {
         threadId: "t1",
         messages: [],
         simSeals: { "analysis-1": { sealed: true, at: "2026-07-27T00:00:00.000Z", video: { analysisId: "analysis-1", craftScore: 77 } } },
       };
-      await renderComposer();
+      await renderHome();
       expect(await screen.findByText("Account linked")).toBeInTheDocument();
       await act(async () => {
         await new Promise((r) => setTimeout(r, 30));
       });
-      expect(screen.getByTestId("composer-chips-row")).toBeInTheDocument();
+      expect(screen.getByTestId("composer-shell")).toHaveAttribute("data-layout", "home");
+      for (const name of ["Simulate", "Hooks", "Script", "Remix"]) {
+        expect(screen.getByRole("button", { name })).toBeInTheDocument();
+      }
       expect(screen.queryByTestId("ambient-overview-sheet")).toBeNull();
     } finally {
       window.history.replaceState({}, "", "/home");
     }
-  });
-
-  it("the arrival's room line states the room; it is not a door to a room that is gone", async () => {
-    await renderComposer();
-    expect((await screen.findByTestId("arrival-room-line")).tagName).toBe("P");
   });
 
   it("a switch to another thread does not carry the old thread's numbers", async () => {
@@ -1969,7 +2104,9 @@ describe("step 2: 'Script this one' from a result page lands in its thread", () 
     threadFixture = thread;
     leave(thread.threadId, hook); // the open thread's id, as /api/threads/open answers it
     const release = holdLoadAndChat();
-    await renderComposer();
+    // The load is held: until it lands the page is the loading outline, with the field docked.
+    renderWithClient(<Composer />);
+    await screen.findByTestId("thread-field");
     await act(async () => {
       await new Promise((r) => setTimeout(r, 30));
     });

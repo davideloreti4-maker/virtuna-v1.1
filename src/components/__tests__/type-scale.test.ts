@@ -39,8 +39,8 @@ const SRC = join(__dirname, '..', '..');            // …/src
 const COMPONENTS = join(__dirname, '..');           // …/src/components
 
 /** The surfaces that actually render — /home, /audience, /settings, the thread (and its new-look
- *  field and frame, `thread-next`). */
-const GUARDED_DIRS = ['app/home', 'app/settings', 'audience', 'shell', 'sidebar', 'thread', 'thread-next'] as const;
+ *  field and frame, `thread-next`) and the new look's Home (`home-next`). */
+const GUARDED_DIRS = ['app/home', 'app/settings', 'audience', 'home-next', 'shell', 'sidebar', 'thread', 'thread-next'] as const;
 
 /** Any arbitrary font-size utility, incl. responsive/state prefixes (`lg:text-[19px]`). */
 const ARBITRARY_TEXT_RE = /\btext-\[([0-9.]+)px\]/g;
