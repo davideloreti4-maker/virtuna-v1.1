@@ -34,6 +34,7 @@
  */
 
 import { z } from "zod";
+import { stripUserContentMarkers } from "@/lib/user-content-markers";
 import { PROFILE_ROLE_MAP, type Role, type ProfileRow } from "./profile-role-map";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -321,10 +322,10 @@ function conversationContent(conversation: { turns?: string[] }): string | null 
 /**
  * Strip <<<USER_CONTENT>>> and <<<END_USER_CONTENT>>> sentinels from user input.
  * Defense-in-depth: a user could paste these literal strings to escape the fence.
- * Mirror of creator.ts:252-254 / sanitizeText in creator-profile.ts.
+ * The one shared cleaner (`user-content-markers.ts`), as creator.ts and sanitizeText use it.
  */
 function stripUserContentSentinels(input: string): string {
-  return input.replace(/<<<(?:END_)?USER_CONTENT>>>/gi, "");
+  return stripUserContentMarkers(input);
 }
 
 /**
