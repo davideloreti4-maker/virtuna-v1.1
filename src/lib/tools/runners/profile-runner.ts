@@ -9,8 +9,9 @@
  *
  * The READ rides the cached behavioral system prompt (05-02), tier-routed:
  *   - flash (text / file / image) → BEHAVIORAL_SYSTEM_PROMPT_FLASH + QWEN_REASONING_MODEL
- *   - max   (person-video)         → BEHAVIORAL_SYSTEM_PROMPT_MAX  + QWEN_OMNI_MODEL
- * NEVER omni for a non-video READ (Pitfall 1 — model comes from SIM1_MODEL_BY_TIER).
+ *   - max   (person-video)         → BEHAVIORAL_SYSTEM_PROMPT_MAX  + QWEN_REASONING_MODEL
+ * The READ is text on both tiers: on max, the omni person-video watch (profile-bake.ts) has
+ * already heard the video and written signal + transcript. Model from SIM1_MODEL_BY_TIER.
  *
  * The bake rides `bakeProfileSignature` (05-03) and saves through the existing General
  * library CRUD (`createAudience` mode:"general"). The DETECTED subjectKind is PERSISTED
@@ -238,7 +239,7 @@ export async function runProfile(
     system = BEHAVIORAL_SYSTEM_PROMPT_FLASH;
   }
 
-  const model = SIM1_MODEL_BY_TIER[stimulus.tier]; // Pitfall 1: flash→reasoning, max→omni.
+  const model = SIM1_MODEL_BY_TIER[stimulus.tier]; // text READ: the reasoning model on both tiers.
 
   // (2) READ + bake in parallel (one bake of the evidence — D-01 FUSE).
   const [read, bakeResult] = await Promise.all([
