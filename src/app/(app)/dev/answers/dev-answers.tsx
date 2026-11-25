@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { TextResultView, type TextResultState } from "@/components/result/text-result";
+import { AccountAnswer } from "@/components/thread-next/account-answer";
 import { NextAssistantTurn } from "@/components/thread-next/assistant-label";
 import type { GaugeState } from "@/components/thread-next/answer-gauge";
 import { AnswerOutline } from "@/components/thread-next/answer-outline";
@@ -21,16 +22,21 @@ import { NextUserTurn, type UserTurnVideo } from "@/components/thread-next/user-
 import { VideoAnswerView, posterOf } from "@/components/thread-next/video-answer";
 import { VideoRunning } from "@/components/thread-next/video-running";
 import {
+  ACCOUNT_READ_BARE,
+  ACCOUNT_READ_FULL,
+  BLUEPRINT_ANSWER,
   HOOK_1_POPULATION,
   IDEAS_4,
   IDEA_SHEET,
   MEAL_PREP_HOOKS,
   REMIX_CAMERA,
+  REMIX_DECODED,
+  REMIX_FILMED,
   SCRIPT_AI,
   SCRIPT_FILMED,
   SCRIPT_PLANNED,
   SEALS_DONE,
-  accountRead,
+  composed,
   population,
   proof,
   remix,
@@ -81,7 +87,11 @@ export type DevAnswersState =
   | "p10p"
   | "p11"
   | "p11b"
+  | "p11c"
+  | "p11d"
   | "p13"
+  | "p14"
+  | "p15"
   | "d3"
   | "p7"
   | "p7l"
@@ -200,6 +210,12 @@ function waitOf(skill: string, stages: { name: string; status: string }[], evide
   return outline ? <AnswerOutline kind={outline} words={words} note={note} evidence={evidence} /> : <RunStatus words={words} note={note} />;
 }
 
+/** How long p11c's read takes, so its two ghost rows can be seen. */
+const BEATS_READ_MS = 900;
+
+/** p11c's read: the fixed answer, after a moment; nothing is fetched. */
+const readFixedBeats = () => new Promise<unknown>((resolve) => setTimeout(() => resolve(BLUEPRINT_ANSWER), BEATS_READ_MS));
+
 /** How long `wl` waits before its pack lands. */
 const LANDING_AFTER_MS = 2_500;
 
@@ -281,10 +297,28 @@ function turnOf(state: DevAnswersState, ctx: { frames: string | null; startedAt:
         answer: <RemixAnswer items={MORE_REMIXES} hookOf={emptyHook} onScript={noop} />,
         chips: "remix",
       };
+    // "How to film it" on a remix (thread depth, second part §4): a decode, beats and a plan (the beats
+    // from a fixed answer, after a moment); a decode only. The card holds the sheet's state itself.
+    case "p11c":
+    case "p11d":
+      return {
+        ask: "Remix @creator_one’s video",
+        answer: <RemixAnswer items={[state === "p11c" ? REMIX_FILMED : REMIX_DECODED]} hookOf={emptyHook} onScript={noop} loadBeats={readFixedBeats} />,
+        chips: "remix",
+      };
+    // The fallback card, on a block that still falls back (the drawing's account read has its own card now).
     case "p13": {
-      const { title, lines } = fallbackOf(accountRead());
-      return { ask: "Read my account", answer: <FallbackAnswer title={title} lines={lines} />, chips: null };
+      const { title, lines } = fallbackOf(composed());
+      return { ask: "Compare my two hooks", answer: <FallbackAnswer title={title} lines={lines} />, chips: null };
     }
+    // The account read's own card (thread depth, second part §3): everything; no fix, covers or picture.
+    case "p14":
+    case "p15":
+      return {
+        ask: "Read my account",
+        answer: <AccountAnswer block={state === "p14" ? ACCOUNT_READ_FULL : ACCOUNT_READ_BARE} onIdeas={noop} />,
+        chips: "account",
+      };
     case "w1":
       return { ask: "What should I post this week?", answer: waitOf("chat", [], null), chips: null };
     case "w2":

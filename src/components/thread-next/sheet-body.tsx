@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useId, useRef, useState } from "react";
+import { useId } from "react";
 
 import { creditCost } from "@/lib/pricing";
 import type { HookCardBlock, HookProof, IdeaCardBlock } from "@/lib/tools/blocks";
@@ -12,6 +12,7 @@ import { AnswerPrimary, PROSE, creditsLabel, keepHyphens } from "./answer-card";
 import { EmptyArt, SmallGauge, clipName, stopWords, type GaugeState } from "./answer-gauge";
 import { ExternalIcon } from "./answer-icons";
 import { ChevronIcon, DocIcon } from "./field-icons";
+import { MoreButton, useFold } from "./fold-more";
 import { ProofCover, proofStats } from "./remix-answer";
 
 /**
@@ -130,41 +131,21 @@ function SheetGaugeRow({ gauge, actions }: { gauge: SheetGauge; actions: React.R
   );
 }
 
-/** The first sentence, and "More" that opens the rest in place (focus moves to the whole text). */
+/** The first sentence, and "More" that opens the rest in place (focus moves to the whole text; `useFold`). */
 function FoldedText({ text }: { text: string }) {
-  const [open, setOpen] = useState(false);
-  const justOpened = useRef(false);
+  const { open, openFold, wholeRef } = useFold();
   const whole = text.trim();
   const lead = foldLead(whole);
   if (open || lead === null) {
     return (
-      <span
-        tabIndex={open ? -1 : undefined}
-        ref={(el) => {
-          if (el && justOpened.current) {
-            justOpened.current = false;
-            el.focus();
-          }
-        }}
-      >
+      <span tabIndex={open ? -1 : undefined} ref={wholeRef}>
         {keepHyphens(whole)}
       </span>
     );
   }
   return (
     <>
-      {keepHyphens(lead)}{" "}
-      <button
-        type="button"
-        aria-expanded={false}
-        onClick={() => {
-          justOpened.current = true;
-          setOpen(true);
-        }}
-        className="tap-44 cursor-pointer font-[650] text-foreground"
-      >
-        More
-      </button>
+      {keepHyphens(lead)} <MoreButton onOpen={openFold} />
     </>
   );
 }

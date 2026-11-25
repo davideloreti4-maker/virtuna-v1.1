@@ -38,7 +38,8 @@ import {
   SCRIPT_AI,
   SCRIPT_FILMED,
   SEALS_DONE,
-  accountRead,
+  ACCOUNT_READ_FULL,
+  composed,
   corpus,
   hook,
   idea,
@@ -753,12 +754,44 @@ describe("a chat answer, and the blocks with no card of their own", () => {
     expect(screen.getByText("@lacapture · 154K views")).toBeInTheDocument();
   });
 
-  it("an account read is the fallback card: its title, three lines, Show all", () => {
-    renderTurn({ userTurn: "Read my account", blocks: [runHeader("account"), accountRead()] });
-    expect(screen.getByText("Your account")).toBeInTheDocument();
-    expect(screen.getByText("Mostly talking to camera.")).toBeInTheDocument();
-    expect(screen.queryByText("Your first second is often a slow pan.")).toBeNull();
-    expect(screen.getByRole("button", { name: "Show all" })).toBeInTheDocument();
+  // Thread depth, second part §3: the account read draws its own card; the old fallback ("Your
+  // account" and loose lines) is gone. Was: the fallback card, its title, three lines, Show all.
+  it("an account read draws its own card, not the 'Your account' fallback", () => {
+    const { container } = renderTurn({ userTurn: "Read my account", blocks: [runHeader("account"), ACCOUNT_READ_FULL, md(OUTRO)] });
+    expect(cards(container)).toHaveLength(1);
+    expect(container.querySelector('[data-part="account-who"]')).toHaveTextContent("@creator_one12.4K followers · 86 videos");
+    expect(within(container.querySelector<HTMLElement>('[data-part="account-works"]')!).getAllByRole("listitem")).toHaveLength(2);
+    expect(screen.getByText("The middle loses people. Tighten it and cut the dead air.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Ideas from what works, 1 credit" })).toBeInTheDocument();
+    expect(screen.queryByText("Your account")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Show all" })).toBeNull();
+    expect(screen.queryByText(OUTRO)).toBeNull();
+    // Under it, the account's chip: none that starts an Ideas run, the card's button does (fix round 1).
+    expect(within(screen.getByTestId("followup-row")).getAllByRole("button").map((b) => b.getAttribute("aria-label"))).toEqual([
+      "Follow up: Where am I weakest?",
+    ]);
+    expect(screen.queryByRole("button", { name: "Follow up: Ideas that fit me" })).toBeNull();
+  });
+
+  it("its button sends the ask as an Ideas run through the thread's follow-up, once for a tap that lands twice", () => {
+    const followup = vi.fn();
+    renderTurn({ userTurn: "Read my account", blocks: [runHeader("account"), ACCOUNT_READ_FULL] }, { followup });
+    const button = screen.getByRole("button", { name: "Ideas from what works, 1 credit" });
+    fireEvent.click(button);
+    fireEvent.click(button);
+    expect(followup).toHaveBeenCalledTimes(1);
+    expect(followup).toHaveBeenCalledWith(
+      "Give me ideas built on what already works on my account:\n" +
+        "- How I meal prep a week for $12 (854K views)\n" +
+        "- Stop buying protein bars, make these (146K views)",
+      "ideas",
+    );
+  });
+
+  it("without a follow-up handler its button is drawn and a press does nothing", () => {
+    renderTurn({ userTurn: "Read my account", blocks: [runHeader("account"), ACCOUNT_READ_FULL] });
+    const button = screen.getByRole("button", { name: "Ideas from what works, 1 credit" });
+    expect(() => fireEvent.click(button)).not.toThrow();
   });
 
   it("a link field keeps its legacy renderer, beside the agent's text", () => {
@@ -1156,17 +1189,33 @@ describe("the landing (thread feel §4.3, rulings 11)", () => {
     expect(container.querySelector("[data-thread-landing]")).toBeNull();
   });
 
-  it("the kinds without an outline: the line, then the answer comes in as one part", () => {
+  // Was: the account read's answer came in as one part (the fallback card at 0, the chips at 3). Its
+  // own card lands as the others do (thread depth, second part §3): its parts one after another.
+  it("the account read waits on the line alone, then its card's parts come in one after another, the chips 3 after", () => {
     const live = { skill: "account" as const, isStreaming: true, stages: [] };
     const { container, rerender } = renderTurn({ userTurn: "Read my account", blocks: [runHeader("account")], live });
     expect(screen.getByRole("status")).toHaveTextContent("Reading your account");
-    rerender({ userTurn: "Read my account", blocks: [runHeader("account"), accountRead()], live: { ...live, isStreaming: false } });
+    expect(container.querySelector("[data-outline]")).toBeNull();
+    rerender({ userTurn: "Read my account", blocks: [runHeader("account"), ACCOUNT_READ_FULL], live: { ...live, isStreaming: false } });
     const group = container.querySelector("[data-thread-landing]")!;
     expect(group).not.toBeNull();
+    expect(landedOf(group)).toBe("0ms");
+    const card = cards(container)[0]!;
+    expect(card).not.toHaveClass("land");
+    const places = ["account-who", "account-works", "account-fix", "account-habits"].map((p) => iOf(card.querySelector(`[data-part="${p}"]`)));
+    expect(places).toEqual(["0", "1", "2", "3"]);
+    expect(iOf(screen.getByRole("button", { name: "Ideas from what works, 1 credit" }).closest(".land"))).toBe("4");
+    expect(iOf(screen.getByTestId("followup-row").closest(".land"))).toBe("7");
+  });
+
+  it("a fallback answer still comes in as one part", () => {
+    const live = { skill: "chat" as const, isStreaming: true, stages: [] };
+    const { container, rerender } = renderTurn({ userTurn: "Compare my two hooks", blocks: [], live });
+    rerender({ userTurn: "Compare my two hooks", blocks: [composed()], live: { ...live, isStreaming: false } });
+    expect(container.querySelector("[data-thread-landing]")).not.toBeNull();
     const card = cards(container)[0]!;
     expect(card).toHaveClass("land");
     expect(iOf(card)).toBe("");
-    expect(iOf(screen.getByTestId("followup-row").closest(".land"))).toBe("3");
   });
 
   it("a plain answer does not land: its words fade in as they stream, and the turn stays at rest", () => {

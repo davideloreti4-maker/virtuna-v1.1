@@ -18,7 +18,14 @@
  */
 
 import { validateBlock } from "@/lib/tools/block-registry";
-import type { CorpusReferencesBlock, HookCardBlock, IdeaCardBlock, ScriptCardBlock, RemixCardBlock } from "@/lib/tools/blocks";
+import type {
+  AccountReadBlock,
+  CorpusReferencesBlock,
+  HookCardBlock,
+  IdeaCardBlock,
+  ScriptCardBlock,
+  RemixCardBlock,
+} from "@/lib/tools/blocks";
 import type { EditBlock, VideoTestCardBlock } from "@/lib/tools/profile-blocks";
 
 export interface Indexed<B> {
@@ -34,6 +41,8 @@ export type AnswerPart =
   | { kind: "script"; item: Indexed<ScriptCardBlock> }
   | { kind: "video"; item: Indexed<VideoTestCardBlock> }
   | { kind: "edit"; item: Indexed<EditBlock> }
+  /** The account read's own card (thread depth, second part §3). */
+  | { kind: "account"; item: Indexed<AccountReadBlock> }
   /** Markdown, only in a turn with no result card. */
   | { kind: "text"; index: number; text: string }
   /** `input-request`, `outlier-grid`: the validated block, for its legacy renderer. */
@@ -127,6 +136,9 @@ export function partsOf(blocks: readonly unknown[]): AnswerPart[] {
         return;
       case "edit":
         parts.push({ kind: "edit", item: { index, block: block as EditBlock } });
+        return;
+      case "account-read":
+        parts.push({ kind: "account", item: { index, block: block as AccountReadBlock } });
         return;
       case "markdown":
         if (showText) parts.push({ kind: "text", index, text: (block.props as { text: string }).text });

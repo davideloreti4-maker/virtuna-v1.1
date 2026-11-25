@@ -10,14 +10,19 @@
 
 import { followupsForKind, type ChatFollowup, type ChatTurnKind } from "@/lib/tools/chat-followups";
 
-/** The drawn pair per kind. A kind not listed takes its first two curated entries. */
-const PICKS: Partial<Record<ChatTurnKind, readonly [string, string]>> = {
+/**
+ * The drawn pair per kind. A kind not listed takes its first two curated entries. The account read
+ * keeps one: its card's own button ("Ideas from what works") starts the Ideas run, so "Ideas that fit
+ * me" under it would be a second Ideas button right below the first (thread depth, second part §3).
+ */
+const PICKS: Partial<Record<ChatTurnKind, readonly string[]>> = {
   hooks: ["More hooks", "Punch them up"],
   ideas: ["More ideas", "Sharper angles"],
   script: ["Make it punchier", "Different angle"],
   remix: ["More like this", "Write hooks"],
   test: ["Rewrite the hook", "Fix the pacing"],
   chat: ["Give me ideas", "Write hooks"],
+  account: ["Where am I weakest?"],
 };
 
 export function nextFollowups(kind: ChatTurnKind): ChatFollowup[] {

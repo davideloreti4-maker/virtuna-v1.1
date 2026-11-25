@@ -7,7 +7,8 @@
  *   ("0 to 3 s", from `timing`; null when either end cannot be read or the end is before the start)
  *   and the cue. A beat without a cue has no row.
  * - Then the shoot plan, when the script has `production`: "Shots", "Text on screen", "Setup", and
- *   "Edit" when it is there. A row with nothing in it is left out.
+ *   "Edit" when it is there. A row with nothing in it is left out (`filmPlanOf`, which a remix's
+ *   sheet reads too: its `production` has the same shape).
  *
  * Pure: no React.
  */
@@ -27,9 +28,15 @@ export interface FilmBeat {
   cue: string;
 }
 
+/** A row of the shoot plan: "Shots", "Text on screen", "Setup", "Edit". */
+export interface FilmPlanRow {
+  label: string;
+  text: string;
+}
+
 export interface FilmNotes {
   beats: FilmBeat[];
-  plan: { label: string; text: string }[];
+  plan: FilmPlanRow[];
 }
 
 /**
@@ -42,21 +49,25 @@ export function filmSpan(timing: string): string | null {
   return start === null || end === null || end < start ? null : `${start} to ${end} s`;
 }
 
+/** The shoot plan's rows, in order; a row with nothing in it is left out; no plan: none. */
+export function filmPlanOf(production: ScriptProps["production"]): FilmPlanRow[] {
+  if (!production) return [];
+  return [
+    { label: "Shots", text: production.shots },
+    { label: "Text on screen", text: production.onScreenText },
+    { label: "Setup", text: production.setup },
+    { label: "Edit", text: production.edit ?? "" },
+  ]
+    .map((row) => ({ label: row.label, text: row.text.trim() }))
+    .filter((row) => row.text.length > 0);
+}
+
 export function filmNotesOf({ beats, production }: Pick<ScriptProps, "beats" | "production">): FilmNotes | null {
   const rows: FilmBeat[] = [];
   for (const beat of beats) {
     const cue = beat.filming?.trim();
     if (cue) rows.push({ name: beatName(beat.label), span: filmSpan(beat.timing), cue });
   }
-  const plan = production
-    ? [
-        { label: "Shots", text: production.shots },
-        { label: "Text on screen", text: production.onScreenText },
-        { label: "Setup", text: production.setup },
-        { label: "Edit", text: production.edit ?? "" },
-      ]
-        .map((row) => ({ label: row.label, text: row.text.trim() }))
-        .filter((row) => row.text.length > 0)
-    : [];
+  const plan = filmPlanOf(production);
   return rows.length === 0 && plan.length === 0 ? null : { beats: rows, plan };
 }

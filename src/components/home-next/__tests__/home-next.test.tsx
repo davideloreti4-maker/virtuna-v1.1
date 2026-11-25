@@ -38,7 +38,7 @@ vi.mock("next/navigation", () => ({
   useRouter: () => router,
 }));
 
-import { HOME_RECENT_LIMIT, HomeNext, recentRows, summaryAgrees } from "../home-next";
+import { HOME_RECENT_LIMIT, HomeNext, moneyOf, recentRows, summaryAgrees } from "../home-next";
 
 const NOW = new Date("2026-11-23T10:00:00Z").getTime();
 const HOUR = 3_600_000;
@@ -96,20 +96,22 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 const requested = () => vi.mocked(fetch).mock.calls.map(([input]) => String(input));
 const libraryRequests = () => requested().filter((url) => url.startsWith("/api/threads/library"));
 
+/** The audience line's values as the composer hands them in. */
+const AUDIENCE = { name: "@creator_one", general: false, open: false, onOpen: () => {} };
+
 function renderHomeNext(
   over: Partial<ComponentProps<typeof HomeNext>> = {},
   qc = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
 ) {
   const onPickSkill = vi.fn();
-  const onMore = vi.fn();
   render(
     <QueryClientProvider client={qc}>
       <ToastProvider>
-        <HomeNext field={<div data-testid="slot" />} credits={null} picked={false} onPickSkill={onPickSkill} onMore={onMore} {...over} />
+        <HomeNext field={<div data-testid="slot" />} audience={AUDIENCE} credits={null} onPickSkill={onPickSkill} {...over} />
       </ToastProvider>
     </QueryClientProvider>,
   );
-  return { onPickSkill, onMore, qc };
+  return { onPickSkill, qc };
 }
 
 describe("recentRows", () => {
@@ -120,7 +122,7 @@ describe("recentRows", () => {
     vi.restoreAllMocks();
   });
 
-  it("leaves untitled chats out and takes the three last written to", () => {
+  it("leaves untitled chats out and takes the five last written to (spec 2026-11-25 §2.5)", () => {
     const rows = recentRows([
       thread("a", null),
       thread("b", "Meal prep for busy students"),
@@ -129,16 +131,20 @@ describe("recentRows", () => {
       thread("e", "  "),
       thread("f", "Morning routine, no cuts", 72),
       thread("g", "Ideas for next week", 96),
+      thread("h", "Gym myths for beginners", 120),
+      thread("i", "Lentils, three ways", 150),
+      thread("j", "An old one", 200),
     ]);
-    expect(HOME_RECENT_LIMIT).toBe(3);
-    expect(rows.map((row) => row.id)).toEqual(["b", "d", "f"]);
+    expect(HOME_RECENT_LIMIT).toBe(5);
+    expect(rows.map((row) => row.id)).toEqual(["b", "d", "f", "g", "h"]);
   });
 
   it("is by last message, not the sidebar's order: an old pinned chat does not lead", () => {
     // The list arrives pinned first (the sidebar's order).
     const pinned = { ...thread("p", "Pinned in the summer", 118 * 24), pinned_at: new Date(NOW - 100 * 24 * HOUR).toISOString() };
     const rows = recentRows([pinned, thread("x", "Three days ago", 72), thread("y", "Today", 1), thread("z", "Yesterday", 26)]);
-    expect(rows.map((row) => row.id)).toEqual(["y", "z", "x"]);
+    // The pinned one is in its place by last message: last, not first.
+    expect(rows.map((row) => row.id)).toEqual(["y", "z", "x", "p"]);
   });
 
   it("past a week a chat shows its date, with the year once it is not this one", () => {
@@ -240,10 +246,16 @@ describe("HomeNext", () => {
 
   const renderHome = renderHomeNext;
 
-  it("More skills reaches the composer's onMore (final fix A1)", async () => {
-    const { onMore } = renderHome();
-    fireEvent.click(screen.getByRole("button", { name: "More skills" }));
-    expect(onMore).toHaveBeenCalledTimes(1);
+  it("draws the audience line the composer hands in, under the greeting; a press reaches the composer", async () => {
+    const onOpen = vi.fn();
+    const anchorRef = { current: null as HTMLButtonElement | null };
+    renderHome({ audience: { name: "@creator_two", general: false, open: false, onOpen }, audienceRef: anchorRef });
+    const line = screen.getByRole("button", { name: "For @creator_two, change audience" });
+    expect(line).toHaveTextContent(/^For @creator_two$/);
+    expect(screen.getByRole("heading", { level: 1 }).nextElementSibling).toBe(line);
+    expect(anchorRef.current).toBe(line);
+    fireEvent.click(line);
+    expect(onOpen).toHaveBeenCalledTimes(1);
     await screen.findByRole("button", { name: "Meal prep for busy students" });
   });
 
@@ -315,36 +327,197 @@ describe("HomeNext", () => {
     expect(router.push).toHaveBeenCalledWith("/home");
   });
 
-  it("shows the balance it is given, and a card picks its skill", async () => {
-    const { onPickSkill } = renderHome({ credits: 12 });
+  it("shows the balance it is given", async () => {
+    renderHome({ credits: 12 });
     expect(screen.getByText("12 credits")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Hooks" }));
-    expect(onPickSkill).toHaveBeenCalledWith("hooks");
     await screen.findByRole("button", { name: "Meal prep for busy students" });
   });
 
-  it("with the sidebar open, Recent is the phone's only (the sidebar lists the same chats)", async () => {
+  it.each([
+    ["open", () => useSidebarStore.setState({ isCollapsed: false })],
+    ["the rail", () => useSidebarStore.setState({ isCollapsed: true })],
+    ["the narrow window's rail", () => useShellStore.setState({ autoRail: true })],
+  ] as const)("with the sidebar %s, Recent shows on desktop too (spec 2026-11-25 §2.5)", async (_state, set) => {
+    set();
     renderHome();
     await screen.findByRole("button", { name: "Meal prep for busy students" });
-    expect(recentSection()).toHaveClass("md:hidden");
-  });
-
-  it("with the sidebar as the rail, Recent shows on desktop too", async () => {
-    useSidebarStore.setState({ isCollapsed: true });
-    renderHome();
-    await screen.findByRole("button", { name: "Meal prep for busy students" });
-    expect(recentSection()).not.toHaveClass("md:hidden");
-  });
-
-  it("the narrow-window rail counts as the rail", async () => {
-    useShellStore.setState({ autoRail: true });
-    renderHome();
-    await screen.findByRole("button", { name: "Meal prep for busy students" });
-    expect(recentSection()).not.toHaveClass("md:hidden");
+    expect(recentSection()!.className).not.toMatch(/(^|\s)md:hidden(\s|$)/);
   });
 });
 
-describe("HomeNext — Money made (Earn, step C; rulings 18 and 24)", () => {
+describe("HomeNext — what goes under the field (spec 2026-11-25 §2.5)", () => {
+  /** What `/api/threads/list` answers: a list, a status, or an answer on its way. */
+  let listAnswer: ThreadSummary[] | number | Promise<ThreadSummary[] | number>;
+  /** What `/api/threads/library` answers (the summary): a page or a status. */
+  let libraryAnswer: LibraryPage | number;
+
+  beforeEach(() => {
+    listAnswer = [];
+    libraryAnswer = { chats: [], next: null };
+    stubMatchMedia();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.endsWith("/api/profile")) return json({ name: "Nia Long", avatar: null, email: "x" });
+        // The sidebar's delete.
+        if (init?.method === "DELETE" && url.startsWith("/api/threads/")) return json({ success: true });
+        if (url.endsWith("/api/threads/list")) {
+          const answer = await listAnswer;
+          return typeof answer === "number" ? json({ error: "x" }, answer) : json({ threads: answer });
+        }
+        if (url.startsWith("/api/threads/library")) {
+          return typeof libraryAnswer === "number" ? json({}, libraryAnswer) : json(libraryAnswer);
+        }
+        return json({}, 404);
+      }),
+    );
+    clearActiveThreadCookie();
+    useBoardStore.setState({ activeThreadId: null });
+    useSidebarStore.setState({ isCollapsed: false });
+    useShellStore.setState({ autoRail: false });
+  });
+
+  afterEach(() => {
+    cleanup();
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  const CARDS = ["Simulate", "Hooks", "Script", "Remix"];
+  const settle = (ms = 50) => act(async () => { await new Promise((resolve) => setTimeout(resolve, ms)); });
+  const cardsShown = () => CARDS.filter((name) => screen.queryByRole("button", { name }));
+  const recentShown = () => screen.queryByRole("heading", { name: "Recent" }) !== null;
+
+  it("while the chat list is out: nothing under the field, not a card, not Recent; then what it says", async () => {
+    let answer!: (threads: ThreadSummary[]) => void;
+    listAnswer = new Promise<ThreadSummary[]>((resolve) => (answer = resolve));
+    // The summary is in first, with a chat: still nothing until the list has answered.
+    libraryAnswer = { chats: [libraryChat("t1", "Meal prep for busy students", new Date().toISOString())], next: null };
+    renderHomeNext();
+    await settle();
+    expect(cardsShown()).toEqual([]);
+    expect(recentShown()).toBe(false);
+    expect(screen.getByTestId("slot").parentElement!.nextElementSibling).toBeNull();
+
+    await act(async () => answer([thread("t1", "Meal prep for busy students")]));
+    expect(await screen.findByRole("heading", { name: "Recent" })).toBeInTheDocument();
+    expect(cardsShown()).toEqual([]);
+  });
+
+  it("one titled chat: Recent, and no cards", async () => {
+    listAnswer = [thread("t1", "Meal prep for busy students")];
+    renderHomeNext();
+    expect(await screen.findByRole("button", { name: "Meal prep for busy students" })).toBeInTheDocument();
+    expect(cardsShown()).toEqual([]);
+  });
+
+  it.each<[string, () => void]>([
+    ["no chats at all", () => (listAnswer = [])],
+    ["only untitled chats (nothing to resume)", () => (listAnswer = [thread("a", null), thread("b", "  ")])],
+    ["the list failed (and the summary too)", () => ((listAnswer = 500), (libraryAnswer = 500))],
+  ])("%s: the four cards, and no Recent", async (_name, set) => {
+    set();
+    renderHomeNext();
+    await waitFor(() => expect(cardsShown()).toEqual(CARDS));
+    expect(recentShown()).toBe(false);
+  });
+
+  // Review minor 2 (a).
+  it("the last chat deleted while on Home: Recent goes and the cards come, though the summary still holds the chat", async () => {
+    const at = new Date().toISOString();
+    listAnswer = [thread("t1", "Meal prep for busy students")];
+    // The summary is not told of the delete: it keeps the chat on every read.
+    libraryAnswer = { chats: [libraryChat("t1", "Meal prep for busy students", at)], next: null };
+    const { qc } = renderHomeNext();
+    expect(await screen.findByRole("heading", { name: "Recent" })).toBeInTheDocument();
+
+    // The sidebar's own delete (its real hook), on the same cache.
+    function Sidebar() {
+      const archive = useArchiveThread();
+      return (
+        <button type="button" onClick={() => archive.mutate("t1")}>
+          Delete chat
+        </button>
+      );
+    }
+    render(
+      <QueryClientProvider client={qc}>
+        <Sidebar />
+      </QueryClientProvider>,
+    );
+    listAnswer = [];
+    fireEvent.click(screen.getByRole("button", { name: "Delete chat" }));
+
+    await waitFor(() => expect(cardsShown()).toEqual(CARDS));
+    expect(recentShown()).toBe(false);
+    expect(screen.queryByRole("button", { name: "Meal prep for busy students" })).toBeNull();
+  });
+
+  // Review minor 2 (b).
+  it.each([
+    ["Recent", [thread("t1", "Meal prep for busy students")]],
+    ["the cards", []],
+  ] as const)("a refetch of the list does not go back to not known yet (%s): it stays while the list is out, and after", async (what, threads) => {
+    listAnswer = [...threads];
+    libraryAnswer = { chats: threads.map((t) => libraryChat(t.id, t.title, t.updated_at)), next: null };
+    const { qc } = renderHomeNext();
+    const shown = () => (what === "Recent" ? recentShown() && cardsShown().length === 0 : cardsShown().length === 4 && !recentShown());
+    await waitFor(() => expect(shown()).toBe(true));
+
+    let answer!: (threads: ThreadSummary[]) => void;
+    listAnswer = new Promise<ThreadSummary[]>((resolve) => (answer = resolve));
+    const refetch = act(async () => {
+      await qc.invalidateQueries({ queryKey: queryKeys.threads.list() });
+    });
+    await settle();
+    // The list is out again: what was under the field is still there.
+    expect(qc.getQueryState(queryKeys.threads.list())?.fetchStatus).toBe("fetching");
+    expect(shown()).toBe(true);
+    answer([...threads]);
+    await refetch;
+    await settle();
+    expect(shown()).toBe(true);
+  });
+
+  it("with the cards, a tap picks its skill and the cards stay", async () => {
+    const { onPickSkill } = renderHomeNext();
+    fireEvent.click(await screen.findByRole("button", { name: "Hooks" }));
+    expect(onPickSkill).toHaveBeenCalledWith("hooks");
+    expect(cardsShown()).toEqual(CARDS);
+    expect(screen.queryByRole("button", { name: "More skills" })).toBeNull();
+  });
+});
+
+describe("moneyOf: only above zero (spec 2026-11-25 §2.6)", () => {
+  const PAGE: EarnPage = { link: "https://maven.example.test/?ref=K349Z4QP", code: "K349Z4QP", name: "Nia Carter", joined: 2, whop: null };
+  const whop = (over: Partial<NonNullable<EarnPage["whop"]>>): EarnPage => ({
+    ...PAGE,
+    whop: { canEnrol: true, knownAccount: false, username: "nia.example", earnedCents: null, ...over },
+  });
+
+  it.each([
+    [1, "$0.01"],
+    [2450, "$24.50"],
+    [124_000, "$1,240"],
+    [124_050, "$1,240.50"],
+  ])("%i cents earned: the row, %s, with Earn's rate", (cents, words) => {
+    expect(moneyOf(whop({ earnedCents: cents }))).toEqual({ amount: words, hint: headline() });
+  });
+
+  it.each<[string, EarnPage | undefined]>([
+    ["not answered yet", undefined],
+    ["the payment side not read (whop null)", PAGE],
+    ["not enrolled, the number null", whop({ username: null, earnedCents: null })],
+    ["enrolled, the number could not be read", whop({ earnedCents: null })],
+    ["enrolled, nothing earned yet (Whop says 0)", whop({ earnedCents: 0 })],
+    ["a number below zero (a refund, say)", whop({ earnedCents: -500 })],
+  ])("%s: no row", (_name, page) => {
+    expect(moneyOf(page)).toBeNull();
+  });
+});
+
+describe("HomeNext — Money made, last (spec 2026-11-25 §2.6; Earn rulings 18 and 24)", () => {
   /** What `GET /api/earn` answers, in turn (the last one again once the others are used): a page, a status, or an answer on its way. */
   let earnAnswers: Array<EarnPage | number | Promise<EarnPage | number>>;
   const PAGE: EarnPage = { link: "https://maven.example.test/?ref=K349Z4QP", code: "K349Z4QP", name: "Nia Carter", joined: 2, whop: null };
@@ -354,7 +527,7 @@ describe("HomeNext — Money made (Earn, step C; rulings 18 and 24)", () => {
   });
 
   beforeEach(() => {
-    earnAnswers = [PAGE];
+    earnAnswers = [withWhop(5880)];
     stubMatchMedia();
     vi.stubGlobal(
       "fetch",
@@ -385,123 +558,94 @@ describe("HomeNext — Money made (Earn, step C; rulings 18 and 24)", () => {
   const earnRequests = () => requested().filter((url) => url.startsWith("/api/earn"));
   const settle = (ms = 50) => act(async () => { await new Promise((resolve) => setTimeout(resolve, ms)); });
 
-  it("holds the row's space while Earn has not answered, then the row lands in it: Money made, $0, Earn 50%, a link to Earn", async () => {
-    let answer!: (page: EarnPage) => void;
-    earnAnswers = [new Promise<EarnPage>((resolve) => (answer = resolve))];
+  it("something earned: the row, last on the page, after the cards: Money made, $58.80, Earn 50%, a link to Earn", async () => {
     renderHomeNext();
-    await waitFor(() => expect(earnRequests()).toHaveLength(1));
-    const holding = moneyPart()!;
-    expect(holding).toHaveAttribute("aria-hidden", "true");
-    expect(holding.firstElementChild).toHaveClass("h-12");
-    expect(moneyLink()).toBeNull();
-
-    await act(async () => answer(PAGE));
-    const link = await screen.findByRole("link", { name: "Money made: $0. Earn 50%" });
+    const link = await screen.findByRole("link", { name: "Money made: $58.80. Earn 50%" });
     expect(link).toHaveAttribute("href", "/earn");
-    expect(link).toHaveTextContent(/^Money made\s*\$0\s*Earn 50%$/);
-    // In the place that was held: the same element, no jump.
-    expect(moneyPart()).toBe(holding);
-    expect(holding).not.toHaveAttribute("aria-hidden");
-    expect(link).toHaveClass("h-12");
+    expect(link).toHaveTextContent(/^Money made\s*\$58\.80\s*Earn 50%$/);
+    await screen.findByRole("button", { name: "Hooks" });
+    const column = screen.getByRole("heading", { level: 1 }).parentElement!;
+    expect(column.lastElementChild).toBe(moneyPart());
   });
 
   it("Earn 50% is built from the rate's constant", async () => {
     renderHomeNext();
-    expect(await screen.findByRole("link", { name: `Money made: $0. ${headline()}` })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: `Money made: $58.80. ${headline()}` })).toBeInTheDocument();
     expect(headline()).toBe(`Earn ${EARN_RATE_PCT}%`);
   });
 
-  it.each([
-    [2450, "$24.50"],
-    [124_000, "$1,240"],
-    [124_050, "$1,240.50"],
-    [0, "$0"],
-  ])("with Whop's number (%i cents) the amount is %s", async (cents, words) => {
-    earnAnswers = [withWhop(cents)];
+  it("while Earn has not answered: no row and no space held; it lands at the end when it answers", async () => {
+    let answer!: (page: EarnPage) => void;
+    earnAnswers = [new Promise<EarnPage>((resolve) => (answer = resolve))];
     renderHomeNext();
-    const link = await screen.findByRole("link", { name: `Money made: ${words}. Earn 50%` });
-    expect(within(link).getByText(words)).toBeInTheDocument();
+    await waitFor(() => expect(earnRequests()).toHaveLength(1));
+    await settle();
+    expect(moneyPart()).toBeNull();
+    const field = screen.getByTestId("slot");
+    await act(async () => answer(withWhop(2450)));
+    expect(await screen.findByRole("link", { name: "Money made: $24.50. Earn 50%" })).toBeInTheDocument();
+    // Nothing above it moved: the field is the element it was.
+    expect(screen.getByTestId("slot")).toBe(field);
   });
 
-  // Ruling 24c: "could not be read" is not "nothing earned".
-  it("an enrolled creator whose number could not be read is not told $0: Money made and Earn 50%, no amount", async () => {
-    earnAnswers = [withWhop(null)];
-    renderHomeNext();
-    const link = await screen.findByRole("link", { name: "Money made. Earn 50%" });
-    expect(link).toHaveAttribute("href", "/earn");
-    expect(link).toHaveTextContent(/^Money made\s*Earn 50%$/);
-    expect(link.textContent).not.toContain("$");
-    expect(screen.queryByRole("link", { name: /^Money made:/ })).toBeNull();
-    // In the row's own place, as tall as any other.
-    expect(moneyPart()!.contains(link)).toBe(true);
-    expect(link).toHaveClass("h-12");
-  });
-
-  it.each<[string, EarnPage["whop"]]>([
+  it.each<[string, EarnPage["whop"] | "page"]>([
     ["the payment side was not read (whop null)", null],
     ["not enrolled, the number null", { canEnrol: true, knownAccount: false, username: null, earnedCents: null }],
-    ["not enrolled, a paying customer who has not set up payouts", { canEnrol: true, knownAccount: true, username: null, earnedCents: null }],
-    ["not enrolled, payouts not available here", { canEnrol: false, knownAccount: false, username: null, earnedCents: null }],
     ["enrolled, nothing earned yet (Whop says 0)", { canEnrol: true, knownAccount: true, username: "nia.example", earnedCents: 0 }],
-  ])("%s: the amount is zero dollars, which is true", async (_name, whop) => {
-    earnAnswers = [{ ...PAGE, whop }];
+    ["enrolled, the number could not be read", { canEnrol: true, knownAccount: true, username: "nia.example", earnedCents: null }],
+  ])("%s: no row, no space", async (_name, whop) => {
+    earnAnswers = [{ ...PAGE, whop: whop as EarnPage["whop"] }];
     renderHomeNext();
-    const link = await screen.findByRole("link", { name: "Money made: $0. Earn 50%" });
-    expect(within(link).getByText("$0")).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Money made. Earn 50%" })).toBeNull();
+    await waitFor(() => expect(earnRequests()).toHaveLength(1));
+    await settle(100);
+    expect(moneyPart()).toBeNull();
+    expect(screen.queryByText("Money made")).toBeNull();
   });
 
-  it("the number read later (the next read answers it) takes its place in the same row", async () => {
+  it("the number read later (the next read answers it) brings the row", async () => {
     earnAnswers = [withWhop(null), withWhop(2450)];
     const { qc } = renderHomeNext();
-    await screen.findByRole("link", { name: "Money made. Earn 50%" });
-    const part = moneyPart();
+    await waitFor(() => expect(earnRequests()).toHaveLength(1));
+    await settle();
+    expect(moneyPart()).toBeNull();
     await act(async () => {
       await qc.invalidateQueries({ queryKey: earnKeys.page });
     });
-    const link = await screen.findByRole("link", { name: "Money made: $24.50. Earn 50%" });
-    expect(moneyPart()).toBe(part);
-    expect(part!.contains(link)).toBe(true);
+    expect(await screen.findByRole("link", { name: "Money made: $24.50. Earn 50%" })).toBeInTheDocument();
   });
 
   it.each([
     [404, "a funnel visitor (or the flag off on the server)"],
     [401, "signed out"],
     [500, "a server error"],
-  ])("a %i (%s): one request, the space collapses, nothing is shown, no error", async (status) => {
+  ])("a %i (%s): one request, nothing shown, no error", async (status) => {
     earnAnswers = [status];
     // As the app's client: queries retry three times by default (here a millisecond apart).
     renderHomeNext({}, new QueryClient({ defaultOptions: { queries: { retry: 3, retryDelay: 1 } } }));
     await waitFor(() => expect(earnRequests()).toHaveLength(1));
-    await waitFor(() => expect(moneyPart()).toBeNull());
     await settle(100);
     expect(earnRequests()).toHaveLength(1);
+    expect(moneyPart()).toBeNull();
     expect(moneyLink()).toBeNull();
-    expect(screen.queryByText("Money made")).toBeNull();
     expect(screen.queryByText(/couldn't/i)).toBeNull();
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
     expect(screen.queryByRole("alert")).toBeNull();
-    // The field back where it is without the row.
-    expect(screen.getByTestId("slot").parentElement).toHaveClass("mt-3", "md:mt-7");
   });
 
   // Review M3: Home unmounts and mounts with every chat opened and left.
-  it("a refused answer is not asked again when Home mounts again: no request, and no space kept even for a moment", async () => {
+  it("a refused answer is not asked again when Home mounts again", async () => {
     earnAnswers = [404];
     const qc = new QueryClient({ defaultOptions: { queries: { retry: 3, retryDelay: 1 } } });
     renderHomeNext({}, qc);
     await waitFor(() => expect(earnRequests()).toHaveLength(1));
-    await waitFor(() => expect(moneyPart()).toBeNull());
+    await settle();
     cleanup();
 
     renderHomeNext({}, qc);
-    // From its first render: Home as it is without the row.
     expect(moneyPart()).toBeNull();
-    expect(screen.getByTestId("slot").parentElement).toHaveClass("mt-3", "md:mt-7");
     await settle(100);
     expect(earnRequests()).toHaveLength(1);
     expect(moneyPart()).toBeNull();
-    expect(moneyLink()).toBeNull();
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
@@ -512,13 +656,14 @@ describe("HomeNext — Money made (Earn, step C; rulings 18 and 24)", () => {
       return base(input, init);
     });
     renderHomeNext();
-    await waitFor(() => expect(moneyPart()).toBeNull());
+    await settle(100);
+    expect(moneyPart()).toBeNull();
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("starts one GET /api/earn and nothing else of Earn's", async () => {
     renderHomeNext();
-    await screen.findByRole("link", { name: "Money made: $0. Earn 50%" });
+    await screen.findByRole("link", { name: "Money made: $58.80. Earn 50%" });
     await settle(100);
     expect(earnRequests()).toEqual(["/api/earn"]);
     const init = vi.mocked(fetch).mock.calls.find(([input]) => String(input) === "/api/earn")![1];
@@ -539,7 +684,7 @@ describe("HomeNext — Money made (Earn, step C; rulings 18 and 24)", () => {
       </QueryClientProvider>,
     );
     renderHomeNext({}, qc);
-    await screen.findByRole("link", { name: "Money made: $0. Earn 50%" });
+    await screen.findByRole("link", { name: "Money made: $58.80. Earn 50%" });
     await screen.findByText("other reader has it");
     await settle();
     expect(earnRequests()).toHaveLength(1);
@@ -576,6 +721,8 @@ describe("HomeNext — Recent from Library's summary (Library plan, Task 7)", ()
   let B: LibraryChat;
   let C: LibraryChat;
   let D: LibraryChat;
+  /** A fifth chat, the oldest of the five: with it Recent is full. */
+  let E: LibraryChat;
   /** C again, written to 12 minutes ago (three hooks since its script). */
   let C2: LibraryChat;
   /** The sidebar's short list (`/api/threads/list`). */
@@ -605,6 +752,7 @@ describe("HomeNext — Recent from Library's summary (Library plan, Task 7)", ()
     });
     C = libraryChat("c-c", "Morning routine, no cuts", at(24), { counts: { ...NONE, scripts: 1 }, lead: "script", stage: "draft" });
     D = libraryChat("c-d", "Ideas for next week", at(72));
+    E = libraryChat("c-e", "Gym myths for beginners", at(96));
     C2 = { ...C, updatedAt: at(0.2), summary: { ...C.summary, counts: { ...NONE, scripts: 1, hooks: 3 }, lead: "hooks" } };
     threadList = [A, B, C, D].map(listed);
     libraryAnswers = [{ chats: [A, B, C, D], next: "cursor-1" }];
@@ -656,12 +804,14 @@ describe("HomeNext — Recent from Library's summary (Library plan, Task 7)", ()
   const itemOf = (name: string) => screen.getByRole("button", { name }).closest("li")!;
   const settle = (ms = 50) => act(async () => { await new Promise((resolve) => setTimeout(resolve, ms)); });
 
-  it("Recent is the first page's first three chats, in its order, each as Library draws it", async () => {
+  it("Recent is the first page's chats, five at most, in its order, each as Library draws it", async () => {
     // The sidebar's list puts a pinned chat first; Recent follows the endpoint (last written to).
     threadList = [{ ...listed(D), pinned_at: at(100) }, ...[A, B, C].map(listed)];
     renderHomeNext();
-    await waitFor(() => expect(names()).toEqual(["Hook formats, the $400 test", "Video simulation", "Morning routine, no cuts"]));
-    expect(lines()).toEqual(["3 hooks · simulated 2h ago", "Video · simulated 5h ago", "Script · 1d ago"]);
+    await waitFor(() =>
+      expect(names()).toEqual(["Hook formats, the $400 test", "Video simulation", "Morning routine, no cuts", "Ideas for next week"]),
+    );
+    expect(lines()).toEqual(["3 hooks · simulated 2h ago", "Video · simulated 5h ago", "Script · 1d ago", "Chat · 3d ago"]);
 
     // Each tile: the mark of what the chat holds, or the video's picture.
     expect(itemOf("Hook formats, the $400 test").querySelector('[data-part="mark"]')).toHaveAttribute("data-kind", "hooks");
@@ -746,15 +896,17 @@ describe("HomeNext — Recent from Library's summary (Library plan, Task 7)", ()
     expect(requested().filter((url) => url.startsWith("/api/posted"))).toEqual([]);
   });
 
-  it("Recent is the three chats written to last, not the page's first three: old pinned chats heading the page do not show", async () => {
+  it("Recent is the five chats written to last, not the page's first five: old pinned chats heading the page do not show", async () => {
     // The endpoint lists pinned chats first, most recently pinned first.
     const summer = { ...libraryChat("c-p1", "Pinned in the summer", at(24 * 120)), pinned: true };
     const month = { ...libraryChat("c-p2", "Pinned last month", at(24 * 30)), pinned: true };
-    libraryAnswers = [{ chats: [summer, month, A, B, C, D], next: "cursor-1" }];
-    threadList = [summer, month, A, B, C, D].map((chat) => ({ ...listed(chat), pinned_at: chat.pinned ? at(1) : null }));
+    libraryAnswers = [{ chats: [summer, month, A, B, C, D, E], next: "cursor-1" }];
+    threadList = [summer, month, A, B, C, D, E].map((chat) => ({ ...listed(chat), pinned_at: chat.pinned ? at(1) : null }));
     renderHomeNext();
-    await waitFor(() => expect(lines()).toEqual(["3 hooks · simulated 2h ago", "Video · simulated 5h ago", "Script · 1d ago"]));
-    expect(names()).toEqual(["Hook formats, the $400 test", "Video simulation", "Morning routine, no cuts"]);
+    await waitFor(() =>
+      expect(lines()).toEqual(["3 hooks · simulated 2h ago", "Video · simulated 5h ago", "Script · 1d ago", "Chat · 3d ago", "Chat · 4d ago"]),
+    );
+    expect(names()).toEqual(["Hook formats, the $400 test", "Video simulation", "Morning routine, no cuts", "Ideas for next week", "Gym myths for beginners"]);
     await settle();
     expect(libraryRequests()).toEqual(["/api/threads/library"]);
   });
@@ -762,11 +914,13 @@ describe("HomeNext — Recent from Library's summary (Library plan, Task 7)", ()
   it("a pinned chat written to lately is among them, in its place by last message", async () => {
     const lately = { ...C2, pinned: true };
     const summer = { ...libraryChat("c-p1", "Pinned in the summer", at(24 * 120)), pinned: true };
-    libraryAnswers = [{ chats: [summer, lately, A, B, D], next: null }];
-    threadList = [summer, lately, A, B, D].map(listed);
+    libraryAnswers = [{ chats: [summer, lately, A, B, D, E], next: null }];
+    threadList = [summer, lately, A, B, D, E].map(listed);
     renderHomeNext();
-    await waitFor(() => expect(lines()).toEqual(["3 hooks · 12m ago", "3 hooks · simulated 2h ago", "Video · simulated 5h ago"]));
-    expect(names()).toEqual(["Morning routine, no cuts", "Hook formats, the $400 test", "Video simulation"]);
+    await waitFor(() =>
+      expect(lines()).toEqual(["3 hooks · 12m ago", "3 hooks · simulated 2h ago", "Video · simulated 5h ago", "Chat · 3d ago", "Chat · 4d ago"]),
+    );
+    expect(names()).toEqual(["Morning routine, no cuts", "Hook formats, the $400 test", "Video simulation", "Ideas for next week", "Gym myths for beginners"]);
   });
 
   it("while the summary is out, Recent is the list's titles and times; then each row grows its tile, line and gauge", async () => {
@@ -782,8 +936,8 @@ describe("HomeNext — Recent from Library's summary (Library plan, Task 7)", ()
     expect(libraryRequests()).toHaveLength(1);
 
     await act(async () => answer({ chats: [A, B, C, D], next: null }));
-    await waitFor(() => expect(lines()).toEqual(["3 hooks · simulated 2h ago", "Video · simulated 5h ago", "Script · 1d ago"]));
-    expect(names()).toEqual(["Hook formats, the $400 test", "Video simulation", "Morning routine, no cuts"]);
+    await waitFor(() => expect(lines()).toEqual(["3 hooks · simulated 2h ago", "Video · simulated 5h ago", "Script · 1d ago", "Chat · 3d ago"]));
+    expect(names()).toEqual(["Hook formats, the $400 test", "Video simulation", "Morning routine, no cuts", "Ideas for next week"]);
   });
 
   it("the summary landing on the same three chats keeps the rows: same order, same ids, same elements, same height (fix round 1)", async () => {
@@ -887,17 +1041,18 @@ describe("HomeNext — Recent from Library's summary (Library plan, Task 7)", ()
     render(
       <QueryClientProvider client={qc}>
         <ToastProvider>
-          <HomeNext field={<div data-testid="slot" />} credits={null} picked={false} onPickSkill={vi.fn()} onMore={vi.fn()} />
+          <HomeNext field={<div data-testid="slot" />} audience={AUDIENCE} credits={null} onPickSkill={vi.fn()} />
         </ToastProvider>
       </QueryClientProvider>,
     );
     await waitFor(() => expect(libraryRequests()).toHaveLength(before + 1));
-    expect(names()).toEqual(["Hook formats, the $400 test", "Video simulation", "Morning routine, no cuts"]);
+    const four = ["Hook formats, the $400 test", "Video simulation", "Morning routine, no cuts", "Ideas for next week"];
+    expect(names()).toEqual(four);
     await act(async () => fresh({ chats: [A, B, C, D], next: null }));
-    expect(names()).toEqual(["Hook formats, the $400 test", "Video simulation", "Morning routine, no cuts"]);
+    expect(names()).toEqual(four);
   });
 
-  it("a first page with fewer than three chats: those, and no other page is asked for", async () => {
+  it("a first page with fewer than five chats: those, and no other page is asked for", async () => {
     libraryAnswers = [{ chats: [A], next: "cursor-1" }];
     threadList = [A, C, D].map(listed);
     renderHomeNext();
@@ -918,8 +1073,8 @@ describe("HomeNext — Recent from Library's summary (Library plan, Task 7)", ()
     await waitFor(() => expect(libraryRequests()).toHaveLength(2));
 
     await act(async () => fresh({ chats: [C2, A, B, D], next: null }));
-    await waitFor(() => expect(lines()).toEqual(["3 hooks · 12m ago", "3 hooks · simulated 2h ago", "Video · simulated 5h ago"]));
-    expect(names()).toEqual(["Morning routine, no cuts", "Hook formats, the $400 test", "Video simulation"]);
+    await waitFor(() => expect(lines()).toEqual(["3 hooks · 12m ago", "3 hooks · simulated 2h ago", "Video · simulated 5h ago", "Chat · 3d ago"]));
+    expect(names()).toEqual(["Morning routine, no cuts", "Hook formats, the $400 test", "Video simulation", "Ideas for next week"]);
   });
 
   it("a summary that stays behind is asked again once, not over and over; the list's rows stay", async () => {

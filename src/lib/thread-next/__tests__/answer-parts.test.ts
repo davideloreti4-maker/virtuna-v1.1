@@ -11,6 +11,7 @@ import {
   md,
   outlierGrid,
   personaChatTurn,
+  profileRead,
   remix,
   runHeader,
   script,
@@ -112,13 +113,20 @@ describe("partsOf", () => {
     expect(parts[0]).toEqual({ kind: "text", index: 0, text: "Paste the link and I will adapt it." });
   });
 
+  // Thread depth, second part §3: the account read draws its own card, no longer the fallback.
+  it("an account read is its own part, at its original index, and drops the narration", () => {
+    const block = accountRead();
+    const parts = partsOf([runHeader("account"), md("Here is your read."), block, md("Want ideas next?")]);
+    expect(parts).toEqual([{ kind: "account", item: { index: 2, block } }]);
+  });
+
   it("other result cards fall back with their own type and drop the narration", () => {
-    const parts = partsOf([md("Here is your read."), accountRead(), md("Want ideas next?")]);
+    const parts = partsOf([md("Here is a read."), profileRead(), md("Want ideas next?")]);
     expect(parts).toHaveLength(1);
     const p = parts[0];
     if (p?.kind !== "fallback") throw new Error("expected a fallback part");
     expect(p.index).toBe(1);
-    expect(p.block.type).toBe("account-read");
+    expect(p.block.type).toBe("profile-read");
   });
 
   it("a persona chat turn does not make a result card", () => {
