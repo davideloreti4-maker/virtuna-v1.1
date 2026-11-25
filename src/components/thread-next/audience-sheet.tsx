@@ -18,16 +18,15 @@ import { useReturnFocus } from "./use-return-focus";
 
 /**
  * The audience sheet (spec 2026-11-23 §4): who the next run is for, and the platform it is read
- * for. It replaces the old picker under the new look, opened from Home's audience line (spec
- * 2026-11-25 §2.3) and from the "Audience" row of More.
+ * for. It replaces the old picker under the new look, opened from the field's audience control on
+ * Home and from the "Audience" row of the thread's More sheet.
  *
  * On the phone it is a bottom sheet. From 768 up, when the caller hands it an element to stand on
- * (`anchorRef`), it is a popover on that element: above the field in a thread, aligned to its left
- * edge; below Home's audience line and centred under it (`side`, `align`), near the top of the
- * page. Both are Radix layers: Escape and a tap outside close them. It opens from plain buttons,
- * so it hands focus back itself
- * (`useReturnFocus`); when what opened it has left the page (More's row) or nothing had focus,
- * focus goes to what it stands on: the field's text, or Home's audience line itself.
+ * (`anchorRef`), it is a popover on that element: above it in a thread, below it on Home
+ * (`side`), where the field sits near the top of the page. Both are Radix layers: Escape and a tap
+ * outside close them. It opens from plain buttons, so it hands focus back itself
+ * (`useReturnFocus`); when what opened it has left the page (More's row), focus goes to the
+ * field's text.
  */
 
 export interface AudienceSheetProps {
@@ -39,7 +38,6 @@ export interface AudienceSheetProps {
   note?: string | null;                        // the quiet line under the platform control
   anchorRef?: React.RefObject<HTMLElement | null>;   // from 768: the popover stands on this element
   side?: "top" | "bottom";                     // default "top" (a thread); Home passes "bottom"
-  align?: "start" | "center";                  // default "start" (the field's left edge); Home's line: "center"
 }
 
 function ChoiceRow({ choice, onSelect }: { choice: AudienceChoice; onSelect(audience: Audience): void }) {
@@ -123,13 +121,10 @@ function AudienceBody({
 }
 
 export function AudienceSheet(props: AudienceSheetProps): React.JSX.Element {
-  const { open, onOpenChange, anchorRef, side, align } = props;
+  const { open, onOpenChange, anchorRef, side } = props;
   const wide = useMediaQuery("(min-width: 768px)");
   const titleId = useId();
-  const focus = useReturnFocus(() => {
-    const anchor = anchorRef?.current ?? null;
-    return anchor?.querySelector("textarea") ?? (anchor instanceof HTMLButtonElement ? anchor : null);
-  });
+  const focus = useReturnFocus(() => anchorRef?.current?.querySelector("textarea") ?? null);
 
   if (wide && anchorRef) {
     return (
@@ -137,7 +132,7 @@ export function AudienceSheet(props: AudienceSheetProps): React.JSX.Element {
         <PopoverAnchor virtualRef={anchorRef as React.RefObject<HTMLElement>} />
         <PopoverContent
           side={side ?? "top"}
-          align={align ?? "start"}
+          align="start"
           sideOffset={10}
           collisionPadding={12}
           aria-labelledby={titleId}

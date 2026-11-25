@@ -38,36 +38,36 @@ describe("/dev/home", () => {
 
   it("with the flag on renders Home in the asked state", async () => {
     const Page = await load(true);
-    const element = await Page(search({ state: "money", earned: "5880" }));
+    const element = await Page(search({ state: "picked", recent: "1" }));
     expect(isValidElement(element)).toBe(true);
-    const props = (element as { props: { state: string; earnedCents: number | null } }).props;
-    expect(props.state).toBe("money");
-    expect(props.earnedCents).toBe(5880);
+    const props = (element as { props: { state: string; recentOnDesktop: boolean } }).props;
+    expect(props.state).toBe("picked");
+    expect(props.recentOnDesktop).toBe(true);
   });
 
-  it("opens with chats by default", async () => {
+  it("opens with chats by default, Recent kept off the desktop page", async () => {
     const Page = await load(true);
     const element = await Page(search());
-    expect((element as { props: { state: string } }).props.state).toBe("chats");
+    const props = (element as { props: { state: string; recentOnDesktop: boolean } }).props;
+    expect(props.state).toBe("chats");
+    expect(props.recentOnDesktop).toBe(false);
   });
 
-
-  it.each(["empty", "chats", "plain", "pending", "picked", "simulate", "noname", "unlimited", "audience", "general", "money"])("knows the state %s", async (state) => {
+  it.each(["empty", "chats", "plain", "picked", "simulate", "noname", "unlimited", "audience", "money"])("knows the state %s", async (state) => {
     const Page = await load(true);
     const element = await Page(search({ state }));
     expect((element as { props: { state: string } }).props.state).toBe(state);
   });
 
-  // The state `money` (Earn, ruling 24b): what the row says comes from `earned`. Not given, it is a
-  // row above zero ($58.80), so `?state=money` shows the row (review minor 3); `&earned=0` shows none.
+  // The state `money` (Earn, ruling 24b): what the row says comes from `earned`.
   it.each<[string, Record<string, string>, number | null]>([
-    ["no earned: the default, $58.80", {}, 5880],
+    ["no earned: nothing earned", {}, 0],
     ["earned in whole cents", { earned: "124050" }, 124050],
-    ["earned=0: nothing earned", { earned: "0" }, 0],
+    ["earned=0", { earned: "0" }, 0],
     ["earned=none: the number could not be read", { earned: "none" }, null],
-    ["earned that is not a count of cents: the default", { earned: "12.5" }, 5880],
-    ["a negative earned: the default", { earned: "-5" }, 5880],
-    ["earned in words: the default", { earned: "lots" }, 5880],
+    ["earned that is not a count of cents", { earned: "12.5" }, 0],
+    ["a negative earned", { earned: "-5" }, 0],
+    ["earned in words", { earned: "lots" }, 0],
   ])("money, %s", async (_name, params, cents) => {
     const Page = await load(true);
     const element = await Page(search({ state: "money", ...params }));
