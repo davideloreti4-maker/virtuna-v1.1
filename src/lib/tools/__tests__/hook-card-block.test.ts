@@ -89,6 +89,31 @@ describe('hook-card block — validateBlock', () => {
   });
 });
 
+// Maven's pick (spec 2026-11-25-maven-pick-design.md §2): the writer's plain reason rides the block,
+// optional, and never costs a card. The validated block keeps it (an unknown key would be stripped).
+describe('hook-card block — why', () => {
+  const REASON = 'It dares a friend by name, so you wait to hear why.';
+
+  it('a hook with a why validates and keeps it', () => {
+    const result = validateBlock({ type: 'hook-card', props: { ...VALID_HOOK_CARD_PROPS, why: REASON } });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect((result.block.props as { why?: string }).why).toBe(REASON);
+  });
+
+  it('a hook without one validates as before, with no key', () => {
+    const result = validateBlock({ type: 'hook-card', props: VALID_HOOK_CARD_PROPS });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect('why' in (result.block.props as object)).toBe(false);
+  });
+
+  it('a very long why still validates: the screen decides what it shows', () => {
+    const long = 'A reason that goes on and on. '.repeat(200);
+    const result = validateBlock({ type: 'hook-card', props: { ...VALID_HOOK_CARD_PROPS, why: long } });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect((result.block.props as { why?: string }).why).toBe(long);
+  });
+});
+
 describe('hook-card block — assertBlocksInRegistry', () => {
   const hookCardBlock = {
     type: 'hook-card' as BlockType,

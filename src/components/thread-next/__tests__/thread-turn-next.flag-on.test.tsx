@@ -310,6 +310,49 @@ describe("the hook pack's numbers and actions", () => {
   });
 });
 
+// Maven's pick (spec 2026-11-25-maven-pick-design.md §3.1): the line comes from the stored blocks'
+// `rank` and `why`, in the measured line's place.
+describe("Maven's pick under a stored pack", () => {
+  const pick = () => document.querySelector<HTMLElement>('[data-part="pack-pick"]');
+  const WHY_1 = MEAL_PREP_HOOKS[0]!.props.why!;
+
+  it("a stored pack with reasons: the line under the card, above the chips, naming the first-ranked hook", () => {
+    renderTurn({ userTurn: ASK, blocks: HOOKS_TURN });
+    expect(pick()).toHaveTextContent(`Maven would post hook 1. ${WHY_1}`);
+    expect(cards()[0]!.compareDocumentPosition(pick()!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(pick()!.compareDocumentPosition(screen.getByTestId("followup-row")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it("the writer's first choice stored in row 2: the line names hook 2", () => {
+    const [a, b, c] = MEAL_PREP_HOOKS as [typeof MEAL_PREP_HOOKS[0], typeof MEAL_PREP_HOOKS[0], typeof MEAL_PREP_HOOKS[0]];
+    renderTurn({ userTurn: ASK, blocks: [runHeader("hooks"), b, a, c] });
+    expect(pick()).toHaveTextContent(`Maven would post hook 2. ${WHY_1}`);
+  });
+
+  it("an old stored pack, written before the reasons: no line, as before", () => {
+    const old = MEAL_PREP_HOOKS.map(({ type, props: { why: _why, ...props } }) => ({ type, props }));
+    renderTurn({ userTurn: ASK, blocks: [runHeader("hooks"), ...old, md(OUTRO)] });
+    expect(pick()).toBeNull();
+    expect(screen.queryByText(/Maven would post/)).toBeNull();
+  });
+
+  it("every row simulated: the measured line in its place, though it names another hook", () => {
+    renderTurn({ userTurn: ASK, blocks: HOOKS_TURN }, { seals: SEALS_DONE });
+    expect(pick()).toBeNull();
+    expect(screen.getByText("Hook 3 leads by 15 points.")).toBeInTheDocument();
+  });
+
+  it("a hooks run that lands in this visit brings the line in after the card's button (3), before the chips (6)", () => {
+    const waiting = { skill: "hooks" as const, isStreaming: true, stages: [{ name: "Generating", status: "active" as const }] };
+    const { rerender } = renderTurn({ userTurn: ASK, blocks: [runHeader("hooks")], live: waiting });
+    expect(pick()).toBeNull();
+    rerender({ userTurn: ASK, blocks: [runHeader("hooks"), ...MEAL_PREP_HOOKS], live: { ...waiting, stages: [{ name: "Generating", status: "done" }] } });
+    expect(pick()!.closest("[data-thread-landing]")).not.toBeNull();
+    expect(pick()).toHaveClass("land");
+    expect(pick()!.style.getPropertyValue("--i")).toBe("4");
+  });
+});
+
 // Thread depth §3.3: the rows are built from the blocks, a hook's `proof` included; an idea's is not.
 describe("a hook's row shows the video it is built on", () => {
   const proven = () => [...document.querySelectorAll<HTMLElement>('[data-part="row-proof"]')];

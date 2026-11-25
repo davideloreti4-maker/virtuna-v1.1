@@ -263,6 +263,63 @@ describe("POST /api/tools/refine (SSE route)", () => {
     expect(hookBlock?.props.band).toBe("Strong"); // from runner, not request body
   });
 
+  // Maven's pick (fix round 1, review M1): the refined card's live face carries the writer's plain
+  // reason, as the hooks route's does, so its sheet reads the same before and after a reload.
+  it("Test 3b: the refined card's content frame carries its why", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+    const { insertMessage } = await import("@/lib/threads/messages");
+    const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
+
+    const REASON = "It dares a friend by name, so you wait to hear why.";
+    (runHooksPipeline as ReturnType<typeof vi.fn>).mockResolvedValue({
+      blocks: [
+        {
+          type: "hook-card" as const,
+          props: {
+            hookLine: "Fresh punchy hook",
+            audienceArchetype: "",
+            mechanism: "urgency",
+            why: REASON,
+            seedHook: "Fresh punchy hook",
+            rank: 1,
+            band: "Strong" as const,
+            fraction: "9/10 stop",
+            scrollQuote: "",
+            model: "sim1-flash" as const,
+            channel: null,
+          },
+        },
+      ],
+      warnings: [],
+      seedHookPath: "structured",
+    });
+    (insertMessage as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "msg-why" });
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-why" } } }) },
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    });
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "thread-why", user_id: "user-why" });
+
+    const { POST } = await import("@/app/api/tools/refine/route");
+    const raw = await readSSE(
+      await POST(
+        makeRefineRequest({
+          skill: "hooks",
+          instruction: "make hook 1 punchier",
+          anchor: "```refine-anchor\nhookLine: Original\n---\ninstruction: punchier\n```",
+        }),
+      ),
+    );
+
+    const frame = raw.split("\n\n").find((f) => f.startsWith("event: content"))!;
+    const payload = JSON.parse(frame.slice(frame.indexOf("data: ") + 6)) as { blocks: Array<{ props: Record<string, unknown> }> };
+    expect(payload.blocks[0]!.props.why).toBe(REASON);
+  });
+
   it("Test 4: when runner throws, route emits event:error and does NOT persist a card", async () => {
     const { createClient } = await import("@/lib/supabase/server");
     const { createOpenThreadLazy } = await import("@/lib/threads/threads");

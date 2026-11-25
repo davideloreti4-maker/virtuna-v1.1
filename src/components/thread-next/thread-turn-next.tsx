@@ -15,8 +15,8 @@
  *       the line. A plain chat answer's text as it streams, word by word (`StreamedAnswer`)
  *     → after: one part per result (`partsOf`): a card per pack, script, remix, video and account
  *       read, a chat answer's text (Copy under the last text part once the turn has ended, rulings
- *       17), the interactive legacy blocks, the fallback card for the rest; under a pack, the one
- *       computed sentence
+ *       17), the interactive legacy blocks, the fallback card for the rest; under a pack, Maven's
+ *       pick before the numbers are in (hooks), then the one computed sentence
  *     → the two chips, under the last answer only
  *
  * The landing (§4.3, rulings 11): a turn that waited in this visit and then shows its cards draws
@@ -138,10 +138,16 @@ function PackPart({ part, origins }: { part: Extract<AnswerPart, { kind: "hooks"
   const threadId = useContext(ThreadIdContext);
   const kind: TextKind = part.kind === "hooks" ? "hook" : "idea";
   const as: TextResultAs = part.kind === "hooks" ? "hook" : "idea";
-  // A hook's row carries the video it is built on (thread depth §3.3); an idea's does not.
+  // A hook's row carries the video it is built on (thread depth §3.3), and the writer's rank and plain
+  // reason for the line under the pack (Maven's pick); an idea's carries none of them.
   const plain: PackRow[] =
     part.kind === "hooks"
-      ? part.items.map(({ block }) => ({ ...rowOf(sim, block.props.hookLine), proof: rowProofOf(block.props.proof) }))
+      ? part.items.map(({ block }) => ({
+          ...rowOf(sim, block.props.hookLine),
+          proof: rowProofOf(block.props.proof),
+          rank: block.props.rank,
+          why: block.props.why,
+        }))
       : part.items.map(({ block }) => ({ ...rowOf(sim, block.props.title), sub: ideaLineOf(block.props) }));
   const texts = plain.map((r) => r.text);
   const keys = useSealKeys(texts);

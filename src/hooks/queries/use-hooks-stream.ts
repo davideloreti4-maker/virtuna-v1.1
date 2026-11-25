@@ -69,6 +69,10 @@ export interface PartialHookCard {
   hookLine: string;
   audienceArchetype: string;   // D-03 audience tag (from deriveAudienceArchetype)
   mechanism: string;
+  // MAVEN'S PICK: the writer's plain reason (the new look's line under the pack and the hook's
+  // sheet). undefined when the writer gave none. Same reload-only hazard as proof: declared + parsed
+  // + carried through toBlocks so the line shows live.
+  why?: string;
   seedHook: string;
   rank: number;                // D-01: integer >= 1, set by runner (rank order = array order)
   scrollQuote: string;
@@ -420,6 +424,7 @@ export function useHooksStream(): UseHooksStreamReturn {
                   hookLine: String(props.hookLine ?? ''),
                   audienceArchetype: String(props.audienceArchetype ?? ''),
                   mechanism: String(props.mechanism ?? ''),
+                  why: typeof props.why === 'string' && props.why.trim() ? props.why : undefined, // Maven's pick: the line shows live
                   seedHook: String(props.seedHook ?? ''),
                   rank: typeof props.rank === 'number' ? props.rank : 0,
                   scrollQuote: String(props.scrollQuote ?? ''),
@@ -634,6 +639,7 @@ export function useHooksStream(): UseHooksStreamReturn {
                   hookLine: String(props.hookLine ?? ''),
                   audienceArchetype: String(props.audienceArchetype ?? ''),
                   mechanism: String(props.mechanism ?? ''),
+                  why: typeof props.why === 'string' && props.why.trim() ? props.why : undefined, // Maven's pick: the refined card's sheet, live
                   seedHook: String(props.seedHook ?? ''),
                   rank: typeof props.rank === 'number' ? props.rank : 0,
                   scrollQuote: String(props.scrollQuote ?? ''),
@@ -724,6 +730,7 @@ export function useHooksStream(): UseHooksStreamReturn {
         hookLine: c.hookLine,
         audienceArchetype: c.audienceArchetype,
         mechanism: c.mechanism,
+        ...(c.why ? { why: c.why } : {}), // Maven's pick: the line and the sheet render live, not just after reload
         seedHook: c.seedHook,
         rank: c.rank,
         band: c.band ?? 'Mixed',
