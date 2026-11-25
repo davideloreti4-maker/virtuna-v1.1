@@ -1,10 +1,19 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { PullNext } from "@/components/discover-next/pull-next";
+import { getWatchlistData } from "@/lib/discover/watchlist-reads";
+import { DISCOVER_STRINGS } from "@/lib/discover-next/discover-words";
+import { pullSubjectOf } from "@/lib/discover-next/pull";
+import { isFollowed } from "@/lib/discover-next/watchlist";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 import { DiscoverClient } from "./discover-client";
 
 export const metadata: Metadata = {
   title: "Pull | Maven",
-  description: "Surface the outliers already beating their own baseline — then Remix the winner.",
+  description: NEW_LOOK_ENABLED
+    ? DISCOVER_STRINGS.hub.description
+    : "Surface the outliers already beating their own baseline — then Remix the winner.",
 };
 
 /**
@@ -26,13 +35,34 @@ export const metadata: Metadata = {
  *
  * Lived at /discover until 2026-07-29. That route is now a deep-link redirect here.
  */
-export default async function DiscoverPullPage() {
+export default async function DiscoverPullPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ input?: string | string[] }>;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) return null;
+
+  if (NEW_LOOK_ENABLED) {
+    // The new pull page for what the address asks; it never starts a pull by itself. Whether the
+    // creator is followed is read for Follow only, so a failed read shows Follow rather than no page.
+    const { input } = await searchParams;
+    const subject = pullSubjectOf(Array.isArray(input) ? input[0] : input);
+    if (!subject) redirect("/feed");
+    let followed = false;
+    if (subject.kind === "handle") {
+      try {
+        followed = isFollowed((await getWatchlistData(supabase)).sources, subject.handle);
+      } catch (error) {
+        console.error("[discover] watchlist read failed", error);
+      }
+    }
+    return <PullNext subject={subject} followed={followed} />;
+  }
 
   return <DiscoverClient />;
 }

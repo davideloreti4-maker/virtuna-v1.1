@@ -11,11 +11,11 @@ import { cn } from "@/lib/utils";
  * Button variant styles using class-variance-authority (CVA).
  *
  * Uses semantic design tokens from globals.css for consistent theming.
- * Default variant is `secondary` following Raycast's pattern of sparse accent usage.
+ * Default variant is `secondary`. No variant uses the accent colour.
  *
  * @example
  * ```tsx
- * // Primary CTA (coral accent) - use sparingly
+ * // Primary - the neutral action fill, for the one main action of a card or screen
  * <Button variant="primary">Get Started</Button>
  *
  * // Secondary (default) - most common usage
@@ -27,6 +27,9 @@ import { cn } from "@/lib/utils";
  *
  * // Destructive - for dangerous actions
  * <Button variant="destructive">Delete Account</Button>
+ *
+ * // Quiet - text only, for links like "See all"
+ * <Button variant="quiet">See all</Button>
  * ```
  */
 const buttonVariants = cva(
@@ -40,36 +43,44 @@ const buttonVariants = cva(
     "disabled:pointer-events-none disabled:opacity-50",
     // Ensure cursor pointer for interactive element
     "cursor-pointer",
+    // Next look (spec §7): title weight, press = scale 0.98, disabled = 40% and no shadow.
+    "next:font-[640] next:duration-150 next:transition-[color,background-color,box-shadow,scale]",
+    "next:motion-safe:active:scale-[0.98] next:disabled:opacity-40 next:disabled:shadow-none",
   ],
   {
     variants: {
       /**
        * Visual style variant
-       * - `primary`: Coral accent background, for primary CTAs (use sparingly)
-       * - `secondary`: Surface background with border, default for most buttons
+       * - `primary`: the one filled action of a card or screen (cream today, ink under the new look)
+       * - `secondary`: default for most buttons (bordered today, tint fill under the new look)
        * - `ghost`: Transparent background, for tertiary/icon buttons
        * - `destructive`: Error color background, for dangerous actions
+       * - `quiet`: text only, for links like "See all" (new look)
        */
       variant: {
         primary:
-          "bg-action text-action-foreground shadow-button hover:bg-action/90 active:bg-action/80",
+          "bg-action text-action-foreground shadow-button hover:bg-action/90 active:bg-action/80 next:shadow-[var(--shadow-button)]",
         secondary:
-          "bg-transparent border border-white/[0.06] text-foreground hover:bg-white/[0.1] active:bg-white/[0.15]",
+          "bg-transparent border border-white/[0.06] text-foreground hover:bg-white/[0.1] active:bg-white/[0.15] next:border-transparent next:bg-surface-sunken next:hover:bg-active next:active:bg-active",
         ghost:
           "bg-transparent text-foreground hover:bg-hover active:bg-active",
         destructive:
           "bg-error text-white hover:bg-error/90 active:bg-error/80",
+        quiet:
+          "bg-transparent text-foreground-secondary hover:text-foreground",
       },
       /**
-       * Size variant - all meet 44x44px minimum touch target (except sm which is 36px for icon buttons)
+       * Size variant
        * - `sm`: 36px height, compact for icon buttons
        * - `md`: 44px height, default, meets touch target
-       * - `lg`: 48px height, prominent CTAs
+       * - `lg`: 48px height (50px under the new look), prominent actions
+       * - `xl`: 56px height, the one main action of a screen (new look)
        */
       size: {
-        sm: "h-9 min-h-[36px] min-w-[36px] px-3 text-sm rounded-md",
-        md: "h-11 min-h-[44px] min-w-[44px] px-4 text-sm rounded-md",
-        lg: "h-12 min-h-[48px] min-w-[48px] px-6 text-base rounded-md",
+        sm: "h-9 min-h-[36px] min-w-[36px] px-3 text-sm rounded-md next:rounded-lg",
+        md: "h-11 min-h-[44px] min-w-[44px] px-4 text-sm rounded-md next:rounded-xl",
+        lg: "h-12 min-h-[48px] min-w-[48px] px-6 text-base rounded-md next:h-[50px] next:rounded-xl next:text-ui",
+        xl: "h-14 min-h-[56px] min-w-[56px] px-6 text-ui rounded-xl",
       },
     },
     defaultVariants: {
@@ -106,11 +117,11 @@ export interface ButtonProps
 }
 
 /**
- * Button component with Raycast-style design system integration.
+ * Button component built on the semantic design tokens.
  *
  * Features:
- * - 4 variants: primary (coral), secondary (default), ghost, destructive
- * - 3 sizes: sm (36px), md (44px), lg (48px) - all meet touch target requirements
+ * - 5 variants: primary (the neutral action fill), secondary (default), ghost, destructive, quiet
+ * - 4 sizes: sm (36px), md (44px), lg (48px; 50px under the new look), xl (56px) - md and up meet the 44px touch target
  * - Loading state with spinner and disabled interaction
  * - Full accessibility support (aria-busy, aria-disabled, focus-visible ring)
  * - Composition support via asChild prop (Radix Slot)

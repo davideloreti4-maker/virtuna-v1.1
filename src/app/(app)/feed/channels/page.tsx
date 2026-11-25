@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 import { createClient } from "@/lib/supabase/server";
 import { ChannelsClient } from "./channels-client";
 
@@ -15,6 +17,9 @@ export const metadata: Metadata = {
  * writes happen in POST /api/channels/ingest + /api/tracked-accounts.
  */
 export default async function ChannelsPage() {
+  // Under the new look the creators followed are Discover's Watchlist chip; old links land there.
+  if (NEW_LOOK_ENABLED) redirect("/feed?tab=watchlist");
+
   const supabase = await createClient();
   const {
     data: { user },

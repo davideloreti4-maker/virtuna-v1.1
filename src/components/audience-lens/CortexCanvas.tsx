@@ -39,6 +39,10 @@ import * as THREE from 'three';
 import { buildField, surfaceValues, parcelTextures, type CortexField } from '@/lib/brain/cortex-field';
 import { glslRamp, SPAN_WARM, SPAN_COLD } from '@/lib/brain/cortex-colormap';
 import { type NetworkId } from '@/lib/brain/cortex-sim';
+import { PORCELAIN_FRAG, porcelainUniforms, type PorcelainLook } from './cortex-porcelain';
+
+/** The surface. "scan" is today's map; the porcelain looks are the result page's (cortex-porcelain.ts). */
+export type CortexLook = 'scan' | PorcelainLook;
 
 const MESH_URL = '/brain/cortex.glb';
 
@@ -210,11 +214,13 @@ function Cortex({
   interaction,
   onHover,
   onReady,
+  look,
 }: {
   seed: number;
   bold: Record<NetworkId, number>;
   t: number;
   reducedMotion: boolean;
+  look: CortexLook;
   interaction: React.RefObject<Interaction>;
   onHover?: (net: NetworkId | null) => void;
   onReady?: () => void;
@@ -353,6 +359,16 @@ function Cortex({
     [],
   );
 
+  // The look. "scan" is exactly the shader and the uniforms above; porcelain swaps the fragment
+  // shader and adds its material on the same light rig (cortex-porcelain.ts).
+  const material = useMemo(
+    () =>
+      look === 'scan'
+        ? { fragmentShader: FRAG, uniforms }
+        : { fragmentShader: PORCELAIN_FRAG, uniforms: porcelainUniforms(look, uniforms) },
+    [look, uniforms],
+  );
+
   /**
    * ── THE FRAME. Everything that moves, moves here, and nothing here is linear.
    *
@@ -453,7 +469,8 @@ function Cortex({
       >
         {/* OPAQUE, and always at full brightness. The entrance is a CSS fade on the wrapper (BrainView)
             — see the shader for the two ways doing it in here went wrong. */}
-        <shaderMaterial vertexShader={VERT} fragmentShader={FRAG} uniforms={uniforms} />
+        {/* Keyed by the look: a shader is compiled once per material, so a new look is a new one. */}
+        <shaderMaterial key={look} vertexShader={VERT} fragmentShader={material.fragmentShader} uniforms={material.uniforms} />
       </mesh>
     </group>
   );
@@ -513,6 +530,8 @@ export interface CortexCanvasProps {
   onHover?: (net: NetworkId | null) => void;
   /** Fires once the mesh is parsed and the field is built — the card fades the well in on this. */
   onReady?: () => void;
+  /** The surface. Default "scan": today's map, unchanged. */
+  look?: CortexLook;
 }
 
 export default function CortexCanvas({
@@ -522,6 +541,7 @@ export default function CortexCanvas({
   reducedMotion = false,
   onHover,
   onReady,
+  look = 'scan',
 }: CortexCanvasProps) {
   const interaction = useRef<Interaction>({ grabbed: false, since: DRIFT_RESUME_S });
 
@@ -540,6 +560,7 @@ export default function CortexCanvas({
           bold={bold}
           t={t}
           reducedMotion={reducedMotion}
+          look={look}
           interaction={interaction}
           onHover={onHover}
           onReady={onReady}

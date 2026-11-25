@@ -90,7 +90,7 @@ const POST_URL_ALLOWLIST_SUFFIXES = [
   ".tiktokv.com",
 ] as const;
 
-function isAllowedPostUrl(postUrl: string): boolean {
+export function isAllowedPostUrl(postUrl: string): boolean {
   let parsed: URL;
   try {
     parsed = new URL(postUrl);

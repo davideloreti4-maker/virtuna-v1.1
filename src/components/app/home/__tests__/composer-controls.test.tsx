@@ -30,7 +30,9 @@ import {
   VERB_BY_TOOL,
   MODEL_LABEL,
   MAX_BILLABLE_BY_TOOL,
+  BILLABLE_BY_TOOL,
 } from "../composer-controls";
+import { creditCost } from "@/lib/pricing";
 
 // next/link → plain anchor (no app-router context under happy-dom)
 vi.mock("next/link", () => ({
@@ -310,5 +312,33 @@ describe("SimModelSelector price tag (v8)", () => {
   it("maps only shipped Max skills to a real billable action", () => {
     expect(MAX_BILLABLE_BY_TOOL.test).toBe("score");
     expect(Object.keys(MAX_BILLABLE_BY_TOOL)).toEqual(["test"]);
+  });
+});
+
+describe("BILLABLE_BY_TOOL (the price each skill shows in the new field)", () => {
+  it("maps each billed skill to its CREDIT_COSTS action", () => {
+    expect(BILLABLE_BY_TOOL).toEqual({
+      test: "score",
+      hooks: "hooks",
+      idea: "ideas",
+      script: "script",
+      remix: "remix",
+      explore: "explore",
+      account: "account",
+    });
+  });
+
+  it("prices them as the pricing table does", () => {
+    expect(creditCost(BILLABLE_BY_TOOL.hooks!)).toBe(1);
+    expect(creditCost(BILLABLE_BY_TOOL.script!)).toBe(2);
+    expect(creditCost(BILLABLE_BY_TOOL.remix!)).toBe(10);
+    expect(creditCost(BILLABLE_BY_TOOL.test!)).toBe(10);
+    expect(creditCost(BILLABLE_BY_TOOL.idea!)).toBe(1);
+    expect(creditCost(BILLABLE_BY_TOOL.explore!)).toBe(1);
+    expect(creditCost(BILLABLE_BY_TOOL.account!)).toBe(5);
+  });
+
+  it("has no price for chat: a plain message is free", () => {
+    expect("chat" in BILLABLE_BY_TOOL).toBe(false);
   });
 });

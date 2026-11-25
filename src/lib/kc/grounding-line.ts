@@ -19,34 +19,21 @@
  *
  * Used server-side by the Plan 03 Ideas API route; pure function (no I/O).
  *
- * Does NOT import from assembler.ts or profile-role-map.ts formatters
+ * Does NOT import from assembler.ts or the profile-role-map.ts formatters
  * (those emit LLM-facing text; this module renders card-facing text).
  * Reads ProfileRow fields by semantic role directly.
  *
- * Thinness check: replicates assembler.ts:isProfileThin (lines ~166-175) semantics
- * without importing to avoid circular risk. Semantics are identical: null row OR
- * all null fields = thin.
+ * Thinness check: the assembler's own (`isProfileThin`); this module renders only card copy.
+ * A creator with only facts of You is not thin, but this line shows only audience, niche and
+ * wins, so they still get the baseline line below (plan 2026-11-24-you, O15).
  */
 
-import type { ProfileRow } from "./profile-role-map";
+import { isProfileThin, type ProfileRow } from "./profile-role-map";
 
 // ─── Thinness check ───────────────────────────────────────────────────────────
 
-/**
- * Determine if a profile row is thin (provides no useful grounding data).
- * Semantics mirror assembler.ts:isProfileThin — kept local to avoid circular imports
- * and to give this module a clear, isolated dependency surface.
- */
-export function isThin(profileRow: ProfileRow | null): boolean {
-  if (profileRow === null) return true;
-  const hasNiche = Boolean(profileRow.niche_primary);
-  const hasAudience = Boolean(profileRow.target_audience);
-  const hasGoals = Boolean(profileRow.primary_goal);
-  const hasWins = Boolean(profileRow.past_wins?.length);
-  const hasFlops = Boolean(profileRow.past_flops?.length);
-  const hasPlatform = Boolean(profileRow.target_platforms?.length);
-  return !hasNiche && !hasAudience && !hasGoals && !hasWins && !hasFlops && !hasPlatform;
-}
+/** Whether a profile row is thin: the assembler's own check, not a copy. */
+export const isThin = isProfileThin;
 
 // ─── Fragment builders ────────────────────────────────────────────────────────
 // Each returns a human-facing string or null when the data is absent.

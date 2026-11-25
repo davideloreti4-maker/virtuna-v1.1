@@ -4,14 +4,15 @@
  * Streams a profile-grounded Qwen markdown answer for the open thread (THREAD-03 / D-07/D-08).
  *
  * Pipeline:
- *   1. COLD-START SIGNAL (D-08): isColdStart(profileRow) — reuses the SAME thin-profile
- *      predicate the assembler applies internally (isProfileThin). Not a second divergent
- *      definition — the exact same field-null check. Exported for the route to emit the
- *      structured coldStart meta frame (Plan 05-03 gates the one-time nudge on this).
+ *   1. COLD-START SIGNAL (D-08): isColdStart(profileRow) — IS the thin-profile predicate the
+ *      assembler applies internally (isProfileThin, profile-role-map.ts), not a copy. Exported
+ *      for the route to emit the structured coldStart meta frame (Plan 05-03 gates the one-time
+ *      nudge on this).
  *
  *   2. ASSEMBLE: assembleBundle({ ask, platform, mode: "chat", anchor? }, profileRow)
  *      — the chat stance-slice + honest cold-start flag + running-turns anchor ride this
- *      with zero schema change. MODE_ROLES.chat = niche/audience/platform (D-07 tight slice).
+ *      with zero schema change. MODE_ROLES.chat = niche/audience/never/sells/about/platform
+ *      (D-07 tight slice; no voice, no film).
  *
  *   3. STREAM: getQwenClient().chat.completions.create({ model: QWEN_REASONING_MODEL,
  *      messages: [{role:"system", content: KC_CHAT_SYSTEM_PROMPT}, {role:"user", content:…}],
@@ -34,7 +35,7 @@ import { getQwenClient, QWEN_REASONING_MODEL } from "@/lib/engine/qwen/client";
 import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
 import { resolveAudienceWeights } from "@/lib/audience/resolve-audience-weights";
 import type { Audience } from "@/lib/audience/audience-types";
-import type { ProfileRow } from "@/lib/kc/profile-role-map";
+import { isProfileThin, type ProfileRow } from "@/lib/kc/profile-role-map";
 import {
   ARCHETYPE_DEFINITIONS,
   ARCHETYPE_TRIGGERS,
@@ -146,26 +147,12 @@ export interface ChatPipelineDeps {
 // ─── isColdStart ──────────────────────────────────────────────────────────────
 
 /**
- * Determine whether a profile row is thin / absent — the cold-start predicate.
- *
- * MIRRORS assembler.ts `isProfileThin` EXACTLY (not a divergent definition — D-08):
- *   null row → thin; row with all null/empty fields → thin.
- * Exported so the chat route can emit the structured `coldStart` meta frame independently
- * of the runner result (before the stream starts — D-08 nudge signal).
- *
- * Do NOT modify this predicate independently of assembler.ts:isProfileThin.
- * If the assembler's thin-profile rule changes, update both in lockstep.
+ * The cold-start predicate, exported for the chat route's `coldStart` meta frame (computed before
+ * the stream starts — D-08 nudge signal): the assembler's own thin check (`isProfileThin`,
+ * profile-role-map.ts). It used to be a copy, and the copy had already drifted (it ignored the
+ * voice); one function cannot.
  */
-export function isColdStart(profileRow: ProfileRow | null): boolean {
-  if (profileRow === null) return true;
-  const hasNiche = Boolean(profileRow.niche_primary);
-  const hasAudience = Boolean(profileRow.target_audience);
-  const hasGoals = Boolean(profileRow.primary_goal);
-  const hasWins = Boolean(profileRow.past_wins?.length);
-  const hasFlops = Boolean(profileRow.past_flops?.length);
-  const hasPlatform = Boolean(profileRow.target_platforms?.length);
-  return !hasNiche && !hasAudience && !hasGoals && !hasWins && !hasFlops && !hasPlatform;
-}
+export const isColdStart = isProfileThin;
 
 // ─── Anchor serializer ────────────────────────────────────────────────────────
 

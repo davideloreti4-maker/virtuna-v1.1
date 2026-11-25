@@ -12,8 +12,13 @@
  * directive AND retains the honesty clause + the injection fence sentinels.
  */
 
-import { describe, it, expect } from "vitest";
-import { assembleBundle, MODE_ROLES, BUNDLE_CHAR_CAP } from "../assembler";
+import { describe, it, expect, vi } from "vitest";
+
+// The voice role reads `writing_voice_description`, one of the five facts of You, which a writer
+// reads only under the new look (plan 2026-11-24-you): these cases exercise it, so the flag is on.
+vi.mock("@/lib/flags/new-look", () => ({ NEW_LOOK_ENABLED: true }));
+
+import { assembleBundle, MODE_ROLES, BUNDLE_CHAR_CAP, bundleCharCap } from "../assembler";
 import { PROFILE_ROLE_MAP, type ProfileRow } from "../profile-role-map";
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
@@ -45,6 +50,12 @@ const FULL_PROFILE: ProfileRow = {
   writing_voice_description: VOICE_SAMPLE,
 };
 
+/**
+ * The cap of a bundle that kept only its voice: the voice is a fact of You and rides on top of
+ * BUNDLE_CHAR_CAP (ruling 14), so an overflowing bundle is that much longer than 6,000.
+ */
+const VOICE_ON_TOP_CAP = bundleCharCap([PROFILE_ROLE_MAP.voice(FULL_PROFILE)!], true);
+
 // ─── 1. ORDER: voice is never the tail element of the four generative modes ─────
 
 describe("MODE_ROLES voice priority (KCQ-08 / D-11/D-12)", () => {
@@ -60,17 +71,18 @@ describe("MODE_ROLES voice priority (KCQ-08 / D-11/D-12)", () => {
   it("voice sits ahead of wins/flops/platform in all four generative modes", () => {
     for (const mode of ["idea", "hooks", "script", "remix"] as const) {
       const roles = MODE_ROLES[mode];
-      const vi = roles.indexOf("voice");
-      expect(vi).toBeGreaterThanOrEqual(0);
+      const voiceAt = roles.indexOf("voice");
+      expect(voiceAt).toBeGreaterThanOrEqual(0);
       for (const lower of ["wins", "flops", "platform"] as const) {
         const li = roles.indexOf(lower);
-        if (li >= 0) expect(vi).toBeLessThan(li);
+        if (li >= 0) expect(voiceAt).toBeLessThan(li);
       }
     }
   });
 
-  it("chat stays voice-free (base-neutral grounding, unchanged)", () => {
-    expect(MODE_ROLES.chat).toEqual(["niche", "audience", "platform"]);
+  it("chat stays voice-free (base-neutral grounding); it takes never, sells and about", () => {
+    expect(MODE_ROLES.chat).toEqual(["niche", "audience", "never", "sells", "about", "platform"]);
+    expect(MODE_ROLES.chat).not.toContain("voice");
   });
 });
 
@@ -111,11 +123,15 @@ describe("voice survives a representative BUNDLE_CHAR_CAP drop", () => {
   // cap moved to 6000 the ask stopped overflowing, nothing was shed, and all three cases
   // failed on `not.toContain("Past wins")` — a fixture that had silently become a no-op.
   //
-  // The window is narrow on purpose and worth knowing about: at CAP - 1200 the voice sample
-  // (~870 chars) is shed too, so there is roughly one role's width of slack. The assertions
-  // below are what prove the bundle is still IN the tail-drop regime, so a future drift fails
-  // loudly rather than passing vacuously.
-  const BIG_ASK = "y".repeat(BUNDLE_CHAR_CAP - 1300);
+  // RE-SIZED CAP - 1300 → CAP - 275 (2026-11-24, plan 2026-11-24-you, ruling 14). The voice is a
+  // fact of You now: it rides on top of the cap and never competes for it, so the ask alone has to
+  // push the OTHER lines over. CAP - 1300 left ~1,000 characters of room once the voice stopped
+  // counting, nothing was shed, and the three cases failed on `not.toContain("Past wins")`. The
+  // window is one role wide (measured CAP - 326 … CAP - 223; CAP - 275 is its middle): wins goes,
+  // niche and audience stay; the niche and
+  // audience assertions below are what prove the bundle is IN the tail-drop regime rather than the
+  // whole-profile drop, so a future drift fails loudly rather than passing vacuously.
+  const BIG_ASK = "y".repeat(BUNDLE_CHAR_CAP - 275);
 
   it.each(["hooks", "script", "remix"] as const)(
     "%s — voice marker present though the bundle overflowed and dropped a tail role",
@@ -130,6 +146,9 @@ describe("voice survives a representative BUNDLE_CHAR_CAP drop", () => {
       // A lower-priority profile role (the profile-stored "wins" directional line) is
       // shed under the cap while voice — which now ranks above it — is kept.
       expect(bundle).not.toContain("Past wins");
+      // …and only the tail went: the bundle is in the tail-drop regime, not the whole-profile drop.
+      expect(bundle).toContain("Niche: fitness");
+      expect(bundle).toContain("Target audience: ");
       // Sanity: voice ranks above wins/flops/platform in the role order.
       const roles = MODE_ROLES[mode];
       expect(roles.indexOf("voice")).toBeLessThan(roles.indexOf("wins"));
@@ -234,7 +253,7 @@ describe("assembleBundle anchor contract", () => {
       },
       FULL_PROFILE,
     );
-    expect(bundle.length).toBeLessThanOrEqual(BUNDLE_CHAR_CAP);
+    expect(bundle.length).toBeLessThanOrEqual(VOICE_ON_TOP_CAP);
     expect(bundle).toContain("Anchor hook — REQUIRED");
   });
 });
@@ -333,7 +352,7 @@ describe("assembleBundle rewrite pack (cards)", () => {
       },
       FULL_PROFILE,
     );
-    expect(bundle.length).toBeLessThanOrEqual(BUNDLE_CHAR_CAP);
+    expect(bundle.length).toBeLessThanOrEqual(VOICE_ON_TOP_CAP);
     expect(bundle).toContain("Cards to improve");
   });
 });

@@ -3,6 +3,7 @@ import {
   creatorProfilePatchSchema,
   sanitizeText,
 } from "@/lib/schemas/creator-profile";
+import { YOU_FACT_KEYS, YOU_FACT_LIMITS } from "@/lib/you/facts";
 
 /**
  * PROFILE-15 + PROFILE-11 — Zod whitelist + sanitizer behavior. The schema
@@ -12,48 +13,21 @@ import {
  */
 
 /**
- * 🔴 A KNOWN, DELIBERATE GAP — `writing_voice_description` has nowhere to land.
- *
- * This schema is a plain `z.object`, so zod STRIPS the key, and `creator_profiles` has no voice
- * column to receive it anyway (both verified 2026-08-13). A stripped key never reaches the upsert,
- * so the loss is silent and errorless.
- *
- * ⚠️ UPDATED 2026-08-14: nothing collects this answer any more either. The card that asked for it
- * (`voice-description-input.tsx`) and the store that serialized it (`profile-interview-store.ts`)
- * were deleted with the unreachable interview modal, and `WaitQuestions` — the three questions
- * that replaced it — deliberately does not ask: the audience's auto-derived `creator_persona`
- * already backfills the voice role from the real scrape. So this test now guards the SCHEMA
- * boundary alone, which is the half that matters: it is what would silently swallow the field if
- * a future surface started sending it again.
- *
- * This is pinned rather than fixed because wiring it is a product decision, not a cleanup:
- * `docs/superpowers/specs/2026-08-12-exemplar-fence-design.md` §5.4 warns against shipping this
- * slot as a quality win, and a new column here is a live prod DDL. Wiring it needs exactly two
- * things — the column, and the field on this whitelist — and `voice-description-fence.test.ts`
- * already guards what is allowed in the slot once it exists.
- *
- * ⚠️ WHEN THIS TEST FAILS, THAT IS THE SIGNAL, NOT THE BUG. It means someone added the field to
- * the whitelist. Confirm the column exists before deleting this test, or every interview finalize
- * starts 400-ing on an unknown column.
+ * The five facts of You (plan 2026-11-24-you). The voice slot was pinned here as "stripped" until a
+ * column existed; the column is `writing_voice_description` (a DESCRIPTION, `profile-role-map.ts`),
+ * added with the other four by `20261124022536_creator_profile_you_facts.sql`. The old spelling
+ * stays stripped: it invited a pasted specimen.
  */
-describe("creatorProfilePatchSchema — the interview's voice answer is NOT persisted", () => {
-  it("strips writing_voice_description instead of persisting it", () => {
-    const result = creatorProfilePatchSchema.safeParse({
-      pain_points: "no time to edit",
-      writing_voice_description: "blunt, no fluff. lowercase energy.",
-    });
-
-    expect(result.success).toBe(true);
-    // Parsed OUT, not rejected — which is exactly why the loss is invisible in production.
-    expect(result.data).not.toHaveProperty("writing_voice_description");
-    expect(result.data).toHaveProperty("pain_points");
+describe("creatorProfilePatchSchema — the five facts of You", () => {
+  it.each(YOU_FACT_KEYS)("accepts %s up to its limit, and null", (key) => {
+    const limit = YOU_FACT_LIMITS[key];
+    expect(creatorProfilePatchSchema.safeParse({ [key]: "x".repeat(limit) }).success).toBe(true);
+    expect(creatorProfilePatchSchema.safeParse({ [key]: null }).success).toBe(true);
+    expect(creatorProfilePatchSchema.safeParse({ [key]: "x".repeat(limit + 1) }).success).toBe(false);
   });
 
-  it("also strips the pre-2026-08-13 spelling, so neither name smuggles a specimen through", () => {
-    const result = creatorProfilePatchSchema.safeParse({
-      writing_voice_sample: "Btw this dance took me hours to learn",
-    });
-
+  it("still strips the pre-2026-08-13 spelling, so no specimen is smuggled through", () => {
+    const result = creatorProfilePatchSchema.safeParse({ writing_voice_sample: "Btw this dance took me hours to learn" });
     expect(result.success).toBe(true);
     expect(result.data).not.toHaveProperty("writing_voice_sample");
   });

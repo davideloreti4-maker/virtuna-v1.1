@@ -49,6 +49,8 @@ const ROUTE_MAX: Record<string, number> = {
   hooks: 15,
   profile: 15,
   refine: 20,
+  // Tight — each request may create an affiliate and its commissions at the payment partner.
+  "earn-whop": 3,
 };
 
 // Module-scoped singletons — one Redis client, one Ratelimit per route key.

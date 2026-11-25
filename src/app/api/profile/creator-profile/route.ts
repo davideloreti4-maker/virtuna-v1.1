@@ -1,9 +1,12 @@
 import { createClient } from "@/lib/supabase/server";
 import { createLogger } from "@/lib/logger";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
+import { isSealedVisitor } from "@/lib/onboarding/verdict-seal";
 import {
   creatorProfilePatchSchema,
   sanitizeText,
 } from "@/lib/schemas/creator-profile";
+import { YOU_FACT_KEYS } from "@/lib/you/facts";
 
 const log = createLogger({ module: "creator-profile" });
 
@@ -13,7 +16,7 @@ const log = createLogger({ module: "creator-profile" });
  * (Plan 02-04). Kept as a single source of truth so the SELECT and the
  * fallback default-shape stay in lockstep.
  */
-const GET_COLUMNS = [
+const BASE_COLUMNS = [
   "profile_interview_seen_at",
   "target_platforms",
   "niche_primary",
@@ -31,6 +34,12 @@ const GET_COLUMNS = [
   "pain_points",
   "storage_retention_opted_in",
 ] as const;
+
+/**
+ * Under the new look the five facts of You (plan 2026-11-24-you) are read too. With the flag off the
+ * select is exactly the 16 columns it was, so the old look never depends on the migration.
+ */
+const GET_COLUMNS: readonly string[] = NEW_LOOK_ENABLED ? [...BASE_COLUMNS, ...YOU_FACT_KEYS] : BASE_COLUMNS;
 
 const GET_SELECT = GET_COLUMNS.join(", ");
 
@@ -134,7 +143,19 @@ export async function PATCH(request: Request): Promise<Response> {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // An anonymous session (a /go funnel visitor) never gets a creator_profiles row: the
+    // middleware's onboarding exemption relies on there being none (middleware.ts). New look only,
+    // so the old look behaves exactly as before.
+    if (NEW_LOOK_ENABLED && isSealedVisitor(user)) {
+      return Response.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const body = await request.json();
+    // Flag off the five You facts are not part of this route: dropped before the parse, so a
+    // value the schema would refuse cannot turn an answer that used to be 200 into a 400.
+    if (!NEW_LOOK_ENABLED && body !== null && typeof body === "object" && !Array.isArray(body)) {
+      for (const key of YOU_FACT_KEYS) delete (body as Record<string, unknown>)[key];
+    }
     const parsed = creatorProfilePatchSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -179,6 +200,18 @@ export async function PATCH(request: Request): Promise<Response> {
         ...entry,
         url: sanitizeText(entry.url) ?? "",
       }));
+    }
+
+    // The five facts of You: cleaned like every free-text field, trimmed, blank saved as null.
+    // While the new look is off they are dropped, as zod dropped them before they existed.
+    for (const key of YOU_FACT_KEYS) {
+      if (!(key in sanitized)) continue;
+      if (!NEW_LOOK_ENABLED) {
+        delete sanitized[key];
+        continue;
+      }
+      const value = sanitized[key];
+      sanitized[key] = typeof value === "string" ? sanitizeText(value)?.trim() || null : null;
     }
 
     // Stamp `profile_interview_seen_at` on first contact — server-derived, never from the body.

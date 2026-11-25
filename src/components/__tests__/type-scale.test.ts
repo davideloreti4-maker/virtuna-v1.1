@@ -38,8 +38,9 @@ import { join } from 'node:path';
 const SRC = join(__dirname, '..', '..');            // …/src
 const COMPONENTS = join(__dirname, '..');           // …/src/components
 
-/** The surfaces that actually render — /home, /audience, /settings, the thread. */
-const GUARDED_DIRS = ['app/home', 'app/settings', 'audience', 'sidebar', 'thread'] as const;
+/** The surfaces that actually render — /home, /audience, /settings, the thread (and its new-look
+ *  field and frame, `thread-next`), the new look's Home (`home-next`), Library (`library-next`) and You (`you-next`). */
+const GUARDED_DIRS = ['app/home', 'app/settings', 'audience', 'home-next', 'library-next', 'shell', 'sidebar', 'thread', 'thread-next', 'you-next'] as const;
 
 /** Any arbitrary font-size utility, incl. responsive/state prefixes (`lg:text-[19px]`). */
 const ARBITRARY_TEXT_RE = /\btext-\[([0-9.]+)px\]/g;

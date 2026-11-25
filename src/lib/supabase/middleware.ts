@@ -1,9 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 import {
   REFERRAL_COOKIE_NAME,
   REFERRAL_COOKIE_MAX_AGE,
 } from "@/lib/referral/constants";
+import { REFERRAL_AT_COOKIE_NAME } from "@/lib/referral/cookies";
 
 /**
  * Protected route prefixes — any path starting with these requires auth.
@@ -30,6 +32,9 @@ const PROTECTED_PREFIXES = [
   "/discover",
   "/grow",
   "/reset-password", // recovery session required; page redirects to /login itself if absent
+  // You (plan 2026-11-24-you) and Earn (plan 2026-11-24-earn) exist under the new look only; with the
+  // flag off the list is as before.
+  ...(NEW_LOOK_ENABLED ? ["/you", "/earn"] : []),
 ];
 
 /**
@@ -134,6 +139,18 @@ export async function updateSession(request: NextRequest) {
       secure: true,
       httpOnly: true,
       sameSite: "lax", // CRITICAL: NOT "strict" — must survive OAuth redirect
+      maxAge: REFERRAL_COOKIE_MAX_AGE,
+    });
+    // Earn (ruling 30): when this link was first opened, with the same options. Set only here, together
+    // with the code, so it is never overwritten while the code's cookie exists. The checkout attributes a
+    // sale only to an account created after this moment (src/lib/earn/referrer-of.ts).
+    supabaseResponse.cookies.set({
+      name: REFERRAL_AT_COOKIE_NAME,
+      value: new Date().toISOString(),
+      path: "/",
+      secure: true,
+      httpOnly: true,
+      sameSite: "lax",
       maxAge: REFERRAL_COOKIE_MAX_AGE,
     });
   }

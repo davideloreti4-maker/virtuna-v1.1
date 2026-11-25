@@ -37,6 +37,7 @@ import {
   type CompositionSegment,
 } from "./audience-display";
 import { humanizeSlugs } from "@/lib/text/humanize-slug";
+import { timeAgo } from "@/lib/time-ago";
 import { cn } from "@/lib/utils";
 
 /** Slim connected-account view the index renders (client-serializable). */
@@ -82,19 +83,8 @@ function isOwned(a: Audience): boolean {
   return !a.is_general && !a.is_preset;
 }
 
-/** "2h ago" — coarse on purpose; a fact line, not a log. */
-export function timeAgo(iso: string | null): string | null {
-  if (!iso) return null;
-  const ms = Date.now() - new Date(iso).getTime();
-  if (!Number.isFinite(ms) || ms < 0) return null;
-  const mins = Math.floor(ms / 60_000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.floor(hours / 24);
-  return `${days}d ago`;
-}
+/** "2h ago": moved to `@/lib/time-ago` (Home's Recent uses it too); re-exported for the audience detail. */
+export { timeAgo };
 
 /**
  * True once a sync is old enough to genuinely want action (Apple-grammar pass, 2026-08-16).

@@ -1,4 +1,6 @@
+import { NewAudienceLoading as NewAudienceNextLoading } from "@/components/audience-next/new-audience-screen";
 import { Skeleton } from "@/components/ui/skeleton";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 
 /**
  * /audience/new route loading skeleton (Theme B).
@@ -8,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
  * shape-matched skeleton on navigation instead of the generic (app)/loading.tsx grid.
  */
 export default function NewAudienceLoading() {
+  if (NEW_LOOK_ENABLED) return <NewAudienceNextLoading />;
   return (
     <div className="max-w-2xl mx-auto px-4 py-6 sm:p-6 space-y-6">
       {/* Header — title */}

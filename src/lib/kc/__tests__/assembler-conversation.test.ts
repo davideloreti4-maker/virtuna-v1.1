@@ -26,10 +26,15 @@
  * Plus the byte-identical proof for raising BUNDLE_CHAR_CAP 4000 → 6000.
  */
 
-import { describe, it, expect } from "vitest";
-import { assembleBundle, BUNDLE_CHAR_CAP, CONVERSATION_CHAR_BUDGET } from "../assembler";
+import { describe, it, expect, vi } from "vitest";
+
+// The voice slot is one of the five facts of You, which a writer reads only under the new look
+// (plan 2026-11-24-you): these cases put a voice in the row and expect it read, so the flag is on.
+vi.mock("@/lib/flags/new-look", () => ({ NEW_LOOK_ENABLED: true }));
+
+import { assembleBundle, BUNDLE_CHAR_CAP, CONVERSATION_CHAR_BUDGET, bundleCharCap } from "../assembler";
 import { buildConversationDigest } from "@/lib/tools/conversation-digest";
-import type { ProfileRow } from "../profile-role-map";
+import { PROFILE_ROLE_MAP, type ProfileRow } from "../profile-role-map";
 
 /**
  * The REAL prod profile shape, measured 2026-08-10 (`creator_profiles` has two non-null rows and
@@ -104,6 +109,11 @@ describe("shed order — the corpus yields before the creator", () => {
     // 4000. The shed-order fix ALONE saves voice at 4000, by shedding the corpus instead: the
     // creator survives and grounding dies, silently, with every role assertion still green.
     // Both tiers have to fit, and only the wider cap makes that true.
+    //
+    // ⚠️ Since 2026-11-24 (ruling 14) the voice is a fact of You and rides on top of the cap. This
+    // fixture's other content is then 3,833 and its corpus survives even a cap of 4000: a revert to
+    // 4000 still fails here, but on the length line (which counts the voice against 6,000), not on
+    // the corpus. The worst-realistic cases below are the ones whose CORPUS a revert would evict.
     const result = assembleBundle(
       { ask: ASK, platform: "tiktok", mode: "hooks", corpus: CORPUS_2800, overrides: OVERRIDES },
       PROFILE,
@@ -205,9 +215,14 @@ describe("shed order — the corpus yields before the creator", () => {
 
   it("the conversation goes SECOND — before any profile role, after the corpus", () => {
     // Overflow that survives shedding the corpus but not the conversation: a huge ask.
+    //
+    // RE-SIZED CAP - 900 → CAP - 700 (2026-11-24, plan 2026-11-24-you, ruling 14): the voice is a
+    // fact of You now and rides on top of the cap, so it no longer counts against it. Measured, the
+    // regime this test is about (corpus and conversation shed, every profile line kept) now holds
+    // for CAP - 903 … CAP - 468; CAP - 900 sat 3 characters from its edge. CAP - 700 is its middle.
     const result = assembleBundle(
       {
-        ask: "x".repeat(BUNDLE_CHAR_CAP - 900),
+        ask: "x".repeat(BUNDLE_CHAR_CAP - 700),
         platform: "tiktok",
         mode: "hooks",
         corpus: CORPUS_2800,
@@ -217,8 +232,11 @@ describe("shed order — the corpus yields before the creator", () => {
     );
     expect(result).not.toContain("Grounded examples");
     expect(result).not.toContain("This conversation so far");
+    // …and not a single profile role went: the tail is still there.
+    expect(has(result, "platform")).toBe(true);
+    expect(has(result, "flops")).toBe(true);
     expect(has(result, "voice")).toBe(true);
-    expect(result.length).toBeLessThanOrEqual(BUNDLE_CHAR_CAP);
+    expect(result.length).toBeLessThanOrEqual(bundleCharCap([PROFILE_ROLE_MAP.voice(PROFILE)!]));
   });
 
   it("the ask is never shed, even when nothing else can be", () => {
@@ -229,7 +247,9 @@ describe("shed order — the corpus yields before the creator", () => {
     expect(result).toContain("Creator ask");
     expect(result).toContain("<<<USER_CONTENT>>>");
     expect(result).toContain("<<<END_USER_CONTENT>>>");
-    expect(result.length).toBeLessThanOrEqual(BUNDLE_CHAR_CAP);
+    // The voice is a fact of You: it rides on top of the cap and is put back after the rebuild.
+    expect(result.length).toBeLessThanOrEqual(bundleCharCap([PROFILE_ROLE_MAP.voice(PROFILE)!], true));
+    expect(has(result, "voice")).toBe(true);
   });
 });
 

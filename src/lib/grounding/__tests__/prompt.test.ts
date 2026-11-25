@@ -1,4 +1,10 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+// FAT_PROFILE below carries a voice, one of the five facts of You, which a writer reads only under
+// the new look (plan 2026-11-24-you). With the flag off the eviction guard's voice signal would be
+// absent from both bundles and its check would pass without testing anything, so the flag is on.
+vi.mock("@/lib/flags/new-look", () => ({ NEW_LOOK_ENABLED: true }));
+
 import { buildCorpusBlock, CORPUS_CHAR_BUDGET } from "../prompt";
 import { assembleBundle, BUNDLE_CHAR_CAP } from "@/lib/kc/assembler";
 import type { RetrievedExample } from "../types";
@@ -322,6 +328,7 @@ describe("corpus budget vs BUNDLE_CHAR_CAP (the profile-eviction guard)", () => 
     );
 
     // Every profile signal present without the corpus must still be present with it.
+    expect(without).toContain("quiet part out loud"); // the voice is read, so the loop below tests it
     for (const signal of ["founder personal branding", "quiet part out loud", "Past wins", "Past flops"]) {
       if (without.includes(signal)) expect(withCorpus).toContain(signal);
     }

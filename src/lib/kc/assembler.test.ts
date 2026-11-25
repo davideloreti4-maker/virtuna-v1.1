@@ -55,30 +55,23 @@ const BASE_INPUT: AssemblerInput = {
 // ─── 1. MODE_ROLES structure ──────────────────────────────────────────────────
 
 describe("MODE_ROLES", () => {
-  it("idea mode includes niche, audience, goals, wins, flops, platform, voice", () => {
-    expect(MODE_ROLES.idea).toEqual(
-      expect.arrayContaining(["niche", "audience", "goals", "wins", "flops", "platform", "voice"])
-    );
-    expect(MODE_ROLES.idea).toHaveLength(7);
+  it("idea mode: the whole creator, the five facts of You in the spec's order before goals", () => {
+    expect(MODE_ROLES.idea).toEqual([
+      "niche", "audience", "never", "voice", "sells", "about", "film", "goals", "wins", "flops", "platform",
+    ]);
   });
 
-  it("hooks mode includes niche, audience, platform, wins, flops, voice (no goals)", () => {
-    expect(MODE_ROLES.hooks).toEqual(
-      expect.arrayContaining(["niche", "audience", "platform", "wins", "flops", "voice"])
-    );
+  it("hooks mode: as ideas without goals and without film", () => {
+    expect(MODE_ROLES.hooks).toEqual(["niche", "audience", "never", "voice", "sells", "about", "wins", "flops", "platform"]);
     expect(MODE_ROLES.hooks).not.toContain("goals");
-    expect(MODE_ROLES.hooks).toHaveLength(6);
   });
 
-  it("chat mode includes niche, audience, platform only (no goals, wins, flops, voice)", () => {
-    expect(MODE_ROLES.chat).toEqual(
-      expect.arrayContaining(["niche", "audience", "platform"])
-    );
+  it("chat mode: niche, audience, never, sells, about, platform (no goals, wins, flops, voice)", () => {
+    expect(MODE_ROLES.chat).toEqual(["niche", "audience", "never", "sells", "about", "platform"]);
     expect(MODE_ROLES.chat).not.toContain("goals");
     expect(MODE_ROLES.chat).not.toContain("wins");
     expect(MODE_ROLES.chat).not.toContain("flops");
     expect(MODE_ROLES.chat).not.toContain("voice");
-    expect(MODE_ROLES.chat).toHaveLength(3);
   });
 });
 

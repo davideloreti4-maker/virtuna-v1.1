@@ -29,6 +29,8 @@ import { SaveAffordance } from '@/components/thread/save-affordance';
 import { ProofReceipt } from './proof-receipt';
 import { CoverFill } from '@/components/primitives/CoverFill';
 import { useSimulateVideo } from '@/lib/hook-test-context';
+import { NEW_LOOK_ENABLED } from '@/lib/flags/new-look';
+import { resultHref } from '@/lib/result/href';
 import { CardPrimaryAction, CardActionBar, SECTION_LABEL } from './card-primitives';
 
 export interface VideoTestCardRendererProps {
@@ -103,8 +105,9 @@ export function VideoTestCardRenderer({ block }: VideoTestCardRendererProps) {
   // the same Max run measured it against this thread's audience — so the CTA OPENS that read in
   // place instead of navigating to the old board. Everywhere else (library, saved, /dev/cards), and
   // whenever the room has no seal to show, it stays the `/analyze/[id]` link it has always been.
+  // New look: the door opens the result page; the room's side panel is not opened from here.
   const simulateVideo = useSimulateVideo();
-  const openRoom = simulateVideo
+  const openRoom = simulateVideo && !NEW_LOOK_ENABLED
     ? () => {
         // A false return means the room had nothing to open. Fall back to the link rather than
         // leaving the creator on a button that did nothing.
@@ -319,7 +322,7 @@ export function VideoTestCardRenderer({ block }: VideoTestCardRendererProps) {
         {openRoom ? (
           <CardPrimaryAction onClick={openRoom}>Simulate with your audience →</CardPrimaryAction>
         ) : (
-          <CardPrimaryAction href={`/analyze/${analysisId}`}>
+          <CardPrimaryAction href={resultHref(analysisId)}>
             Simulate with your audience →
           </CardPrimaryAction>
         )}

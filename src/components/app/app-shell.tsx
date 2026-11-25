@@ -1,43 +1,25 @@
 "use client";
 
-import { useMemo } from "react";
-import { useRouter } from "next/navigation";
-import { Plus, UsersThree, SlidersHorizontal, ChatCircleText } from "@phosphor-icons/react";
 import { AuthGuard } from "./auth-guard";
+import { useCommandItems } from "./use-command-items";
 import { Sidebar, SidebarHamburger, MOBILE_NAV_BAND } from "@/components/sidebar/Sidebar";
-import { CommandPalette, type CommandItem } from "@/components/primitives/CommandPalette";
+import { CommandPalette } from "@/components/primitives/CommandPalette";
+import { NextShell } from "@/components/shell/next-shell";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 import { useSidebarStore } from "@/stores/sidebar-store";
-import { useBoardStore } from "@/stores/board-store";
-import { useThreadList } from "@/hooks/queries";
-import {
-  setActiveThreadCookie,
-  clearActiveThreadCookie,
-} from "@/lib/threads/active-thread-cookie";
 import { useIsMobileHydrated } from "@/hooks/useIsMobile";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 
-/** Compact relative time for a thread row's subtitle ("3d", "2mo"). */
-const rtf =
-  typeof Intl !== "undefined"
-    ? new Intl.RelativeTimeFormat("en", { numeric: "auto", style: "narrow" })
-    : null;
-
-function relativeTime(iso: string | undefined): string {
-  if (!iso || !rtf) return "";
-  const parsed = Date.parse(iso);
-  if (Number.isNaN(parsed)) return "";
-  const diffSec = (parsed - Date.now()) / 1000;
-  const abs = Math.abs(diffSec);
-  if (abs < 60) return rtf.format(Math.round(diffSec), "second");
-  if (abs < 3600) return rtf.format(Math.round(diffSec / 60), "minute");
-  if (abs < 86400) return rtf.format(Math.round(diffSec / 3600), "hour");
-  if (abs < 2592000) return rtf.format(Math.round(diffSec / 86400), "day");
-  if (abs < 31536000) return rtf.format(Math.round(diffSec / 2592000), "month");
-  return rtf.format(Math.round(diffSec / 31536000), "year");
-}
-
 interface AppShellProps {
   children: React.ReactNode;
+}
+
+/**
+ * Picks the app frame. With NEXT_PUBLIC_NEW_LOOK on it is the new shell
+ * (src/components/shell); otherwise the legacy shell below, exactly as before.
+ */
+export function AppShell({ children }: AppShellProps) {
+  return NEW_LOOK_ENABLED ? <NextShell>{children}</NextShell> : <LegacyShell>{children}</LegacyShell>;
 }
 
 // Sidebar geometry — kept in sync with Sidebar.tsx.
@@ -52,91 +34,15 @@ const SIDEBAR_RAIL = 56;
 const SIDEBAR_INSET = 0;
 const CONTENT_GUTTER = 0;
 
-export function AppShell({ children }: AppShellProps) {
+function LegacyShell({ children }: AppShellProps) {
   const { isCollapsed, commandOpen, setCommandOpen } = useSidebarStore();
   const { isMobile, hydrated } = useIsMobileHydrated();
   const reducedMotion = usePrefersReducedMotion();
-  const router = useRouter();
-  const { data: threads } = useThreadList();
-  const switchThread = useBoardStore((s) => s.switchThread);
-  const setActiveThreadId = useBoardStore((s) => s.setActiveThreadId);
-
-  // ⌘K searches THREADS. It mounts here, as a sibling of <main> and outside
-  // <Sidebar>, on purpose: the sidebar <nav> animates with translate-x, and a
-  // transformed ancestor re-bases `position: fixed` onto itself — mounting the
-  // palette inside it would trap the overlay in a 220px column.
-  //
-  // The first version listed only Home / Audience / Settings / New audience, and
-  // was rightly called out as pointless: every one of those is already visible in
-  // a two-item sidebar, so the palette navigated you to things you could already
-  // see. Threads are the only thing here that grows without bound and cannot be
-  // scanned at a glance — they are what a search is FOR, and they are what the
-  // trigger on the Threads header promises.
-  //
-  // Destinations stay, demoted below the threads: they cost nothing and they make
-  // typing "set" resolve, but they are no longer the payload.
-  const threadItems = useMemo<CommandItem[]>(
-    () =>
-      (threads ?? []).map((t) => ({
-        id: `thread-${t.id}`,
-        title: t.title ?? "New chat",
-        subtitle: relativeTime(t.updated_at),
-        group: "Threads",
-        icon: <ChatCircleText size={16} />,
-        // Same path the sidebar rows take — cookie, store pointer, switch, /home.
-        // Anything less leaves the composer pointing at the previous thread.
-        onSelect: () => {
-          setActiveThreadCookie(t.id);
-          setActiveThreadId(t.id);
-          switchThread();
-          router.push("/home");
-        },
-      })),
-    [threads, router, setActiveThreadId, switchThread],
-  );
-
-  const commandItems = useMemo<CommandItem[]>(
-    () => [
-      ...threadItems,
-      {
-        id: "new-thread",
-        title: "New thread",
-        subtitle: "Start a fresh conversation",
-        group: "Actions",
-        icon: <Plus size={16} />,
-        onSelect: () => {
-          clearActiveThreadCookie();
-          setActiveThreadId(null);
-          switchThread();
-          router.push("/home");
-        },
-      },
-      {
-        id: "new-audience",
-        title: "New audience",
-        subtitle: "Calibrate from a handle, an account, or a description",
-        group: "Actions",
-        icon: <UsersThree size={16} />,
-        onSelect: () => router.push("/audience/new"),
-      },
-      {
-        id: "audience",
-        title: "Audience",
-        subtitle: "Your calibrated audiences",
-        group: "Go to",
-        icon: <UsersThree size={16} />,
-        onSelect: () => router.push("/audience"),
-      },
-      {
-        id: "settings",
-        title: "Settings",
-        group: "Go to",
-        icon: <SlidersHorizontal size={16} />,
-        onSelect: () => router.push("/settings"),
-      },
-    ],
-    [threadItems, router, setActiveThreadId, switchThread],
-  );
+  // ⌘K searches THREADS. The palette mounts here, as a sibling of <main> and outside <Sidebar>,
+  // on purpose: the sidebar <nav> animates with translate-x, and a transformed ancestor re-bases
+  // `position: fixed` onto itself — mounting the palette inside it would trap the overlay in a
+  // 220px column. The items live in use-command-items.tsx, shared with the new shell.
+  const commandItems = useCommandItems();
 
   // Mobile (D-15): the sidebar is an overlay drawer — content does not shift.
   // Desktop (D-14): content shifts right by the real sidebar width.

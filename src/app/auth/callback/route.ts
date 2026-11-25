@@ -4,6 +4,7 @@ import {
   REFERRAL_COOKIE_NAME,
   REFERRAL_COOKIE_MAX_AGE,
 } from "@/lib/referral/constants";
+import { recordSignInReferral } from "@/lib/earn/referral-row";
 
 /**
  * OAuth PKCE code exchange handler.
@@ -121,22 +122,12 @@ export async function GET(request: NextRequest) {
       ?.trim();
 
     if (referralCode) {
-      // Look up referrer from referral_codes table
-      const { data: codeData } = await supabase
-        .from("referral_codes")
-        .select("user_id")
-        .eq("code", referralCode)
-        .maybeSingle();
-
-      if (codeData) {
-        // Log referral click (UNIQUE constraint handles deduplication)
-        await supabase.from("referral_clicks").insert({
-          referral_code: referralCode,
-          referrer_user_id: codeData.user_id,
-          referred_user_id: data.user.id,
-          clicked_at: new Date().toISOString(),
-        });
-      }
+      // Earn (rulings 20a and 31): the SERVER looks the code's owner up and writes the referral row,
+      // through the service client. The new account's own session cannot read another person's code,
+      // which is why this row was never written while the session did it. Only for an account created
+      // within the last 24 hours, never for the code's owner, once (UNIQUE constraint; a second one is
+      // quiet). It never throws and gives up after two seconds: the sign-in goes on whatever happens.
+      await recordSignInReferral(referralCode, data.user);
 
       // Re-set referral cookie after OAuth (ensures persistence)
       response.cookies.set({

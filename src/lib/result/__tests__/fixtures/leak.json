@@ -1,0 +1,225 @@
+{
+ "id": "fixture-leak",
+ "engine_version": "3.20.0",
+ "input_mode": "tiktok_url",
+ "video_storage_path": null,
+ "overall_score": 64,
+ "processing": false,
+ "heatmap": {
+  "weights": {
+   "fyp": 0.65,
+   "niche": 0.2,
+   "loyalist": 0.1,
+   "cross_niche": 0.05
+  },
+  "personas": [
+   {
+    "id": "fyp-1-tough_crowd-lifestyle",
+    "archetype": "tough_crowd",
+    "slot_type": "fyp",
+    "attentions": [
+     0.6,
+     0.1,
+     0,
+     0
+    ],
+    "segment_reasons": {},
+    "swipe_predicted_at": 3
+   },
+   {
+    "id": "fyp-2-lurker-lifestyle",
+    "archetype": "lurker",
+    "slot_type": "fyp",
+    "attentions": [
+     0.85,
+     0.8,
+     0.75,
+     0.7
+    ],
+    "segment_reasons": {},
+    "swipe_predicted_at": null
+   },
+   {
+    "id": "fyp-3-high_engager-lifestyle",
+    "archetype": "high_engager",
+    "slot_type": "fyp",
+    "attentions": [
+     0.95,
+     0.9,
+     0.95,
+     0.9
+    ],
+    "segment_reasons": {},
+    "swipe_predicted_at": null
+   },
+   {
+    "id": "fyp-4-saver-lifestyle",
+    "archetype": "saver",
+    "slot_type": "fyp",
+    "attentions": [
+     0.7,
+     0.6,
+     0.1,
+     0
+    ],
+    "segment_reasons": {},
+    "swipe_predicted_at": 5.5
+   },
+   {
+    "id": "niche_deep-1-niche_deep_buyer-lifestyle",
+    "archetype": "niche_deep_buyer",
+    "slot_type": "niche",
+    "attentions": [
+     0.5,
+     0.2,
+     0,
+     0
+    ],
+    "segment_reasons": {},
+    "swipe_predicted_at": 3
+   },
+   {
+    "id": "niche_deep-2-niche_deep_scout-lifestyle",
+    "archetype": "niche_deep_scout",
+    "slot_type": "niche",
+    "attentions": [
+     0.8,
+     0.7,
+     0.3,
+     0
+    ],
+    "segment_reasons": {},
+    "swipe_predicted_at": 5.5
+   },
+   {
+    "id": "loyalist-1-loyalist-lifestyle",
+    "archetype": "loyalist",
+    "slot_type": "loyalist",
+    "attentions": [
+     1,
+     0.95,
+     1,
+     0.95
+    ],
+    "segment_reasons": {},
+    "swipe_predicted_at": null
+   },
+   {
+    "id": "loyalist-2-loyalist-lifestyle",
+    "archetype": "loyalist",
+    "slot_type": "loyalist",
+    "attentions": [
+     0.95,
+     0.9,
+     0.9,
+     0.85
+    ],
+    "segment_reasons": {},
+    "swipe_predicted_at": null
+   },
+   {
+    "id": "loyalist-3-loyalist-lifestyle",
+    "archetype": "loyalist",
+    "slot_type": "loyalist",
+    "attentions": [
+     1,
+     1,
+     1,
+     1
+    ],
+    "segment_reasons": {},
+    "swipe_predicted_at": null
+   },
+   {
+    "id": "cross_niche-1-cross_niche_curiosity-fashion-style",
+    "archetype": "cross_niche_curiosity",
+    "slot_type": "cross_niche",
+    "attentions": [
+     0.6,
+     0.5,
+     0.4,
+     0.1
+    ],
+    "segment_reasons": {},
+    "swipe_predicted_at": 20
+   }
+  ],
+  "segments": [
+   {
+    "idx": 0,
+    "label": "Man lying on bed with ceiling fan spinning rapidly above him; text 'Goodnight' appears.",
+    "t_end": 3,
+    "t_start": 0,
+    "is_hook_zone": true,
+    "keyframe_uri": null
+   },
+   {
+    "idx": 1,
+    "label": "Man lying on bed with ceiling fan spinning rapidly above him; text 'Goodnight' appears.",
+    "t_end": 5.5,
+    "t_start": 3,
+    "is_hook_zone": false,
+    "keyframe_uri": null
+   },
+   {
+    "idx": 2,
+    "label": "Scene shifts to a man waking up on a cloud-filled background, looking confused and disoriented.",
+    "t_end": 20,
+    "t_start": 5.5,
+    "is_hook_zone": false,
+    "keyframe_uri": null
+   },
+   {
+    "idx": 3,
+    "label": "Man lies back down on the clouds, appearing exhausted or resigned.",
+    "t_end": 25,
+    "t_start": 20,
+    "is_hook_zone": false,
+    "keyframe_uri": null
+   }
+  ],
+  "weighted_curve": [
+   0.7761194029850746,
+   0.6119402985074626,
+   0.45970149253731346,
+   0.3955223880597014
+  ],
+  "weights_source": "default",
+  "vs_niche_diff_pct": 0.248320895522388,
+  "weighted_hook_score": 0.7761194029850746,
+  "niche_completion_pct": 0.3125,
+  "weighted_completion_pct": 0.560820895522388
+ },
+ "persona_behavioral_aggregate": {
+  "loop_pct": 24.42857142857143,
+  "save_pct": 13.142857142857142,
+  "share_pct": 33.57142857142857,
+  "comment_pct": 45.65714285714286,
+  "completion_pct": 61.5,
+  "loop_percentile": "very low intent",
+  "save_percentile": "very low intent",
+  "share_percentile": "low intent",
+  "comment_percentile": "low intent",
+  "completion_percentile": "moderate intent"
+ },
+ "variants": {
+  "filmstrip_segments": [
+   {
+    "idx": 0,
+    "keyframe_uri": null
+   },
+   {
+    "idx": 1,
+    "keyframe_uri": null
+   },
+   {
+    "idx": 2,
+    "keyframe_uri": null
+   },
+   {
+    "idx": 3,
+    "keyframe_uri": null
+   }
+  ]
+ }
+}

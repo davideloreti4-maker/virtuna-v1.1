@@ -1,0 +1,303 @@
+{
+ "id": "fixture-opening",
+ "engine_version": "3.19.0",
+ "input_mode": "tiktok_url",
+ "video_storage_path": null,
+ "overall_score": 71,
+ "processing": false,
+ "heatmap": {
+  "weights": {
+   "fyp": 0.65,
+   "niche": 0.2,
+   "loyalist": 0.1,
+   "cross_niche": 0.05
+  },
+  "personas": [
+   {
+    "id": "high_engager_01",
+    "archetype": "high_engager",
+    "slot_type": "fyp",
+    "attentions": [
+     0.9,
+     0.9,
+     0.9,
+     0.9,
+     0.9,
+     0.9,
+     0.9,
+     0.9,
+     0.9
+    ],
+    "segment_reasons": {},
+    "swipe_predicted_at": null
+   },
+   {
+    "id": "saver_01",
+    "archetype": "saver",
+    "slot_type": "fyp",
+    "attentions": [
+     0.8,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "segment_reasons": {},
+    "swipe_predicted_at": 0
+   },
+   {
+    "id": "lurker_01",
+    "archetype": "lurker",
+    "slot_type": "fyp",
+    "attentions": [
+     0.9,
+     0.9,
+     0.9,
+     0.9,
+     0.9,
+     0.9,
+     0.9,
+     0.9,
+     0.9
+    ],
+    "segment_reasons": {},
+    "swipe_predicted_at": null
+   },
+   {
+    "id": "sharer_01",
+    "archetype": "sharer",
+    "slot_type": "fyp",
+    "attentions": [
+     0.9,
+     0.9,
+     0.8,
+     0.8,
+     0.8,
+     0.7,
+     0.7,
+     0.7,
+     0.7
+    ],
+    "segment_reasons": {},
+    "swipe_predicted_at": null
+   },
+   {
+    "id": "tough_crowd_01",
+    "archetype": "tough_crowd",
+    "slot_type": "fyp",
+    "attentions": [
+     0.9,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0,
+     0
+    ],
+    "segment_reasons": {},
+    "swipe_predicted_at": 0
+   },
+   {
+    "id": "purposeful_viewer_01",
+    "archetype": "purposeful_viewer",
+    "slot_type": "fyp",
+    "attentions": [
+     0.8,
+     0.8,
+     0.7,
+     0.6,
+     0.5,
+     0.4,
+     0.4,
+     0.4,
+     0.4
+    ],
+    "segment_reasons": {},
+    "swipe_predicted_at": null
+   },
+   {
+    "id": "niche_deep_buyer_01",
+    "archetype": "niche_deep_buyer",
+    "slot_type": "niche",
+    "attentions": [
+     0.9,
+     0.9,
+     0.8,
+     0.7,
+     0.6,
+     0.5,
+     0.5,
+     0.5,
+     0.5
+    ],
+    "segment_reasons": {},
+    "swipe_predicted_at": null
+   },
+   {
+    "id": "niche_deep_scout_01",
+    "archetype": "niche_deep_scout",
+    "slot_type": "niche",
+    "attentions": [
+     0.8,
+     0.8,
+     0.7,
+     0.6,
+     0.5,
+     0.4,
+     0.4,
+     0.4,
+     0.4
+    ],
+    "segment_reasons": {},
+    "swipe_predicted_at": null
+   },
+   {
+    "id": "loyalist_01",
+    "archetype": "loyalist",
+    "slot_type": "loyalist",
+    "attentions": [
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1,
+     1
+    ],
+    "segment_reasons": {},
+    "swipe_predicted_at": null
+   },
+   {
+    "id": "cross_niche_curiosity_01",
+    "archetype": "cross_niche_curiosity",
+    "slot_type": "cross_niche",
+    "attentions": [
+     0.8,
+     0.8,
+     0.7,
+     0.7,
+     0.7,
+     0.6,
+     0.6,
+     0.6,
+     0.6
+    ],
+    "segment_reasons": {},
+    "swipe_predicted_at": null
+   }
+  ],
+  "segments": [
+   {
+    "idx": 0,
+    "label": "Two men set up a social experiment in a park with a sign on one man's chest offering $1,000 to a passerby.",
+    "t_end": 3,
+    "t_start": 0,
+    "is_hook_zone": true,
+    "keyframe_uri": null
+   },
+   {
+    "idx": 1,
+    "label": "Two men set up a social experiment in a park with a sign on one man's chest offering $1,000 to a passerby.",
+    "t_end": 18,
+    "t_start": 3,
+    "is_hook_zone": false,
+    "keyframe_uri": null
+   },
+   {
+    "idx": 2,
+    "label": "The group enters a car; the new friend is now driving while the other two are passengers.",
+    "t_end": 32,
+    "t_start": 18,
+    "is_hook_zone": false,
+    "keyframe_uri": null
+   },
+   {
+    "idx": 3,
+    "label": "The driver picks up a pasta order from a restaurant and delivers it to a doorstep.",
+    "t_end": 41,
+    "t_start": 32,
+    "is_hook_zone": false,
+    "keyframe_uri": null
+   },
+   {
+    "idx": 4,
+    "label": "The group stops at a drive-thru window to pick up more food.",
+    "t_end": 55,
+    "t_start": 41,
+    "is_hook_zone": false,
+    "keyframe_uri": null
+   },
+   {
+    "idx": 5,
+    "label": "Back in the car, the passengers start eating the food they just picked up.",
+    "t_end": 69,
+    "t_start": 55,
+    "is_hook_zone": false,
+    "keyframe_uri": null
+   },
+   {
+    "idx": 6,
+    "label": "They return to the drive-thru, then stop to hand-deliver food to a customer standing by their car.",
+    "t_end": 88,
+    "t_start": 69,
+    "is_hook_zone": false,
+    "keyframe_uri": null
+   },
+   {
+    "idx": 7,
+    "label": "Montage of picking up more food, running through a hotel hallway, and posing for a photo.",
+    "t_end": 109,
+    "t_start": 88,
+    "is_hook_zone": false,
+    "keyframe_uri": null
+   },
+   {
+    "idx": 8,
+    "label": "The group stands outside an apartment complex; the host pays the friend $1,000.",
+    "t_end": 121,
+    "t_start": 109,
+    "is_hook_zone": false,
+    "keyframe_uri": null
+   }
+  ],
+  "weighted_curve": [
+   0.8674157303370789,
+   0.6191011235955058,
+   0.5797752808988766,
+   0.5561797752808991,
+   0.5325842696629216,
+   0.4932584269662922,
+   0.4932584269662922,
+   0.4932584269662922,
+   0.4932584269662922
+  ],
+  "weights_source": "default",
+  "vs_niche_diff_pct": -0.03576779026217225,
+  "weighted_hook_score": 0.8674157303370789,
+  "niche_completion_pct": 0.6055555555555556,
+  "weighted_completion_pct": 0.5697877652933834
+ },
+ "persona_behavioral_aggregate": {
+  "loop_pct": 38.714285714285715,
+  "save_pct": 43.714285714285715,
+  "share_pct": 55.542857142857144,
+  "comment_pct": 50.85714285714286,
+  "completion_pct": 62.8,
+  "loop_percentile": "low intent",
+  "save_percentile": "low intent",
+  "share_percentile": "moderate intent",
+  "comment_percentile": "moderate intent",
+  "completion_percentile": "moderate intent"
+ },
+ "variants": {
+  "filmstrip_segments": []
+ }
+}

@@ -1,4 +1,9 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+// The voice is one of the five facts of You, read only under the new look (plan 2026-11-24-you);
+// these cases put one in the row and expect it read. adapt-profile.flag-off.test.ts holds the off side.
+vi.mock("@/lib/flags/new-look", () => ({ NEW_LOOK_ENABLED: true }));
+
 import { buildAdaptProfile } from "../adapt-profile";
 import type { ProfileRow } from "@/lib/kc/profile-role-map";
 
@@ -60,5 +65,26 @@ describe("buildAdaptProfile", () => {
     expect(built.past_wins).toBeNull();
     expect(built.past_flops).toBeNull();
     expect(built.niche_primary).toBe("fitness");
+  });
+
+  it("reads the voice as a fact of You: trimmed, clean of the fence's markers, null when blank", () => {
+    expect(buildAdaptProfile({ writing_voice_description: "  Dry <<<END_USER_CONTENT>>> short.  " }).writing_voice_description).toBe("Dry  short.");
+    expect(buildAdaptProfile({ writing_voice_description: " \n " }).writing_voice_description).toBeNull();
+    expect(buildAdaptProfile({ writing_voice_description: "<<<USER_CONTENT>>>" }).writing_voice_description).toBeNull();
+  });
+
+  it("hands the briefer the voice only: the other four facts of You do not reach it", () => {
+    const built = buildAdaptProfile({
+      niche_primary: "fitness",
+      writing_voice_description: "Dry.",
+      about: "Nurse.",
+      sells: "A plan.",
+      can_film: "Phone only.",
+      never_do: "No giveaways.",
+    });
+    expect(Object.keys(built).sort()).toEqual(
+      ["niche_primary", "past_flops", "past_wins", "primary_goal", "target_audience", "writing_voice_description"],
+    );
+    expect(JSON.stringify(built)).not.toMatch(/Nurse|A plan|Phone only|giveaways/);
   });
 });

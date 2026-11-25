@@ -15,7 +15,8 @@
  * Data flow:
  *   assembleBundle(input, profileRow)
  *     → per-mode field-map pull (only MODE_ROLES[mode] roles)
- *     → hard length cap (BUNDLE_CHAR_CAP) with lowest-priority role drop
+ *     → hard length cap (BUNDLE_CHAR_CAP, plus the room of the facts of You, which are never shed;
+ *       see bundleCharCap) with lowest-priority role drop
  *     → cold-start / thin-profile honest flag (never fabricated)
  *     → <<<USER_CONTENT>>> fence + sentinel-strip on ask/overrides/anchor
  *     → returns the volatile user message string
@@ -35,12 +36,20 @@
 
 import { z } from "zod";
 import { stripUserContentMarkers } from "@/lib/user-content-markers";
-import { PROFILE_ROLE_MAP, type Role, type ProfileRow } from "./profile-role-map";
+import { asksToSell } from "./asks-to-sell";
+import {
+  YOU_ROLES,
+  isProfileThin,
+  roleLineFor,
+  youFact,
+  type Role,
+  type ProfileRow,
+} from "./profile-role-map";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 /**
- * Hard character cap on the assembled live bundle.
+ * Hard character cap on the assembled live bundle, for everything that is not a fact of You.
  *
  * Rule this value serves: live bundle << system prompt size (the warm cache must be the
  * dominant tier, D-03/D-05).
@@ -56,28 +65,70 @@ import { PROFILE_ROLE_MAP, type Role, type ProfileRow } from "./profile-role-map
  * creator_persona.writing_style_sample) and the thing whose `overrides` block evicted it. That
  * backfill was the exemplar-copying defect and was removed 2026-08-12 — see
  * apply-creator-persona.ts. `writing_voice_description` (renamed 2026-08-13) has NO producer:
- * `creator_profiles` has no voice column, verified against prod 2026-08-13. The 6000 cap stands on
- * the wins/flops/platform half of the same measurement; do not re-derive headroom from the voice
- * row until something fills the slot again.
+ * `creator_profiles` had no voice column, verified against prod 2026-08-13. The 6000 cap stands on
+ * the wins/flops/platform half of the same measurement. Something fills the slot again since
+ * 2026-11-24 (the You page, read only under the new look), and it rides on top of the cap (below).
  *
  * The old comment on grounding/prompt.ts's SKILL_CHAR_BUDGET reasoned from the same number and
  * drew the opposite conclusion — "the assembled bundle lands ~3.6k … so the corpus still cannot
  * evict a creator's profile roles". 3.6k IS the post-eviction length. Do not re-derive headroom
  * from an output length; assert on which roles survive.
  *
- * Why 6000 and not more: the rule above still has to hold. Measured system-prompt sizes are
- * 46,485 (hooks) / 35,664 (ideas) / 33,953 (script) / 25,268 (chat) chars, so 6000 is 12.9%–23.7%
- * of the tier it must stay small against — comfortably the minor tier, where 4000 was 8.6%–15.8%.
- * Cost is not the constraint at either value (qwen3.7-flash: $0.03/M input at ≤32K). 6000 also
- * clears the worst realistic bundle (~5,585 = corpus 2800 + overrides + anchor + 5 cards + a full
- * profile + the conversation digest + labels), so on real traffic nothing sheds at all and the
- * shed ORDER below is a tiebreak rather than a routine event.
+ * THE FACTS OF YOU RIDE ON TOP (2026-11-24, plan 2026-11-24-you, the controller's ruling 14). This
+ * number is the cap of everything that is NOT a fact of You. A bundle's cap is this number plus
+ * exactly what its fact lines add (`bundleCharCap`), and no step ever sheds a fact line, so a
+ * creator's own words never take room from anything else and are never dropped: the promise is that
+ * nothing that fits today is dropped because a creator filled in You. Every other part of a bundle
+ * (ask, anchor, overrides, cards, corpus, conversation, the other profile lines) gets exactly the
+ * room it had before You existed, and a bundle without a fact line is byte for byte what it was
+ * (you-facts.unchanged.test.ts, you-facts.invariant.test.ts).
  *
- * At this cap, sections are shed by declared priority (see the shed order in assembleBundle step
+ * Measured through this function with every fact at its limit and an ask to sell (so hooks, idea
+ * and script print "What you sell" too: SELLS_ONLY_WHEN_ASKED), the longest a bundle can be is 6,000
+ * plus what the mode's fact lines add when they are the only profile lines left (the fenced rebuild
+ * in step 4):
+ *
+ *   hooks   never, voice, sells, about          7,954   17.1% of its system prompt (46,485)
+ *   idea    never, voice, sells, about, film    8,354   23.4% of 35,664
+ *   script  never, voice, sells, about, film    8,354   24.6% of 33,953
+ *   chat    never, sells, about                 7,426   29.4% of 25,268
+ *
+ * (Chat's never line is shorter: it has its own header, CHAT_NEVER_HEADER, and the cap counts the
+ * line printed.) For an ask that does not sell, hooks, idea and script print no offer line: 7,462 /
+ * 7,862 / 7,862. (With other profile lines left, the facts add only their lines and newlines:
+ * 1,933 / 2,333 / 2,333 / 1,405; the other 21 are the profile block's header and blank line, which
+ * the facts bring back when they are the only lines left.) Still the minor tier (6,000 alone is
+ * 12.9%–23.7%). Cost
+ * is not the constraint (qwen3.7-flash: $0.03/M input at ≤32K). The worst realistic grounded bundle
+ * (the fixtures of assembler-conversation.test.ts, with an ask to sell) sheds nothing with or
+ * without the facts, no fact → every fact at its limit: hooks 5,267 → 7,200, script 5,328 → 7,661,
+ * idea (no anchor, no cards) 4,509 → 6,842, chat 4,982 → 6,387.
+ *
+ * Within the cap, sections are shed by declared priority (see the shed order in assembleBundle step
  * 4) — never truncated mid-field. The ask/overrides/anchor/cards sections are always included
  * (they represent the user's request and are never dropped).
  */
 export const BUNDLE_CHAR_CAP = 6000;
+
+/** The profile block's header, and the blank line that joins the bundle's blocks. */
+const PROFILE_HEADER = "### Creator Profile\n";
+const BLOCK_JOIN = "\n\n";
+
+/**
+ * A bundle's cap: BUNDLE_CHAR_CAP for everything else, plus exactly what its fact-of-You lines add
+ * to the bundle, so the facts ride on top and never take anyone's room (ruling 14).
+ *
+ * `factLines` are the fact lines this mode prints (a fact the mode does not print adds nothing);
+ * each adds its length and its joining newline. `alone`: no other profile line is left, so the
+ * fact lines also bring back the profile block that is otherwise left out when empty (its header
+ * and the blank line before it), less the one newline their last line does not need. With no fact
+ * line the cap is BUNDLE_CHAR_CAP exactly.
+ */
+export function bundleCharCap(factLines: readonly string[], alone = false): number {
+  if (factLines.length === 0) return BUNDLE_CHAR_CAP;
+  const lines = factLines.reduce((sum, line) => sum + line.length + 1, 0);
+  return BUNDLE_CHAR_CAP + lines + (alone ? PROFILE_HEADER.length + BLOCK_JOIN.length - 1 : 0);
+}
 
 /**
  * Character budget for the conversation digest, applied by the BUILDER before the section ever
@@ -195,18 +246,23 @@ export type AssemblerInput = z.infer<typeof assemblerInputSchema>;
 /**
  * Declares which semantic roles each mode pulls from the profile.
  * Roles are ordered by PRIORITY (highest first): later roles are dropped first
- * when the assembled bundle exceeds BUNDLE_CHAR_CAP.
+ * when the assembled bundle exceeds its cap. The facts of You are never dropped: for them the
+ * order decides only where the line prints.
  *
- * Ideas   — full creator picture (all six roles + voice) to find resonant angles
- * Hooks   — develops a specific idea; goals excluded (idea is the primary input)
- * Chat    — thin; base-heavy (D-14); only niche/audience/platform for context;
- *            voice excluded (chat grounding must stay base-neutral)
- * Script  — mirrors Hooks role set + voice (GROUND-02 anti-dilution — tight niche+craft
- *            slice, not whole-profile); takes a hook and expands it into a beat
- *            structure; goals excluded (the hook/idea is the primary input)
- * Remix   — mirrors Hooks role set + voice (GROUND-02 anti-dilution — tight niche+craft
- *            slice); adapts a decoded viral video format to the creator's niche;
- *            goals excluded (the source decode anatomy is the primary input)
+ * Ideas   — the whole creator: niche, audience, never, then how they sound, what they sell,
+ *           who they are and what they can film, then goals and the lines that existed before
+ *           (wins, flops, platform)
+ * Hooks   — as ideas, without goals (the idea is the primary input) and without film
+ * Script  — as hooks, with film (a script has to be filmable); takes a hook and expands it
+ *           into a beat structure
+ * Chat    — base-heavy (D-14): niche, audience, never, sells, about, platform; no voice
+ *           (chat grounding stays base-neutral) and no film
+ * Remix   — unchanged; no caller passes mode "remix" (remix builds its own creator block,
+ *           engine/remix/adapt.ts)
+ *
+ * The five facts of You (plan 2026-11-24-you) sit in the spec's order of importance (§5), right
+ * after niche and audience: never, voice, sells, about, film. They ride on top of the cap and are
+ * never shed (the controller's ruling 14); the other lines are shed from the tail exactly as before.
  *
  * VOICE PRIORITY (KCQ-08 / D-11/D-12): `voice` is intentionally NOT the tail
  * element of idea/hooks/script/remix. The cap-drop loop pops from the tail first,
@@ -217,12 +273,24 @@ export type AssemblerInput = z.infer<typeof assemblerInputSchema>;
  * voice. `chat` stays voice-free by design (base-neutral grounding).
  */
 export const MODE_ROLES: Record<AssemblerInput["mode"], Role[]> = {
-  idea: ["niche", "audience", "goals", "voice", "wins", "flops", "platform"],
-  hooks: ["niche", "audience", "voice", "wins", "flops", "platform"],
-  chat: ["niche", "audience", "platform"],
-  script: ["niche", "audience", "voice", "wins", "flops", "platform"],
+  // (In hooks, idea and script the `sells` line prints only for an ask to sell: SELLS_ONLY_WHEN_ASKED.)
+  idea: ["niche", "audience", "never", "voice", "sells", "about", "film", "goals", "wins", "flops", "platform"],
+  hooks: ["niche", "audience", "never", "voice", "sells", "about", "wins", "flops", "platform"],
+  chat: ["niche", "audience", "never", "sells", "about", "platform"],
+  script: ["niche", "audience", "never", "voice", "sells", "about", "film", "wins", "flops", "platform"],
   remix: ["niche", "audience", "voice", "wins", "flops", "platform"],
 };
+
+/**
+ * The modes that print "What you sell" only when the ask asks to sell (`asksToSell`: a selling word,
+ * or the ask names the offer; the anchor is read with the ask). The controller's ruling 15, from
+ * real runs: printed for every ask, the writers' model pitched the offer, with its price, in an idea
+ * for "cooking for flatmates"; no wording in the header stopped it without also losing the offer from
+ * asks that do sell. Chat prints the line always (a conversation about pricing has no "ask to sell");
+ * remix is not gated here. A line not printed is not a fact line of the bundle: it adds nothing to
+ * the cap.
+ */
+const SELLS_ONLY_WHEN_ASKED: ReadonlySet<AssemblerInput["mode"]> = new Set(["hooks", "idea", "script"]);
 
 // ─── Anchor contract (Stage A, N-7) ──────────────────────────────────────────
 
@@ -370,22 +438,8 @@ function fenceSectionsWithinBudget(
 }
 
 // ─── Cold-start detection ─────────────────────────────────────────────────────
-
-/**
- * Determine if a profile row is thin (provides no useful grounding data).
- * Null row = no profile at all. Row with all null fields = effectively thin.
- */
-function isProfileThin(profileRow: ProfileRow | null): boolean {
-  if (profileRow === null) return true;
-  const hasNiche = Boolean(profileRow.niche_primary);
-  const hasAudience = Boolean(profileRow.target_audience);
-  const hasGoals = Boolean(profileRow.primary_goal);
-  const hasWins = Boolean(profileRow.past_wins?.length);
-  const hasFlops = Boolean(profileRow.past_flops?.length);
-  const hasPlatform = Boolean(profileRow.target_platforms?.length);
-  const hasVoice = Boolean(profileRow.writing_voice_description?.trim());
-  return !hasNiche && !hasAudience && !hasGoals && !hasWins && !hasFlops && !hasPlatform && !hasVoice;
-}
+// The one thin check is `isProfileThin` in profile-role-map.ts (the chat route and the ideas card
+// use the same function).
 
 // ─── Core assembler ───────────────────────────────────────────────────────────
 
@@ -397,8 +451,8 @@ function isProfileThin(profileRow: ProfileRow | null): boolean {
  * Algorithm:
  *   1. Validate input with zod (input validation at system boundary per CLAUDE.md).
  *   2. Determine profile tier: full / thin → honest cold-start flag.
- *   3. Pull only MODE_ROLES[mode] from the profile via PROFILE_ROLE_MAP.
- *   4. Enforce BUNDLE_CHAR_CAP by SHED ORDER (see step 4) — never truncated mid-field.
+ *   3. Pull only MODE_ROLES[mode] from the profile via PROFILE_ROLE_MAP (roleLineFor).
+ *   4. Enforce the cap by SHED ORDER (see step 4) — never truncated mid-field.
  *   5. Fence ask/overrides/anchor/cards/corpus in <<<USER_CONTENT>>> blocks.
  *   6. Return assembled user message.
  *
@@ -446,36 +500,65 @@ export function assembleBundle(
   const roles = MODE_ROLES[mode];
   const thin = isProfileThin(profileRow);
 
-  // 2. Build profile section lines (only roles in this mode's set)
-  const profileLines: string[] = [];
+  // 2. Build profile section lines (only roles in this mode's set). Each line keeps its role (null
+  //    for the cold-start lines): the fact-of-You lines ride on top of the cap and are never shed,
+  //    so step 4 has to tell them apart.
+  const profileLines: { role: Role | null; text: string }[] = [];
+  const pushColdStart = () => {
+    profileLines.push({ role: null, text: `Creator profile: thin (using ${platform} baseline)` });
+    profileLines.push({
+      role: null,
+      text: `Craft as universal-${platform} — no creator-specific grounding available.`,
+    });
+  };
 
   if (thin) {
     // Cold-start: honest baseline flag — never fabricate a profile value (D-05)
-    profileLines.push(`Creator profile: thin (using ${platform} baseline)`);
-    profileLines.push(
-      `Craft as universal-${platform} — no creator-specific grounding available.`,
-    );
+    pushColdStart();
   } else {
     // Full profile: pull only the roles this mode declares
     for (const role of roles) {
+      // The offer only for an ask to sell, in the modes that gate it (SELLS_ONLY_WHEN_ASKED). The
+      // piece being developed or refined (the anchor) counts as part of the ask: "Develop this" runs
+      // with no ask of its own and refine's ask is the instruction ("shorter"). The gate reads the
+      // fact as the line prints it (youFact), so the two never disagree.
+      if (
+        role === "sells" &&
+        SELLS_ONLY_WHEN_ASKED.has(mode) &&
+        !asksToSell([ask, anchor ?? ""].join(" "), youFact(profileRow, "sells") ?? "")
+      ) {
+        continue;
+      }
       const formatted =
         role === "platform"
           ? // D-07: per-request platform param wins over profile default
             `Target platform: ${platform}`
-          : PROFILE_ROLE_MAP[role](profileRow!);
+          : // Chat prints "never" under its own header (roleLineFor); the cap counts the line printed.
+            roleLineFor(mode, role, profileRow!);
       if (formatted !== null) {
-        profileLines.push(formatted);
+        profileLines.push({ role, text: formatted });
       }
     }
 
     // If we pulled roles but all returned null → effectively thin
-    if (profileLines.length === 0) {
-      profileLines.push(`Creator profile: thin (using ${platform} baseline)`);
-      profileLines.push(
-        `Craft as universal-${platform} — no creator-specific grounding available.`,
-      );
-    }
+    if (profileLines.length === 0) pushColdStart();
   }
+
+  // The facts of You ride on top (bundleCharCap): step 4 sheds only the other lines, and every check
+  // adds the facts' own room to BUNDLE_CHAR_CAP, so each decision is exactly the one the same bundle
+  // without them gets. With no fact line this is the code as it always was.
+  type ProfileLine = (typeof profileLines)[number];
+  const isFact = (line: ProfileLine) => line.role !== null && YOU_ROLES.includes(line.role);
+  const factLines = profileLines.filter(isFact).map((line) => line.text);
+  const otherLines = profileLines.filter((line) => !isFact(line));
+  /** The profile as printed with `others` kept: those lines and every fact line, in MODE_ROLES order. */
+  const profileWith = (others: readonly ProfileLine[]) =>
+    profileLines
+      .filter((line) => isFact(line) || others.includes(line))
+      .map((line) => line.text)
+      .join("\n");
+  /** The cap with `others` kept: with none left, the fact lines open the profile block alone. */
+  const capWith = (others: readonly ProfileLine[]) => bundleCharCap(factLines, others.length === 0);
 
   // 3. Build fenced user-input sections (always included — user request is the primary signal).
   //    `corpus` is listed separately below because it is the FIRST thing shed (step 4a).
@@ -498,7 +581,7 @@ export function assembleBundle(
     ? fenceUserContent(CONVERSATION_LABEL, conversationBody)
     : null;
 
-  // 4. Enforce BUNDLE_CHAR_CAP — WITHOUT ever structurally breaking a fence.
+  // 4. Enforce the cap (`capWith` above) — WITHOUT ever structurally breaking a fence.
   //
   //    SHED ORDER (2026-08-10). The old order popped PROFILE ROLES first and never touched a
   //    fenced section until the 4b overflow path, which is exactly backwards: it made someone
@@ -511,22 +594,27 @@ export function assembleBundle(
   //                          creator's EXPLICIT stated constraints ("under 30s", "not the 5am
   //                          angle"), and violating a stated instruction is a worse failure than
   //                          having one fewer example.
-  //      (c) profile roles — from the tail of MODE_ROLES (platform → flops → wins → voice).
-  //      (d) never         — niche, audience, ask, overrides, anchor, cards.
+  //      (c) profile roles — from the tail of MODE_ROLES, one whole line at a time, down to an
+  //                          empty profile (niche and audience go last). Fact-of-You lines are
+  //                          skipped: they are never shed (the controller's ruling 14, 2026-11-24).
+  //      (d) never         — ask, overrides, anchor, cards (step (e) may cut inside their fences,
+  //                          never the fences), and every fact-of-You line.
   //
   //    Whole sections only, never mid-field. At the current cap this is a TIEBREAK, not a routine
-  //    event: the worst realistic bundle measures ~5,585 against a 6,000 cap.
+  //    event: the worst realistic bundle measures 5,261 (hooks) / 5,322 (script) against 6,000,
+  //    with the facts of You on top of that.
   //
   //    (e) If the fenced content alone still overflows, rebuild the fenced sections within the
   //        remaining budget — truncating INNER text only, sentinels always intact — with `ask`
   //        allocated budget first. A final substring on the assembled result (the old behaviour)
   //        is never used: it could chop a closing sentinel and void the fence (CR-01/CR-02).
+  //        It works its budget out against BUNDLE_CHAR_CAP with an empty profile, exactly as it
+  //        always did, drops the other profile lines, and then puts the fact lines back on top: the
+  //        bundle is then at most `bundleCharCap(factLines, true)`.
   //
   // The header is part of the USER message, so this word is an instruction to the model, not a
   // log line — see `modeLabel` on the input schema for why callers may need to override it.
   const header = `## Live Grounding Bundle\nMode: ${modeLabel ?? mode} | Platform: ${platform}\n\n`;
-  const profileHeader = `### Creator Profile\n`;
-  const JOIN = "\n\n";
 
   const buildResult = (
     profileBody: string,
@@ -534,13 +622,14 @@ export function assembleBundle(
     fenced: string[],
   ): string => {
     const blocks: string[] = [header];
-    if (profileBody.length > 0) blocks.push(profileHeader + profileBody);
+    if (profileBody.length > 0) blocks.push(PROFILE_HEADER + profileBody);
     if (conversationPart) blocks.push(conversationPart);
-    blocks.push("---", fenced.join(JOIN));
-    return blocks.join(JOIN);
+    blocks.push("---", fenced.join(BLOCK_JOIN));
+    return blocks.join(BLOCK_JOIN);
   };
 
-  const fullProfile = profileLines.join("\n");
+  const fullProfile = profileWith(otherLines);
+  const fullCap = capWith(otherLines);
   const withCorpus = (c?: string) =>
     c ? [...userSections, fenceUserContent("Grounded examples", c)] : userSections;
 
@@ -549,40 +638,46 @@ export function assembleBundle(
   let keptConversation = conversationBlock;
   if (
     keptCorpus &&
-    buildResult(fullProfile, keptConversation, withCorpus(keptCorpus)).length > BUNDLE_CHAR_CAP
+    buildResult(fullProfile, keptConversation, withCorpus(keptCorpus)).length > fullCap
   ) {
     keptCorpus = undefined;
   }
   if (
     keptConversation &&
-    buildResult(fullProfile, keptConversation, withCorpus(keptCorpus)).length > BUNDLE_CHAR_CAP
+    buildResult(fullProfile, keptConversation, withCorpus(keptCorpus)).length > fullCap
   ) {
     keptConversation = null;
   }
 
-  let fencedSections = withCorpus(keptCorpus);
+  const fencedSections = withCorpus(keptCorpus);
 
   // 4b. Only now drop lowest-priority profile roles from the tail until the bundle fits
-  //     (down to an empty profile section). Whole-line drops only — never mid-field.
-  const keptProfile = [...profileLines];
+  //     (down to an empty profile section). Whole-line drops only — never mid-field. Only the
+  //     other lines are dropped; the fact lines stay where they print.
+  const keptOthers = [...otherLines];
   while (
-    keptProfile.length > 0 &&
-    buildResult(keptProfile.join("\n"), keptConversation, fencedSections).length > BUNDLE_CHAR_CAP
+    keptOthers.length > 0 &&
+    buildResult(profileWith(keptOthers), keptConversation, fencedSections).length >
+      capWith(keptOthers)
   ) {
-    keptProfile.pop();
+    keptOthers.pop();
   }
-  let profileSection = keptProfile.join("\n");
+  const profileSection = profileWith(keptOthers);
 
   // 4c. If the fenced user content alone still overflows (even with no profile),
   //     rebuild the fenced sections within the remaining budget. `ask` first.
   let result = buildResult(profileSection, keptConversation, fencedSections);
-  if (result.length > BUNDLE_CHAR_CAP) {
-    profileSection = ""; // user request takes precedence over grounding
+  if (result.length > capWith(keptOthers)) {
+    // User request takes precedence over grounding: 4b has shed every other profile line, so
+    // `profileSection` is the fact lines or nothing. The budget is worked out against
+    // BUNDLE_CHAR_CAP with an empty profile, exactly as it always was, and the fact lines are put
+    // back on top: nothing is cut to make room for them, and the bundle is at most its cap.
+    //
     // Reaching here means the bundle overflowed even with the FULL profile, so 4a already shed
     // both `corpus` and `conversation`. Rebuild from what SURVIVED (keptCorpus / keptConversation),
     // never from the originals — resurrecting a section the shed order just dropped would invert
     // the whole precedence this step exists to enforce.
-    const shell = buildResult(profileSection, keptConversation, []); // structure, empty fenced block
+    const shell = buildResult("", keptConversation, []); // structure, empty fenced block
     const fencedBudget = Math.max(0, BUNDLE_CHAR_CAP - shell.length);
     const rawSections: { label: string; content: string }[] = [
       { label: "Creator ask", content: ask },

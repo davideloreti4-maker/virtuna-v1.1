@@ -20,6 +20,7 @@ import { useState } from 'react';
 import { VideoCamera } from '@phosphor-icons/react';
 import type { ScriptCardBlock } from '@/lib/tools/blocks';
 import { useOnTestScript } from '@/lib/script-test-context';
+import { scriptBrief } from '@/lib/script-utils';
 import { cardScrollQuoteReactions } from '@/components/audience-lens/flat-card-reactions';
 import { buildCardRewrite } from '@/components/audience-lens/card-rewrite';
 import { SimDoor } from './sim-door';
@@ -64,8 +65,7 @@ export function ScriptCardRenderer({ block, onTest: onTestProp }: ScriptCardRend
   // Resolve: explicit prop > context > null (stub)
   const onTest = onTestProp ?? (onTestCtx
     ? () => {
-        const brief = beats.map((b) => `[${b.label}] ${b.content}`).join(' / ').slice(0, 400);
-        onTestCtx(opener, brief);
+        onTestCtx(opener, scriptBrief(beats));
       }
     : undefined);
 

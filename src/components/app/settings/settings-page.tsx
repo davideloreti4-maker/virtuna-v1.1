@@ -19,6 +19,8 @@ import { NotificationsSection } from "./notifications-section";
 import { BillingSection } from "./billing-section";
 import { TeamSection } from "./team-section";
 import { CreatorProfileSection } from "./creator-profile-section";
+import { AppearanceSetting } from "./appearance-setting";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 import { ReferralsSection } from "@/components/referral/referrals-section";
 import type { ConnectedAccount } from "@/lib/connected-accounts/connected-accounts-repo";
 import { PageShell, SurfaceHeader } from "@/components/surfaces/surface-header";
@@ -57,6 +59,9 @@ const TABS = [
 ] as const;
 
 export function SettingsPage({ defaultTab = "profile", referral, connectedAccounts = [] }: SettingsPageProps) {
+  // Under the new look the referral link lives on /earn (Earn, ruling 3): the tab is not listed there,
+  // and its address leads to Earn (the server page). Flag off: the eight tabs as before.
+  const tabs = NEW_LOOK_ENABLED ? TABS.filter((tab) => tab.value !== "referrals") : TABS;
   return (
     // The shared content column (PageShell, 880px centred). This page used to be
     // the odd one out twice over: max-w-4xl (896px) AND flush-left with no mx-auto,
@@ -71,7 +76,7 @@ export function SettingsPage({ defaultTab = "profile", referral, connectedAccoun
       >
         {/* Tab List - Horizontal scroll on mobile, vertical on desktop */}
         <Tabs.List className="-mx-4 flex gap-1 overflow-x-auto px-4 pb-2 md:mx-0 md:w-48 md:flex-shrink-0 md:flex-col md:overflow-x-visible md:px-0 md:pb-0">
-          {TABS.map((tab) => (
+          {tabs.map((tab) => (
             <Tabs.Trigger
               key={tab.value}
               value={tab.value}
@@ -95,6 +100,12 @@ export function SettingsPage({ defaultTab = "profile", referral, connectedAccoun
           <Tabs.Content value="account" className="outline-none">
             <AccountSection />
             <Credits />
+            {/* The legacy look has one theme; the choice exists only under the new look. */}
+            {NEW_LOOK_ENABLED && (
+              <div className="mt-8">
+                <AppearanceSetting />
+              </div>
+            )}
           </Tabs.Content>
           <Tabs.Content value="connected" className="outline-none">
             <ConnectedAccountsSection accounts={connectedAccounts} />
@@ -105,15 +116,17 @@ export function SettingsPage({ defaultTab = "profile", referral, connectedAccoun
           <Tabs.Content value="billing" className="outline-none">
             <BillingSection />
           </Tabs.Content>
-          <Tabs.Content value="referrals" className="outline-none">
-            <ReferralsSection
-              eligible={referral?.eligible ?? false}
-              referralLink={referral?.referralLink ?? ""}
-              clicks={referral?.clicks ?? 0}
-              conversions={referral?.conversions ?? 0}
-              earningsCents={referral?.earningsCents ?? 0}
-            />
-          </Tabs.Content>
+          {!NEW_LOOK_ENABLED && (
+            <Tabs.Content value="referrals" className="outline-none">
+              <ReferralsSection
+                eligible={referral?.eligible ?? false}
+                referralLink={referral?.referralLink ?? ""}
+                clicks={referral?.clicks ?? 0}
+                conversions={referral?.conversions ?? 0}
+                earningsCents={referral?.earningsCents ?? 0}
+              />
+            </Tabs.Content>
+          )}
           <Tabs.Content value="team" className="outline-none">
             <TeamSection />
           </Tabs.Content>

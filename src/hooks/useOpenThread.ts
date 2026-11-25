@@ -28,6 +28,7 @@
 import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useBoardStore } from "@/stores/board-store";
+import { useShellStore } from "@/stores/shell-store";
 import { setActiveThreadCookie } from "@/lib/threads/active-thread-cookie";
 
 export function useOpenThread(): (threadId: string) => void {
@@ -37,6 +38,9 @@ export function useOpenThread(): (threadId: string) => void {
 
   return useCallback(
     (threadId: string) => {
+      // Not Library's open: the new shell's Back in this chat starts a new chat (Library plan
+      // 2026-11-23). Nothing reads it in the legacy shell.
+      useShellStore.getState().setThreadBack(null);
       setActiveThreadCookie(threadId);
       setActiveThreadId(threadId);
       switchThread();

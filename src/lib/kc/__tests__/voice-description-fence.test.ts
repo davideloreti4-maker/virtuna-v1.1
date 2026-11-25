@@ -24,7 +24,12 @@
  * rather than silently flowing into the same role under the old name.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+// The voice slot is one of the five facts of You, which a writer reads only under the new look
+// (plan 2026-11-24-you): these cases put a voice in the row and expect it read, so the flag is on.
+vi.mock("@/lib/flags/new-look", () => ({ NEW_LOOK_ENABLED: true }));
+
 import { PROFILE_ROLE_MAP, type ProfileRow } from "../profile-role-map";
 import { assembleBundle } from "../assembler";
 import { buildAdaptProfile } from "@/lib/tools/runners/adapt-profile";

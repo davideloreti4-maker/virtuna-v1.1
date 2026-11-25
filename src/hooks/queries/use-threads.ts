@@ -16,8 +16,11 @@ export interface ThreadSummary {
 /**
  * List the user's open chat threads for the sidebar history.
  * Returns newest-first; the active thread is the first row.
+ *
+ * `enabled: false` reads nothing until it turns true (Library reads it only for its Saved chip's
+ * lines); by default it is read at once, as before.
  */
-export function useThreadList() {
+export function useThreadList(options: { enabled?: boolean } = {}) {
   return useQuery<ThreadSummary[]>({
     queryKey: queryKeys.threads.list(),
     queryFn: async () => {
@@ -26,6 +29,7 @@ export function useThreadList() {
       const data = (await res.json()) as { threads?: ThreadSummary[] };
       return data.threads ?? [];
     },
+    enabled: options.enabled ?? true,
   });
 }
 

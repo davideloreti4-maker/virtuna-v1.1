@@ -1,5 +1,7 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageShell } from "@/components/surfaces/surface-header";
+import { PullNextLoading } from "@/components/discover-next/pull-next";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 
 /**
  * Route skeleton for /feed/discover. Mirrors DiscoverClient's real layout — header block
@@ -9,6 +11,7 @@ import { PageShell } from "@/components/surfaces/surface-header";
  * moved into the hub on 2026-07-29.
  */
 export default function DiscoverLoading() {
+  if (NEW_LOOK_ENABLED) return <PullNextLoading />;
   return (
     <PageShell>
       <div className="mb-4">

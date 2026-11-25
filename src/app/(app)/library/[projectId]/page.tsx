@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/surfaces/surface-header";
 import { ProjectDetail } from "@/components/saved/project-detail";
@@ -26,6 +28,10 @@ export default async function LibraryProjectPage({
 }: {
   params: Promise<{ projectId: string }>;
 }) {
+  // New look: folders are not shown (spec 2026-11-23-library §2, §8); a link to one goes to
+  // Library, as /saved does. Flag off: the folder, exactly as before.
+  if (NEW_LOOK_ENABLED) redirect("/library");
+
   const supabase = await createClient();
   const {
     data: { user },

@@ -19,3 +19,12 @@ export function formatTime(ms: number): string {
 export function stripMarkdown(text: string): string {
   return text.replace(/\*\*|__|`/g, '').trim();
 }
+
+/**
+ * The compact brief a script card hands to the Simulate handoff (`ScriptTestContext`) beside its
+ * opener: each beat as `[label] content`, joined with " / ", cut at 400 characters. ONE function for
+ * the legacy script card and the new one (`thread-turn-next.tsx`), so the two cannot drift.
+ */
+export function scriptBrief(beats: readonly { label: string; content: string }[]): string {
+  return beats.map((b) => `[${b.label}] ${b.content}`).join(' / ').slice(0, 400);
+}

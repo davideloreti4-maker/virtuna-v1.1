@@ -9,7 +9,7 @@
  */
 
 import type { AdaptProfile } from "@/lib/grounding/adapt";
-import type { ProfileRow } from "@/lib/kc/profile-role-map";
+import { youFact, type ProfileRow } from "@/lib/kc/profile-role-map";
 
 /**
  * Flatten the structured target_audience JSON into the one-line string the adapt briefer wants
@@ -51,13 +51,17 @@ function toOutcomeList(
  * Map a creator's ProfileRow (or null cold-start) to the flat AdaptProfile the briefer re-voices toward.
  * Every field degrades to null/omitted, so a cold-start run hands the briefer an empty-but-valid profile
  * rather than crashing — the briefer then leans on the ask + the proven structures alone.
+ *
+ * The voice is one of the five facts of You (plan 2026-11-24-you), so it is read through `youFact`:
+ * trimmed, clean of the fence's markers, and null while the new look is off. The other four facts do
+ * not reach the briefer.
  */
 export function buildAdaptProfile(profileRow: ProfileRow | null): AdaptProfile {
   return {
     niche_primary: profileRow?.niche_primary ?? null,
     target_audience: flattenTargetAudience(profileRow?.target_audience),
     primary_goal: profileRow?.primary_goal ?? null,
-    writing_voice_description: profileRow?.writing_voice_description ?? null,
+    writing_voice_description: youFact(profileRow, "writing_voice_description"),
     past_wins: toOutcomeList(profileRow?.past_wins),
     past_flops: toOutcomeList(profileRow?.past_flops),
   };

@@ -129,8 +129,10 @@ export interface UseRemixStreamReturn {
   /**
    * Start the Remix stream.
    * url: a trending/competitor TikTok URL to decode + adapt.
+   * brief: what the creator wants to make from it (Discover's Remix sheet); sent only when it has words,
+   * never empty (the route reads a present brief as the adaptation target).
    */
-  start: (url: string, platform: string, intent?: IntentLens) => Promise<void>;
+  start: (url: string, platform: string, intent?: IntentLens, brief?: string) => Promise<void>;
   /** Abort the in-flight stream. */
   stop: () => void;
   /** Reset state for a new run. */
@@ -207,7 +209,7 @@ export function useRemixStream(): UseRemixStreamReturn {
     }
   }, []);
 
-  const start = useCallback(async (url: string, platform: string, intent?: IntentLens) => {
+  const start = useCallback(async (url: string, platform: string, intent?: IntentLens, brief?: string) => {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -227,7 +229,7 @@ export function useRemixStream(): UseRemixStreamReturn {
       const res = await fetch('/api/tools/remix/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, platform, ...(intent ? { intent } : {}) }),
+        body: JSON.stringify({ url, platform, ...(intent ? { intent } : {}), ...(brief?.trim() ? { brief: brief.trim() } : {}) }),
         signal: controller.signal,
       });
 
