@@ -474,17 +474,39 @@ export const IDEA_SHEET: IdeaCardBlock = idea("The Two-Hour Study Lie", "Short s
 
 const SCRIPT_OPENING = "I fed 10 million viral videos into an AI to simulate your exact audience.";
 
-/** The opening line + `AXSC`, five beats ending at 0:24. */
-export const SCRIPT_AI: ScriptCardBlock = script(
-  [
-    { label: "Hook", content: SCRIPT_OPENING, timing: "0–3s" },
-    { label: "Setup", content: "It watched my draft and showed me who would scroll away.", timing: "3–8s" },
-    { label: "Turn", content: "Half of them were gone before my second sentence.", timing: "8–14s" },
-    { label: "Payoff", content: "So I cut the intro, ran it again, and they stayed.", timing: "14–20s" },
-    { label: "CTA", content: "Comment “sim” and I’ll run your video next.", timing: "20–24s" },
-  ],
-  { openingBeatSeed: SCRIPT_OPENING },
+const SCRIPT_AI_BEATS: readonly BeatInput[] = [
+  { label: "Hook", content: SCRIPT_OPENING, timing: "0–3s" },
+  { label: "Setup", content: "It watched my draft and showed me who would scroll away.", timing: "3–8s" },
+  { label: "Turn", content: "Half of them were gone before my second sentence.", timing: "8–14s" },
+  { label: "Payoff", content: "So I cut the intro, ran it again, and they stayed.", timing: "14–20s" },
+  { label: "CTA", content: "Comment “sim” and I’ll run your video next.", timing: "20–24s" },
+];
+
+/** The opening line + `AXSC`, five beats ending at 0:24. No filming cues, no plan: no "How to film it". */
+export const SCRIPT_AI: ScriptCardBlock = script(SCRIPT_AI_BEATS, { openingBeatSeed: SCRIPT_OPENING });
+
+/** A shoot plan as the runner sends it: the three it always has, and the edit it sometimes has. */
+const SHOOT_PLAN = {
+  shots: "One talking head at eye level and two screen recordings of the simulation.",
+  onScreenText: "The number on the hook, the drop-off on the turn.",
+  setup: "Phone at eye level, window light on your face, the mic close.",
+};
+
+/** The cue the model gave on some beats (the Hook, the Turn and the CTA), not on every one. */
+const FILMING: Partial<Record<string, string>> = {
+  Hook: "Close-up, handheld. Text on screen: 10 million videos. Flat, certain delivery.",
+  Turn: "Screen recording of the drop-off, then cut straight back to your face.",
+  CTA: "Lean into the camera with a half smile. Text on screen: comment sim.",
+};
+
+/** `SCRIPT_AI` filmed (thread depth §3.2): cues on three beats of five, and a plan with its edit. */
+export const SCRIPT_FILMED: ScriptCardBlock = script(
+  SCRIPT_AI_BEATS.map((b) => (FILMING[b.label!] ? { ...b, filming: FILMING[b.label!] } : b)),
+  { openingBeatSeed: SCRIPT_OPENING, production: { ...SHOOT_PLAN, edit: "Hard cuts only, no zooms. Keep the one-take feel." } },
 );
+
+/** `SCRIPT_AI` with a plan and no edit, and no cue on any beat. */
+export const SCRIPT_PLANNED: ScriptCardBlock = script(SCRIPT_AI_BEATS, { openingBeatSeed: SCRIPT_OPENING, production: SHOOT_PLAN });
 
 /** The remix sample: @lacapture's camera move. */
 export const REMIX_CAMERA: RemixCardBlock = remix("I’m gonna show y’all how you can fake a $10M camera move", {

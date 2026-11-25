@@ -36,6 +36,7 @@ import {
   MEAL_PREP_HOOKS,
   REMIX_CAMERA,
   SCRIPT_AI,
+  SCRIPT_FILMED,
   SEALS_DONE,
   accountRead,
   corpus,
@@ -44,6 +45,7 @@ import {
   inputRequest,
   md,
   population,
+  proof,
   remix,
   runHeader,
   script,
@@ -307,6 +309,30 @@ describe("the hook pack's numbers and actions", () => {
   });
 });
 
+// Thread depth §3.3: the rows are built from the blocks, a hook's `proof` included; an idea's is not.
+describe("a hook's row shows the video it is built on", () => {
+  const proven = () => [...document.querySelectorAll<HTMLElement>('[data-part="row-proof"]')];
+
+  it("from the hook's own proof: '@handle · 21K views' and its cover, on that row only", () => {
+    renderTurn({ userTurn: ASK, blocks: HOOKS_TURN });
+    const rows = screen.getAllByRole("listitem");
+    expect(proven()).toHaveLength(1);
+    const line = within(rows[0]!).getByText("@dij.arc · 21K views");
+    expect(line.closest('[data-part="row-proof"]')!.querySelector("img")).toHaveAttribute("src", "/covers/c8.jpg");
+    expect(within(rows[0]!).getByRole("button", { name: /^Open: I spent \$40/ })).toHaveAccessibleDescription("@dij.arc · 21K views");
+    for (const row of rows.slice(1)) expect(row.querySelector('[data-part="row-proof"]')).toBeNull();
+  });
+
+  it("ideas are unchanged: an idea's proof shows nothing on its row", () => {
+    renderTurn({
+      userTurn: "ideas",
+      blocks: [runHeader("ideas"), idea("Idea A", "Angle of A", { proof: proof({ handle: "creator_one", coverUrl: "/covers/c8.jpg", views: 854_000 }) })],
+    });
+    expect(proven()).toHaveLength(0);
+    expect(screen.queryByText(/@creator_one/)).toBeNull();
+  });
+});
+
 describe("the idea pack", () => {
   const IDEAS = [runHeader("ideas"), ...IDEAS_4];
 
@@ -345,6 +371,18 @@ describe("the idea pack", () => {
 
 describe("the script", () => {
   const OPENER = SCRIPT_AI.props.openingBeatSeed;
+
+  it("its beats named; 'How to film it' only for a script that has cues or a plan, and it opens the sheet", async () => {
+    const { unmount } = renderTurn({ userTurn: "script", blocks: [runHeader("script"), SCRIPT_AI] });
+    expect([...document.querySelectorAll('[data-part="beat-name"]')].map((n) => n.textContent)).toEqual(["Hook", "Setup", "Turn", "Payoff", "Call to action"]);
+    expect(screen.queryByRole("button", { name: "How to film it" })).toBeNull();
+    unmount();
+    renderTurn({ userTurn: "script", blocks: [runHeader("script"), SCRIPT_FILMED] });
+    fireEvent.click(screen.getByRole("button", { name: "How to film it" }));
+    const dialog = await screen.findByRole("dialog", { name: "How to film it" });
+    expect(dialog.querySelectorAll('[data-sheet="film-beat"]')).toHaveLength(3);
+    expect(dialog.querySelectorAll('[data-sheet="film-plan"]')).toHaveLength(4);
+  });
 
   it("the opening simulates as a script, and its number is looked up by the same text", async () => {
     const { unmount } = renderTurn({ userTurn: "Script an AI simulation video", blocks: [runHeader("script"), SCRIPT_AI] });

@@ -15,25 +15,35 @@ import { EvidenceRow, RunStatus } from "./run-status";
  *
  * - A pack (hooks, ideas): the evidence row when the run sent one, then three rows, each a pale ring
  *   where the gauge will be and three bars. No bar where the button will be (§9.3).
- * - A script: the evidence row when the run sent one, then five beats on the time rail, bars for
- *   their words in the film's rhythm (1, 3, 3, 2, 2).
+ * - A script: the evidence row when the run sent one, then five beats on the time rail, each a short
+ *   bar where its name will be (thread depth §3.1) and bars for its words in the film's rhythm
+ *   (1, 3, 3, 2, 2).
  * - A remix: the source row (a grey tile and two bars until the post is fetched, then the real cover,
  *   handle and views: `SourceRowView`, the card's own markup), then two bars for the hook. Its one
  *   post is not drawn as the evidence row.
  *
  * Geometry: the bars 11 tall on the text's lines (a hook's 20, a beat's 21, the remix hook's 26),
- * widths as filmed. A ghost beat is as tall as a beat of as many lines (18 + 21 a line); the beats'
- * total is within a line of a five-beat script's (the opening's slot against the longer beats). A
- * ghost row is 93 on a phone and 85 from md, against 81 and 67 for a real row of the same hooks at
- * three lines (phone) and two (desk): the real card also brings its button (58 / 70), so a three-row
- * pack changes height by at most 24 on landing, with or without the evidence row (which goes): on a
- * phone +22 without it, -23 with a two-line headline (45); on a desk +16, and -15 with a one-line
- * headline (31).
+ * widths as filmed; a beat's name bar 9 tall on the name's 16 line, a fifth of the line wide. A ghost
+ * beat is as tall as a named beat of as many lines (35 + 21 a line: the name's 16 and 1 on top of
+ * today's 18); the beats' total is within a line of a five-beat script's (the opening's slot
+ * against the longer beats). A ghost row is 93 on a phone and 85 from md, against 81 and 67 for a
+ * real row of the same hooks at three lines (phone) and two (desk): the real card also brings its
+ * button (58 / 70), so a three-row pack of hooks without a proven video changes height by at most 24
+ * on landing, with or without the evidence row (which goes): on a phone +22 without it, -23 with a
+ * two-line headline (45); on a desk +16, and -15 with a one-line headline (31).
+ *
+ * A hook with a proven video (thread depth §3.3) is taller by its line: 6 and the 22 of its cover
+ * (6 and 18 without one), so +28 (+24) on a phone, and +22 (+18) on a desk, where the line takes the
+ * two-line hook's 40 past the 46 gauge. Three such hooks with covers: +106 on a phone and +82 on a
+ * desk without the evidence row; with it (a run that cites videos is one that read them, so it
+ * normally has one) +61 and +51. The ghost rows do not hold that room: whether a hook has a proven
+ * video is not known until it lands, and many rows of a real pack have none, so a ghost row sized
+ * for it would make the common landing shrink instead.
  */
 
 /** One bar, on a line of text. */
-function Bar({ width, className = "h-[11px]" }: { width: string; className?: string }) {
-  return <span aria-hidden="true" className={`ghost-bar block rounded-full ${className}`} style={{ width }} />;
+function Bar({ width, className = "h-[11px]", part }: { width: string; className?: string; part?: string }) {
+  return <span aria-hidden="true" data-part={part} className={`ghost-bar block rounded-full ${className}`} style={{ width }} />;
 }
 
 const ROW_BARS = ["94%", "86%", "52%"];
@@ -71,8 +81,10 @@ function ScriptGhosts() {
         <div key={i} data-part="ghost-beat" className="grid grid-cols-[28px_3px_minmax(0,1fr)] gap-x-2.5 p-0.5">
           <span />
           <i data-part="rail" className="block rounded-full bg-foreground/13" />
-          {/* The beat's text box (6 above, 8 under, 21 a line), its bars centred on the lines. */}
-          <span className="flex min-w-0 flex-col gap-2.5 pb-[13px] pt-[11px]">
+          {/* The beat's text box (6 above, the name's 16 and 1, then 21 a line and 8 under), its bars
+              centred on the lines: the name's 9 starts 9 down (9.5 rounded), 10 to the words' first. */}
+          <span className="flex min-w-0 flex-col gap-2.5 pb-[13px] pt-[9px]">
+            <Bar width="20%" className="h-[9px]" part="ghost-name" />
             {Array.from({ length: lines }, (_, k) => (
               <Bar key={k} width={BEAT_BARS[k % BEAT_BARS.length]!} />
             ))}

@@ -318,6 +318,97 @@ describe("PackAnswer — a row opens its details (step 2)", () => {
   });
 });
 
+// Thread depth §3.3: under a hook's line, the video it is built on.
+describe("PackAnswer — a hook shows the video it is built on", () => {
+  const PROOF = { cover: "/covers/c8.jpg", line: "@dij.arc · 21K views" };
+  const withProof = (proofs: (PackRow["proof"] | undefined)[], states: GaugeState[] = [empty, empty, empty]): PackRow[] =>
+    hookRows(states).map((r, i) => (proofs[i] === undefined ? r : { ...r, proof: proofs[i] }));
+  const proofOf = (row: HTMLElement) => row.querySelector<HTMLElement>('[data-part="row-proof"]');
+  /** A render's markup, React's `useId` values (which differ from one render to the next) blanked. */
+  const markup = (root: HTMLElement) => root.innerHTML.replace(/_r_[0-9a-z]+_|«[^»]*»|:r[0-9a-z]+:/g, "ID");
+
+  it("under the line, 6 apart: the cover (16 by 22, radius 4, cropped, no alt) and '@handle · 21K views' (13 / 18, secondary, one line)", () => {
+    render(<PackAnswer kind="hook" rows={withProof([PROOF])} queue={null} />);
+    const row = rows()[0]!;
+    const proof = proofOf(row)!;
+    expect(lineOf(row, HOOKS[0]!).compareDocumentPosition(proof) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(proof).toHaveClass("mt-1.5", "flex", "items-center", "gap-[7px]");
+    const img = proof.querySelector("img")!;
+    expect(img).toHaveAttribute("src", "/covers/c8.jpg");
+    expect(img).toHaveAttribute("alt", "");
+    expect(img).toHaveClass("h-[22px]", "w-4", "rounded-xs", "object-cover", "shrink-0");
+    const line = within(proof).getByText("@dij.arc · 21K views");
+    expect(line).toHaveClass("truncate", "text-meta", "leading-[18px]", "text-foreground-secondary", "min-w-0");
+    // Only the rows that have one.
+    expect(proofOf(rows()[1]!)).toBeNull();
+    expect(proofOf(rows()[2]!)).toBeNull();
+  });
+
+  it("without a cover: the words alone", () => {
+    render(<PackAnswer kind="hook" rows={withProof([{ cover: null, line: "@creator_one · 854K views" }])} queue={null} />);
+    const proof = proofOf(rows()[0]!)!;
+    expect(proof.querySelector("img")).toBeNull();
+    expect(proof).toHaveTextContent(/^@creator_one · 854K views$/);
+  });
+
+  it("without views: '@handle' alone", () => {
+    render(<PackAnswer kind="hook" rows={withProof([{ cover: "/covers/c8.jpg", line: "@creator_one" }])} queue={null} />);
+    expect(proofOf(rows()[0]!)).toHaveTextContent(/^@creator_one$/);
+  });
+
+  it("a cover that does not load leaves no broken picture: the words stay", () => {
+    render(<PackAnswer kind="hook" rows={withProof([PROOF])} queue={null} />);
+    const proof = proofOf(rows()[0]!)!;
+    fireEvent.error(proof.querySelector("img")!);
+    expect(proof.querySelector("img")).toBeNull();
+    expect(proof).toHaveTextContent("@dij.arc · 21K views");
+  });
+
+  it("without proof (absent or null): nothing, the row's markup as today", () => {
+    const { container: today } = render(<PackAnswer kind="hook" rows={hookRows([empty, empty, empty])} queue={null} onOpen={() => {}} />);
+    const before = markup(today);
+    cleanup();
+    const { container } = render(<PackAnswer kind="hook" rows={withProof([null, null, null])} queue={null} onOpen={() => {}} />);
+    expect(container.querySelector('[data-part="row-proof"]')).toBeNull();
+    expect(markup(container)).toBe(before);
+  });
+
+  it("the row's button is described by the line (and then 'Couldn't simulate'); its name is still the hook", () => {
+    render(<PackAnswer kind="hook" rows={withProof([PROOF, PROOF]).map((r, i) => ({ ...r, failed: i === 1 }))} queue={null} onOpen={() => {}} />);
+    const [first, second, third] = screen.getAllByRole("button", { name: /^Open: / });
+    expect(first).toHaveAccessibleName(/^Open: I spent \$40/);
+    expect(first).toHaveAccessibleDescription("@dij.arc · 21K views");
+    expect(second).toHaveAccessibleDescription("@dij.arc · 21K views Couldn't simulate");
+    expect(third).not.toHaveAttribute("aria-describedby");
+    // The line is part of the row's one button, not a link or a control of its own.
+    expect(first!.contains(proofOf(rows()[0]!))).toBe(true);
+    expect(proofOf(rows()[0]!)!.querySelector("a, button")).toBeNull();
+  });
+
+  it("a waiting row keeps the line as it is (secondary ink already)", () => {
+    render(<PackAnswer kind="hook" rows={withProof([PROOF, PROOF], [{ kind: "waiting" }, empty, empty])} queue={null} />);
+    const waiting = within(proofOf(rows()[0]!)!).getByText(PROOF.line);
+    const resting = within(proofOf(rows()[1]!)!).getByText(PROOF.line);
+    expect(waiting.className).toBe(resting.className);
+  });
+
+  it("idea rows are unchanged: a proof given to one shows nothing", () => {
+    const ideas: PackRow[] = IDEAS_4.map((b) => ({ key: b.props.title, text: b.props.title, sub: b.props.angle, state: empty }));
+    const { container: today } = render(<PackAnswer kind="idea" rows={ideas} queue={null} onOpen={() => {}} />);
+    const before = markup(today);
+    cleanup();
+    const { container } = render(<PackAnswer kind="idea" rows={ideas.map((r) => ({ ...r, proof: PROOF }))} queue={null} onOpen={() => {}} />);
+    expect(container.querySelector('[data-part="row-proof"]')).toBeNull();
+    expect(markup(container)).toBe(before);
+  });
+
+  it("has no axe violations with the proven video on a row", async () => {
+    const { container } = render(<PackAnswer kind="hook" rows={withProof([PROOF, { cover: null, line: "@creator_one" }])} queue={null} onOpen={() => {}} />);
+    // @ts-expect-error -- vitest-axe matcher type augmentation not picked up
+    expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
 // Thread feel §4.3: inside a landing (`[data-thread-landing] .land`) the rows come in one after another, the
 // button after the last; the card itself takes its height at once. Outside a landing `land` is inert.
 describe("PackAnswer — its places in a landing", () => {

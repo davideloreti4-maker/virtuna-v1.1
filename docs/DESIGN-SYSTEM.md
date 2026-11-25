@@ -399,6 +399,25 @@ The thread between a send and its answer (spec
   the cards: the field then shows its send arrow, off until the stream closes, and Stop again if that
   takes more than 8 s. After a skill's own run the field is at rest from the moment the run reports done.
 - To look at it: `/dev/answers?state=w1|w2|w3|w4|w5|w6|wl` (`wl` plays a landing).
+- **A script's beat** carries its name above its words (spec `2026-11-25-thread-depth-design.md` §3.1,
+  `beatName`: the label as sent, "CTA" written "Call to action"): 12 / 16 at 640 in the secondary ink,
+  1 under, so a named beat is 17 taller; its outline draws a 9 bar there. Copy takes the words only.
+- **"How to film it"** (§3.2), under "Add your take" only when a beat has a filming cue or the script a
+  shoot plan: a quiet button, 40 tall, 14 / 570 in the secondary ink, the sunken fill and the ink on hover
+  and press; on a phone full width, 6 under the primary; from 768 on the primary's row, 8 to its right, 14
+  each side of its words. It opens the look's sheet (`FilmSheet`): a row per beat with a cue
+  (the name 13 / 18 at 640, its span "0 to 3 s" in the muted ink, the cue 14 / 20), then "Shots", "Text
+  on screen", "Setup", "Edit"; no button in it. `/dev/answers?state=p10c|p10p`.
+- **A hook's row** (§3.3) shows the video it is built on, 6 under its line: the cover 16 by 22 at radius
+  4 and "@handle · 854K views" (13 / 18, secondary, one line); it describes the row's button and is no
+  link of its own. Ideas show none. `/dev/answers?state=p3v`.
+- **A follow-up from inside the thread** (a card's or a sheet's "Script this one", a chip) tapped while a
+  run that has its answer in has not yet folded into the thread is held, not sent: the field shows Stop,
+  and it goes once that run has folded (at the latest after 8 s, never under an open sheet). Sent at the
+  tap it would cancel the open stream and the first answer would be stored after the new question.
+- **A fold waits for an open sheet.** A run is not folded into the thread while a sheet of the look
+  (`AnswerSheet`, counted in `src/lib/thread-next/open-sheets.ts`) is open: the fold replaces the live
+  turn, and the sheet with it. It runs when the sheet has closed.
 
 Rules that are not in the spec:
 

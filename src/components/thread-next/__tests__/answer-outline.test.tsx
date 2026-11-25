@@ -93,14 +93,30 @@ describe("the script's outline", () => {
     expect(within(outline).getByRole("status")).toHaveTextContent("Writing your script");
     const beats = [...outline.querySelectorAll('[data-part="ghost-beat"]')];
     expect(beats).toHaveLength(5);
-    // The film's rhythm: a short opening, two long beats, two shorter.
-    expect(beats.map((b) => bars(b).length)).toEqual([1, 3, 3, 2, 2]);
+    // The film's rhythm: a short opening, two long beats, two shorter (the words' bars; the name's
+    // bar comes on top of them, tested below).
+    expect(beats.map((b) => bars(b).filter((bar) => bar.getAttribute("data-part") !== "ghost-name").length)).toEqual([1, 3, 3, 2, 2]);
     for (const beat of beats) {
       expect(beat).toHaveClass("grid", "grid-cols-[28px_3px_minmax(0,1fr)]");
       expect(beat.querySelector('[data-part="rail"]')).not.toBeNull();
     }
     expect(within(outline).queryAllByRole("button")).toHaveLength(0);
     expectHidden(outline);
+  });
+
+  it("each ghost beat carries the name's bar first: about a fifth of the line, 9 tall, on the name's 16 line", () => {
+    render(<AnswerOutline kind="script" words="Writing your script" note={null} evidence={null} />);
+    for (const beat of card().querySelectorAll('[data-part="ghost-beat"]')) {
+      const name = beat.querySelector<HTMLElement>('[data-part="ghost-name"]')!;
+      expect(name).toHaveClass("ghost-bar", "h-[9px]");
+      expect(name.style.width).toBe("20%");
+      // First in the beat's text box, above the words' bars; hidden from a screen reader like them.
+      expect(bars(beat)[0]).toBe(name);
+      expect(name.closest('[aria-hidden="true"]')).not.toBeNull();
+      // The box starts 9 down (rounded from the 9.5 that centres it), so the beat is 17 taller:
+      // 9 + 9 + 10 to the words' first bar, against 11 before it today.
+      expect(name.parentElement).toHaveClass("pt-[9px]", "gap-2.5", "pb-[13px]");
+    }
   });
 
   it("a grounded script shows what it reads under the line too", () => {

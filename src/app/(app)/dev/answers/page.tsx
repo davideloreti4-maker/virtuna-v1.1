@@ -26,6 +26,12 @@ import { DevAnswers, type DevAnswersSkin, type DevAnswersState } from "./dev-ans
  * - p6: hook 1 opened, simulated (P6) · p6b: the same, not simulated · p6i: an idea opened
  * - Not drawn, for looking at: p9b the video's row still loading · p10b the script's opening
  *   simulated · p11b three remixes on the pager
+ * - Depth (thread depth §3): every script shows its beats' names (p10 has neither cues nor a plan,
+ *   so no "How to film it") · p10c a script with cues on three beats and a plan with its edit, and
+ *   p10p one with a plan and no edit: "How to film it" opens its sheet · a hook row shows the video
+ *   it is built on wherever its fixture has one (hook 1 in p3, p4, p5) · p3v the three kinds: a
+ *   cover and views, views alone, a cover alone (the fixture covers are not served here, so a cover
+ *   shows its no-picture state)
  * - The wait (thread feel §4.2, §4.3): w1 the line "Thinking" · w2 the hooks outline, no evidence ·
  *   w3 the hooks outline with an evidence of three videos without pictures and the topical headline ·
  *   w4 the script's outline · w5 the remix's outline with its post · w6 explore, the line alone ·
@@ -40,7 +46,7 @@ const one = (value: string | string[] | undefined) => (Array.isArray(value) ? va
 
 // Kept here, not imported from the client module: a server file gets a client module's values as
 // references, not as the array.
-const STATES: readonly DevAnswersState[] = ["p3", "p4", "p5", "p12", "p8", "p9", "p9b", "p10", "p10b", "p11", "p11b", "p13", "d3", "p7", "p7l", "p7n", "p6", "p6b", "p6i", "w1", "w2", "w3", "w4", "w5", "w6", "wl"];
+const STATES: readonly DevAnswersState[] = ["p3", "p3v", "p4", "p5", "p12", "p8", "p9", "p9b", "p10", "p10b", "p10c", "p10p", "p11", "p11b", "p13", "d3", "p7", "p7l", "p7n", "p6", "p6b", "p6i", "w1", "w2", "w3", "w4", "w5", "w6", "wl"];
 const SKINS: readonly DevAnswersSkin[] = ["light", "dark"];
 const isState = (value: string): value is DevAnswersState => (STATES as readonly string[]).includes(value);
 const isSkin = (value: string): value is DevAnswersSkin => (SKINS as readonly string[]).includes(value);

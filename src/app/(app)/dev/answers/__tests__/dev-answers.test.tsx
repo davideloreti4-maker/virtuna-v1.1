@@ -173,6 +173,58 @@ describe("/dev/answers states", () => {
   });
 });
 
+// Depth one tap away (thread depth §3), for looking at: nothing is sent.
+describe("/dev/answers: depth", () => {
+  const proven = () => [...document.querySelectorAll<HTMLElement>('[data-part="row-proof"]')];
+  const names = () => [...document.querySelectorAll('[data-part="beat-name"]')].map((n) => n.textContent);
+
+  it("p3: hook 1 shows the video it is built on, the other two nothing", () => {
+    render(<DevAnswers state="p3" skin="light" frames={null} />);
+    const rows = screen.getAllByRole("listitem");
+    expect(proven()).toHaveLength(1);
+    expect(within(rows[0]!).getByText("@dij.arc · 21K views")).toBeInTheDocument();
+    expect(rows[0]!.querySelector('[data-part="row-proof"] img')).toHaveAttribute("src", "/covers/c8.jpg");
+  });
+
+  it("p3v: a cover and views, views without a cover, a cover without views", () => {
+    render(<DevAnswers state="p3v" skin="light" frames={null} />);
+    const [a, b, c] = proven();
+    expect(a).toHaveTextContent(/^@dij\.arc · 21K views$/);
+    expect(a!.querySelector("img")).not.toBeNull();
+    expect(b).toHaveTextContent(/^@creator_one · 854K views$/);
+    expect(b!.querySelector("img")).toBeNull();
+    expect(c).toHaveTextContent(/^@creator_two$/);
+    expect(c!.querySelector("img")).toHaveAttribute("src", "/covers/c9.jpg");
+  });
+
+  it("p10: today's script, its beats named, no 'How to film it'", () => {
+    render(<DevAnswers state="p10" skin="light" frames={null} />);
+    expect(names()).toEqual(["Hook", "Setup", "Turn", "Payoff", "Call to action"]);
+    expect(screen.queryByRole("button", { name: "How to film it" })).toBeNull();
+  });
+
+  it("p10c: cues and a plan; pressing 'How to film it' opens the sheet, Escape closes it", async () => {
+    render(<DevAnswers state="p10c" skin="light" frames={null} />);
+    expect(names()).toHaveLength(5);
+    const button = screen.getByRole("button", { name: "How to film it" });
+    fireEvent.click(button);
+    const dialog = await screen.findByRole("dialog", { name: "How to film it" });
+    expect([...dialog.querySelectorAll('[data-sheet="film-beat"] h3')].map((h) => h.textContent)).toEqual(["Hook", "Turn", "Call to action"]);
+    expect([...dialog.querySelectorAll('[data-sheet="film-plan"] h3')].map((h) => h.textContent)).toEqual(["Shots", "Text on screen", "Setup", "Edit"]);
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(document.activeElement).toBe(button);
+  });
+
+  it("p10p: a plan with no edit and no cues: the plan's three rows alone", async () => {
+    render(<DevAnswers state="p10p" skin="light" frames={null} />);
+    fireEvent.click(screen.getByRole("button", { name: "How to film it" }));
+    const dialog = await screen.findByRole("dialog", { name: "How to film it" });
+    expect(dialog.querySelectorAll('[data-sheet="film-beat"]')).toHaveLength(0);
+    expect([...dialog.querySelectorAll('[data-sheet="film-plan"] h3')].map((h) => h.textContent)).toEqual(["Shots", "Text on screen", "Setup"]);
+  });
+});
+
 // The wait, the outline and the landing (thread feel §4.2, §4.3), for looking at: nothing is sent.
 describe("/dev/answers: the wait", () => {
   const outline = (kind?: string) => document.querySelector(kind ? `[data-outline="${kind}"]` : "[data-outline]");

@@ -1,10 +1,11 @@
 "use client";
 
-import { useId } from "react";
+import { useId, useState } from "react";
 
 import { creditCost } from "@/lib/pricing";
 import { afterRows, landStyle, rowLand } from "@/lib/thread-next/landing";
 import { leadOf } from "@/lib/thread-next/pack-lead";
+import type { RowProof } from "@/lib/thread-next/row-proof";
 import { cn } from "@/lib/utils";
 
 import { AnswerCard, AnswerFoot, AnswerPrimary, CardHeader, PROSE, creditsLabel, keepHyphens } from "./answer-card";
@@ -21,10 +22,12 @@ import { ChevronIcon, DocIcon } from "./field-icons";
  *   (thread feel §4.7). At the right
  *   "1 credit each" while any row is not simulated (empty) and "out of 100" once every row is: the
  *   numbers' scale, said once instead of a "%" in each ring.
- * - Rows: the gauge, then the text (a hook's line; an idea's title and its one grey line). A waiting
+ * - Rows: the gauge, then the text (a hook's line; an idea's title and its one grey line). Under a
+ *   hook's line, when it has one, the video it is built on (thread depth §3.3): its cover and
+ *   "@handle · 854K views" (`rowProofOf`); ideas never. A waiting
  *   row's text is in the secondary ink. With `onOpen` (step 2) the row is ONE button ("Open: <text>",
  *   a dialog's opener) holding its text and a 14 chevron, described by the lines its name leaves out
- *   (an idea's grey line, "Couldn't simulate"); its `::after` covers the whole row. The gauge column
+ *   (an idea's grey line, a hook's video, "Couldn't simulate"); its `::after` covers the whole row. The gauge column
  *   sits above it and passes every tap through (`pointer-events-none`) but the gauge's own: an empty
  *   gauge simulates, and a simulated one with its result page (`href`) is a link to it (design ruling,
  *   fix round 1); a simulated gauge without one, "Best" and the space beside them open the row.
@@ -47,7 +50,9 @@ import { ChevronIcon, DocIcon } from "./field-icons";
  * Geometry as drawn: rows 10 / 2 with a hairline above each, the gauge column 5 between gauge and
  * pill, 13 to the text; hook text 15 / 20 at 520, an idea's title 15 / 20 at 620 and its line
  * 13 / 18 in the secondary ink (drawn 13.5), all in proportional figures with hyphenated words kept
- * whole (`PROSE`, `keepHyphens`); the primary 8 under the last row (20 on a desk, `AnswerFoot`);
+ * whole (`PROSE`, `keepHyphens`); a hook's video 6 under its line, the cover 16 by 22 at radius 4 (the card scale; the evidence row's cover),
+ * 7 to its line (13 / 18, secondary, one line cut with an ellipsis), as filmed (step 2 film, `.pf`);
+ * the primary 8 under the last row (20 on a desk, `AnswerFoot`);
  * the progress line 6 tall, 12 above it.
  */
 
@@ -63,6 +68,8 @@ export interface PackRow {
   failed?: boolean;
   /** Its result page, once simulated and its key is known (step 2): the gauge links there. */
   href?: string | null;
+  /** A hook's proven video (thread depth §3.3, `rowProofOf`): its cover and "@handle · 854K views". */
+  proof?: RowProof | null;
 }
 
 /** The place of a pack's last part in a landing: its button's row, after the last staggered row. */
@@ -102,19 +109,35 @@ function ProgressLine({ queue }: { queue: PackQueue }) {
   );
 }
 
-/** A row's words: a hook's line, or an idea's title and its grey line; a failed row's note. The ids
- *  let the row's button be described by the lines its name leaves out. */
+/**
+ * The proven video's cover on a row (16 by 22): the same plain `img` as the sheet's proof cover
+ * (`ProofCover`), so a stored address that has expired draws no broken picture; at this size it draws
+ * no picture at all, and the words stay.
+ */
+function RowCover({ src }: { src: string }) {
+  const [failed, setFailed] = useState<string | null>(null);
+  if (failed === src) return null;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- a stored cover address (it can expire); next/image has nothing to optimise
+    <img src={src} alt="" onError={() => setFailed(src)} className="block h-[22px] w-4 shrink-0 rounded-xs bg-surface-sunken object-cover" />
+  );
+}
+
+/** A row's words: a hook's line (and the video it is built on), or an idea's title and its grey line;
+ *  a failed row's note. The ids let the row's button be described by the lines its name leaves out. */
 function RowText({
   kind,
   row,
   waiting,
   subId,
+  proofId,
   failedId,
 }: {
   kind: "hook" | "idea";
   row: PackRow;
   waiting: boolean;
   subId?: string;
+  proofId?: string;
   failedId?: string;
 }) {
   const ink = waiting ? "text-foreground-secondary" : "text-foreground";
@@ -130,7 +153,18 @@ function RowText({
           )}
         </>
       ) : (
-        <span className={cn("block text-pretty text-ui font-[520] leading-5 tracking-[-0.01em]", ink)}>{keepHyphens(row.text)}</span>
+        <>
+          <span className={cn("block text-pretty text-ui font-[520] leading-5 tracking-[-0.01em]", ink)}>{keepHyphens(row.text)}</span>
+          {/* Not a link of its own: the row is one button, and its sheet links to the video. */}
+          {row.proof && (
+            <span data-part="row-proof" className="mt-1.5 flex items-center gap-[7px]">
+              {row.proof.cover && <RowCover src={row.proof.cover} />}
+              <span id={proofId} className="block min-w-0 truncate text-meta leading-[18px] text-foreground-secondary">
+                {row.proof.line}
+              </span>
+            </span>
+          )}
+        </>
       )}
       {row.failed && (
         <span id={failedId} className="mt-0.5 block text-meta text-foreground-secondary">
@@ -209,8 +243,11 @@ export function PackAnswer({
         {rows.map((row, i) => {
           const waiting = row.state.kind === "waiting";
           const subId = `${ids}-${i}-sub`;
+          const proofId = `${ids}-${i}-proof`;
           const failedId = `${ids}-${i}-failed`;
-          const described = [kind === "idea" && row.sub ? subId : null, row.failed ? failedId : null].filter(Boolean).join(" ");
+          const described = [kind === "idea" && row.sub ? subId : null, kind === "hook" && row.proof ? proofId : null, row.failed ? failedId : null]
+            .filter(Boolean)
+            .join(" ");
           return (
             // Two rows can carry the same text (they share one seal), so the place is in the key.
             <li
@@ -249,7 +286,7 @@ export function PackAnswer({
                   className={cn("flex min-w-0 flex-1 cursor-pointer items-center gap-3 rounded-xl text-left after:absolute after:inset-0", PROSE)}
                 >
                   <span className="block min-w-0 flex-1">
-                    <RowText kind={kind} row={row} waiting={waiting} subId={subId} failedId={failedId} />
+                    <RowText kind={kind} row={row} waiting={waiting} subId={subId} proofId={proofId} failedId={failedId} />
                   </span>
                   <ChevronIcon size={14} strokeWidth={2.1} aria-hidden className="shrink-0 text-foreground-muted" />
                 </button>

@@ -63,6 +63,7 @@ import { fallbackOf } from "@/lib/thread-next/fallback-lines";
 import { ideaLineOf } from "@/lib/thread-next/idea-line";
 import { landStyle, landedAgo, landingGrew, landingKeyOf, markLanded } from "@/lib/thread-next/landing";
 import { nextFollowups } from "@/lib/thread-next/next-followups";
+import { rowProofOf } from "@/lib/thread-next/row-proof";
 import { USUAL_S, outlineOf, statusWords, usualNote } from "@/lib/thread-next/run-status";
 import { sealKey } from "@/lib/threads/sim-seals";
 import { blockTypesOf, cardLinesOf, classifyTurn, type ChatTurnKind } from "@/lib/tools/chat-followups";
@@ -134,9 +135,10 @@ function PackPart({ part, origins }: { part: Extract<AnswerPart, { kind: "hooks"
   const threadId = useContext(ThreadIdContext);
   const kind: TextKind = part.kind === "hooks" ? "hook" : "idea";
   const as: TextResultAs = part.kind === "hooks" ? "hook" : "idea";
+  // A hook's row carries the video it is built on (thread depth §3.3); an idea's does not.
   const plain: PackRow[] =
     part.kind === "hooks"
-      ? part.items.map(({ block }) => rowOf(sim, block.props.hookLine))
+      ? part.items.map(({ block }) => ({ ...rowOf(sim, block.props.hookLine), proof: rowProofOf(block.props.proof) }))
       : part.items.map(({ block }) => ({ ...rowOf(sim, block.props.title), sub: ideaLineOf(block.props) }));
   const texts = plain.map((r) => r.text);
   const keys = useSealKeys(texts);

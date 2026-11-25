@@ -27,6 +27,8 @@ import {
   MEAL_PREP_HOOKS,
   REMIX_CAMERA,
   SCRIPT_AI,
+  SCRIPT_FILMED,
+  SCRIPT_PLANNED,
   SEALS_DONE,
   accountRead,
   population,
@@ -39,11 +41,13 @@ import { resultHref } from "@/lib/result/href";
 import { textResultOf } from "@/lib/result/text-result";
 import type { ResultRow, ResultState } from "@/lib/result/types";
 import { videoStateOf } from "@/lib/result/video-model";
+import type { HookCardBlock, HookProof } from "@/lib/tools/blocks";
 import type { ChatTurnKind } from "@/lib/tools/chat-followups";
 import type { RunEvidence } from "@/lib/tools/evidence";
 import { fallbackOf } from "@/lib/thread-next/fallback-lines";
 import { landStyle } from "@/lib/thread-next/landing";
 import { nextFollowups } from "@/lib/thread-next/next-followups";
+import { rowProofOf } from "@/lib/thread-next/row-proof";
 import { outlineOf, statusWords, usualNote } from "@/lib/thread-next/run-status";
 import { stopNumberOf } from "@/lib/thread-next/stop-number";
 import { paintTheme, readThemeChoice } from "@/lib/theme/theme";
@@ -64,6 +68,7 @@ import { paintTheme, readThemeChoice } from "@/lib/theme/theme";
 
 export type DevAnswersState =
   | "p3"
+  | "p3v"
   | "p4"
   | "p5"
   | "p12"
@@ -72,6 +77,8 @@ export type DevAnswersState =
   | "p9b"
   | "p10"
   | "p10b"
+  | "p10c"
+  | "p10p"
   | "p11"
   | "p11b"
   | "p13"
@@ -100,11 +107,22 @@ const sealed = (key: string): GaugeState => {
 /** The result page a simulated text opens here (the drawing's P7): a row's gauge and the sheet's link. */
 const RESULT_HREF = "/dev/answers?state=p7";
 
-const hookRows = (states: (key: string, i: number) => GaugeState): PackRow[] =>
-  MEAL_PREP_HOOKS.map((b, i) => {
+/** The pack's rows as the thread builds them: a hook's proven video through the real `rowProofOf`. */
+const hookRows = (states: (key: string, i: number) => GaugeState, blocks: readonly HookCardBlock[] = MEAL_PREP_HOOKS): PackRow[] =>
+  blocks.map((b, i) => {
     const state = states(b.props.hookLine, i);
-    return { key: b.props.hookLine, text: b.props.hookLine, state, href: state.kind === "done" ? RESULT_HREF : null };
+    return { key: b.props.hookLine, text: b.props.hookLine, state, href: state.kind === "done" ? RESULT_HREF : null, proof: rowProofOf(b.props.proof) };
   });
+
+const withProof = (block: HookCardBlock, p: HookProof): HookCardBlock => ({ ...block, props: { ...block.props, proof: p } });
+
+/** p3v: the three kinds of proven video a row can show: a cover and views (hook 1's own), views
+ *  without a cover, a cover without views. Made-up handles. */
+const PROOF_KINDS: readonly HookCardBlock[] = [
+  MEAL_PREP_HOOKS[0]!,
+  withProof(MEAL_PREP_HOOKS[1]!, proof({ handle: "creator_one", views: 854_000 })),
+  withProof(MEAL_PREP_HOOKS[2]!, proof({ handle: "creator_two", coverUrl: "/covers/c9.jpg" })),
+];
 
 const ideaRows = (): PackRow[] =>
   IDEAS_4.map((b) => ({ key: b.props.title, text: b.props.title, sub: b.props.angle || b.props.take || null, state: empty }));
@@ -204,6 +222,8 @@ function turnOf(state: DevAnswersState, ctx: { frames: string | null; startedAt:
     case "p3":
     case "p6b":
       return packTurn(HOOKS_ASK, "hook", hookRows(() => empty), null, "hooks");
+    case "p3v":
+      return packTurn(HOOKS_ASK, "hook", hookRows(() => empty, PROOF_KINDS), null, "hooks");
     // Hook 1 landed (its seal), hook 2 runs, hook 3 waits its turn: "2 of 3". The drawing shows no chips here.
     case "p4":
       return packTurn(
@@ -238,6 +258,15 @@ function turnOf(state: DevAnswersState, ctx: { frames: string | null; startedAt:
         answer: (
           <ScriptAnswer block={SCRIPT_AI} opener={{ state: state === "p10" ? empty : OPENING_DONE, onSimulate: noop }} onAddTake={noop} />
         ),
+        chips: "script",
+      };
+    // "How to film it" (thread depth §3.2): cues on three beats and a plan with its edit; a plan alone.
+    // The card holds the sheet's state itself, so pressing the button opens it here as in a thread.
+    case "p10c":
+    case "p10p":
+      return {
+        ask: "Script an AI simulation video",
+        answer: <ScriptAnswer block={state === "p10c" ? SCRIPT_FILMED : SCRIPT_PLANNED} opener={{ state: empty, onSimulate: noop }} onAddTake={noop} />,
         chips: "script",
       };
     case "p11":
