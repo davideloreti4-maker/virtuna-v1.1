@@ -471,7 +471,10 @@ describe("flag on: the stream's tail (the live video turn)", () => {
     const video = screen.getByText("The video runs.");
     expect(answer.compareDocumentPosition(screen.getByText("take.mp4")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(column.contains(video)).toBe(true);
-    expect(screen.getByText("take.mp4").parentElement?.parentElement).toBe(column);
+    // The bubble's row sits in the tail's own turn element (thread feel, step 1), a child of the column.
+    const turn = screen.getByText("take.mp4").parentElement?.parentElement;
+    expect(turn).toHaveAttribute("data-turn", "later");
+    expect(turn?.parentElement).toBe(column);
   });
 
   it("a new chat (no history, no live turn): the tail alone still renders", () => {

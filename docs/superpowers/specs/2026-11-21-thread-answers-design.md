@@ -133,6 +133,10 @@ ideas · Write hooks. Other kinds: their first two.
 
 ### 4.8 While a run is live
 
+> Replaced on 2026-11-25 by `2026-11-25-thread-feel-design.md` (sections 4.2 and 4.3): a status line
+> with the run's own stage words, the card as an outline from the start, a landing. The text below is
+> what was built on 2026-11-21 and is kept for the record.
+
 Under the Maven label one waiting row: three soft dots and the run's name ("Writing hooks", "Finding ideas",
 "Writing your script", "Reworking the video", "Scanning for outliers", "Reading your account"; "Thinking" before
 the run is named). No stage list, no "Simulating your audience" (generation does not simulate), no live

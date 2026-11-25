@@ -11,9 +11,17 @@
  * them. `chat-agent-loop.test.ts` locks the other half — that the loop replays them as tool calls.
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { openChatPriorTurns, MAX_PRIOR_TURNS } from "@/lib/threads/chat-prior-turns";
 import type { HydratedMessage } from "@/lib/threads/messages";
+import { runHeaderBlock } from "@/lib/tools/run-header";
+import { MAX_RECORDS } from "@/lib/tools/on-screen";
+import {
+  runChatAgentStream,
+  type StreamChunk,
+  type StreamingChatComplete,
+} from "@/lib/tools/chat-agent-loop";
+import type { SkillTool } from "@/lib/tools/skill-dispatch";
 
 let seq = 0;
 function msg(role: HydratedMessage["role"], blocks: Array<{ type: string; props: unknown }>): HydratedMessage {
@@ -397,5 +405,309 @@ describe("openChatPriorTurns — remix sheets ride alongside the record line (th
       msg("assistant", [text("Five hooks are on screen.", "chat-agent")]),
     ]);
     expect(turns.every((t) => t.remixSheets === undefined)).toBe(true);
+  });
+});
+
+/**
+ * A RUN THE CREATOR STARTED FROM A SKILL BUTTON (2026-11-25). The direct hooks / ideas / script
+ * routes store a user row, then ONE assistant row `[run-header, ...cards]`, then the closing line in
+ * a second assistant row with NO `origin` stamp, or no closing line at all when the follow-up came
+ * back empty or failed. Only a stamped line ever picked the cards up, so these runs never reached
+ * the model: asked "which of these would you post first", it asked the creator to paste the options.
+ *
+ * The chat agent did not make these, so they ride as thread state (`skillRecords`), the channel for
+ * work the creator ran themselves, never as a tool call the agent would read as its own.
+ */
+describe("openChatPriorTurns — cards from a run no chat-agent line announced ride as records", () => {
+  const hookCards = (lines: string[]) =>
+    lines.map((hookLine, i) => ({
+      type: "hook-card",
+      props: { hookLine, rank: i + 1, band: "Most keep watching", fraction: "6 in 10" },
+    }));
+  const ideaCards = (titles: string[]) =>
+    titles.map((title) => ({ type: "idea-card", props: { title, topic: "morning routines" } }));
+  const header = (skill: string) => runHeaderBlock({ skill, audienceLabel: "Night owls", platform: "tiktok" });
+  const THREE = ["Stop buying planners", "Your mornings are fine", "The 9pm rule"];
+  const THREE_RECORD = 'hooks, 3 on screen: "Stop buying planners" · "Your mornings are fine" · "The 9pm rule"';
+
+  it("a skill-button hooks run becomes a record turn BEFORE its unstamped closing line", () => {
+    const turns = openChatPriorTurns([
+      msg("user", [text("Generate hooks")]),
+      msg("assistant", [header("hooks"), ...hookCards(THREE)]),
+      msg("assistant", [text("The 9pm rule names a time, so try that one first.")]),
+    ]);
+    expect(turns).toEqual([
+      { role: "user", text: "Generate hooks" },
+      { role: "assistant", text: "", skillRecords: [THREE_RECORD] },
+      { role: "assistant", text: "The 9pm rule names a time, so try that one first." },
+    ]);
+    // The closing line is not the agent's dispatch: no tool call is reconstructed for it.
+    expect(turns[2]).not.toHaveProperty("toolRuns");
+  });
+
+  it("a run with no closing line (follow-up empty or failed) still reaches the model, as the last turn", () => {
+    const turns = openChatPriorTurns([
+      msg("user", [text("Generate hooks")]),
+      msg("assistant", [header("hooks"), ...hookCards(THREE)]),
+    ]);
+    expect(turns).toEqual([
+      { role: "user", text: "Generate hooks" },
+      { role: "assistant", text: "", skillRecords: [THREE_RECORD] },
+    ]);
+  });
+
+  it("a run with no closing line followed by the creator's question: the record comes before the question", () => {
+    const turns = openChatPriorTurns([
+      msg("user", [text("Generate hooks")]),
+      msg("assistant", [header("hooks"), ...hookCards(THREE)]),
+      msg("user", [text("which of these would you post first?")]),
+    ]);
+    expect(turns).toEqual([
+      { role: "user", text: "Generate hooks" },
+      { role: "assistant", text: "", skillRecords: [THREE_RECORD] },
+      { role: "user", text: "which of these would you post first?" },
+    ]);
+  });
+
+  it("names each generator the way the creator knows it: ideas and script", () => {
+    const ideas = openChatPriorTurns([
+      msg("user", [text("Generate video ideas")]),
+      msg("assistant", [header("ideas"), ...ideaCards(["The 5am myth", "Coffee math"])]),
+    ]);
+    expect(ideas.at(-1)!.skillRecords).toEqual(['ideas, 2 on screen: "The 5am myth" · "Coffee math"']);
+
+    const script = openChatPriorTurns([
+      msg("user", [text('Write a script from "The 9pm rule"')]),
+      msg("assistant", [
+        runHeaderBlock({ skill: "script", platform: "tiktok", hookLine: "The 9pm rule" }),
+        { type: "script-card", props: { title: "The 9pm rule script" } },
+      ]),
+      msg("assistant", [text("Read it out loud once before you film.")]),
+    ]);
+    expect(script.flatMap((t) => t.skillRecords ?? [])).toEqual(['script, 1 on screen: "The 9pm rule script"']);
+    expect(script.filter((t) => t.toolRuns)).toHaveLength(0);
+  });
+
+  it("a run with no extractable line is counted, never quoted", () => {
+    const turns = openChatPriorTurns([
+      msg("user", [text("Generate hooks")]),
+      msg("assistant", [header("hooks"), ...cards("hook-card", 3)]), // props `{i}`: no hookLine
+    ]);
+    expect(turns.at(-1)!.skillRecords).toEqual(["hooks, 3 on screen"]);
+  });
+
+  it("says how many it quotes when it quotes fewer than are on screen", () => {
+    // The same rule the Explore record follows: a line that quoted six of eight while saying only
+    // "8" would invite the model to describe two cards it was never shown.
+    const eight = Array.from({ length: 8 }, (_, i) => `hook ${i}`);
+    const capped = openChatPriorTurns([
+      msg("user", [text("Generate hooks")]),
+      msg("assistant", [header("hooks"), ...hookCards(eight)]),
+    ]);
+    expect(capped.at(-1)!.skillRecords).toEqual([
+      'hooks, 8 on screen, quoting 6: "hook 0" · "hook 1" · "hook 2" · "hook 3" · "hook 4" · "hook 5"',
+    ]);
+
+    const partial = openChatPriorTurns([
+      msg("user", [text("Generate hooks")]),
+      msg("assistant", [
+        header("hooks"),
+        { type: "hook-card", props: { hookLine: "a real line" } },
+        { type: "hook-card", props: { hookLine: "   " } },
+        { type: "hook-card", props: { hookLine: 42 } },
+      ]),
+    ]);
+    expect(partial.at(-1)!.skillRecords).toEqual(['hooks, 3 on screen, quoting 1: "a real line"']);
+  });
+
+  it("keeps the per-card length rule of the replayed lines", () => {
+    const turns = openChatPriorTurns([
+      msg("user", [text("Generate hooks")]),
+      msg("assistant", [header("hooks"), ...hookCards([`  ${"x".repeat(400)}  `])]),
+    ]);
+    expect(turns.at(-1)!.skillRecords).toEqual([`hooks, 1 on screen: "${"x".repeat(200)}"`]);
+  });
+
+  it("a card line holding a newline or a tab stays on one line inside its quotes", () => {
+    // The record is one "· " line of the app's note; a raw newline would open what reads as a new
+    // line of that note, in words the app never wrote.
+    const turns = openChatPriorTurns([
+      msg("user", [text("Generate hooks")]),
+      msg("assistant", [header("hooks"), ...hookCards(["Stop buying\nplanners", "The\t9pm  rule"])]),
+    ]);
+    expect(turns.at(-1)!.skillRecords).toEqual(['hooks, 2 on screen: "Stop buying planners" · "The 9pm rule"']);
+  });
+
+  it("an input-request row and an unstamped line give no record and no tool run", () => {
+    const turns = openChatPriorTurns([
+      msg("user", [text("can you remix this video for me")]),
+      msg("assistant", [{ type: "input-request", props: { kind: "link", action: "remix" } }]),
+      msg("assistant", [text("Paste the link to the video you want to remix.")]),
+    ]);
+    expect(turns).toEqual([
+      { role: "user", text: "can you remix this video for me" },
+      { role: "assistant", text: "Paste the link to the video you want to remix." },
+    ]);
+  });
+
+  it("cards and a recorded result before the same line share ONE record turn, in stored order", () => {
+    // A hooks run whose follow-up came back empty, then a Video Test run from the pill (that route
+    // stores only its card), then a closing line.
+    const cardsFirst = openChatPriorTurns([
+      msg("user", [text("Generate hooks")]),
+      msg("assistant", [header("hooks"), ...hookCards(["Stop buying planners", "The 9pm rule"])]),
+      msg("assistant", [{ type: "video-test-card", props: { craftScore: 61, dropLabel: "0:04" } }]),
+      msg("assistant", [text("The test says your second beat drags.")]),
+    ]);
+    expect(cardsFirst.filter((t) => t.skillRecords)).toHaveLength(1);
+    expect(cardsFirst).toEqual([
+      { role: "user", text: "Generate hooks" },
+      {
+        role: "assistant",
+        text: "",
+        skillRecords: [
+          'hooks, 2 on screen: "Stop buying planners" · "The 9pm rule"',
+          "Video Test — craft 61/100; weak beat at 0:04",
+        ],
+      },
+      { role: "assistant", text: "The test says your second beat drags." },
+    ]);
+
+    // The other order: a pill Test, then a refined hook (the refine route stores one card and no
+    // user row), then the refine's note.
+    const recordFirst = openChatPriorTurns([
+      msg("assistant", [{ type: "video-test-card", props: { craftScore: 61, dropLabel: "0:04" } }]),
+      msg("assistant", hookCards(["The 9pm rule, sharper"])),
+      msg("assistant", [text("Sharper now: it opens on the time.")]),
+    ]);
+    expect(recordFirst).toEqual([
+      {
+        role: "assistant",
+        text: "",
+        skillRecords: ["Video Test — craft 61/100; weak beat at 0:04", 'hooks, 1 on screen: "The 9pm rule, sharper"'],
+      },
+      { role: "assistant", text: "Sharper now: it opens on the time." },
+    ]);
+  });
+
+  it("two runs before one unstamped line give two record lines, in run order", () => {
+    const turns = openChatPriorTurns([
+      msg("user", [text("Generate hooks")]),
+      msg("assistant", [header("hooks"), ...hookCards(["Stop buying planners", "The 9pm rule"])]),
+      msg("assistant", [header("ideas"), ...ideaCards(["The 5am myth"])]),
+      msg("assistant", [text("Both are on screen.")]),
+    ]);
+    expect(turns.flatMap((t) => t.skillRecords ?? [])).toEqual([
+      'hooks, 2 on screen: "Stop buying planners" · "The 9pm rule"',
+      'ideas, 1 on screen: "The 5am myth"',
+    ]);
+    expect(turns.filter((t) => t.toolRuns)).toHaveLength(0);
+  });
+
+  it("a stamped line still takes its cards as tool runs and leaves no record behind", () => {
+    // The chat agent's own shape, with the run header the chat route now writes too.
+    const turns = openChatPriorTurns([
+      msg("user", [text("hooks for my sleep app")]),
+      msg("assistant", [header("hooks"), ...hookCards(THREE)]),
+      msg("assistant", [text("Three hooks are on screen.", "chat-agent")]),
+    ]);
+    expect(turns).toEqual([
+      { role: "user", text: "hooks for my sleep app" },
+      {
+        role: "assistant",
+        text: "Three hooks are on screen.",
+        toolRuns: [{ name: "generate_hooks", cards: 3, topic: "hooks for my sleep app", lines: THREE }],
+      },
+    ]);
+  });
+
+  it("a run already announced never comes back as a record on a later turn", () => {
+    const turns = openChatPriorTurns([
+      msg("user", [text("hooks for my sleep app")]),
+      msg("assistant", hookCards(THREE)),
+      msg("assistant", [text("Three hooks are on screen.", "chat-agent")]),
+      msg("user", [text("which one first?")]),
+      msg("assistant", [text("The 9pm rule.")]),
+    ]);
+    expect(turns.flatMap((t) => t.skillRecords ?? [])).toEqual([]);
+  });
+
+  it("MAX_RECORDS still caps one flush", () => {
+    const turns = openChatPriorTurns([
+      ...Array.from({ length: MAX_RECORDS }, () =>
+        msg("assistant", [{ type: "video-test-card", props: { craftScore: 61 } }]),
+      ),
+      msg("assistant", [header("hooks"), ...hookCards(THREE)]),
+    ]);
+    expect(turns).toHaveLength(1);
+    expect(turns[0]!.skillRecords).toHaveLength(MAX_RECORDS);
+  });
+
+  it("the cap of MAX_PRIOR_TURNS holds with a record turn at the end, keeping the newest", () => {
+    const many = Array.from({ length: MAX_PRIOR_TURNS + 5 }, (_, i) =>
+      msg(i % 2 === 0 ? "user" : "assistant", [text(`turn ${i}`)]),
+    );
+    const turns = openChatPriorTurns([...many, msg("assistant", [header("hooks"), ...hookCards(THREE)])]);
+    expect(turns).toHaveLength(MAX_PRIOR_TURNS);
+    expect(turns[0]!.text).toBe("turn 6");
+    expect(turns.at(-1)).toEqual({ role: "assistant", text: "", skillRecords: [THREE_RECORD] });
+  });
+});
+
+/**
+ * END TO END through the real loop: the rows a skill-button run stores, the turns built here, and
+ * the messages the chat model is actually sent. Only the model stream is scripted (it is the network
+ * boundary). `generate_hooks` is BOUND, so had the cards gone out as `toolRuns` the loop would have
+ * replayed them as a tool call of its own.
+ */
+describe("a skill-button run, as the chat model receives it", () => {
+  it("arrives as the thread-state note quoting the hooks, with no tool call replayed", async () => {
+    const priorTurns = openChatPriorTurns([
+      msg("user", [text("Generate hooks")]),
+      msg("assistant", [
+        runHeaderBlock({ skill: "hooks", platform: "tiktok" }),
+        { type: "hook-card", props: { hookLine: "Stop buying planners", rank: 1 } },
+        { type: "hook-card", props: { hookLine: "The 9pm rule", rank: 2 } },
+      ]),
+      msg("assistant", [text("The 9pm rule names a time.")]),
+    ]);
+
+    const stream = vi.fn(async () =>
+      (async function* () {
+        yield { choices: [{ delta: { content: "The 9pm rule." } }] } as StreamChunk;
+      })(),
+    ) as unknown as StreamingChatComplete;
+    const hooks: SkillTool = {
+      name: "generate_hooks",
+      skillKey: "hooks",
+      schema: { type: "function", function: { name: "generate_hooks", parameters: { type: "object", properties: {} } } },
+      run: vi.fn(async () => ({ blocks: [], warnings: [] })),
+    };
+
+    await runChatAgentStream(
+      {
+        ask: "which of these would you post first?",
+        context: { platform: "tiktok", profileRow: null, audience: null },
+        systemPrompt: "sys",
+        priorTurns,
+        onToken: vi.fn(),
+        onBlock: vi.fn(),
+      },
+      { streamComplete: stream, model: "test-model", seed: 1, skills: [hooks] },
+    );
+
+    const { messages } = (stream as unknown as ReturnType<typeof vi.fn>).mock.calls[0]![0] as {
+      messages: Array<Record<string, unknown>>;
+    };
+    const note = messages.find(
+      (m) => m.role === "user" && typeof m.content === "string" && m.content.startsWith("[Thread state"),
+    );
+    expect(note?.content).toContain('· hooks, 2 on screen: "Stop buying planners" · "The 9pm rule"');
+    expect(messages.some((m) => m.role === "tool" || "tool_calls" in m)).toBe(false);
+    // In thread order: the ask, then the note, then the closing line.
+    const order = messages.map((m) => m.content);
+    expect(order.indexOf("Generate hooks")).toBeLessThan(order.indexOf(note!.content));
+    expect(order.indexOf(note!.content)).toBeLessThan(order.indexOf("The 9pm rule names a time."));
+    expect(hooks.run).not.toHaveBeenCalled();
   });
 });

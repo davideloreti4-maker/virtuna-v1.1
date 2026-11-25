@@ -120,4 +120,23 @@ describe('PersistedThreadStream — ordered-turn reload', () => {
     );
     expect(screen.getByText('The 5am myth')).toBeTruthy();
   });
+
+  it('flag off: no turn element and no room, even when anchored; the turns stay the column\'s own children', () => {
+    // The new look wraps each turn in a `[data-turn]` (persisted-thread-stream.flag-on.test.tsx).
+    // The old build must not: its column spaces the bubble and the answer as direct children.
+    const { container } = renderWithClient(
+      <PersistedThreadStream
+        anchored
+        persistedTurns={[{ userTurn: 'what makes a good hook?', blocks: [{ type: 'markdown', props: { text: 'A clean prose answer.' } }] }]}
+        liveTurn={{ userTurn: 'and another?', blocks: [], live: { skill: 'chat', isStreaming: true } }}
+        tail={<p data-testid="tail">tail</p>}
+      />,
+    );
+    expect(container.querySelector('[data-turn]')).toBeNull();
+    expect(container.querySelector('[data-room]')).toBeNull();
+    const column = container.firstElementChild!;
+    expect(screen.getByTestId('tail').parentElement).toBe(column);
+    // The bubble's row (`div.flex.justify-end` around the `<p>`) sits straight in the column.
+    expect(screen.getByText('what makes a good hook?').parentElement!.parentElement).toBe(column);
+  });
 });

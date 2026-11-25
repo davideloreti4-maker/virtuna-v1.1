@@ -142,7 +142,9 @@ export function NextUserTurn({
           {text}
         </p>
       ) : (
-        <p className="max-w-[80%] whitespace-pre-wrap text-pretty rounded-3xl rounded-br-sm bg-surface-sunken px-[15px] pb-[11px] pt-2.5 text-ui text-foreground">
+        // `break-words`: a pasted link is one unbroken word; without it the text ran out of the bubble
+        // and was cut at the screen's edge (seen on a real Remix turn, 2026-11-25).
+        <p className="max-w-[80%] whitespace-pre-wrap break-words text-pretty rounded-3xl rounded-br-sm bg-surface-sunken px-[15px] pb-[11px] pt-2.5 text-ui text-foreground">
           {text}
         </p>
       )}

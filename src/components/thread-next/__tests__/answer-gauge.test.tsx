@@ -7,11 +7,11 @@
  */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
 
 vi.mock("@/lib/flags/new-look", () => ({ NEW_LOOK_ENABLED: true }));
 
-import { GaugeSlot, SmallGauge } from "../answer-gauge";
+import { GaugeSlot, SmallGauge, type GaugeState } from "../answer-gauge";
 
 afterEach(cleanup);
 
@@ -141,5 +141,266 @@ describe("GaugeSlot — the link to the result (step 2)", () => {
     render(<GaugeSlot state={{ kind: "empty" }} label="Simulate the opening" text={OPENER} href="/x" onSimulate={() => {}} />);
     expect(screen.getByRole("button", { name: /^Simulate the opening: / })).toBeInTheDocument();
     expect(screen.queryByRole("link")).toBeNull();
+  });
+});
+
+describe("SmallGauge — a score that lands while watched counts up (thread feel §4.4)", () => {
+  const MATCH_MEDIA = Object.getOwnPropertyDescriptor(window, "matchMedia");
+
+  /** The viewer's motion setting: `reduce` matches or not, or no `matchMedia` at all. */
+  function motion(setting: "allowed" | "reduced" | "unknown") {
+    Object.defineProperty(window, "matchMedia", {
+      configurable: true,
+      writable: true,
+      value:
+        setting === "unknown"
+          ? undefined
+          : (query: string) => ({
+              matches: setting === "reduced" && query === "(prefers-reduced-motion: reduce)",
+              media: query,
+              onchange: null,
+              addEventListener: () => {},
+              removeEventListener: () => {},
+              addListener: () => {},
+              removeListener: () => {},
+              dispatchEvent: () => false,
+            }),
+    });
+  }
+
+  /** The clock and the frames, by hand: `advance(ms)` moves the clock and runs the frames asked for. */
+  function frames() {
+    let now = 0;
+    let queue: { id: number; cb: FrameRequestCallback }[] = [];
+    let next = 1;
+    const cancelled: number[] = [];
+    vi.spyOn(performance, "now").mockImplementation(() => now);
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+      const id = next++;
+      queue.push({ id, cb });
+      return id;
+    });
+    vi.stubGlobal("cancelAnimationFrame", (id: number) => {
+      cancelled.push(id);
+      queue = queue.filter((f) => f.id !== id);
+    });
+    return {
+      advance(ms: number) {
+        now += ms;
+        const due = queue;
+        queue = [];
+        act(() => {
+          for (const f of due) f.cb(now);
+        });
+      },
+      pending: () => queue.map((f) => f.id),
+      cancelled,
+    };
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+    if (MATCH_MEDIA) Object.defineProperty(window, "matchMedia", MATCH_MEDIA);
+    else delete (window as { matchMedia?: unknown }).matchMedia;
+  });
+
+  const numberOf = (gauge: HTMLElement) => gauge.querySelector("text")!.textContent;
+  const arcOf = (container: HTMLElement) => container.querySelector('[data-part="value"]');
+
+  it("drawn done (a stored score, a reload): at rest, the number at once and no draw", () => {
+    motion("allowed");
+    frames();
+    const { container } = render(<SmallGauge state={{ kind: "done", value: 45 }} label="A hook" />);
+    expect(numberOf(screen.getByRole("img"))).toBe("45");
+    expect(arcOf(container)).not.toHaveClass("gauge-draw");
+  });
+
+  it("running to done with motion allowed: the arc draws and the number counts from below to exactly the value in 700 ms", () => {
+    motion("allowed");
+    const clock = frames();
+    const { container, rerender } = render(<SmallGauge state={{ kind: "running" }} label="A hook" />);
+    rerender(<SmallGauge state={{ kind: "done", value: 45 }} label="A hook" />);
+
+    // The first frame drawn done is the count's start; the name and the data are final already.
+    const gauge = screen.getByRole("img", { name: "45% would stop to watch" });
+    expect(gauge).toHaveAttribute("data-gauge", "done");
+    expect(gauge).toHaveAttribute("data-value", "45");
+    expect(arcOf(container)).toHaveClass("gauge-draw");
+    expect(Number(numberOf(gauge))).toBeLessThan(45);
+
+    clock.advance(350);
+    const halfway = Number(numberOf(gauge));
+    expect(halfway).toBeGreaterThan(0);
+    expect(halfway).toBeLessThan(45);
+    expect(gauge).toHaveAttribute("data-value", "45");
+
+    clock.advance(350);
+    expect(numberOf(gauge)).toBe("45");
+    // Done counting: no frame is asked for any more.
+    expect(clock.pending()).toEqual([]);
+  });
+
+  it("a linked gauge counts the same, and its description is the final number from the first frame", () => {
+    motion("allowed");
+    const clock = frames();
+    const { rerender } = render(<SmallGauge state={{ kind: "running" }} label="A hook" href="/simulation/hook/t/k" />);
+    rerender(<SmallGauge state={{ kind: "done", value: 30 }} label="A hook" href="/simulation/hook/t/k" />);
+    const link = screen.getByRole("link");
+    expect(link).toHaveAccessibleDescription("30% would stop to watch");
+    expect(link).toHaveAttribute("data-value", "30");
+    expect(Number(numberOf(link))).toBeLessThan(30);
+    clock.advance(700);
+    expect(numberOf(link)).toBe("30");
+  });
+
+  it("waiting to done counts as running to done", () => {
+    motion("allowed");
+    const clock = frames();
+    const { container, rerender } = render(<SmallGauge state={{ kind: "waiting" }} label="A hook" />);
+    rerender(<SmallGauge state={{ kind: "done", value: 22 }} label="A hook" />);
+    expect(arcOf(container)).toHaveClass("gauge-draw");
+    expect(Number(numberOf(screen.getByRole("img")))).toBeLessThan(22);
+    clock.advance(700);
+    expect(numberOf(screen.getByRole("img"))).toBe("22");
+  });
+
+  it("empty to done (a seal that arrives without a run being watched): at rest", () => {
+    motion("allowed");
+    frames();
+    const { container, rerender } = render(<SmallGauge state={{ kind: "empty" }} label="A hook" onSimulate={() => {}} />);
+    rerender(<SmallGauge state={{ kind: "done", value: 22 }} label="A hook" />);
+    expect(numberOf(screen.getByRole("img"))).toBe("22");
+    expect(arcOf(container)).not.toHaveClass("gauge-draw");
+  });
+
+  it.each(["reduced", "unknown"] as const)("running to done with motion %s: the value at once, no draw", (setting) => {
+    motion(setting);
+    frames();
+    const { container, rerender } = render(<SmallGauge state={{ kind: "running" }} label="A hook" />);
+    rerender(<SmallGauge state={{ kind: "done", value: 45 }} label="A hook" />);
+    expect(numberOf(screen.getByRole("img", { name: "45% would stop to watch" }))).toBe("45");
+    expect(arcOf(container)).not.toHaveClass("gauge-draw");
+  });
+
+  it("a render of the parent mid-count neither restarts the count nor cuts it short", () => {
+    motion("allowed");
+    const clock = frames();
+    const { rerender } = render(<SmallGauge state={{ kind: "running" }} label="A hook" />);
+    rerender(<SmallGauge state={{ kind: "done", value: 45 }} label="A hook" />);
+    clock.advance(350);
+    const halfway = Number(numberOf(screen.getByRole("img")));
+    expect(halfway).toBeGreaterThan(0);
+    expect(halfway).toBeLessThan(45);
+    rerender(<SmallGauge state={{ kind: "done", value: 45 }} label="A hook" />);
+    expect(Number(numberOf(screen.getByRole("img")))).toBe(halfway);
+    clock.advance(350);
+    expect(numberOf(screen.getByRole("img"))).toBe("45");
+  });
+
+  it("its link arriving after the count has ended (a pack row at the end of 'Simulate all'): the arc does not draw again", () => {
+    motion("allowed");
+    const clock = frames();
+    const { container, rerender } = render(<SmallGauge state={{ kind: "running" }} label="A hook" />);
+    rerender(<SmallGauge state={{ kind: "done", value: 45 }} label="A hook" />);
+    expect(arcOf(container)).toHaveClass("gauge-draw");
+    clock.advance(700);
+    expect(numberOf(screen.getByRole("img"))).toBe("45");
+    // The count is over: the class goes with it, so the arc in a new element is drawn at rest.
+    expect(arcOf(container)).not.toHaveClass("gauge-draw");
+
+    rerender(<SmallGauge state={{ kind: "done", value: 45 }} label="A hook" href="/simulation/hook/t/k" />);
+    const link = screen.getByRole("link");
+    expect(numberOf(link)).toBe("45");
+    expect(link.querySelector('[data-part="value"]')).not.toHaveClass("gauge-draw");
+    expect(clock.pending()).toEqual([]);
+  });
+
+  it("unmounted mid-count: its frame is cancelled", () => {
+    motion("allowed");
+    const clock = frames();
+    const { rerender, unmount } = render(<SmallGauge state={{ kind: "running" }} label="A hook" />);
+    rerender(<SmallGauge state={{ kind: "done", value: 45 }} label="A hook" />);
+    clock.advance(100);
+    const [waiting] = clock.pending();
+    expect(waiting).toBeDefined();
+    unmount();
+    expect(clock.cancelled).toContain(waiting);
+    expect(clock.pending()).toEqual([]);
+  });
+
+  describe("in a slot (the script's opening, the remix hook)", () => {
+    const OPENER = "I fed 10 million viral videos into an AI to simulate your exact audience.";
+    const PAGE = "/simulation/hook/t/k?as=opening";
+    const slot = (state: GaugeState, href?: string | null) => (
+      <GaugeSlot state={state} label="Simulate the opening" text={OPENER} href={href} />
+    );
+
+    it("running to done with its page: the link as today, and its score counts up", () => {
+      motion("allowed");
+      const clock = frames();
+      const { container, rerender } = render(slot({ kind: "running" }));
+      rerender(slot({ kind: "done", value: 41 }, PAGE));
+
+      const link = screen.getByRole("link", { name: /^Open the result: I fed 10 million/ });
+      expect(link).toHaveAttribute("href", PAGE);
+      expect(link).toHaveAttribute("data-slot", "done");
+      expect(link).toHaveTextContent("would stop to watch");
+      expect(link).toHaveAccessibleDescription("41% would stop to watch");
+      const gauge = link.querySelector<HTMLElement>('[data-gauge="done"]')!;
+      expect(gauge).toHaveAttribute("data-value", "41");
+      expect(arcOf(container)).toHaveClass("gauge-draw");
+      expect(Number(numberOf(gauge))).toBeLessThan(41);
+
+      clock.advance(350);
+      const halfway = Number(numberOf(link.querySelector<HTMLElement>('[data-gauge="done"]')!));
+      expect(halfway).toBeGreaterThan(0);
+      expect(halfway).toBeLessThan(41);
+      clock.advance(350);
+      expect(numberOf(link.querySelector<HTMLElement>('[data-gauge="done"]')!)).toBe("41");
+      expect(link).toHaveAccessibleDescription("41% would stop to watch");
+    });
+
+    it("running to done before its page is known: counts in place", () => {
+      motion("allowed");
+      const clock = frames();
+      const { container, rerender } = render(slot({ kind: "running" }));
+      rerender(slot({ kind: "done", value: 41 }, null));
+      expect(screen.queryByRole("link")).toBeNull();
+      expect(arcOf(container)).toHaveClass("gauge-draw");
+      expect(Number(numberOf(screen.getByRole("img")))).toBeLessThan(41);
+      clock.advance(700);
+      expect(numberOf(screen.getByRole("img"))).toBe("41");
+    });
+
+    it("its page arriving after the score: the link at rest, the score not counted again", () => {
+      motion("allowed");
+      const clock = frames();
+      const { container, rerender } = render(slot({ kind: "running" }));
+      rerender(slot({ kind: "done", value: 41 }, null));
+      clock.advance(700);
+      rerender(slot({ kind: "done", value: 41 }, PAGE));
+      const link = screen.getByRole("link", { name: /^Open the result: / });
+      expect(numberOf(link.querySelector<HTMLElement>('[data-gauge="done"]')!)).toBe("41");
+      expect(arcOf(container)).not.toHaveClass("gauge-draw");
+      expect(clock.pending()).toEqual([]);
+    });
+
+    it("drawn done with its page (a reload): at rest", () => {
+      motion("allowed");
+      frames();
+      const { container } = render(slot({ kind: "done", value: 41 }, PAGE));
+      expect(numberOf(screen.getByRole("link").querySelector<HTMLElement>('[data-gauge="done"]')!)).toBe("41");
+      expect(arcOf(container)).not.toHaveClass("gauge-draw");
+    });
+
+    it("running to done with its page and reduced motion: at rest", () => {
+      motion("reduced");
+      frames();
+      const { container, rerender } = render(slot({ kind: "running" }));
+      rerender(slot({ kind: "done", value: 41 }, PAGE));
+      expect(numberOf(screen.getByRole("link").querySelector<HTMLElement>('[data-gauge="done"]')!)).toBe("41");
+      expect(arcOf(container)).not.toHaveClass("gauge-draw");
+    });
   });
 });

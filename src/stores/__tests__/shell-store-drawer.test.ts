@@ -24,6 +24,23 @@ describe("shell store: the phone's drawer", () => {
     expect(localStorage.length).toBe(0);
   });
 
+  it("setThreadTitleHint writes the hint only: Back's marker and Library's scroll stay as they were", () => {
+    useShellStore.getState().setThreadBack("/library", {
+      title: { id: "t1", title: "Video simulation" },
+      scroll: { href: "/library", top: 320 },
+    });
+    useShellStore.getState().setThreadTitleHint({ id: "t1", title: "meal prep for busy students" });
+    const s = useShellStore.getState();
+    expect(s.threadTitleHint).toEqual({ id: "t1", title: "meal prep for busy students" });
+    expect(s.threadBack).toBe("/library");
+    expect(s.libraryScroll).toEqual({ href: "/library", top: 320 });
+    useShellStore.getState().setThreadTitleHint(null);
+    expect(useShellStore.getState().threadTitleHint).toBeNull();
+    expect(useShellStore.getState().threadBack).toBe("/library");
+    expect(useShellStore.getState().libraryScroll).toEqual({ href: "/library", top: 320 });
+    useShellStore.getState().setThreadBack(null);
+  });
+
   it("accountFace starts null and holds what is set", () => {
     expect(useShellStore.getState().accountFace).toBeNull();
     useShellStore.getState().setAccountFace({ picture: "/avatars/nia.png", initials: "NL" });

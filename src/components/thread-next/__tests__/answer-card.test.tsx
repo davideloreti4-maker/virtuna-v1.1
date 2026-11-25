@@ -1,8 +1,8 @@
 /** @vitest-environment happy-dom */
 
 /**
- * The card's parts (spec §3 rule 2): the one ink primary with its price in the `em`, and the
- * waiting row a live run shows under the label (§4.8). Rendered for real.
+ * The card's parts (spec §3 rule 2): the one ink primary with its price in the `em`, the card and
+ * its header. Rendered for real. (The waiting row is gone: the wait is `run-status.test.tsx`'s.)
  */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -11,7 +11,6 @@ import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 vi.mock("@/lib/flags/new-look", () => ({ NEW_LOOK_ENABLED: true }));
 
 import { AnswerCard, AnswerPrimary, CardHeader } from "../answer-card";
-import { WaitingRow } from "../waiting-row";
 
 afterEach(cleanup);
 
@@ -71,24 +70,5 @@ describe("AnswerCard and CardHeader", () => {
     expect(screen.getByText("Would stop to watch")).toBeInTheDocument();
     expect(screen.getByText("1 credit each")).toBeInTheDocument();
     expect(screen.getByText("Row")).toBeInTheDocument();
-  });
-});
-
-describe("WaitingRow", () => {
-  it("names the run, politely live, with its dots hidden from screen readers", () => {
-    const { container } = render(<WaitingRow label="Writing hooks" />);
-    const row = screen.getByText("Writing hooks").closest("[aria-live]");
-    expect(row).toHaveAttribute("aria-live", "polite");
-    const dots = container.querySelectorAll('[data-part="dot"]');
-    expect(dots).toHaveLength(3);
-    for (const dot of dots) expect(dot.closest('[aria-hidden="true"]')).not.toBeNull();
-  });
-
-  it("the dots pulse only when motion is allowed", () => {
-    const { container } = render(<WaitingRow label="Thinking" />);
-    for (const dot of container.querySelectorAll('[data-part="dot"]')) {
-      expect(dot.getAttribute("class") ?? "").toMatch(/motion-safe:animate-/);
-      expect(dot.getAttribute("class") ?? "").not.toMatch(/(^|\s)animate-/);
-    }
   });
 });

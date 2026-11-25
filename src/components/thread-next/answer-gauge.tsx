@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useId } from "react";
+import { useId, useLayoutEffect, useState } from "react";
 
 import { circles } from "@/components/result/audience-ring";
 import type { Archetype } from "@/lib/engine/wave3/persona-registry";
@@ -25,7 +25,7 @@ import { ChevronIcon } from "./field-icons";
  * - done: the ink arc and the number, "would stop to watch". With its result page (`href`, step 2) it
  *   is ONE link around the same picture, named "Open the result: <text>" and described by the number
  *   (the name replaces the content, so the number is read as the description). Without one, not a
- *   control.
+ *   control. A score that lands while the creator watches draws and counts up (`useCountUp`).
  *
  * Geometry as drawn, for any size (46 in a pack row, 30 in a script or remix slot): a 270° arc
  * from 135°, stroke 9.8% of the size, 1.5 inside the box; no tick (no "usual"). The track is
@@ -159,6 +159,64 @@ function RunningRing({ size }: { size: number }) {
   );
 }
 
+// ─── A score that lands while watched ────────────────────────────────────────
+
+/** How long the arc draws and the number counts (thread feel §4.4); `.gauge-draw` in globals.css matches. */
+const COUNT_MS = 700;
+
+/** The curve `--ease-out` (cubic-bezier(0.215, 0.61, 0.355, 1)) stands for, so the number keeps pace with the arc. */
+const easeOut = (t: number) => 1 - (1 - t) ** 3;
+
+/** No `matchMedia` (or reduced motion asked for): at rest. */
+function motionAllowed(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function" &&
+    !window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
+}
+
+/**
+ * Thread feel §4.4: a gauge the creator is looking at that turns done from running or waiting draws
+ * its arc from nothing and counts its number up from 0, both in 700 ms. A gauge drawn done (a stored
+ * score, a reload, a seal that came with no run in view) is at rest, and so is every gauge with
+ * reduced motion. Only the drawn number moves: the name, `data-value` and what a screen reader hears
+ * are the final value from the first frame.
+ *
+ * The previous kind is kept in state and compared while rendering (React's way to remember a prop),
+ * not in a ref read during render, so the render stays pure and the first frame drawn done is
+ * already the count's start. `before` seeds it for a gauge mounted new at the moment its score
+ * lands (`shownBefore`, from `GaugeSlot`). `progress` is the share of the count drawn, 1 at rest;
+ * `drawing` ends with the count.
+ */
+function useCountUp(kind: GaugeState["kind"], before: GaugeState["kind"] = kind): { drawing: boolean; progress: number } {
+  const [seen, setSeen] = useState(before);
+  const [drawing, setDrawing] = useState(false);
+  const [progress, setProgress] = useState(1);
+  if (kind !== seen) {
+    const fresh = kind === "done" && (seen === "running" || seen === "waiting") && motionAllowed();
+    setSeen(kind);
+    setDrawing(fresh);
+    setProgress(fresh ? 0 : 1);
+  }
+  // In a layout effect, so the clock starts with the frame that first shows the count.
+  useLayoutEffect(() => {
+    if (!drawing) return;
+    const start = performance.now();
+    let frame = requestAnimationFrame(function tick() {
+      const share = Math.min(1, (performance.now() - start) / COUNT_MS);
+      setProgress(share);
+      if (share < 1) frame = requestAnimationFrame(tick);
+      // The count has ended: the draw class goes with it. A pack row gets its result link when the
+      // queue ends, so its picture becomes a new element; with the class still on, the CSS draw
+      // would play again from an empty arc under a number that stands still.
+      else setDrawing(false);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [drawing]);
+  return { drawing, progress };
+}
+
 // ─── The gauge ───────────────────────────────────────────────────────────────
 
 export function SmallGauge({
@@ -168,6 +226,7 @@ export function SmallGauge({
   onSimulate,
   href,
   words,
+  shownBefore,
 }: {
   state: GaugeState;
   size?: number;
@@ -179,8 +238,13 @@ export function SmallGauge({
   /** A done gauge's number in words, when it measures something other than a text's stop
    *  ("38% watch to the end" for a video, in Library). Default: `stopWords(value)`. */
   words?: string;
+  /** What its slot showed before this render, for a gauge mounted new as its score lands (a slot's
+   *  link is a new element): mounted done after running or waiting, it counts up as if it had been
+   *  there. Default: its own kind, so a gauge mounted done is at rest. */
+  shownBefore?: GaugeState["kind"];
 }) {
   const numberId = useId();
+  const count = useCountUp(state.kind, shownBefore);
   const box = { width: size, height: size };
 
   if (state.kind === "running") {
@@ -195,6 +259,7 @@ export function SmallGauge({
     const { stroke, m, d } = measures(size);
     const value = Math.round(state.value);
     const fill = Math.max(0, Math.min(100, value));
+    const shown = count.drawing ? Math.round(easeOut(count.progress) * value) : value;
     const fontSize = Math.round(size * 0.31);
     const baseline = m + (ASCENT - CONTENT / 2) * fontSize;
     const picture = (
@@ -210,6 +275,7 @@ export function SmallGauge({
             strokeWidth={stroke}
             strokeLinecap="round"
             strokeDasharray={`${fill} 100`}
+            className={count.drawing ? "gauge-draw" : undefined}
           />
         )}
         <text
@@ -222,7 +288,7 @@ export function SmallGauge({
           fill="var(--color-foreground)"
           className="tabular-nums"
         >
-          {value}
+          {shown}
         </text>
       </svg>
     );
@@ -293,6 +359,22 @@ export function EmptyArt({ size }: { size: number }) {
 
 // ─── The slot: a 30 gauge with its caption ───────────────────────────────────
 
+/**
+ * What a slot's gauge showed before this render, handed to the gauge (`shownBefore`). A slot that
+ * gets its result page with its score swaps its row for a link, a new element, so the gauge inside
+ * is mounted new at the very moment the score lands and would start at rest: React cannot move a
+ * mounted gauge into the new link. Kept in state and compared while rendering, as `useCountUp` does.
+ * A page that arrives after the score (the kind unchanged) hands over the kind itself, so the score
+ * is not counted twice.
+ */
+function useShownBefore(kind: GaugeState["kind"], linked: boolean): GaugeState["kind"] {
+  const [last, setLast] = useState({ kind, linked, before: kind });
+  if (last.kind !== kind || last.linked !== linked) {
+    setLast({ kind, linked, before: last.kind !== kind ? last.kind : kind });
+  }
+  return last.before;
+}
+
 /** The slot's caption in each state that is not a control. */
 const SLOT_CAPTION: Record<Exclude<GaugeState["kind"], "empty">, string> = {
   running: "Simulating",
@@ -312,7 +394,8 @@ const SLOT_CAPTION: Record<Exclude<GaugeState["kind"], "empty">, string> = {
  *   "Simulating", "Waiting" or "would stop to watch". Not a control, except (step 2) a simulated slot
  *   with its result page (`href`): then ONE link, "would stop to watch" and a chevron, named
  *   "Open the result: <the text>" and described by the number. No `href` (its key not known yet): the
- *   words alone, never a dead link.
+ *   words alone, never a dead link. A score that lands while watched counts up here too, link or not
+ *   (`useShownBefore`).
  *
  * Geometry as drawn: 40 tall, 9 between the gauge and the text, 13 / 570 (drawn 13.5), the price
  * 500 in the muted ink. Margins are the caller's (`className`).
@@ -337,6 +420,7 @@ export function GaugeSlot({
 }) {
   const priceId = useId();
   const numberId = useId();
+  const shownBefore = useShownBefore(state.kind, state.kind === "done" && !!href);
   const row = "flex h-10 items-center gap-[9px] text-meta font-[570] text-foreground";
 
   if (state.kind !== "empty") {
@@ -349,7 +433,7 @@ export function GaugeSlot({
           aria-describedby={numberId}
           className={cn(row, "tap-44 -mx-1.5 rounded-xl px-1.5", className)}
         >
-          <SmallGauge state={state} size={30} label={text} />
+          <SmallGauge state={state} size={30} label={text} shownBefore={shownBefore} />
           <span>{SLOT_CAPTION.done}</span>
           <ChevronIcon size={14} strokeWidth={2.1} aria-hidden className="-ml-1 shrink-0 text-foreground-muted" />
           <span id={numberId} className="sr-only">
@@ -360,7 +444,7 @@ export function GaugeSlot({
     }
     return (
       <div data-slot={state.kind} className={cn(row, className)}>
-        <SmallGauge state={state} size={30} label={text} />
+        <SmallGauge state={state} size={30} label={text} shownBefore={shownBefore} />
         <span>{SLOT_CAPTION[state.kind]}</span>
       </div>
     );

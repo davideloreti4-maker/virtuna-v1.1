@@ -11,6 +11,8 @@ import { useState } from "react";
 
 vi.mock("@/lib/flags/new-look", () => ({ NEW_LOOK_ENABLED: true }));
 
+import { anySheetOpen } from "@/lib/thread-next/open-sheets";
+
 import { AnswerSheet, SETTLE_MS, settleClock } from "../answer-sheet";
 
 function viewport(wide: boolean) {
@@ -173,5 +175,55 @@ describe("AnswerSheet", () => {
     const dialog = await screen.findByRole("dialog");
     expect(dialog.className).toContain("w-[560px]");
     expect(dialog.className).toContain("bg-surface");
+  });
+});
+
+describe("AnswerSheet — tells the page while it is open (the thread's fold waits for it, thread depth Task 3)", () => {
+  it.each([
+    ["phone", false],
+    ["desktop", true],
+  ] as const)("on the %s: not while closed; while open, yes; once Escape has closed it, no", async (_view, wide) => {
+    viewport(wide);
+    render(<Harness />);
+    expect(anySheetOpen()).toBe(false);
+    fireEvent.click(screen.getByRole("button", { name: "Open row" }));
+    const dialog = await screen.findByRole("dialog", { name: TITLE });
+    expect(anySheetOpen()).toBe(true);
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(anySheetOpen()).toBe(false);
+  });
+
+  it("unmounted while open (its turn replaced): no longer told as open", () => {
+    viewport(false);
+    const { unmount } = render(
+      <AnswerSheet open onOpenChange={() => {}} title={TITLE}>
+        x
+      </AnswerSheet>,
+    );
+    expect(anySheetOpen()).toBe(true);
+    unmount();
+    expect(anySheetOpen()).toBe(false);
+  });
+
+  it("two open at once: open until both have closed", () => {
+    viewport(false);
+    const first = render(
+      <AnswerSheet open onOpenChange={() => {}} title={TITLE}>
+        x
+      </AnswerSheet>,
+    );
+    const second = render(
+      <AnswerSheet open onOpenChange={() => {}} title="Another">
+        y
+      </AnswerSheet>,
+    );
+    first.rerender(
+      <AnswerSheet open={false} onOpenChange={() => {}} title={TITLE}>
+        x
+      </AnswerSheet>,
+    );
+    expect(anySheetOpen()).toBe(true);
+    second.unmount();
+    expect(anySheetOpen()).toBe(false);
   });
 });

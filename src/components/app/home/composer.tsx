@@ -127,12 +127,18 @@ import { validateVideoFile } from "@/lib/video-file";
 import { TextSimProvider } from "@/components/thread-next/text-sim";
 import { VideoRunning } from "@/components/thread-next/video-running";
 import { ThreadHeader } from "@/components/thread-next/thread-header";
+import { JumpButton } from "@/components/thread-next/jump-button";
 import { threadAudienceOf } from "@/lib/thread-next/thread-audience";
 import { reloadedSeals } from "@/lib/thread-next/seal-reload";
 import { takeScriptFrom } from "@/lib/thread-next/script-from";
 import { takeRemixFrom, type RemixFrom } from "@/lib/thread-next/remix-from";
 import { REMIX_PLATFORMS } from "@/lib/discover-next/remix";
 import { useShellStore } from "@/stores/shell-store";
+import { answerIsIn } from "@/lib/thread-next/answer-in";
+import { anySheetOpen, subscribeOpenSheets } from "@/lib/thread-next/open-sheets";
+import { cleanThreadTitle } from "@/lib/threads/title";
+import { shownThreadTitle } from "@/components/shell/use-thread-title";
+import type { ThreadSummary } from "@/hooks/queries/use-threads";
 import { SkillPill, SkillsPanel } from "./v8/skills-panel";
 import { AudienceLensChip } from "./v8/audience-lens-chip";
 
@@ -181,7 +187,7 @@ import { BuildChooser } from "./build-chooser";
 import { HomeStarter, HomeFirstRunDemo } from "./home-starter";
 import { HomeAudienceIntro } from "./home-audience-intro";
 import { useAmbientFocus, type AmbientCardDescriptor } from "./use-ambient-focus";
-import { PIN_THRESHOLD_PX, useThreadAutoscroll } from "./use-thread-autoscroll";
+import { useThreadAutoscroll } from "./use-thread-autoscroll";
 import { buildAmbientDescriptors, resolveFocusDescriptor } from "./ambient-descriptors";
 import { detectRefineIntent } from "@/lib/tools/refine";
 // Stage B "one brain" — the client half of the lever (default OFF; see one-brain-flag.ts). It
@@ -308,6 +314,14 @@ const NEXT_THREAD_RESERVE = "pb-[calc(var(--field-reserve)+30px)] md:pb-[calc(va
 // field (its block plus the space under it, plus 12) and of the phone's header band, never under them.
 const NEXT_THREAD_SCROLL_PAD =
   "scroll-pb-[calc(var(--field-reserve)+42px)] md:scroll-pb-[calc(var(--field-reserve)+36px)] scroll-pt-[var(--nav-pt)] md:scroll-pt-0";
+// The room a sent turn takes (thread feel, step 1; persisted-thread-stream.tsx `TURN_ROOM`): the
+// window's height less the field's block less this, so that with the turn's top taken 8 under the
+// window's visible top its least height ends where the thread's visible part ends. On the phone the
+// visible top is under the header band (`--nav-pt`, the region's top padding, which the shell's
+// header covers) and the visible end is the space under the field (30) above the field's block;
+// from md there is no band and that space is 24. Pinned against the dock's own space by the composer
+// test "the room's trim".
+const NEXT_THREAD_ROOM_TRIM = "[--thread-room-trim:calc(var(--nav-pt)+38px)] md:[--thread-room-trim:32px]";
 // A solid page-colour base behind the docked field (thread answers step 1), so text scrolled down
 // to the field never shows under it or beside it (not even at its rounded top corners; Task 7
 // critic): the shell's full width, from the field's top (the whole measured block, plus the dock's
@@ -318,6 +332,13 @@ const NEXT_DOCK_BASE =
   "pointer-events-none absolute inset-x-0 bottom-0 bg-background h-[calc(var(--field-reserve)_+_54px)] md:h-[calc(var(--field-reserve)_+_48px)] [-webkit-mask-image:linear-gradient(to_bottom,transparent_0,black_24px)] [mask-image:linear-gradient(to_bottom,transparent_0,black_24px)]";
 // The field at rest as drawn (96), until the first measurement lands.
 const NEXT_FIELD_REST_HEIGHT = 96;
+// Thread feel §4.6: how long the field shows its send arrow (off) while a stream that has its answer
+// in still bills and closes (normally 3 to 4 s) before Stop comes back.
+const FINISHING_STOP_MS = 8_000;
+// Thread depth (Task 2): the longest a follow-up tapped in those seconds waits for that stream to
+// close and fold before it is sent anyway (a stream that hangs); set again while one of the look's
+// sheets is open (Task 3, `onHeldFollowupDue`).
+const HELD_FOLLOWUP_MAX_MS = 8_000;
 // The new look's short placeholders: `@/components/thread-next/field-copy` (shared with /dev/field).
 
 // Map an audience's platform to the composer Platform union (custom → tiktok).
@@ -674,7 +695,119 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // thread render — the in-thread card handoffs below (`handleWriteScript`, `handleDevelopRemix`)
   // FIRE runs and must re-pin, and a `const` read from a callback defined above its declaration
   // is a TDZ throw, not a stale closure.
-  const { registerScrollRegion, scrollThreadToBottom } = useThreadAutoscroll(openThreadId);
+  const {
+    registerScrollRegion,
+    scrollThreadToBottom,
+    anchorNextTurn,
+    settle,
+    scrollToLatest,
+    hiddenBelow,
+    isPinned,
+    // New look (thread feel, step 1): a turn sent in this visit of this chat takes the room under it
+    // (`PersistedThreadStream` `anchored`). Kept by the hook, which knows whether the send's turn
+    // ever came: a send that bailed leaves nothing, a thread switch clears it.
+    anchored,
+    // A new chat's first send gives it its id (`ensureThreadForSend`): announced, so the hook keeps
+    // that send's arm and room rather than taking the id for a switch.
+    expectNewThread,
+    // A video send whose turn goes away before its run starts (a refused upload) leaves no room.
+    releaseSend,
+  } = useThreadAutoscroll(openThreadId);
+  // New look: the number of the last send whose turn is the live turn, and of the last whose turn
+  // is the composer's tail (the video run). The stream stamps each slot with its own number, so a
+  // send marks only the element its turn is in: a video sent with an answer still in the live slot
+  // leaves that answer as it was (not re-mounted, and never taken for the video's turn).
+  const [sendSeqs, setSendSeqs] = useState({ live: 0, tail: 0 });
+  // New look: a run is starting now, its turn in `slot`. Called in the same synchronous block as the
+  // run's start (after every await), so the send's number, its question and the run's own reset and
+  // start land in ONE render: the slot's element with the new number already holds the new run. A
+  // send that bails before its start never arms: nothing is stamped, re-mounted or anchored, and
+  // the re-pin at the top of `handleSubmit` leaves the view at the end, as before. Flag off: nothing.
+  const armSentTurn = useCallback(
+    (slot: "live" | "tail") => {
+      if (!NEW_LOOK_ENABLED) return;
+      const seq = anchorNextTurn();
+      setSendSeqs((s) => ({ ...s, [slot]: seq }));
+    },
+    [anchorNextTurn],
+  );
+  // A send shows its result, for the senders that start their run at once (a card's script, a
+  // chip). Flag off: re-pin and follow the end, as before. New look: the turn it sends goes to the
+  // top of the window and stays there while its answer grows under it (spec 2026-11-25 §4.1).
+  const showSentTurn = useCallback(() => {
+    if (NEW_LOOK_ENABLED) armSentTurn("live");
+    else scrollThreadToBottom();
+  }, [scrollThreadToBottom, armSentTurn]);
+
+  // New look (thread depth, Task 2): a follow-up fired from inside the thread (a card's or a sheet's
+  // script, a chip) while the last answer's stream is still open with its answer in (the field's
+  // `finishing`, `finishingNow` below). Sent then, its `chat.start` aborts that stream, and the chat
+  // route stores a run's cards only once its loop has returned, so they land after the new question:
+  // the pack left the screen, then came back under the script's ask, after a reload too. So it is
+  // held: nothing sent, nothing reset, the open stream left alone; the field shows Stop. It goes
+  // once that stream has closed and its run has folded into the thread (the release effect, after the
+  // folds), as it would have at the tap: its turn shown and armed then, with its run's start. At the
+  // latest `HELD_FOLLOWUP_MAX_MS` after the tap (a stream that hangs), as before, unless one of the
+  // look's sheets is open then (`onHeldFollowupDue`). The last one tapped wins; Stop and leaving the
+  // chat drop it. Flag off: never held, sent at once as before.
+  const heldFollowupRef = useRef<(() => void) | null>(null);
+  const heldFollowupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [followupHeld, setFollowupHeld] = useState(false);
+  // The field is finishing, and a finished run's fold is still reading the thread, for the handlers
+  // declared above `finishingNow` and `foldPending` (kept by a layout effect there).
+  const finishingRef = useRef(false);
+  const foldPendingRef = useRef(false);
+  const dropHeldFollowup = useCallback(() => {
+    heldFollowupRef.current = null;
+    if (heldFollowupTimerRef.current !== null) clearTimeout(heldFollowupTimerRef.current);
+    heldFollowupTimerRef.current = null;
+    setFollowupHeld(false);
+  }, []);
+  const fireHeldFollowup = useCallback(() => {
+    const send = heldFollowupRef.current;
+    dropHeldFollowup();
+    send?.();
+  }, [dropHeldFollowup]);
+  // The limit came due. Not under one of the look's sheets (thread depth, Task 3): the fold waits for
+  // the sheet, and the follow-up's run would take the live slot from under it, the sheet vanishing.
+  // Then the limit is set again: the sheet's close lets the fold run and the release effect send it
+  // (clearing this timer), or, should that fold not come, the limit sends it after the sheet.
+  const onHeldFollowupDue = useCallback(
+    function due() {
+      if (NEW_LOOK_ENABLED && anySheetOpen()) {
+        heldFollowupTimerRef.current = setTimeout(due, HELD_FOLLOWUP_MAX_MS);
+        return;
+      }
+      fireHeldFollowup();
+    },
+    [fireHeldFollowup],
+  );
+  const sendOrHold = useCallback(
+    (send: () => void) => {
+      // Held while the answer is in and its stream still open, and after it closes while its fold
+      // still reads the thread (sent then, `chat.start` would cancel the fold, and `chat.reset` would
+      // empty the live slot before the run is in history: its pack would be gone until the new run's
+      // own fold), or while another is held (this one takes its place).
+      if (
+        !NEW_LOOK_ENABLED ||
+        (!finishingRef.current && !foldPendingRef.current && heldFollowupRef.current === null)
+      ) {
+        send();
+        return;
+      }
+      heldFollowupRef.current = send;
+      if (heldFollowupTimerRef.current !== null) clearTimeout(heldFollowupTimerRef.current);
+      heldFollowupTimerRef.current = setTimeout(onHeldFollowupDue, HELD_FOLLOWUP_MAX_MS);
+      setFollowupHeld(true);
+    },
+    [onHeldFollowupDue],
+  );
+  useEffect(
+    () => () => {
+      if (heldFollowupTimerRef.current !== null) clearTimeout(heldFollowupTimerRef.current);
+    },
+    [],
+  );
 
   // ── Active-thread switch signal (multi-thread chat history) ─────────────────
   // Bumped by the sidebar when the user opens a new thread or re-opens a past
@@ -688,6 +821,34 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   const switchThread = useBoardStore((s) => s.switchThread);
   const queryClient = useQueryClient();
   const isFirstThreadLoadRef = useRef(true);
+
+  // New look (thread feel, spec §5.1): the first message of a chat names it in the header at once,
+  // so it does not say "New chat" until the list is read again. The server titles a chat once, from
+  // its first message, by `cleanThreadTitle` (a bare link or a file name names nothing), so the hint
+  // is what it is about to store, shown as the header shows a stored title (`shownThreadTitle`: a
+  // cap-long one cut back to its last whole word). Called by a send from the field only when the
+  // chat had no turn on screen as it was sent (a chip or a card's button always sits under one),
+  // once the send has made sure its chat exists. Once per chat (`namedThreadRef`): after a Stop or a
+  // failed run nothing is folded and the list still holds the chat untitled, but the server already
+  // has its first message. A chat with history whose listed title is still empty (a chat beyond the
+  // list's rows, a send in the moment before the list's answer) is not named by a later send: its
+  // stored title comes with the list at the fold, late but never wrong. A chat the list already
+  // holds a title for is left alone. Flag off: nothing.
+  const namedThreadRef = useRef<string | null>(null);
+  const hintThreadTitle = useCallback(
+    (ask: string) => {
+      if (!NEW_LOOK_ENABLED) return;
+      const id = useBoardStore.getState().activeThreadId;
+      if (!id || namedThreadRef.current === id) return;
+      const listed = queryClient.getQueryData<ThreadSummary[]>(queryKeys.threads.list());
+      if (listed?.find((t) => t.id === id)?.title?.trim()) return;
+      const title = cleanThreadTitle(ask);
+      if (!title) return;
+      namedThreadRef.current = id;
+      useShellStore.getState().setThreadTitleHint({ id, title: shownThreadTitle(title) });
+    },
+    [queryClient],
+  );
 
   // ── Persisted open-thread blocks (Task 3 — D-14/THREAD-07 rehydration) ─────
   // Loaded on mount from GET /api/threads/open. Declared before the view gates
@@ -1209,6 +1370,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       // empties. Without this, hasThread/hasConversationContent flip false for the
       // fetch duration and the layout collapses to the centered serif welcome-hero.
       setRehydrating(true);
+      // New look: a follow-up held for the last chat's stream belongs to that chat (thread depth,
+      // Task 2). Dropped first, so the resets below cannot let it go into this one.
+      if (NEW_LOOK_ENABLED) dropHeldFollowup();
       chat.reset();
       ideas.reset();
       hooks.reset();
@@ -1577,34 +1741,42 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // "that script" starts from nothing. Routing it through the loop gives the CTA the same context
   // and the same continuity a typed ask already has, while `forceSkill` + `forceAnchor` keep the
   // guarantee that made it a one-shot: this exact line, that exact skill, no re-litigation.
-  const handleWriteScript = useCallback((hookLine: string, _audienceArchetype: string) => {
-    // The script appends at the BOTTOM, but the hook card that started it can be thousands of
-    // pixels up — every completed turn keeps its cards, so pressing "Write the script →" on a
-    // card from an earlier turn is normal. Measured signed-in 2026-08-05: the run streamed a
-    // full script 8,478px below the viewport and the view never moved, so the tap read as the
-    // app doing nothing for 90s. Same rule as a chip: an explicit tap is consent to be taken
-    // to its result (see sendChatFollowup).
-    scrollThreadToBottom();
-    // This FIRES a script run (below) rather than arming one, so it names the RUN. Arming the
-    // composer here would strand the creator on Script after a card CTA they never aimed at
-    // the field — the one-shot's whole point.
-    noteRun("script");
-    setScriptAnchorHook(hookLine); // PR-2: cite this input hook in the script intro
-    if (ONE_BRAIN_ENABLED) {
-      // The ask is written out because the chat route persists it as the user turn — so the thread
-      // reads as the creator asking for this, which is exactly what pressing the CTA was. The hook
-      // itself rides as `anchor` (data), never folded into the sentence: the loop pins it onto the
-      // round-1 call verbatim, and a paraphrase would be a different anchor.
-      const ask = "Write the script from this hook.";
-      setLastUserTurn(ask);
-      chat.reset();
-      void chat.start(ask, platform, "script", { anchor: hookLine });
-      return;
-    }
-    script.reset();
-    // ask empty — the carried hookLine anchors the script generation.
-    void script.start("", platform, hookLine, intent);
-  }, [script, chat, platform, intent, scrollThreadToBottom]);
+  const handleWriteScript = useCallback(
+    (hookLine: string, _audienceArchetype: string, label?: string) =>
+      sendOrHold(() => {
+        // New look: held while the last answer's stream is still open with its answer in, and sent once
+        // it has closed and folded (`sendOrHold`); every line below runs then, as it would at the tap.
+        // The script appends at the BOTTOM, but the hook card that started it can be thousands of
+        // pixels up — every completed turn keeps its cards, so pressing "Write the script →" on a
+        // card from an earlier turn is normal. Measured signed-in 2026-08-05: the run streamed a
+        // full script 8,478px below the viewport and the view never moved, so the tap read as the
+        // app doing nothing for 90s. Same rule as a chip: an explicit tap is consent to be taken
+        // to its result (see sendChatFollowup).
+        showSentTurn();
+        // This FIRES a script run (below) rather than arming one, so it names the RUN. Arming the
+        // composer here would strand the creator on Script after a card CTA they never aimed at
+        // the field — the one-shot's whole point.
+        noteRun("script");
+        setScriptAnchorHook(hookLine); // PR-2: cite this input hook in the script intro
+        if (ONE_BRAIN_ENABLED) {
+          // The ask is written out because the chat route persists it as the user turn — so the thread
+          // reads as the creator asking for this, which is exactly what pressing the CTA was. The hook
+          // itself rides as `anchor` (data), never folded into the sentence: the loop pins it onto the
+          // round-1 call verbatim, and a paraphrase would be a different anchor.
+          // A pack's row names itself ("hook 2", thread feel §4.7), so the thread says which one was
+          // scripted; from anywhere with no row number (a sheet, a remix, a result page) it stays as before.
+          const ask = label ? `Write the script for ${label}.` : "Write the script from this hook.";
+          setLastUserTurn(ask);
+          chat.reset();
+          void chat.start(ask, platform, "script", { anchor: hookLine });
+          return;
+        }
+        script.reset();
+        // ask empty — the carried hookLine anchors the script generation.
+        void script.start("", platform, hookLine, intent);
+      }),
+    [script, chat, platform, intent, showSentTurn, sendOrHold],
+  );
 
   // ── New look: "Script this one" from a text's result page (thread answers step 2) ──────────────
   // The page (/simulation/hook/…) left the text for its thread in sessionStorage (`leaveScriptFrom`),
@@ -1646,6 +1818,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   const handleDevelopRemix = useCallback(async (adaptedHook: string, remixPlatform: string) => {
     // Re-pin for the same reason handleWriteScript does: the developed hook cards land at the
     // bottom of the thread, and the remix card that was tapped can be far above it.
+    // New look too (thread feel): its cards come back with the thread's reload, as a persisted turn,
+    // never in the live slot, so no turn of this send would carry its number; an arm would only hold
+    // the view still for its whole wait. Following the end is what shows them.
     scrollThreadToBottom();
     // POSTs a develop run below — it fires, so it names the RUN, not the composer's arm.
     noteRun("hooks");
@@ -1784,13 +1959,44 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // renders from the same clean per-turn path (live === reloaded).
   const { isDone: chatIsDone, isStreaming: chatIsStreaming, reset: chatReset } = chat;
   const chatDoneHandledRef = useRef(false);
+  // New look (thread depth, Task 3): both folds wait while one of the look's sheets is open
+  // (`open-sheets.ts`). A sheet opened on an answer that has just landed lives in the live turn, and
+  // the fold replaces that turn with its persisted copy: the sheet closed under the creator (measured
+  // on a phone, 5.5 s after it opened, nobody touching it). A fold that finds a sheet open does not
+  // start (its run stays live, `foldPending` stays true, so a follow-up tapped in the sheet is held)
+  // and is tried again once the last sheet has closed: the store's own change bumps its retry, never
+  // a render. Only a fold not yet started waits, so a retry never cancels one on its way. Flag off:
+  // the store is never read, the retries stay 0.
+  const [chatFoldRetry, setChatFoldRetry] = useState(0);
+  const [runFoldRetry, setRunFoldRetry] = useState(0);
+  const chatFoldWaitsRef = useRef(false);
+  const runFoldWaitsRef = useRef(false);
+  useEffect(() => {
+    if (!NEW_LOOK_ENABLED) return;
+    return subscribeOpenSheets(() => {
+      if (anySheetOpen()) return;
+      if (chatFoldWaitsRef.current) {
+        chatFoldWaitsRef.current = false;
+        setChatFoldRetry((n) => n + 1);
+      }
+      if (runFoldWaitsRef.current) {
+        runFoldWaitsRef.current = false;
+        setRunFoldRetry((n) => n + 1);
+      }
+    });
+  }, []);
   useEffect(() => {
     if (!chatIsDone) {
       // A new turn started (or state cleared) — re-arm for the next completion.
       chatDoneHandledRef.current = false;
+      chatFoldWaitsRef.current = false;
       return;
     }
     if (chatIsStreaming || chatDoneHandledRef.current) return;
+    if (NEW_LOOK_ENABLED && anySheetOpen()) {
+      chatFoldWaitsRef.current = true;
+      return;
+    }
     chatDoneHandledRef.current = true;
     let cancelled = false;
     void (async () => {
@@ -1800,11 +2006,14 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       const ok = await reloadChatThread();
       if (cancelled || !ok) return;
       chatReset();
+      // New look (thread feel, spec §5.1): the turn is in history, and with it the chat's stored
+      // title, so the list is read again (the sidebar, Home's Recent, the header). Flag off: as before.
+      if (NEW_LOOK_ENABLED) void queryClient.invalidateQueries({ queryKey: queryKeys.threads.list() });
     })();
     return () => {
       cancelled = true;
     };
-  }, [chatIsDone, chatIsStreaming, chatReset, reloadChatThread]);
+  }, [chatIsDone, chatIsStreaming, chatReset, reloadChatThread, queryClient, chatFoldRetry]);
 
   // ── Run completion → the thread owns it (thread unification) ────────────────
   // THE fix for "I ask for hooks, then want something else, and sometimes it doesn't work."
@@ -1846,15 +2055,23 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   useEffect(() => {
     if (!activeRunSkill || !activeRunSettled) {
       if (!activeRunIsDone) runDoneHandledRef.current = null; // re-arm for the next run
+      runFoldWaitsRef.current = false;
       return;
     }
     if (activeRunIsStreaming || runDoneHandledRef.current === activeRunSkill) return;
+    // New look: not while a sheet is open on it (see the chat's fold above).
+    if (NEW_LOOK_ENABLED && anySheetOpen()) {
+      runFoldWaitsRef.current = true;
+      return;
+    }
     runDoneHandledRef.current = activeRunSkill;
     let cancelled = false;
     void (async () => {
       const ok = await reloadChatThread();
       if (cancelled || !ok) return;
       activeRunReset?.();
+      // New look: as the chat's fold above, the list is read again for the title the run stored.
+      if (NEW_LOOK_ENABLED) void queryClient.invalidateQueries({ queryKey: queryKeys.threads.list() });
     })();
     return () => {
       cancelled = true;
@@ -1866,6 +2083,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     activeRunIsStreaming,
     activeRunReset,
     reloadChatThread,
+    queryClient,
+    runFoldRetry,
   ]);
 
   // NOTE (2026-07-29): the "late follow-up → one more reload" effect that lived here is GONE, and
@@ -1877,6 +2096,64 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // ⚠️ `hasContent()` in use-active-run.ts must still EXCLUDE `followupText`. That exclusion is not
   // about this effect — it is what stops a late frame refilling an emptied stream and re-claiming
   // the tail (the duplicate-turn defect measured live on 2026-07-28). It stays load-bearing.
+
+  // New look (thread feel, step 1, spec §4.1, §4.6): the answer is in, by the one rule the turn
+  // draws it with (`answerIsIn`): a run's cards once every stage it reported is done (a dispatched
+  // run's stream stays open after them, to bill and write its closing line), anything else when its
+  // stream has ended. Two readers here:
+  // - the settle: if the answer's end landed just under the field, `settle` brings it up so the last
+  //   line and the chips are not half hidden. Once per answer, on the next frame, so what just
+  //   landed is laid out first.
+  // - the field: Stop only until the answer is in; then, while the stream is still open, its send
+  //   arrow, off until the stream closes (Enter stays blocked on `isAnyStreaming`).
+  // Flag off: never.
+  const answerIn = NEW_LOOK_ENABLED && activeRun !== null && answerIsIn(activeRun);
+  const answerInRef = useRef(false);
+  useEffect(() => {
+    const was = answerInRef.current;
+    answerInRef.current = answerIn;
+    if (!answerIn || was) return;
+    const frame = requestAnimationFrame(() => settle());
+    return () => cancelAnimationFrame(frame);
+  }, [answerIn, settle]);
+  // The field's third state (`finishing`) lasts the few seconds a stream takes to bill and close. If
+  // the close stalls (a slow provider, a phone that lost its connection: the chat route sets no time
+  // limit), Stop comes back after `FINISHING_STOP_MS`, so the field is never held with no way out.
+  // One timer per answer; reset in render once the field is no longer finishing.
+  const finishingNow = isAnyStreaming && answerIn;
+  const [finishingStalled, setFinishingStalled] = useState(false);
+  if (!finishingNow && finishingStalled) setFinishingStalled(false);
+  useEffect(() => {
+    if (!finishingNow) return;
+    const timer = setTimeout(() => setFinishingStalled(true), FINISHING_STOP_MS);
+    return () => clearTimeout(timer);
+  }, [finishingNow]);
+  const fieldFinishing = finishingNow && !finishingStalled;
+
+  // New look (thread depth, Task 2): the release of a follow-up held while the field was finishing
+  // (`sendOrHold`, above). It goes once no stream is open and the run that was finishing has folded
+  // into the thread: the chat's fold (on `isDone`, once its stream has closed) or any other run's (on
+  // `isDone` and `isClosed`) has read the thread again and reset the run. A stream that ended with
+  // no answer to fold (an error) lets it go at once; a fold whose reload failed, at the timer.
+  // A run whose answer is in and that has not folded into the thread yet: a fold on its way, or a
+  // run that has reported `done` with its stream still open (a skill's own run writes its closing
+  // line then; ruling 18 leaves the field at rest, but a follow-up sent from inside the thread there
+  // takes the live slot from an answer not yet in history: its pack left the screen for the new
+  // run's whole wait, and the route stores that line after the new question).
+  const foldPending =
+    (chat.isDone && !chat.isStreaming) ||
+    (activeRunSettled && !activeRunIsStreaming) ||
+    (activeRunIsDone && !activeRunIsClosed);
+  // Before paint, so no tap can land between the frame that shows the answer in (or the stream
+  // closed) and these.
+  useLayoutEffect(() => {
+    finishingRef.current = finishingNow;
+    foldPendingRef.current = foldPending;
+  }, [finishingNow, foldPending]);
+  useEffect(() => {
+    if (!followupHeld || isAnyStreaming || foldPending) return;
+    fireHeldFollowup();
+  }, [followupHeld, isAnyStreaming, foldPending, fireHeldFollowup]);
 
   // ── Chat follow-up chips (chat-followups.ts) ───────────────────────────────
   // A tapped follow-up continues the conversation in THIS chat thread: it echoes the prompt as the
@@ -1901,21 +2178,24 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     (prompt: string, skill?: string, opts?: { cards?: string[] }) => {
       const t = prompt.trim();
       if (!t) return;
-      // The answer appends at the BOTTOM, but the chip that started it can be thousands of pixels
-      // up — every completed turn keeps its row, so tapping one from an earlier turn is normal.
-      // Measured signed-in: tapping a chip 7,000px up ran the skill and streamed cards the creator
-      // never saw. An explicit tap is consent to be taken to its result.
-      scrollThreadToBottom();
-      setLastUserTurn(t);
-      chat.reset();
-      void chat.start(
-        t,
-        platform,
-        skill,
-        ONE_BRAIN_ENABLED && opts?.cards?.length ? { cards: opts.cards } : undefined,
-      );
+      // New look: held while the last answer's stream is still open (`sendOrHold`, as a card's script).
+      sendOrHold(() => {
+        // The answer appends at the BOTTOM, but the chip that started it can be thousands of pixels
+        // up — every completed turn keeps its row, so tapping one from an earlier turn is normal.
+        // Measured signed-in: tapping a chip 7,000px up ran the skill and streamed cards the creator
+        // never saw. An explicit tap is consent to be taken to its result.
+        showSentTurn();
+        setLastUserTurn(t);
+        chat.reset();
+        void chat.start(
+          t,
+          platform,
+          skill,
+          ONE_BRAIN_ENABLED && opts?.cards?.length ? { cards: opts.cards } : undefined,
+        );
+      });
     },
-    [chat, platform, scrollThreadToBottom],
+    [chat, platform, showSentTurn, sendOrHold],
   );
 
   // Stage a dropped/selected evidence file. Unsupported types (.docx/.pdf — D-09)
@@ -2126,6 +2406,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       if (!res.ok) return;
       const { threadId } = (await res.json()) as { threadId: string };
       setActiveThreadCookie(threadId);
+      // New look: this id is the send's own chat, not a chat being opened (the autoscroll hook keeps
+      // the send's arm and room through it). Flag off: never armed, so nothing to keep.
+      expectNewThread();
       setOpenThreadId(threadId);
       setActiveThreadId(threadId);
       // Surface the new thread (and, once titled, its label) in the sidebar.
@@ -2134,7 +2417,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       // Network error — the tool route's createOpenThreadLazy still resolves a target thread
       // server-side, so the send is not lost.
     }
-  }, [queryClient, setActiveThreadId]);
+  }, [queryClient, setActiveThreadId, expectNewThread]);
 
   // ── Submit -> create (lifted/adapted from Board.tsx handleContentSubmit) ──
   // Slim: only the TikTok-URL and video-upload paths for Test; Ideas pipeline for Idea.
@@ -2190,7 +2473,12 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     // ones that bail (the audience gate, an expired session, a bad URL), because those render
     // their notice at the bottom of the thread too, and a creator who had scrolled up to re-read
     // a card would otherwise get silence back from a send.
+    // New look: the same re-pin, and nothing more here. The send's turn is taken to the top only
+    // where its run starts (`armSentTurn`, in each branch), so a send that bails leaves no trace.
     scrollThreadToBottom();
+    // New look: whether this is the chat's first message, read as the send was made (before its own
+    // turn is on screen), for the header's name (`hintThreadTitle`).
+    const firstInChat = !hasThread;
 
     // THE ONE-SHOT (Lane 2 step 5). Called at the exact point a branch DISPATCHES a run —
     // never at the top, because a branch that bails (the General-verb audience gate, an
@@ -2219,6 +2507,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     const captureUserTurn = (raw: string) => {
       const t = raw.trim();
       setLastUserTurn(t || null);
+      // New look: the chat's name in the header (`hintThreadTitle`), from its first message only.
+      // Every branch calls this after `ensureThreadForSend`, so the open chat is the send's own.
+      if (firstInChat) hintThreadTitle(t);
       // Persist the question so re-opening the thread restores the top "you asked"
       // bubble (issue 3). Fire-and-forget: the turn renders at the top via
       // lastUserTurn independent of persisted order, so it never needs awaiting.
@@ -2260,6 +2551,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     if (tool === "account") {
       setUrl(""); // the field was never an input here; don't leave a stale draft behind
       armFired();
+      armSentTurn("live"); // new look: the run starts here (see `armSentTurn`)
       await account.start();
       return;
     }
@@ -2272,6 +2564,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       captureUserTurn(ask);
       setUrl(""); // clear input after send
       armFired();
+      armSentTurn("live");
       // ideas.start() does the full fetch+getReader SSE loop (BLOCKER-1 compliant)
       await ideas.start(ask, platform, intent);
       return;
@@ -2286,6 +2579,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       captureUserTurn(ask);
       setUrl(""); // clear input after send
       armFired();
+      armSentTurn("live");
       // hooks.start() does the full fetch+getReader SSE loop (BLOCKER-1 compliant)
       await hooks.start(ask, platform, intent);
       return;
@@ -2326,6 +2620,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           // WR-02: only fire refine when the card was actually resolved.
           // If not found, surface a chat note instead of refining a fallback.
           if (!foundCard?.props) {
+            armSentTurn("live");
             await chat.start(
               `I couldn't find Hook #${cardRef}. Try "make hook 1 punchier" — use the number shown on the card.`,
               platform,
@@ -2334,6 +2629,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           }
           const { buildRefineAnchor } = await import("@/lib/tools/refine");
           const anchor = buildRefineAnchor(foundCard.props, instruction ?? ask);
+          // New look: after the import's await, in the block of the refine's own reset and start.
+          armSentTurn("live");
           // Route to hooks stream refine path — error surfaces via hooks.error → SkillRunError
           hooks.reset();
           // The refine RUNS as hooks, so the thread's live tail is a hooks run — but the
@@ -2351,6 +2648,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           const foundCard = ideaPool[cardRef - 1]; // 1-based within a single pool
           // WR-02: only fire refine when the card was actually resolved.
           if (!foundCard?.props) {
+            armSentTurn("live");
             await chat.start(
               `I couldn't find Idea #${cardRef}. Try "tighten idea 1" — use the number shown on the card.`,
               platform,
@@ -2359,6 +2657,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           }
           const { buildRefineAnchor } = await import("@/lib/tools/refine");
           const anchor = buildRefineAnchor(foundCard.props, instruction ?? ask);
+          armSentTurn("live"); // after the import's await, as the hooks refine above
           // Route to ideas stream refine path — error surfaces via ideas.error → SkillRunError
           ideas.reset();
           // Same as the hooks branch above — name the run, never re-arm the composer.
@@ -2369,6 +2668,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       }
 
       // ── Plain chat turn (no refine intent detected) ────────────────────────
+      armSentTurn("live");
       chat.reset(); // clear prior error/coldStart for the new turn
       // chat.start() does the full fetch+getReader SSE loop (BLOCKER-1 compliant)
       await chat.start(ask, platform);
@@ -2385,6 +2685,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       setUrl(""); // clear input after send
       setScriptAnchorHook(null); // direct topic send — no anchor hook → thinner intro
       armFired();
+      armSentTurn("live");
       script.reset();
       // script.start(ask, platform, anchor?) — anchor omitted from direct composer sends
       await script.start(ask, platform, undefined, intent);
@@ -2400,6 +2701,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       captureUserTurn(url);
       setUrl(""); // clear input after send
       armFired();
+      armSentTurn("live");
       remix.reset();
       const left = remixBriefRef.current;
       remixBriefRef.current = null;
@@ -2422,6 +2724,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       captureUserTurn(ask);
       setUrl(""); // clear input after send
       armFired();
+      armSentTurn("live");
       // explore.start() does the full fetch+getReader SSE loop (BLOCKER-1 compliant).
       await explore.start({ niche: ask || undefined });
       return;
@@ -2497,6 +2800,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       setSubmitError(null);
       setSubmitting(true);
       if (NEW_LOOK_ENABLED) setTestSentAt(Date.now());
+      // New look: the video's turn (the tail) appears in this render ("uploading"), and stays one
+      // element to its card, so it is armed here, with it, and not again when the run starts.
+      armSentTurn("tail");
       // New look: an exit before the run starts (an expired session, a refused upload, a throw) shows
       // no turn of its own, so the captured question goes back to what was on screen: from Home that
       // is none, so the screen is Home again; in a thread its last turn keeps its question. The error
@@ -2557,6 +2863,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       } finally {
         if (NEW_LOOK_ENABLED && !runStarted) {
           setLastUserTurn((cur) => (cur === file.name.trim() ? turnBefore : cur));
+          // Its turn (the tail) goes with this exit, no failed turn in its place: the send leaves
+          // no room under the turn before it, and the view goes where the pin rule puts it.
+          releaseSend();
         }
         setSubmitting(false);
       }
@@ -2568,6 +2877,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     setSubmitError(null);
     setSubmitting(true);
     if (NEW_LOOK_ENABLED) setTestSentAt(Date.now());
+    armSentTurn("tail"); // new look: the link run's turn (the tail) appears in this render
     try {
       // Arm the in-thread seal for this real submission (see upload path above).
       pendingSealRef.current = true;
@@ -2588,7 +2898,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       setSubmitting(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTool, file, editOpen, testBrief, isValidTikTok, trimmedUrl, stream, ideas, hooks, chat, script, remix, explore, platform, intent, persistedHookBlocks, persistedIdeaBlocks, hooksBlocks, ideasBlocks, selectedAudience, router, reloadProfileThread, queryClient, setActiveThreadId, scrollThreadToBottom]);
+  }, [activeTool, file, editOpen, testBrief, isValidTikTok, trimmedUrl, stream, ideas, hooks, chat, script, remix, explore, platform, intent, persistedHookBlocks, persistedIdeaBlocks, hooksBlocks, ideasBlocks, selectedAudience, router, reloadProfileThread, queryClient, setActiveThreadId, scrollThreadToBottom, armSentTurn, releaseSend, hintThreadTitle, hasThread]);
 
   // ── Seam 4 — the launch-seed inlet (THE-CONTRACT.md §3) ────────────────────────
   // A surface (the start page's embedded composer) hands a composed intent off as a
@@ -2730,6 +3040,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     if (nextSendRef.current !== null) return;
     holdNextSend(async () => {
       await ensureThreadForSend();
+      // A send like the field's: its turn goes to the top (spec 2026-11-25 §4.1), armed where the
+      // run starts, after every await. Flag off: nothing.
+      armSentTurn("live");
       await explore.start(params);
     });
   };
@@ -2740,7 +3053,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     e.preventDefault();
     // The send button's own checks (`ThreadField`: online, not busy, Stop while a stream runs),
     // repeated because Enter submits this form whatever the button shows (residual fix).
-    if (!online || submitting || profiling || isAnyStreaming || openingEdit) return;
+    if (!online || submitting || profiling || isAnyStreaming || openingEdit || followupHeld) return;
     if (nextSendRef.current !== null) return; // the first send is still starting
     if (!evidenceFile && !canSubmit) return;
     // Read only for a send that goes: an Enter that sends nothing must not move the cursor when the
@@ -2871,8 +3184,12 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   //
   // A pinned thread stays pinned: the reserve grows with the field, but the scroll position does
   // not (the autoscroll hook watches the thread's content, not its padding), so the newest line
-  // would end up under the taller field. Whether the creator was at the end is read BEFORE the
-  // reserve changes (PIN_THRESHOLD_PX, the hook's own rule), and the scroll follows after.
+  // would end up under the taller field. Whether the thread follows its end is read BEFORE the
+  // reserve changes, and the scroll follows after. It is the hook's own pin (`isPinned`), not the
+  // distance to the end (thread feel, step 1): a sent turn with a short answer is taken to the top
+  // and its room fills the window, so that view sits at the end without following it, and reading
+  // the distance re-pinned it (the answer's growth then followed the end and the question scrolled
+  // away). Every other view reads the same either way: the pin is the hook's PIN_THRESHOLD_PX rule.
   const nextThreadRegionRef = useRef<HTMLElement | null>(null);
   const nextFollowOnResizeRef = useRef(false);
   const [nextFieldHeight, setNextFieldHeight] = useState(NEXT_FIELD_REST_HEIGHT);
@@ -2883,19 +3200,21 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       if (!entry) return;
       const height = Math.ceil(entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height);
       if (height <= 0) return;
-      const region = nextThreadRegionRef.current;
-      nextFollowOnResizeRef.current =
-        !!region && region.scrollHeight - region.clientHeight - region.scrollTop <= PIN_THRESHOLD_PX;
+      nextFollowOnResizeRef.current = !!nextThreadRegionRef.current && isPinned();
       setNextFieldHeight(height);
     });
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [isPinned]);
   useLayoutEffect(() => {
     if (!NEW_LOOK_ENABLED || !nextFollowOnResizeRef.current) return;
     nextFollowOnResizeRef.current = false;
+    // Asked again, not trusted from the observer's read: a send clears the field and mounts its
+    // turn in one frame, so the turn can be taken to the top (the pin released) between that read
+    // and this commit. Following then would cancel the move and pin the view to the end.
+    if (!isPinned()) return;
     scrollThreadToBottom();
-  }, [nextFieldHeight, scrollThreadToBottom]);
+  }, [nextFieldHeight, scrollThreadToBottom, isPinned]);
 
   // ── Ambient presence focus (Plan 13-04 — AMBIENT-01, D-01/D-02/D-03/D-04) ──
   // The room's card ledger + the batch's kind label for the anchored-focus stepper
@@ -3628,6 +3947,14 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       window.removeEventListener("pointerdown", onPointerDown, true);
     };
   }, []);
+  // New look: "Go to the latest" goes away once the end is in view, so a keyboard user's focus would
+  // fall on the page: from the keyboard, the focus then goes to the field's text (the next thing they
+  // do there is type). A tap leaves it alone: on a phone that focus would open the keyboard over the
+  // very end the button just brought into view.
+  const goToLatest = () => {
+    scrollToLatest();
+    if (lastInputKeyboardRef.current) slashAnchorRef.current?.querySelector("textarea")?.focus({ preventScroll: true });
+  };
   const wasHomeShownRef = useRef(nextHomeShown);
   useEffect(() => {
     const leftHome = wasHomeShownRef.current && !nextHomeShown;
@@ -3771,6 +4098,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           }
           // The running video is the thread's answer on its way: no turn above it offers chips.
           tailRunning={NEW_LOOK_ENABLED && testSubmitPending}
+          // New look: a turn sent in this visit takes the room under it (`showSentTurn`), and the sent
+          // turn is marked with its send's number.
+          anchored={anchored}
+          liveSendSeq={sendSeqs.live}
+          tailSendSeq={sendSeqs.tail}
         />
       </ThreadIdContext.Provider>
             </OutlierGridActionsContext.Provider>
@@ -4356,8 +4688,13 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             canSend={(evidenceFile ? !profiling : canSubmit) && nextSendLatch.phase === "off" && !slashActive}
             busy={submitting || profiling || openingEdit}
             online={online}
-            streaming={isAnyStreaming}
-            onStop={() => stopActive()}
+            // A held follow-up (thread depth, Task 2) shows Stop until it goes; Stop drops it.
+            streaming={(isAnyStreaming && !fieldFinishing) || followupHeld}
+            finishing={fieldFinishing && !followupHeld}
+            onStop={() => {
+              dropHeldFollowup();
+              stopActive();
+            }}
             // The staged video shows only while Simulate (or Edit) is selected. A failed run keeps it (the
             // failure turn's retry re-reads it); a sealed run and a thread switch clear it
             // (final review 1, `nextRunInputsRef`).
@@ -4849,6 +5186,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             // `observeNextFieldBlock`. The legacy reserve is unchanged.
             NEW_LOOK_ENABLED ? NEXT_THREAD_RESERVE : showV8Chips ? "pb-[240px]" : "pb-[184px]",
             NEW_LOOK_ENABLED && NEXT_THREAD_SCROLL_PAD,
+            NEW_LOOK_ENABLED && NEXT_THREAD_ROOM_TRIM,
           )}
           style={
             {
@@ -4972,6 +5310,15 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         >
           {NEW_LOOK_ENABLED ? <div aria-hidden className={NEXT_DOCK_BASE} /> : null}
           <div className={NEW_LOOK_ENABLED ? NEXT_DOCK_COLUMN : "w-full max-w-[760px] mx-auto px-2.5 sm:px-4"}>
+            {/* New look (thread feel, step 1): "Go to the latest", centred 12 above the field's block
+                while more than 150 of the answer is under it. Placed against the column's top (the
+                block's top: nothing sits above the field in a thread), out of the flow, so the field's
+                measured height (`observeNextFieldBlock`) never includes it. */}
+            {NEW_LOOK_ENABLED ? (
+              <div className="pointer-events-none absolute inset-x-0 bottom-full mb-3 flex justify-center">
+                <JumpButton shown={hiddenBelow} onClick={goToLatest} />
+              </div>
+            ) : null}
             {/* The six quick actions live ABOVE the field, never below it (owner call 2026-07-24):
                 below, they read as results of a chat that hasn't happened. Only on the post-pick
                 empty chat — once real content lands, the thread is the offer. */}
