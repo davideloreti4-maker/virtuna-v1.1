@@ -398,6 +398,8 @@ describe("/dev/answers: the wait", () => {
       expect(rows.map((r) => r.style.getPropertyValue("--i"))).toEqual(["0", "1", "2"]);
       expect(screen.getByRole("button", { name: /Simulate all 3/ }).closest<HTMLElement>(".land")!.style.getPropertyValue("--i")).toBe("3");
       expect(screen.getByTestId("followup-row").closest<HTMLElement>(".land")!.style.getPropertyValue("--i")).toBe("6");
+      // Maven's pick comes in after the button and before the chips.
+      expect(document.querySelector<HTMLElement>('[data-part="pack-pick"]')!.style.getPropertyValue("--i")).toBe("4");
       fireEvent.click(screen.getByRole("button", { name: /Simulate all 3/ }));
       fireEvent.click(screen.getByRole("button", { name: "Follow up: More hooks" }));
       expect(fetchSpy).not.toHaveBeenCalled();
@@ -405,5 +407,43 @@ describe("/dev/answers: the wait", () => {
       vi.useRealTimers();
       vi.unstubAllGlobals();
     }
+  });
+});
+
+// Maven's pick (spec 2026-11-25-maven-pick-design.md §3), for looking at: the line under the pack before
+// the numbers, the measured line after, none without reasons; the plain reason in the hook's sheet.
+describe("/dev/answers: Maven's pick", () => {
+  const pick = () => document.querySelector<HTMLElement>('[data-part="pack-pick"]');
+  const LINE = "Maven would post hook 1. Everyone has wasted money on food, so you want the cheap fix.";
+
+  it("p3: the pack with reasons, not simulated: the line under the card", () => {
+    render(<DevAnswers state="p3" skin="light" frames={null} />);
+    expect(pick()).toHaveTextContent(LINE);
+    expect(screen.queryByText(/leads by/)).toBeNull();
+  });
+
+  it("p4: one row simulated, the line stays", () => {
+    render(<DevAnswers state="p4" skin="light" frames={null} />);
+    expect(pick()).toHaveTextContent(LINE);
+  });
+
+  it("p5: the same pack fully simulated: the measured line, no pick", () => {
+    render(<DevAnswers state="p5" skin="light" frames={null} />);
+    expect(pick()).toBeNull();
+    expect(screen.getByText("Hook 3 leads by 15 points.")).toBeInTheDocument();
+  });
+
+  it("p3n: a pack with no reasons (written before them): no line at all", () => {
+    render(<DevAnswers state="p3n" skin="light" frames={null} />);
+    expect(screen.getByText("3 hooks")).toBeInTheDocument();
+    expect(pick()).toBeNull();
+    expect(screen.queryByText(/Maven would post|leads by|is ahead by|a tie/)).toBeNull();
+  });
+
+  it("p6b: hook 1's sheet shows its plain reason whole under Why it works", () => {
+    render(<DevAnswers state="p6b" skin="light" frames={null} />);
+    const dialog = screen.getByRole("dialog");
+    expect(within(dialog).getByText("Everyone has wasted money on food, so you want the cheap fix.")).toBeInTheDocument();
+    expect(within(dialog).queryByRole("button", { name: "More" })).toBeNull();
   });
 });

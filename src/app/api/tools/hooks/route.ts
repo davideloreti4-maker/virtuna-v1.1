@@ -282,6 +282,7 @@ export async function POST(request: Request): Promise<Response> {
               hookLine: b.props.hookLine,
               audienceArchetype: b.props.audienceArchetype, // D-03 audience tag
               mechanism: b.props.mechanism,
+              why: b.props.why,                             // Maven's pick: rides the FACE, else the live pack has no line until the fold
               seedHook: b.props.seedHook,
               rank: b.props.rank,                           // D-01 rank position
               scrollQuote: b.props.scrollQuote,             // D-02/D-04: on the face

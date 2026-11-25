@@ -25,6 +25,9 @@ import { DevAnswers, type DevAnswersSkin, type DevAnswersState } from "./dev-ans
  *   composed answer; the chat answer above it in the drawing is not a card)
  * - p7: the hook's result page, from `HOOK_1_POPULATION` · p7l: loading · p7n: not found
  * - p6: hook 1 opened, simulated (P6) · p6b: the same, not simulated · p6i: an idea opened
+ * - Maven's pick (spec 2026-11-25-maven-pick-design.md): p3 (and p4) the line under the pack,
+ *   "Maven would post hook 1." and its reason · p5 the same pack fully simulated, the measured line in
+ *   its place · p3n the pack with no reasons, no line · p6 / p6b the reason whole in hook 1's sheet
  * - Not drawn, for looking at: p9b the video's row still loading · p10b the script's opening
  *   simulated · p11b three remixes on the pager
  * - Depth (thread depth §3): every script shows its beats' names (p10 has neither cues nor a plan,
@@ -54,7 +57,7 @@ const one = (value: string | string[] | undefined) => (Array.isArray(value) ? va
 
 // Kept here, not imported from the client module: a server file gets a client module's values as
 // references, not as the array.
-const STATES: readonly DevAnswersState[] = ["p3", "p3v", "p4", "p5", "p12", "p8", "p9", "p9b", "p10", "p10b", "p10c", "p10p", "p11", "p11b", "p11c", "p11d", "p13", "p14", "p15", "d3", "p7", "p7l", "p7n", "p6", "p6b", "p6i", "w1", "w2", "w3", "w4", "w5", "w6", "wl"];
+const STATES: readonly DevAnswersState[] = ["p3", "p3v", "p3n", "p4", "p5", "p12", "p8", "p9", "p9b", "p10", "p10b", "p10c", "p10p", "p11", "p11b", "p11c", "p11d", "p13", "p14", "p15", "d3", "p7", "p7l", "p7n", "p6", "p6b", "p6i", "w1", "w2", "w3", "w4", "w5", "w6", "wl"];
 const SKINS: readonly DevAnswersSkin[] = ["light", "dark"];
 const isState = (value: string): value is DevAnswersState => (STATES as readonly string[]).includes(value);
 const isSkin = (value: string): value is DevAnswersSkin => (SKINS as readonly string[]).includes(value);

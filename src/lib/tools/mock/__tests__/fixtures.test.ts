@@ -37,3 +37,18 @@ describe("mock fixtures — schema validity", () => {
     }
   });
 });
+
+// Maven's pick (spec 2026-11-25-maven-pick-design.md): a mock hooks run shows the line under its pack
+// and the plain reason in each hook's sheet, as a real run does, so every mock hook carries a usable
+// `why` and keeps it through the schema.
+describe("mock fixtures — the hooks' plain reasons", () => {
+  it("every mock hook carries a usable why, kept by the schema", async () => {
+    const { usableWhy } = await import("@/lib/thread-next/pick-line");
+    const hooks = FIXTURE_BLOCKS_BY_SKILL.hooks.filter((b) => b.type === "hook-card");
+    expect(hooks.length).toBeGreaterThanOrEqual(2);
+    for (const block of hooks) {
+      const parsed = BlockUnionSchema.parse(block) as { props: { why?: string } };
+      expect(usableWhy(parsed.props.why), JSON.stringify(block.props)).not.toBeNull();
+    }
+  });
+});

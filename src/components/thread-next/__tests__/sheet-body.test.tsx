@@ -30,7 +30,9 @@ describe("HookSheetBody", () => {
     const onScript = vi.fn();
     render(<HookSheetBody hook={HOOK} gauge={gauge()} actions={actions} onScript={onScript} />);
     expect(h3s()).toEqual(["Proven", "Visual", "Why it works"]);
-    expect(screen.getByText("It breaks the idea that meal prep means expensive wellness culture.")).toBeInTheDocument();
+    // Maven's pick: the writer's plain reason, not its working note (was: the `mechanism`).
+    expect(screen.getByText("Everyone has wasted money on food, so you want the cheap fix.")).toBeInTheDocument();
+    expect(screen.queryByText(/wellness culture/)).toBeNull();
     expect(screen.getByText("Sad grey food next to textbooks")).toBeInTheDocument();
     const proofLink = screen.getByRole("link", { name: /^Proven: @dij\.arc, 50× their followers · 21K views/ });
     expect(proofLink).toHaveAttribute("href", "/clips/dij-arc");
@@ -71,7 +73,8 @@ describe("HookSheetBody", () => {
   it("a why-it-works that is one long sentence is folded at a whole word, and More opens all of it", () => {
     const long =
       "The contrarian prediction error contradicts the mundane expectation of 'meal prep' by introducing an absurd, high-production spectacle (a cooking robot), leveraging the cross-niche curiosity viewer's attraction to scale and weirdness before pivoting to the actual student context.";
-    render(<HookSheetBody hook={{ ...HOOK, mechanism: long }} gauge={gauge()} actions={actions} />);
+    // A hook without a reason (an older pack): its `mechanism`, folded. (HOOK has a reason since Maven's pick.)
+    render(<HookSheetBody hook={{ ...HOOK, why: undefined, mechanism: long }} gauge={gauge()} actions={actions} />);
     const section = screen.getByRole("heading", { level: 3, name: "Why it works" }).parentElement!;
     expect(section).not.toHaveTextContent("student context");
     expect(section.textContent).toMatch(/…\s*More$/);
@@ -85,6 +88,49 @@ describe("HookSheetBody", () => {
     render(<HookSheetBody hook={bare} gauge={gauge({ text: "A bare hook" })} actions={actions} />);
     expect(h3s()).toEqual(["Why it works"]);
     expect(screen.queryByRole("button", { name: "More" })).toBeNull();
+  });
+
+  // Maven's pick (spec 2026-11-25-maven-pick-design.md §3.2): a usable reason is shown whole, as a sentence.
+  it("a usable reason is shown whole, as a sentence, with no More, and the mechanism is not shown", () => {
+    // 124 characters: longer than a fold's lead (120), so a fold would have cut it.
+    const why = "you see someone admit they wasted forty dollars, and you want to know what they did instead before you make the same mistake";
+    const long = "The contrarian prediction error contradicts the mundane expectation of meal prep. It goes on about the viewer.";
+    const withWhy = hook("A hook", { why, mechanism: long }).props;
+    render(<HookSheetBody hook={withWhy} gauge={gauge({ text: "A hook" })} actions={actions} />);
+    const section = screen.getByRole("heading", { level: 3, name: "Why it works" }).parentElement!;
+    expect(section).toHaveTextContent(/^Why it works\s*You see someone admit .* the same mistake\.$/);
+    expect(screen.queryByRole("button", { name: "More" })).toBeNull();
+    expect(screen.queryByText(/prediction error/)).toBeNull();
+  });
+
+  it("a reason that is not usable (two lines, or past 140 characters): today's folded mechanism", () => {
+    const mechanism = "It names a cost. Then it pays it back in the first second.";
+    // 143 characters of real words, so only the length rules it out (fix round 1: a reason needs three words).
+    for (const why of ["It names a cost.\nThen it pays.", "abc ".repeat(36).trim(), "   "]) {
+      const { unmount } = render(<HookSheetBody hook={hook("A hook", { why, mechanism }).props} gauge={gauge({ text: "A hook" })} actions={actions} />);
+      const section = screen.getByRole("heading", { level: 3, name: "Why it works" }).parentElement!;
+      expect(section).toHaveTextContent(/^Why it works\s*It names a cost\.\s*More$/);
+      expect(screen.getByRole("button", { name: "More" })).toBeInTheDocument();
+      unmount();
+    }
+  });
+
+  // Fix round 1 (review I1, M4): junk or the hook itself is no reason; a dash is shown as a comma.
+  it("a reason that is junk, a web address or the hook itself: today's folded mechanism", () => {
+    const mechanism = "It names a cost. Then it pays it back in the first second.";
+    const line = "Stop buying protein powder. Do this instead.";
+    for (const why of [".", "n/a", "ok.", "https://example.com/v/1", "stop buying protein powder. do this instead"]) {
+      const { unmount } = render(<HookSheetBody hook={hook(line, { why, mechanism }).props} gauge={gauge({ text: line })} actions={actions} />);
+      const section = screen.getByRole("heading", { level: 3, name: "Why it works" }).parentElement!;
+      expect(section, why).toHaveTextContent(/^Why it works\s*It names a cost\.\s*More$/);
+      unmount();
+    }
+  });
+
+  it("a dash in a reason is shown as a comma and a space", () => {
+    render(<HookSheetBody hook={hook("A hook", { why: "It names a cost — then it pays it back" }).props} gauge={gauge({ text: "A hook" })} actions={actions} />);
+    const section = screen.getByRole("heading", { level: 3, name: "Why it works" }).parentElement!;
+    expect(section).toHaveTextContent(/^Why it works\s*It names a cost, then it pays it back\.$/);
   });
 
   it("a proof without a video: the row, no link and no mark", () => {

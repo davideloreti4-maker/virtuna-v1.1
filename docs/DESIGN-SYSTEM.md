@@ -453,6 +453,15 @@ The thread between a send and its answer (spec
   first opens, two ghost rows meanwhile: the role's name, its span, the words in quotes, then the shot,
   "On screen: …" and what to do differently in the secondary ink), then the plan's rows. A read that
   failed is tried again at the next open. `/dev/answers?state=p11c|p11d`.
+- **Maven's pick** (spec `2026-11-25-maven-pick-design.md`; `PackSentence`, its words from
+  `src/lib/thread-next/pick-line.ts`): under a pack of two or more hooks, in the measured line's place
+  and type (15 / 22 in the ink), "Maven would post hook 1." and the writer's plain reason (`why`) for
+  its first-ranked hook, until every row is simulated; then the measured line, also when it names
+  another hook. A reason is used when it is one line of at most 140 characters with three words or
+  more, no web address and not the hook's own words; it is shown as a sentence, a dash as a comma.
+  In a landing it comes in after the button. No reason, an older pack, or ideas: no line. The hook's
+  sheet shows the same reason whole under "Why it works", else its folded note as before.
+  `/dev/answers?state=p3|p5|p3n`.
 
 Rules that are not in the spec:
 

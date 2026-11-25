@@ -298,6 +298,44 @@ describe("POST /api/tools/hooks (SSE route)", () => {
     expect(streamedProps.model).toBe("sim1-flash");
   });
 
+  // Maven's pick (spec 2026-11-25-maven-pick-design.md): the line under a live pack reads the writer's
+  // reason off the face. Dropped from the content map, it would appear only after the fold.
+  it("streams each card's plain reason (why) with the face; a card without one sends none", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+    const { createServiceClient } = await import("@/lib/supabase/service");
+    const { runHooksPipeline } = await import("@/lib/tools/runners/hooks-runner");
+    const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+    const { insertMessage } = await import("@/lib/threads/messages");
+
+    const picked = makeHookCard(1);
+    picked.props.why = "It dares a friend by name, so you wait to hear why.";
+    const plain = makeHookCard(2);
+
+    const db = () => ({
+      from: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+    });
+    (createClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ...db(),
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "user-123" } } }) },
+    });
+    (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue(db());
+    (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "thread-why", user_id: "user-123" });
+    (runHooksPipeline as ReturnType<typeof vi.fn>).mockResolvedValue({ blocks: [picked, plain], warnings: [], seedHookPath: "structured" });
+    (insertMessage as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "msg-why" });
+
+    const { POST } = await import("@/app/api/tools/hooks/route");
+    const res = await POST(makeHooksRequest({ ask: "hooks", platform: "tiktok" }));
+    const raw = await res.text();
+
+    const frame = raw.split("\n\n").find((f) => f.startsWith("event: content"))!;
+    const payload = JSON.parse(frame.slice(frame.indexOf("data: ") + 6)) as { blocks: Array<{ props: Record<string, unknown> }> };
+    expect(payload.blocks[0]!.props.why).toBe("It dares a friend by name, so you wait to hear why.");
+    expect("why" in payload.blocks[1]!.props).toBe(false);
+  });
+
   it("S2: emits `done` BEFORE the follow-up chat turn (chat off the critical path)", async () => {
     const { createClient } = await import("@/lib/supabase/server");
     const { createServiceClient } = await import("@/lib/supabase/service");

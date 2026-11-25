@@ -61,10 +61,10 @@ import { paintTheme, readThemeChoice } from "@/lib/theme/theme";
 /**
  * The answer states on fixtures, for /dev/answers (`page.tsx`). The cards, the gauges, the turn,
  * the bubble and the chips are the real parts. Text numbers come from fixture seals through the
- * real `stopNumberOf`; the sentence under a simulated pack is the thread's own `PackSentence`; the
- * video's numbers come from the recorded run `middle` through the real `videoStateOf`, the model
- * `/simulation/[id]` renders. Every handler does nothing, so the
- * controls look as they do in a thread; nothing is sent.
+ * real `stopNumberOf`; the line under a pack is the thread's own `PackSentence` (Maven's pick before
+ * the numbers, the measured sentence once every row has one); the video's numbers come from the
+ * recorded run `middle` through the real `videoStateOf`, the model `/simulation/[id]` renders. Every
+ * handler does nothing, so the controls look as they do in a thread; nothing is sent.
  *
  * The wait (thread feel §4.2, §4.3): the line and the outlines are the real `RunStatus` and
  * `AnswerOutline`, their words from the real `statusWords` and `usualNote` (the note as it reads at
@@ -75,6 +75,7 @@ import { paintTheme, readThemeChoice } from "@/lib/theme/theme";
 export type DevAnswersState =
   | "p3"
   | "p3v"
+  | "p3n"
   | "p4"
   | "p5"
   | "p12"
@@ -117,11 +118,20 @@ const sealed = (key: string): GaugeState => {
 /** The result page a simulated text opens here (the drawing's P7): a row's gauge and the sheet's link. */
 const RESULT_HREF = "/dev/answers?state=p7";
 
-/** The pack's rows as the thread builds them: a hook's proven video through the real `rowProofOf`. */
+/** The pack's rows as the thread builds them: a hook's proven video through the real `rowProofOf`, its
+ *  rank and plain reason for the line under the pack (Maven's pick). */
 const hookRows = (states: (key: string, i: number) => GaugeState, blocks: readonly HookCardBlock[] = MEAL_PREP_HOOKS): PackRow[] =>
   blocks.map((b, i) => {
     const state = states(b.props.hookLine, i);
-    return { key: b.props.hookLine, text: b.props.hookLine, state, href: state.kind === "done" ? RESULT_HREF : null, proof: rowProofOf(b.props.proof) };
+    return {
+      key: b.props.hookLine,
+      text: b.props.hookLine,
+      state,
+      href: state.kind === "done" ? RESULT_HREF : null,
+      proof: rowProofOf(b.props.proof),
+      rank: b.props.rank,
+      why: b.props.why,
+    };
   });
 
 const withProof = (block: HookCardBlock, p: HookProof): HookCardBlock => ({ ...block, props: { ...block.props, proof: p } });
@@ -133,6 +143,9 @@ const PROOF_KINDS: readonly HookCardBlock[] = [
   withProof(MEAL_PREP_HOOKS[1]!, proof({ handle: "creator_one", views: 854_000 })),
   withProof(MEAL_PREP_HOOKS[2]!, proof({ handle: "creator_two", coverUrl: "/covers/c9.jpg" })),
 ];
+
+/** p3n: the same hooks as a pack written before the plain reasons: no `why` on any block. */
+const NO_REASONS: readonly HookCardBlock[] = MEAL_PREP_HOOKS.map(({ type, props: { why: _why, ...props } }) => ({ type, props }));
 
 const ideaRows = (): PackRow[] =>
   IDEAS_4.map((b) => ({ key: b.props.title, text: b.props.title, sub: b.props.angle || b.props.take || null, state: empty }));
@@ -166,7 +179,7 @@ interface DevTurn {
   ask: string;
   video?: UserTurnVideo | null;
   answer: React.ReactNode;
-  /** Under the card: the pack's computed sentence (`PackSentence`), as the thread's turn draws it. */
+  /** Under the card: the pack's line (`PackSentence`: Maven's pick or the computed sentence), as the thread's turn draws it. */
   sentence?: React.ReactNode;
   chips: ChatTurnKind | null;
 }
@@ -240,6 +253,8 @@ function turnOf(state: DevAnswersState, ctx: { frames: string | null; startedAt:
       return packTurn(HOOKS_ASK, "hook", hookRows(() => empty), null, "hooks");
     case "p3v":
       return packTurn(HOOKS_ASK, "hook", hookRows(() => empty, PROOF_KINDS), null, "hooks");
+    case "p3n":
+      return packTurn(HOOKS_ASK, "hook", hookRows(() => empty, NO_REASONS), null, "hooks");
     // Hook 1 landed (its seal), hook 2 runs, hook 3 waits its turn: "2 of 3". The drawing shows no chips here.
     case "p4":
       return packTurn(

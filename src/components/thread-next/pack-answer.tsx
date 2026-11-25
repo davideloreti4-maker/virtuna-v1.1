@@ -70,6 +70,10 @@ export interface PackRow {
   href?: string | null;
   /** A hook's proven video (thread depth §3.3, `rowProofOf`): its cover and "@handle · 854K views". */
   proof?: RowProof | null;
+  /** A hook's place in the writer's ranking (1 is its first choice), for the line under the pack; not drawn on the row. */
+  rank?: number;
+  /** A hook's plain reason as the writer gave it (Maven's pick), for the line under the pack; not drawn on the row. */
+  why?: string | null;
 }
 
 /** The place of a pack's last part in a landing: its button's row, after the last staggered row. */

@@ -3564,6 +3564,139 @@ describe("thread depth (Task 2): a follow-up tapped while the last answer's stre
     }
   });
 
+  // Maven's pick, Task 2: a sheet opened while the fold's read of the thread is out.
+  /** From here, the next read of the thread (`/api/threads/open`) waits until `release()`; later ones go at once. */
+  function holdNextThreadRead() {
+    let let_go: (() => void) | null = null;
+    let held = false;
+    const base = global.fetch;
+    global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (!held && String(input).includes("/api/threads/open")) {
+        held = true;
+        calls.push({ url: String(input), init });
+        await new Promise<void>((r) => (let_go = r));
+        return json(threadFixture);
+      }
+      return base(input, init);
+    }) as typeof fetch;
+    return {
+      release: () =>
+        act(async () => {
+          (let_go as (() => void) | null)?.();
+        }),
+    };
+  }
+  /** How many times hook 2 is drawn in the thread (the sheet's copy sits outside it, in its layer). */
+  const hook2InThread = () => (region().textContent ?? "").split(HOOK_2!).length - 1;
+
+  it("(pick Task 2) a row's sheet opened while the chat's fold is reading the thread: the read answers and nothing is replaced (the dialog stays, the live turn stays, the pack once); Escape: read again, then the turn folds, the pack once", async () => {
+    const chat = await hooksLandedStreamOpen();
+    const read = holdNextThreadRead();
+    threadFixture = storedHooksTurn();
+    const opensBefore = requests("/api/threads/open").length;
+    await chat.push("done", {});
+    await chat.end();
+    await waitFor(() => expect(requests("/api/threads/open")).toHaveLength(opensBefore + 1));
+
+    // The read is out; the creator opens a row's sheet; then the read answers.
+    const dialog = await openRow2Sheet();
+    await read.release();
+    await waitMs(50);
+    expect(screen.getByRole("dialog")).toBe(dialog);
+    expect(liveTurn()).not.toBeNull();
+    expect(turnsIn()).toHaveLength(2); // the first turn and the live one: no stored copy beside it
+    expect(hook2InThread()).toBe(1);
+
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await waitFor(() => expect(requests("/api/threads/open")).toHaveLength(opensBefore + 2));
+    await waitFor(() => expect(liveTurn()).toBeNull());
+    expect(region().querySelector("[data-send]")).toBeNull();
+    expect(turnsIn()).toHaveLength(2);
+    expect(turnsIn()[1]!.textContent).toContain(ASK);
+    expect(hook2InThread()).toBe(1);
+    await waitMs(50);
+    expect(requests("/api/threads/open")).toHaveLength(opensBefore + 2);
+  });
+
+  it("(pick Task 2) the same for a skill's own run (Hooks picked, the run's fold): a sheet opened during its read stays, and the turn folds once it has closed", async () => {
+    const run = await ownHooksRunDoneStreamOpen();
+    const read = holdNextThreadRead();
+    threadFixture = storedHooksTurn();
+    const opensBefore = requests("/api/threads/open").length;
+    await run.push("followup", { text: "Hook 1 is the one to film." });
+    await run.end();
+    await waitFor(() => expect(requests("/api/threads/open")).toHaveLength(opensBefore + 1));
+
+    const dialog = await openRow2Sheet();
+    await read.release();
+    await waitMs(50);
+    expect(screen.getByRole("dialog")).toBe(dialog);
+    expect(liveTurn()).not.toBeNull();
+    expect(turnsIn()).toHaveLength(2);
+    expect(hook2InThread()).toBe(1);
+
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await waitFor(() => expect(liveTurn()).toBeNull());
+    expect(requests("/api/threads/open")).toHaveLength(opensBefore + 2);
+    expect(turnsIn()).toHaveLength(2);
+    expect(hook2InThread()).toBe(1);
+  });
+
+  it("(pick Task 2) a sheet opened during the read, then its 'Script this one': the sheet closes, the fold runs, exactly one script request follows, turn 1 holds the pack", async () => {
+    const chat = await hooksLandedStreamOpen();
+    const read = holdNextThreadRead();
+    threadFixture = storedHooksTurn();
+    const opensBefore = requests("/api/threads/open").length;
+    await chat.push("done", {});
+    await chat.end();
+    await waitFor(() => expect(requests("/api/threads/open")).toHaveLength(opensBefore + 1));
+    await openRow2Sheet();
+    await read.release();
+    await waitMs(50);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Script this one, 2 credits" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(chats()).toHaveLength(2));
+    expect(bodyOf(chats()[1]!)).toMatchObject({ ask: "Write the script from this hook.", skill: "script", anchor: HOOK_2 });
+    // After the fresh read the fold made once the sheet had closed.
+    expect(calls.indexOf(chats()[1]!)).toBeGreaterThan(calls.indexOf(requests("/api/threads/open")[opensBefore + 1]!));
+    await waitMs(50);
+    expect(chats()).toHaveLength(2);
+    const turns = turnsIn();
+    expect(turns).toHaveLength(3);
+    expect(turns[1]!.hasAttribute("data-send")).toBe(false);
+    expect(turns[1]!.textContent).toContain(ASK);
+    expect(turns[1]!.textContent).toContain(HOOK_2);
+    expect(within(turns[2]!).getByText("Write the script from this hook.", { selector: "p" })).toBeInTheDocument();
+  });
+
+  it("(pick Task 2, fix 1) a fold cancelled while its read is out (a message sent from the field meanwhile) still puts the read's turns on screen, and resets nothing", async () => {
+    const chat = await hooksLandedStreamOpen();
+    const read = holdNextThreadRead();
+    threadFixture = storedHooksTurn();
+    const opensBefore = requests("/api/threads/open").length;
+    await chat.push("done", {});
+    await chat.end();
+    await waitFor(() => expect(requests("/api/threads/open")).toHaveLength(opensBefore + 1));
+
+    // The stream has closed and nothing is held, so the field sends: its run's start cancels the fold.
+    askInField("and one for a gym audience?");
+    await waitFor(() => expect(chats()).toHaveLength(2));
+    await read.release();
+    await waitMs(50);
+
+    // The finished turn is in history from the read; the new send is the live turn, untouched.
+    const turns = turnsIn();
+    expect(turns).toHaveLength(3);
+    expect(turns[1]!.hasAttribute("data-send")).toBe(false);
+    expect(turns[1]!.textContent).toContain(ASK);
+    expect(turns[1]!.textContent).toContain(HOOK_2);
+    expect(turns[2]!.dataset.send).toBeDefined();
+    expect(turns[2]!.textContent).toContain("and one for a gym audience?");
+    expect(hook2InThread()).toBe(1);
+    expect(requests("/api/threads/open")).toHaveLength(opensBefore + 1);
+  });
+
   it("leaving the chat drops a held follow-up: nothing is sent into the next chat", async () => {
     await hooksLandedStreamOpen();
     await scriptRow2FromSheet();
