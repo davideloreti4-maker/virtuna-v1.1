@@ -1,7 +1,9 @@
 /** @vitest-environment happy-dom */
 /**
  * The door to the editor on Home (plan 2026-11-24-editor-screens-a, Task 16; spec §3 screen 1, E3, E11): the real composer, Home,
- * field, door (`start-edit.ts`) and upload holder. Stand-ins only for what cannot run here: the network (`fetch`, with
+ * field, door (`start-edit.ts`) and upload holder. Home's field is the thread's since the Home spec of 2026-11-25: the Edit pill
+ * is in its row, a staged video is switched between Simulate and Edit by the row's two pills, and the six cards (a creator with
+ * no chats) stay when a skill is picked. Stand-ins only for what cannot run here: the network (`fetch`, with
  * `/api/edit/open` answering for the account), the router, the storage client, object URLs and the PUT into R2
  * (`XMLHttpRequest`). The setup is `composer-home.flag-on.test.tsx`'s: a blank new chat on a phone.
  */
@@ -101,7 +103,17 @@ const field = () => screen.getByTestId("thread-field");
 const text = () => within(field()).getByRole("textbox") as HTMLTextAreaElement;
 const picker = () => screen.getByLabelText<HTMLInputElement>("Choose a video file");
 const pick = (file: File) => fireEvent.change(picker(), { target: { files: [file] } });
-const choice = () => screen.findByRole("group", { name: "What to do with this video" });
+/** A card on Home: the button of that name outside the field (the field's own pills share the skills' names). */
+const card = (name: string) => {
+  const found = screen.queryAllByRole("button", { name }).filter((one) => !one.closest('[data-testid="thread-field"]'));
+  expect(found).toHaveLength(1);
+  return found[0]!;
+};
+const findCard = (name: string) => waitFor(() => card(name));
+/** The field's own pill of that name (its row: Simulate, Edit, Hooks, Script, Remix, More). */
+const pill = (name: string) => within(field()).getByRole("button", { name });
+/** The pressed pill: what a send with a staged video does (Simulate or Edit). */
+const pressed = () => field().querySelector<HTMLElement>('[aria-pressed="true"]');
 const settle = (ms = 30) => act(async () => { await new Promise((r) => setTimeout(r, ms)); });
 /** A raw take off a phone, past Simulate's 200 MB. */
 const take = (megabytes = 300) => {
@@ -118,18 +130,24 @@ const threadSends = () => asked.filter((one) => ["/api/tools/", "/api/analyze", 
 describe("Home's door to the editor", () => {
   it("shows six cards to an account the editor is open to; Edit opens the picker inside the tap and waits for a video", async () => {
     await renderHome();
-    const edit = await screen.findByRole("button", { name: "Edit" });
+    const edit = await findCard("Edit");
     const cards = within(screen.getByRole("list", { name: "Skills" })).getAllByRole("button");
-    expect(cards.map((card) => document.getElementById(card.getAttribute("aria-labelledby") ?? "")?.textContent)).toEqual(["Simulate", "Edit", "Hooks", "Script", "Remix", "More"]);
+    expect(cards.map((one) => document.getElementById(one.getAttribute("aria-labelledby") ?? "")?.textContent)).toEqual(["Simulate", "Edit", "Hooks", "Script", "Remix", "More"]);
     expect(screen.queryByRole("button", { name: "More skills" })).toBeNull();
+    // The field's row has the Edit pill too, beside Simulate (rule E1).
+    expect(pill("Edit")).toHaveAttribute("aria-pressed", "false");
     const click = vi.spyOn(picker(), "click");
     fireEvent.click(edit);
     expect(click).toHaveBeenCalledTimes(1);
-    // Edit is the picked skill: the field says what it waits for, and its send stays off until there is a video.
-    expect(field().querySelector('[data-part="picked-skill"]')?.textContent).toBe("Edit");
+    // Edit is the picked skill: its pill is pressed, the field says what it waits for, and its send stays off until there
+    // is a video. The next step is "+", which takes the focus and says nothing of its own (rule E3).
+    expect(pressed()).toBe(pill("Edit"));
     expect(text().placeholder).toBe("Add a video to edit");
-    expect(within(field()).getByRole("button", { name: "Add a video" })).toHaveTextContent("Add video");
-    expect(within(field()).getByRole("button", { name: "Send to edit" })).toBeDisabled();
+    expect(pill("Add a video")).not.toHaveTextContent("Add video");
+    expect(document.activeElement).toBe(pill("Add a video"));
+    expect(pill("Send to edit")).toBeDisabled();
+    // The cards stay with Edit picked (rule E4).
+    expect(card("Edit")).toBe(edit);
     await settle(60);
     expect(threadSends()).toEqual([]);
     expect(askedOf("/api/edit/takes")).toEqual([]);
@@ -137,11 +155,11 @@ describe("Home's door to the editor", () => {
 
   it("Edit, then a video: staged as an Edit, and its send signs for the take, makes the edit and opens its page", async () => {
     await renderHome();
-    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    fireEvent.click(await findCard("Edit"));
     pick(clip());
-    // Simulate could take this clip too, but Edit was picked: the choice says so, and either can still be chosen.
-    expect(within(await choice()).getByRole("button", { name: "Edit" })).toHaveAttribute("aria-pressed", "true");
-    expect(within(await choice()).getByRole("button", { name: "Simulate" })).toBeEnabled();
+    // Simulate could take this clip too, but Edit was picked: its pill says so, and either can still be chosen.
+    await waitFor(() => expect(pill("Edit")).toHaveAttribute("aria-pressed", "true"));
+    expect(pill("Simulate")).toBeEnabled();
     expect(text().placeholder).toBe("Send to edit this video");
     fireEvent.click(within(field()).getByRole("button", { name: "Send to edit" }));
     await waitFor(() => expect(push).toHaveBeenCalledWith(`/edit/${EDIT}`));
@@ -155,7 +173,7 @@ describe("Home's door to the editor", () => {
     // The router here goes nowhere (a stand-in), so the screen stays: the field has let the video go and is at rest, free
     // for the next thing, and the video cannot be sent a second time.
     await waitFor(() => expect(screen.queryByTestId("field-video")).toBeNull());
-    expect(text().placeholder).toBe("Ask anything, or pick a skill");
+    expect(text().placeholder).toBe("Ask anything");
     expect(within(field()).getByRole("button", { name: "Send message" })).not.toHaveAttribute("aria-busy", "true");
     fireEvent.submit(field());
     await settle(60);
@@ -179,19 +197,20 @@ describe("Home's door to the editor", () => {
     push.mockImplementation((href: string) => startTransition(() => router.go(new Promise<string>((resolve) => { router.arrive = () => resolve(href); }))));
     renderWithClient(<Suspense fallback={null}><Router><Composer /></Router></Suspense>);
     await screen.findByTestId("home-next");
-    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    fireEvent.click(await findCard("Edit"));
     pick(clip());
-    await choice();
+    await screen.findByTestId("field-video");
     fireEvent.click(within(field()).getByRole("button", { name: "Send to edit" }));
     await waitFor(() => expect(push).toHaveBeenCalledWith(`/edit/${EDIT}`));
     await settle(60);
     // The page is on its way: Home has not gone back to rest under it, and the video cannot be sent again.
     expect(screen.queryByTestId("editor-page")).toBeNull();
     expect(screen.getByTestId("field-video")).toBeInTheDocument();
-    expect(within(await choice()).getByRole("button", { name: "Edit" })).toHaveAttribute("aria-pressed", "true");
+    expect(pressed()).toBe(pill("Edit"));
     expect(within(field()).getByRole("button", { name: "Send to edit" })).toBeDisabled();
     expect(within(field()).getByRole("button", { name: "Send to edit" })).toHaveAttribute("aria-busy", "true");
-    expect(screen.queryByRole("list", { name: "Skills" })).toBeNull();
+    // The cards stay while a skill is picked (rule E4): the page under the field does not move.
+    expect(screen.getByRole("list", { name: "Skills" })).toBeInTheDocument();
     fireEvent.submit(field());
     fireEvent.keyDown(text(), { key: "Enter" });
     await settle(60);
@@ -206,24 +225,43 @@ describe("Home's door to the editor", () => {
 
   it("stages a take Simulate cannot take as an Edit, and sends it to the editor's page", async () => {
     await renderHome();
-    await screen.findByRole("button", { name: "Edit" });
+    await findCard("Edit");
     pick(take());
-    expect(within(await choice()).getByRole("button", { name: "Edit" })).toHaveAttribute("aria-pressed", "true");
-    expect(within(await choice()).getByRole("button", { name: "Simulate" })).toBeDisabled();
+    await waitFor(() => expect(pressed()).toBe(pill("Edit")));
+    // Simulate stays a pill a creator can press, as in a thread: its limit is held at the send (next test).
+    expect(pill("Simulate")).toBeEnabled();
     fireEvent.submit(field());
     await waitFor(() => expect(push).toHaveBeenCalledWith(`/edit/${EDIT}`));
     expect(askedOf("/api/edit/takes")[0]?.body).toEqual({ name: "IMG_0042.MOV", bytes: 300 * 1024 * 1024, type: "video/quicktime" });
     expect(askedOf("/api/edit/edits")[0]?.body).toEqual({ take: TAKE });
   });
 
+  // Rule E2: on Home, as in a thread, the row's Simulate and Edit pills are the choice for a staged video.
+  it("on Home, a take only the editor takes, switched to Simulate, is held to Simulate's limit at the send, as in a chat", async () => {
+    await renderHome();
+    await findCard("Edit");
+    pick(take());
+    await waitFor(() => expect(pressed()).toBe(pill("Edit")));
+    fireEvent.click(pill("Simulate"));
+    fireEvent.click(pill("Send to simulate"));
+    expect(await within(field()).findByRole("alert")).toHaveTextContent("File too large (300.0 MB). Maximum size is 200MB.");
+    expect(screen.getByTestId("field-video")).toBeInTheDocument();
+    await settle(60);
+    expect(threadSends()).toEqual([]);
+    expect(storageUpload).not.toHaveBeenCalled();
+    expect(askedOf("/api/edit/takes")).toEqual([]);
+  });
+
   it("a video attached first is a Simulate, and can be switched to Edit and back before it is sent", async () => {
     await renderHome();
-    await screen.findByRole("button", { name: "Edit" });
+    await findCard("Edit");
     pick(clip());
-    const simulate = within(await choice()).getByRole("button", { name: "Simulate" });
-    const edit = within(await choice()).getByRole("button", { name: "Edit" });
+    await screen.findByTestId("field-video");
+    const simulate = pill("Simulate");
+    const edit = pill("Edit");
     expect(simulate).toHaveAttribute("aria-pressed", "true");
-    expect(simulate).toHaveTextContent("Simulate · 10 credits");
+    expect(simulate).toHaveTextContent("Simulate · 10");
+    expect(simulate).toHaveAccessibleDescription("10 credits");
     expect(text().placeholder).toBe("Send to simulate this video");
     fireEvent.click(edit);
     expect(edit).toHaveAttribute("aria-pressed", "true");
@@ -242,15 +280,15 @@ describe("Home's door to the editor", () => {
   it("stays on Home when the edit cannot be made: the video still attached, one sentence why, nothing left in the holder", async () => {
     editAnswer = () => json({ error: "something went wrong" }, 500);
     await renderHome();
-    await screen.findByRole("button", { name: "Edit" });
+    await findCard("Edit");
     pick(take());
-    await choice();
+    await screen.findByTestId("field-video");
     fireEvent.submit(field());
     expect(await within(field()).findByRole("alert")).toHaveTextContent(/^Something went wrong\.$/);
     expect(push).not.toHaveBeenCalled();
     expect(shell()).toHaveAttribute("data-layout", "home");
     expect(screen.getByTestId("field-video")).toBeInTheDocument();
-    expect(within(await choice()).getByRole("button", { name: "Edit" })).toHaveAttribute("aria-pressed", "true");
+    expect(pressed()).toBe(pill("Edit"));
     expect(uploadOf(TAKE)).toBeNull();
     // The same send again, once the editor answers: it goes through.
     editAnswer = made;
@@ -261,19 +299,49 @@ describe("Home's door to the editor", () => {
     expect(askedOf("/api/edit/takes")).toHaveLength(2);
   });
 
-  it("shows no door to an account it is not open to: the four cards, More skills, and Simulate's own limits", async () => {
+  it("shows no door to an account it is not open to: the four cards, no Edit pill, and Simulate's own limits", async () => {
     open = false;
     await renderHome();
     await waitFor(() => expect(asked.some((one) => one.url.includes("/api/edit/open"))).toBe(true));
     await settle();
     expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
-    expect(screen.getByRole("button", { name: "More skills" })).toBeInTheDocument();
+    const cards = within(screen.getByRole("list", { name: "Skills" })).getAllByRole("button");
+    expect(cards).toHaveLength(4);
+    // More is the field's own (rule E4): no More card, no "More skills" line.
+    expect(screen.queryByRole("button", { name: "More skills" })).toBeNull();
+    expect(pill("More")).toBeInTheDocument();
     pick(take());
     expect(within(field()).getByRole("alert").textContent).toMatch(/^File too large/);
     expect(screen.queryByTestId("field-video")).toBeNull();
     pick(clip());
-    expect(field().querySelector('[data-part="picked-skill"]')?.textContent).toBe("Simulate · 10 credits");
-    expect(screen.queryByRole("group", { name: "What to do with this video" })).toBeNull();
+    expect(pressed()).toBe(pill("Simulate"));
+    expect(pressed()).toHaveTextContent("Simulate · 10");
+  });
+
+  it("the six cards stay when a skill is picked, and the More card opens the field's More sheet", async () => {
+    await renderHome();
+    const before = ["Simulate", "Edit", "Hooks", "Script", "Remix", "More"].map((name) => card(name));
+    fireEvent.click(card("Hooks"));
+    expect(pressed()).toBe(pill("Hooks"));
+    expect(["Simulate", "Edit", "Hooks", "Script", "Remix", "More"].map((name) => card(name))).toEqual(before);
+    fireEvent.click(card("More"));
+    expect(await screen.findByRole("dialog", { name: "More" })).toBeInTheDocument();
+  });
+
+  it("with chats there are no cards: Recent under the field, and Edit is the field's pill", async () => {
+    const at = new Date(Date.now() - 2 * 3_600_000).toISOString();
+    const listed = [{ id: "c1", title: "Meal prep for busy students", updated_at: at, created_at: at, pinned_at: null }];
+    const base = vi.mocked(fetch).getMockImplementation()!;
+    vi.mocked(fetch).mockImplementation(async (input, init) => {
+      const url = String(input);
+      if (url.includes("/api/threads/list")) return json({ threads: listed });
+      if (url.includes("/api/threads/library")) return json({ chats: [], next: null });
+      return base(input, init);
+    });
+    await renderHome();
+    expect(await screen.findByRole("heading", { name: "Recent" })).toBeInTheDocument();
+    await waitFor(() => expect(pill("Edit")).toBeInTheDocument());
+    expect(screen.queryByRole("list", { name: "Skills" })).toBeNull();
   });
 });
 
@@ -315,9 +383,9 @@ describe("a sentence under the field when the video changes", () => {
   it("with the editor open, the door's sentence about a video goes when another is picked", async () => {
     editAnswer = () => json({ error: "something went wrong" }, 500);
     await renderHome();
-    await screen.findByRole("button", { name: "Edit" });
+    await findCard("Edit");
     pick(take());
-    await choice();
+    await screen.findByTestId("field-video");
     fireEvent.submit(field());
     expect(await within(field()).findByRole("alert")).toHaveTextContent(/^Something went wrong\.$/);
     pick(clip());

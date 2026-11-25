@@ -73,7 +73,7 @@ describe("MoreSheet on the phone", () => {
     expect(row(/^Ideas/)).toHaveTextContent("1 credit");
     expect(row(/^Explore/)).toHaveTextContent("1 credit");
     expect(row(/^Read my account/)).toHaveTextContent("5 credits");
-    expect(row(/^Read a file/)).toHaveTextContent("Reads a person from a screenshot");
+    expect(row(/^Read a file/)).toHaveTextContent("Describes a person from a screenshot or notes");
     expect(row(/^Read a file/)).toHaveTextContent("2 credits");
   });
 
@@ -135,7 +135,7 @@ describe("MoreSheet on the phone", () => {
     ["Ideas", "A few video ideas for your audience 1 credit"],
     ["Explore", "Videos doing well in your niche 1 credit"],
     ["Read my account", "What works on your account 5 credits"],
-    ["Read a file", "Reads a person from a screenshot 2 credits"],
+    ["Read a file", "Describes a person from a screenshot or notes 2 credits"],
   ])("the %s row is named for the skill; its line and price are its description", (name, description) => {
     render(<MoreSheet {...props()} />);
     const button = within(dialog()).getByRole("button", { name });
@@ -195,6 +195,11 @@ describe("MoreSheet on desktop", () => {
     expect(document.querySelector('[data-slot="sheet-overlay"]')).toBeNull();
     expect(dialog()).toHaveAttribute("data-side", "top");
     expect(row(/^Read my account/)).toHaveTextContent("5 credits");
+  });
+
+  it("on Home it opens below the field (`side`), where the field sits near the top of the page", () => {
+    render(<WithField side="bottom" />);
+    expect(dialog()).toHaveAttribute("data-side", "bottom");
   });
 
   it("Escape closes it", () => {

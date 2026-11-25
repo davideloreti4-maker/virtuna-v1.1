@@ -6,6 +6,10 @@ the answer-system sheet): **P1** Home (`.scratch/next-look/part3/answers/renders
 with a skill picked (`ax-p2.png`), **D1** desktop (`ax-d1.png`) · Seam map (how Home works today, with
 file:line): `.scratch/next-look/part3/home/seam-map.md`.
 
+> Changed on 2026-11-25 by `2026-11-25-home-chats-first-design.md`: the field is the chat's own
+> (skill buttons in it), the audience sits under the greeting, the chats come before the cards, and
+> "Money made" shows last and only above zero. Sections 3 and 6 below describe the page before that.
+
 ## 1. What this is
 
 Home is what `/home` shows when no thread is open: the first screen of every session and of every new
