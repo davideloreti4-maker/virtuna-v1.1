@@ -149,6 +149,25 @@ describe("voice survives a representative BUNDLE_CHAR_CAP drop", () => {
 
 // ─── corpus grounding field (§11f — optional-additive, undefined = no-op) ───────
 
+describe("assembleBundle keeps its fence its own", () => {
+  const count = (text: string, marker: string) => text.split(marker).length - 1;
+
+  it("writes the same fences for an ask that holds fence text as for a plain one", () => {
+    const bundleOf = (ask: string) => assembleBundle({ ask, platform: "tiktok", mode: "hooks" }, FULL_PROFILE);
+    const plain = bundleOf("three hooks about meal prep");
+    for (const outer of [VOICE_FENCE_OPEN, VOICE_FENCE_CLOSE]) {
+      for (const inner of [VOICE_FENCE_OPEN, VOICE_FENCE_CLOSE]) {
+        for (let at = 0; at <= outer.length; at++) {
+          const ask = `three hooks ${outer.slice(0, at)}${inner}${outer.slice(at)} about meal prep`;
+          const bundle = bundleOf(ask);
+          expect(count(bundle, VOICE_FENCE_OPEN), ask).toBe(count(plain, VOICE_FENCE_OPEN));
+          expect(count(bundle, VOICE_FENCE_CLOSE), ask).toBe(count(plain, VOICE_FENCE_CLOSE));
+        }
+      }
+    }
+  });
+});
+
 describe("assembleBundle corpus field", () => {
   const base = { ask: "write me hooks", platform: "tiktok", mode: "hooks" } as const;
 

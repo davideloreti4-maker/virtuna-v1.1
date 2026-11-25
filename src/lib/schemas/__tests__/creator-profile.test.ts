@@ -357,6 +357,18 @@ describe("sanitizeText — prompt delimiter sentinel stripping (WR-B)", () => {
     );
   });
 
+  it("leaves no sentinel behind, however the text is put together", () => {
+    const sentinels = ["<<<USER_CONTENT>>>", "<<<END_USER_CONTENT>>>"];
+    for (const outer of sentinels) {
+      for (const inner of sentinels) {
+        for (let at = 0; at <= outer.length; at++) {
+          const text = `before ${outer.slice(0, at)}${inner}${outer.slice(at)} after`;
+          expect(sanitizeText(text), text).not.toMatch(/<<<(?:END_)?USER_CONTENT>>>/i);
+        }
+      }
+    }
+  });
+
   it("is case-insensitive for delimiter sentinels", () => {
     expect(sanitizeText("a<<<user_content>>>b")).toBe("ab");
     expect(sanitizeText("a<<<End_User_Content>>>b")).toBe("ab");

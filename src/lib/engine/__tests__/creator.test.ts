@@ -208,6 +208,46 @@ describe("formatCreatorContext", () => {
     expect(result).toContain("Platform average views");
   });
 
+  it("puts exactly its own fence around the creator's free text, however that text is put together", () => {
+    const OPEN = "<<<USER_CONTENT>>>";
+    const CLOSE = "<<<END_USER_CONTENT>>>";
+    const count = (text: string, marker: string) => text.split(marker).length - 1;
+    const context = (pain_points: string) =>
+      formatCreatorContext({
+        found: false,
+        follower_count: null,
+        avg_views: null,
+        engagement_rate: null,
+        niche: null,
+        posting_frequency: null,
+        platform_averages: { avg_views: 50000, avg_engagement_rate: 0.06, avg_share_rate: 0.008, avg_comment_rate: 0.005 },
+        target_platforms: null,
+        niche_primary: null,
+        niche_sub: null,
+        target_audience: null,
+        primary_goal: null,
+        creator_stage: null,
+        content_style: null,
+        cuts_per_second: null,
+        reference_creators: null,
+        past_wins: null,
+        past_flops: null,
+        time_of_day_aware: null,
+        pain_points,
+      });
+    const plain = context("my hooks are flat");
+    for (const outer of [OPEN, CLOSE]) {
+      for (const inner of [OPEN, CLOSE]) {
+        for (let at = 0; at <= outer.length; at++) {
+          const text = `my hooks ${outer.slice(0, at)}${inner}${outer.slice(at)} are flat`;
+          const result = context(text);
+          expect(count(result, OPEN), text).toBe(count(plain, OPEN));
+          expect(count(result, CLOSE), text).toBe(count(plain, CLOSE));
+        }
+      }
+    }
+  });
+
   it("formats not-found creator with platform baseline", () => {
     const result = formatCreatorContext({
       found: false,

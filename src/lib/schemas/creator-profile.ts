@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { stripUserContentMarkers } from "@/lib/user-content-markers";
+
 /**
  * Creator Profile validation schema for the creator-profile PATCH route.
  *
@@ -117,16 +119,14 @@ export type CreatorProfilePatch = z.infer<typeof creatorProfilePatchSchema>;
  */
 export function sanitizeText(input: string | null): string | null {
   if (input === null) return null;
-  return (
+  // WR-B: after the control and zero-width characters are gone, strip the literal delimiter
+  // sentinels so user input cannot close the <<<USER_CONTENT>>> ... <<<END_USER_CONTENT>>> wrap
+  // that formatCreatorContext (creator.ts) puts around free-text fields. Both forms, any letter
+  // case, with the one shared cleaner (`user-content-markers.ts`).
+  return stripUserContentMarkers(
     input
       // eslint-disable-next-line no-control-regex
       .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, "")
-      .replace(/[\u200B\u200C\u200D\u2060\uFEFF]/g, "")
-      // WR-B: strip the literal delimiter sentinels so user input cannot
-      // close the <<<USER_CONTENT>>> ... <<<END_USER_CONTENT>>> wrap that
-      // formatCreatorContext (creator.ts) puts around free-text fields.
-      // The `(?:END_)?` covers both open and close forms; `i` is
-      // conservative against a copy-paste that introduces a case variation.
-      .replace(/<<<(?:END_)?USER_CONTENT>>>/gi, "")
+      .replace(/[\u200B\u200C\u200D\u2060\uFEFF]/g, ""),
   );
 }

@@ -1,6 +1,7 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import { createCache } from "@/lib/cache";
 import { createLogger } from "@/lib/logger";
+import { stripUserContentMarkers } from "@/lib/user-content-markers";
 
 const log = createLogger({ module: "creator" });
 
@@ -250,7 +251,7 @@ export async function fetchCreatorContext(
  * data, raw SQL update, future code path that skips zod, etc.).
  */
 function stripUserContentSentinels(input: string): string {
-  return input.replace(/<<<(?:END_)?USER_CONTENT>>>/gi, "");
+  return stripUserContentMarkers(input);
 }
 
 /**
