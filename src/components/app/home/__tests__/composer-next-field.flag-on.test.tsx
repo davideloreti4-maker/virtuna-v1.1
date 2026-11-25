@@ -53,6 +53,7 @@ import { ACTIVE_THREAD_COOKIE, NEW_THREAD_SENTINEL } from "@/lib/threads/active-
 import { reactRequestBody } from "../v8/fire-sim";
 import { MEAL_PREP_HOOKS, population } from "@/components/thread-next/__tests__/fixtures/answers";
 import { useShellStore } from "@/stores/shell-store";
+import { settleClock } from "@/components/thread-next/answer-sheet";
 
 // ── the network ──────────────────────────────────────────────────────────────
 type Call = { url: string; init?: RequestInit };
@@ -3089,6 +3090,452 @@ describe("thread feel (Task 4): the field shows Stop only until the answer is in
     await run.push("done", {});
     await waitFor(() => expect(send()).not.toBeDisabled());
     expect(stopButton()).toBeNull();
+  });
+});
+
+describe("thread depth (Task 2): a follow-up tapped while the last answer's stream is still open waits for it", () => {
+  const ASK = "hooks about meal prep for busy students";
+  const [, HOOK_2] = MEAL_PREP_HOOKS.map((b) => b.props.hookLine);
+  const chats = () => requests("/api/tools/chat");
+  /** The thread as the server holds it once the hooks turn is stored: the pack under its own question. */
+  const storedHooksTurn = () => ({
+    ...historyThread(),
+    messages: [
+      ...historyThread().messages,
+      { id: "u2", thread_id: "t1", role: "user", blocks: [{ type: "markdown", props: { text: ASK } }], created_at: "2026-11-25T00:00:00.000Z" },
+      {
+        id: "m2",
+        thread_id: "t1",
+        role: "assistant",
+        blocks: [{ type: "run-header", props: { skill: "hooks" } }, ...MEAL_PREP_HOOKS, { type: "markdown", props: { text: "Hook 1 is the one to film.", origin: "chat-agent" } }],
+        created_at: "2026-11-25T00:00:00.000Z",
+      },
+    ],
+  });
+  /** A typed ask the chat dispatches to hooks: its cards land, its stream stays open (the closing words). */
+  async function hooksLandedStreamOpen() {
+    const chat = holdChat();
+    await renderComposer();
+    askInField(ASK);
+    await waitFor(() => expect(chats()).toHaveLength(1));
+    await chat.push("dispatch", { skill: "hooks" });
+    await chat.push("stage", { name: "Generating", status: "done" });
+    for (const block of MEAL_PREP_HOOKS) await chat.push("block", { block });
+    await waitFor(() => expect(liveRows()).toHaveLength(3));
+    expect(stopButton()).toBeNull(); // the field is finishing: the answer is in, the stream open
+    return chat;
+  }
+  /** Row 2's sheet, and its "Script this one". */
+  async function scriptRow2FromSheet() {
+    fireEvent.click(screen.getByRole("button", { name: (name) => name.startsWith(`Open: ${HOOK_2!.slice(0, 30)}`) }));
+    fireEvent.click(await screen.findByRole("button", { name: "Script this one, 2 credits" }));
+  }
+  /** The live turn: the one marked with a send. */
+  const liveTurn = () => region().querySelector<HTMLElement>("[data-turn][data-send]");
+  // A sheet takes no click in its first moment (a double-tap's second tap; its own test is
+  // answer-sheet.test.tsx). Here its clock jumps a second at every read, so a click right after a
+  // sheet opens counts.
+  const realSettleNow = settleClock.now;
+  beforeEach(() => {
+    let tick = 0;
+    settleClock.now = () => (tick += 1000);
+  });
+  afterEach(() => {
+    settleClock.now = realSettleNow;
+  });
+
+  it("a script from a hook's sheet: nothing sent and the open stream left alone; Stop in the field, the pack under its own question; once the stream has closed and folded, one request with the hook as its anchor, in a new turn", async () => {
+    const chat = await hooksLandedStreamOpen();
+    await scriptRow2FromSheet();
+    await waitMs(50);
+    expect(chats()).toHaveLength(1);
+    expect(chats()[0]!.init?.signal?.aborted).toBe(false);
+    expect(stopButton()).toBeEnabled();
+    const live = liveTurn()!;
+    expect(live.textContent).toContain(ASK);
+    expect(live.textContent).toContain(HOOK_2);
+    expect(within(live).getAllByRole("button", { name: /^Simulate: / })).toHaveLength(3);
+
+    // The closing words, the end of the stream, the fold (the thread read again).
+    threadFixture = storedHooksTurn();
+    const opensBefore = requests("/api/threads/open").length;
+    await chat.push("token", { delta: "Hook 1 is the one to film." });
+    await chat.push("done", {});
+    await chat.end();
+    await waitFor(() => expect(chats()).toHaveLength(2));
+    expect(bodyOf(chats()[1]!)).toMatchObject({ ask: "Write the script from this hook.", skill: "script", anchor: HOOK_2 });
+    // Sent after the thread was read again (the fold), not before.
+    const reload = requests("/api/threads/open")[opensBefore];
+    expect(reload).toBeDefined();
+    expect(calls.indexOf(chats()[1]!)).toBeGreaterThan(calls.indexOf(reload!));
+    await waitMs(30);
+    expect(chats()).toHaveLength(2);
+
+    // The hooks turn, persisted, still holds its pack under its own question; the new turn is the script's ask.
+    const turns = turnsIn();
+    expect(turns).toHaveLength(3);
+    expect(turns[1]!.hasAttribute("data-send")).toBe(false);
+    expect(turns[1]!.textContent).toContain(ASK);
+    expect(turns[1]!.textContent).toContain(HOOK_2);
+    expect(turns[2]!.dataset.send).toBeDefined();
+    expect(within(turns[2]!).getByText("Write the script from this hook.", { selector: "p" })).toBeInTheDocument();
+    expect(turns[2]!.textContent).not.toContain(HOOK_2);
+  });
+
+  it("Stop while a follow-up is held: the stream stops as Stop does today, and no request follows", async () => {
+    await hooksLandedStreamOpen();
+    await scriptRow2FromSheet();
+    await waitMs(30);
+    expect(chats()).toHaveLength(1);
+    fireEvent.click(stopButton()!);
+    await waitFor(() => expect(chats()[0]!.init?.signal?.aborted).toBe(true));
+    await waitMs(100);
+    expect(chats()).toHaveLength(1);
+    expect(stopButton()).toBeNull();
+  });
+
+  it("a stream that has not closed 8,000 ms after the tap: the held follow-up goes anyway (today's behaviour for a stream that hangs)", async () => {
+    await hooksLandedStreamOpen();
+    // Fake timers from the tap on (the hold's timer is set by it), with the clock still moving so
+    // the stream's own frames and the waits keep working.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      await scriptRow2FromSheet();
+      await act(async () => {
+        vi.advanceTimersByTime(7_000);
+      });
+      expect(chats()).toHaveLength(1);
+      expect(stopButton()).toBeEnabled();
+      await act(async () => {
+        vi.advanceTimersByTime(1_100);
+      });
+      await waitFor(() => expect(chats()).toHaveLength(2));
+      expect(bodyOf(chats()[1]!)).toMatchObject({ ask: "Write the script from this hook.", anchor: HOOK_2 });
+      expect(chats()[0]!.init?.signal?.aborted).toBe(true);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("a chip under the landed answer goes through the same hold, and the last follow-up tapped is the one sent", async () => {
+    const chat = await hooksLandedStreamOpen();
+    await scriptRow2FromSheet();
+    // The chips are on screen in that window (the answer is in): a chip after the sheet's script,
+    // the rewrite one, which carries the pack's lines.
+    fireEvent.click(await screen.findByRole("button", { name: "Follow up: Punch them up" }));
+    await waitMs(50);
+    expect(chats()).toHaveLength(1);
+    expect(chats()[0]!.init?.signal?.aborted).toBe(false);
+
+    threadFixture = storedHooksTurn();
+    await chat.push("done", {});
+    await chat.end();
+    await waitFor(() => expect(chats()).toHaveLength(2));
+    await waitMs(30);
+    expect(chats()).toHaveLength(2);
+    // The chip's own send, as it would have gone at the tap: its prompt, its skill, the pack's lines.
+    const sent = bodyOf(chats()[1]!);
+    expect(sent).toMatchObject({ ask: "Rewrite these hooks tighter and more specific.", skill: "hooks" });
+    expect(sent.anchor).toBeUndefined();
+    expect(sent.cards).toEqual(MEAL_PREP_HOOKS.map((b) => b.props.hookLine));
+  });
+
+  it("a tap in the fold's moment (the stream closed, the thread still being read): held too, Enter sends nothing meanwhile, and it goes once the read is in, the pack kept on screen", async () => {
+    const chat = await hooksLandedStreamOpen();
+    // The fold's read of the thread is held open from here.
+    let releaseRead: () => void = () => {};
+    let holdReads = false;
+    const base = global.fetch;
+    global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (holdReads && String(input).includes("/api/threads/open")) {
+        calls.push({ url: String(input), init });
+        await new Promise<void>((r) => (releaseRead = r));
+        return json(threadFixture);
+      }
+      return base(input, init);
+    }) as typeof fetch;
+    holdReads = true;
+    threadFixture = storedHooksTurn();
+    const opensBefore = requests("/api/threads/open").length;
+    await chat.push("token", { delta: "Hook 1 is the one to film." });
+    await chat.push("done", {});
+    await chat.end();
+    await waitFor(() => expect(requests("/api/threads/open").length).toBeGreaterThan(opensBefore));
+
+    // The stream has closed (the field is no longer finishing); the fold is reading the thread.
+    await scriptRow2FromSheet();
+    await waitMs(50);
+    expect(chats()).toHaveLength(1);
+    expect(stopButton()).toBeEnabled();
+    const live = liveTurn()!;
+    expect(live.textContent).toContain(ASK);
+    expect(within(live).getAllByRole("button", { name: /^Simulate: / })).toHaveLength(3);
+    // Enter in the field meanwhile sends nothing, and the held one stays held.
+    fireEvent.change(text(), { target: { value: "and one more thing" } });
+    fireEvent.keyDown(text(), { key: "Enter" });
+    await waitMs(50);
+    expect(chats()).toHaveLength(1);
+
+    await act(async () => releaseRead());
+    await waitFor(() => expect(chats()).toHaveLength(2));
+    expect(bodyOf(chats()[1]!)).toMatchObject({ ask: "Write the script from this hook.", skill: "script", anchor: HOOK_2 });
+    expect(calls.indexOf(chats()[1]!)).toBeGreaterThan(calls.indexOf(requests("/api/threads/open")[opensBefore]!));
+    await waitMs(50);
+    expect(chats()).toHaveLength(2);
+    const turns = turnsIn();
+    expect(turns).toHaveLength(3);
+    expect(turns[1]!.textContent).toContain(ASK);
+    expect(turns[1]!.textContent).toContain(HOOK_2);
+    expect(within(turns[2]!).getByText("Write the script from this hook.", { selector: "p" })).toBeInTheDocument();
+  });
+
+  it("the hold's 8,000 ms timer is cleared when a normal fold sends the follow-up: past 8,000 ms, no second request", async () => {
+    const chat = await hooksLandedStreamOpen();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    // The fake timers, watched by hand: 8,000 ms timers set, and every id cleared. Not `vi.spyOn`:
+    // the suite's `restoreAllMocks` would put the fake timers back after the real ones return.
+    const fakeSet = globalThis.setTimeout;
+    const fakeClear = globalThis.clearTimeout;
+    const eightSecondTimers: unknown[] = [];
+    const cleared: unknown[] = [];
+    globalThis.setTimeout = ((handler: TimerHandler, ms?: number, ...rest: unknown[]) => {
+      const id = fakeSet(handler, ms, ...rest);
+      if (ms === 8_000) eightSecondTimers.push(id);
+      return id;
+    }) as typeof setTimeout;
+    globalThis.clearTimeout = ((id?: Parameters<typeof clearTimeout>[0]) => {
+      cleared.push(id);
+      fakeClear(id);
+    }) as typeof clearTimeout;
+    try {
+      await scriptRow2FromSheet();
+      // The hold's own timer: the one 8,000 ms timer the tap set.
+      expect(eightSecondTimers).toHaveLength(1);
+      const holdTimer = eightSecondTimers[0];
+
+      threadFixture = storedHooksTurn();
+      await chat.push("done", {});
+      await chat.end();
+      await waitFor(() => expect(chats()).toHaveLength(2));
+      expect(cleared).toContain(holdTimer);
+      await act(async () => {
+        vi.advanceTimersByTime(8_500);
+      });
+      await waitMs(30);
+      expect(chats()).toHaveLength(2);
+    } finally {
+      globalThis.setTimeout = fakeSet;
+      globalThis.clearTimeout = fakeClear;
+      vi.useRealTimers();
+    }
+  });
+
+  /** Hooks picked and sent: the skill's own stream, held open after its `done` with the cards in. */
+  async function ownHooksRunDoneStreamOpen() {
+    const run = holdStream("/api/tools/hooks");
+    holdChat(); // the script's run, when it goes, stays on screen as the live turn
+    await renderComposer();
+    fireEvent.click(pill("Hooks"));
+    askInField(ASK);
+    await waitFor(() => expect(requests("/api/tools/hooks")).toHaveLength(1));
+    await run.push("stage", { name: "Generating", status: "done" });
+    await run.push("content", { blocks: MEAL_PREP_HOOKS.map((b) => ({ props: b.props })) });
+    await run.push("done", {});
+    await waitFor(() => expect(liveRows()).toHaveLength(3));
+    // Ruling 18: the field is at rest from `done`, though the closing line is still to come.
+    expect(stopButton()).toBeNull();
+    return run;
+  }
+
+  it("a skill's own run (Hooks picked), after its `done` while its closing line still streams: the sheet's script is held, the pack stays under its own question; once the stream has closed and folded, one request", async () => {
+    const run = await ownHooksRunDoneStreamOpen();
+    await scriptRow2FromSheet();
+    await waitMs(50);
+    expect(chats()).toHaveLength(0);
+    expect(stopButton()).toBeEnabled();
+    const live = liveTurn()!;
+    expect(live.textContent).toContain(ASK);
+    expect(live.textContent).toContain(HOOK_2);
+    expect(within(live).getAllByRole("button", { name: /^Simulate: / })).toHaveLength(3);
+
+    // The closing line, the close, the fold (the thread read again).
+    threadFixture = storedHooksTurn();
+    const opensBefore = requests("/api/threads/open").length;
+    await run.push("followup", { text: "Hook 1 is the one to film." });
+    await run.end();
+    await waitFor(() => expect(chats()).toHaveLength(1));
+    expect(bodyOf(chats()[0]!)).toMatchObject({ ask: "Write the script from this hook.", skill: "script", anchor: HOOK_2 });
+    const reload = requests("/api/threads/open")[opensBefore];
+    expect(reload).toBeDefined();
+    expect(calls.indexOf(chats()[0]!)).toBeGreaterThan(calls.indexOf(reload!));
+    await waitMs(50);
+    expect(chats()).toHaveLength(1);
+    const turns = turnsIn();
+    expect(turns).toHaveLength(3);
+    expect(turns[1]!.hasAttribute("data-send")).toBe(false);
+    expect(turns[1]!.textContent).toContain(ASK);
+    expect(turns[1]!.textContent).toContain(HOOK_2);
+    expect(within(turns[2]!).getByText("Write the script from this hook.", { selector: "p" })).toBeInTheDocument();
+  });
+
+  it("(unchanged) the same run once its stream has closed and folded: the sheet's script goes at once", async () => {
+    const run = await ownHooksRunDoneStreamOpen();
+    threadFixture = storedHooksTurn();
+    await run.end();
+    await waitFor(() => expect(liveTurn()).toBeNull()); // folded: the pack is the persisted turn's
+    await scriptRow2FromSheet();
+    // `chat.start` makes its request in the tap's own task.
+    expect(chats()).toHaveLength(1);
+    expect(bodyOf(chats()[0]!)).toMatchObject({ ask: "Write the script from this hook.", anchor: HOOK_2 });
+    expect(stopButton()).toBeEnabled(); // the script's own run
+  });
+
+  // Task 3: the fold waits while a sheet is open on the turn it would replace.
+  const openRow2Sheet = async () => {
+    fireEvent.click(screen.getByRole("button", { name: (name) => name.startsWith(`Open: ${HOOK_2!.slice(0, 30)}`) }));
+    return screen.findByRole("dialog");
+  };
+
+  it("(Task 3) a row's sheet open as the stream ends: the fold waits (the dialog stays, the live turn stays live, the thread is not read); once Escape has closed it, the thread is read and the turn folds with its pack", async () => {
+    const chat = await hooksLandedStreamOpen();
+    const dialog = await openRow2Sheet();
+    threadFixture = storedHooksTurn();
+    const opensBefore = requests("/api/threads/open").length;
+    await chat.push("token", { delta: "Hook 1 is the one to film." });
+    await chat.push("done", {});
+    await chat.end();
+    await waitMs(100);
+    expect(screen.getByRole("dialog")).toBe(dialog);
+    expect(liveTurn()).not.toBeNull();
+    expect(requests("/api/threads/open")).toHaveLength(opensBefore);
+    // The field's states are as before: the stream has closed, nothing is held.
+    expect(stopButton()).toBeNull();
+
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await waitFor(() => expect(requests("/api/threads/open")).toHaveLength(opensBefore + 1));
+    await waitFor(() => expect(liveTurn()).toBeNull());
+    expect(region().querySelector("[data-send]")).toBeNull();
+    const turns = turnsIn();
+    expect(turns).toHaveLength(2);
+    expect(turns[1]!.textContent).toContain(ASK);
+    expect(turns[1]!.textContent).toContain(HOOK_2);
+    await waitMs(50);
+    expect(requests("/api/threads/open")).toHaveLength(opensBefore + 1); // once per run
+  });
+
+  it("(Task 3) the sheet open as the stream ends, then its 'Script this one': the sheet closes, the fold runs, then exactly one script request; turn 1 keeps its pack", async () => {
+    const chat = await hooksLandedStreamOpen();
+    await openRow2Sheet();
+    threadFixture = storedHooksTurn();
+    const opensBefore = requests("/api/threads/open").length;
+    await chat.push("done", {});
+    await chat.end();
+    await waitMs(50);
+    expect(requests("/api/threads/open")).toHaveLength(opensBefore);
+
+    fireEvent.click(await screen.findByRole("button", { name: "Script this one, 2 credits" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(chats()).toHaveLength(2));
+    expect(bodyOf(chats()[1]!)).toMatchObject({ ask: "Write the script from this hook.", skill: "script", anchor: HOOK_2 });
+    expect(calls.indexOf(chats()[1]!)).toBeGreaterThan(calls.indexOf(requests("/api/threads/open")[opensBefore]!));
+    await waitMs(50);
+    expect(chats()).toHaveLength(2);
+    const turns = turnsIn();
+    expect(turns).toHaveLength(3);
+    expect(turns[1]!.hasAttribute("data-send")).toBe(false);
+    expect(turns[1]!.textContent).toContain(ASK);
+    expect(turns[1]!.textContent).toContain(HOOK_2);
+    expect(within(turns[2]!).getByText("Write the script from this hook.", { selector: "p" })).toBeInTheDocument();
+  });
+
+  it("(Task 3) a skill's own run (Hooks picked): a row's sheet open as its stream closes: its fold waits too, and runs once the sheet has closed", async () => {
+    const run = await ownHooksRunDoneStreamOpen();
+    const dialog = await openRow2Sheet();
+    threadFixture = storedHooksTurn();
+    const opensBefore = requests("/api/threads/open").length;
+    await run.push("followup", { text: "Hook 1 is the one to film." });
+    await run.end();
+    await waitMs(100);
+    expect(screen.getByRole("dialog")).toBe(dialog);
+    expect(liveTurn()).not.toBeNull();
+    expect(requests("/api/threads/open")).toHaveLength(opensBefore);
+
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await waitFor(() => expect(liveTurn()).toBeNull());
+    expect(requests("/api/threads/open")).toHaveLength(opensBefore + 1);
+    const turns = turnsIn();
+    expect(turns).toHaveLength(2);
+    expect(turns[1]!.textContent).toContain(HOOK_2);
+  });
+
+  it("(Task 3) a held follow-up's 8,000 ms limit does not fire under an open sheet: it waits for the sheet to close, then goes after the fold, once", async () => {
+    const chat = await hooksLandedStreamOpen();
+    // Fake timers from the tap on (the hold's limit is set by it), the clock still moving.
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      // A chip while the run finishes: held. Then a row's sheet, kept open.
+      fireEvent.click(await screen.findByRole("button", { name: "Follow up: Punch them up" }));
+      await waitMs(30);
+      expect(chats()).toHaveLength(1);
+      const dialog = await openRow2Sheet();
+      // The stream ends; the fold waits for the sheet.
+      threadFixture = storedHooksTurn();
+      const opensBefore = requests("/api/threads/open").length;
+      await chat.push("done", {});
+      await chat.end();
+      await act(async () => {
+        vi.advanceTimersByTime(8_500);
+      });
+      await waitMs(30);
+      expect(chats()).toHaveLength(1);
+      expect(screen.getByRole("dialog")).toBe(dialog);
+      expect(liveTurn()).not.toBeNull();
+      expect(requests("/api/threads/open")).toHaveLength(opensBefore);
+
+      // The sheet closes: the fold reads the thread, then the held chip goes, once.
+      fireEvent.keyDown(dialog, { key: "Escape" });
+      await waitFor(() => expect(chats()).toHaveLength(2));
+      expect(bodyOf(chats()[1]!)).toMatchObject({ ask: "Rewrite these hooks tighter and more specific.", skill: "hooks" });
+      expect(calls.indexOf(chats()[1]!)).toBeGreaterThan(calls.indexOf(requests("/api/threads/open")[opensBefore]!));
+      await act(async () => {
+        vi.advanceTimersByTime(8_500);
+      });
+      await waitMs(30);
+      expect(chats()).toHaveLength(2);
+      const turns = turnsIn();
+      expect(turns).toHaveLength(3);
+      expect(turns[1]!.textContent).toContain(HOOK_2);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("leaving the chat drops a held follow-up: nothing is sent into the next chat", async () => {
+    await hooksLandedStreamOpen();
+    await scriptRow2FromSheet();
+    await waitMs(30);
+    threadFixture = { ...historyThread(), threadId: "t2" };
+    act(() => useBoardStore.getState().switchThread());
+    await waitFor(() => expect(requests("/api/threads/open").length).toBeGreaterThan(1));
+    await waitMs(100);
+    expect(chats()).toHaveLength(1);
+  });
+
+  it("(unchanged) a follow-up tapped while the run still works, its answer not in: it cancels and replaces the run at once, as today", async () => {
+    const [h1, h2, h3] = MEAL_PREP_HOOKS.map((b) => b.props.hookLine);
+    const seal = (n: number) => ({ fraction: `${n / 10}/10 stop`, scrollQuote: "", personas: [], population: population(n), at: "2026-11-21T00:00:00.000Z" });
+    threadFixture = mealPrepThread("@nia.tests", { [h1!.trim()]: seal(30), [h2!.trim()]: seal(35), [h3!.trim()]: seal(28) });
+    const chat = holdChat();
+    await renderComposer();
+    askInField("what should I post next?");
+    await waitFor(() => expect(chats()).toHaveLength(1));
+    await chat.push("dispatch", { skill: "ideas" });
+    await chat.push("stage", { name: "Generating", status: "active" });
+    // An older card's script button, while this run is still working.
+    fireEvent.click(await screen.findByRole("button", { name: "Script hook 2, 2 credits" }));
+    await waitFor(() => expect(chats()).toHaveLength(2));
+    expect(chats()[0]!.init?.signal?.aborted).toBe(true);
+    expect(bodyOf(chats()[1]!)).toMatchObject({ ask: "Write the script for hook 2.", anchor: h2 });
   });
 });
 

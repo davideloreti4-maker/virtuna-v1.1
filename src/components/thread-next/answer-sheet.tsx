@@ -1,9 +1,10 @@
 "use client";
 
-import { useRef, useSyncExternalStore } from "react";
+import { useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import { Dialog as DialogPrimitive } from "radix-ui";
 
 import { Sheet, SheetClose, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { reportSheetOpen } from "@/lib/thread-next/open-sheets";
 import { cn } from "@/lib/utils";
 
 import { PROSE, keepHyphens } from "./answer-card";
@@ -74,6 +75,10 @@ export function AnswerSheet({
   children: React.ReactNode;
 }) {
   const wide = useSyncExternalStore(subscribeWide, wideNow, wideOnServer);
+  // While open, the page knows (`open-sheets.ts`): the thread's fold waits, so the turn this sheet
+  // was opened from is not replaced under it. In a layout effect, so it is told in the commit that
+  // opens or closes the sheet, before any effect of the composer reads it.
+  useLayoutEffect(() => (open ? reportSheetOpen() : undefined), [open]);
   const heading = useRef<HTMLHeadingElement>(null);
   const openedAt = useRef(Number.NEGATIVE_INFINITY);
   const onOpenAutoFocus = (event: Event) => {

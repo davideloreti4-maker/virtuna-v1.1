@@ -135,6 +135,7 @@ import { takeRemixFrom, type RemixFrom } from "@/lib/thread-next/remix-from";
 import { REMIX_PLATFORMS } from "@/lib/discover-next/remix";
 import { useShellStore } from "@/stores/shell-store";
 import { answerIsIn } from "@/lib/thread-next/answer-in";
+import { anySheetOpen, subscribeOpenSheets } from "@/lib/thread-next/open-sheets";
 import { cleanThreadTitle } from "@/lib/threads/title";
 import { shownThreadTitle } from "@/components/shell/use-thread-title";
 import type { ThreadSummary } from "@/hooks/queries/use-threads";
@@ -334,6 +335,10 @@ const NEXT_FIELD_REST_HEIGHT = 96;
 // Thread feel §4.6: how long the field shows its send arrow (off) while a stream that has its answer
 // in still bills and closes (normally 3 to 4 s) before Stop comes back.
 const FINISHING_STOP_MS = 8_000;
+// Thread depth (Task 2): the longest a follow-up tapped in those seconds waits for that stream to
+// close and fold before it is sent anyway (a stream that hangs); set again while one of the look's
+// sheets is open (Task 3, `onHeldFollowupDue`).
+const HELD_FOLLOWUP_MAX_MS = 8_000;
 // The new look's short placeholders: `@/components/thread-next/field-copy` (shared with /dev/field).
 
 // Map an audience's platform to the composer Platform union (custom → tiktok).
@@ -733,6 +738,76 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     if (NEW_LOOK_ENABLED) armSentTurn("live");
     else scrollThreadToBottom();
   }, [scrollThreadToBottom, armSentTurn]);
+
+  // New look (thread depth, Task 2): a follow-up fired from inside the thread (a card's or a sheet's
+  // script, a chip) while the last answer's stream is still open with its answer in (the field's
+  // `finishing`, `finishingNow` below). Sent then, its `chat.start` aborts that stream, and the chat
+  // route stores a run's cards only once its loop has returned, so they land after the new question:
+  // the pack left the screen, then came back under the script's ask, after a reload too. So it is
+  // held: nothing sent, nothing reset, the open stream left alone; the field shows Stop. It goes
+  // once that stream has closed and its run has folded into the thread (the release effect, after the
+  // folds), as it would have at the tap: its turn shown and armed then, with its run's start. At the
+  // latest `HELD_FOLLOWUP_MAX_MS` after the tap (a stream that hangs), as before, unless one of the
+  // look's sheets is open then (`onHeldFollowupDue`). The last one tapped wins; Stop and leaving the
+  // chat drop it. Flag off: never held, sent at once as before.
+  const heldFollowupRef = useRef<(() => void) | null>(null);
+  const heldFollowupTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [followupHeld, setFollowupHeld] = useState(false);
+  // The field is finishing, and a finished run's fold is still reading the thread, for the handlers
+  // declared above `finishingNow` and `foldPending` (kept by a layout effect there).
+  const finishingRef = useRef(false);
+  const foldPendingRef = useRef(false);
+  const dropHeldFollowup = useCallback(() => {
+    heldFollowupRef.current = null;
+    if (heldFollowupTimerRef.current !== null) clearTimeout(heldFollowupTimerRef.current);
+    heldFollowupTimerRef.current = null;
+    setFollowupHeld(false);
+  }, []);
+  const fireHeldFollowup = useCallback(() => {
+    const send = heldFollowupRef.current;
+    dropHeldFollowup();
+    send?.();
+  }, [dropHeldFollowup]);
+  // The limit came due. Not under one of the look's sheets (thread depth, Task 3): the fold waits for
+  // the sheet, and the follow-up's run would take the live slot from under it, the sheet vanishing.
+  // Then the limit is set again: the sheet's close lets the fold run and the release effect send it
+  // (clearing this timer), or, should that fold not come, the limit sends it after the sheet.
+  const onHeldFollowupDue = useCallback(
+    function due() {
+      if (NEW_LOOK_ENABLED && anySheetOpen()) {
+        heldFollowupTimerRef.current = setTimeout(due, HELD_FOLLOWUP_MAX_MS);
+        return;
+      }
+      fireHeldFollowup();
+    },
+    [fireHeldFollowup],
+  );
+  const sendOrHold = useCallback(
+    (send: () => void) => {
+      // Held while the answer is in and its stream still open, and after it closes while its fold
+      // still reads the thread (sent then, `chat.start` would cancel the fold, and `chat.reset` would
+      // empty the live slot before the run is in history: its pack would be gone until the new run's
+      // own fold), or while another is held (this one takes its place).
+      if (
+        !NEW_LOOK_ENABLED ||
+        (!finishingRef.current && !foldPendingRef.current && heldFollowupRef.current === null)
+      ) {
+        send();
+        return;
+      }
+      heldFollowupRef.current = send;
+      if (heldFollowupTimerRef.current !== null) clearTimeout(heldFollowupTimerRef.current);
+      heldFollowupTimerRef.current = setTimeout(onHeldFollowupDue, HELD_FOLLOWUP_MAX_MS);
+      setFollowupHeld(true);
+    },
+    [onHeldFollowupDue],
+  );
+  useEffect(
+    () => () => {
+      if (heldFollowupTimerRef.current !== null) clearTimeout(heldFollowupTimerRef.current);
+    },
+    [],
+  );
 
   // ── Active-thread switch signal (multi-thread chat history) ─────────────────
   // Bumped by the sidebar when the user opens a new thread or re-opens a past
@@ -1295,6 +1370,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       // empties. Without this, hasThread/hasConversationContent flip false for the
       // fetch duration and the layout collapses to the centered serif welcome-hero.
       setRehydrating(true);
+      // New look: a follow-up held for the last chat's stream belongs to that chat (thread depth,
+      // Task 2). Dropped first, so the resets below cannot let it go into this one.
+      if (NEW_LOOK_ENABLED) dropHeldFollowup();
       chat.reset();
       ideas.reset();
       hooks.reset();
@@ -1663,36 +1741,42 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // "that script" starts from nothing. Routing it through the loop gives the CTA the same context
   // and the same continuity a typed ask already has, while `forceSkill` + `forceAnchor` keep the
   // guarantee that made it a one-shot: this exact line, that exact skill, no re-litigation.
-  const handleWriteScript = useCallback((hookLine: string, _audienceArchetype: string, label?: string) => {
-    // The script appends at the BOTTOM, but the hook card that started it can be thousands of
-    // pixels up — every completed turn keeps its cards, so pressing "Write the script →" on a
-    // card from an earlier turn is normal. Measured signed-in 2026-08-05: the run streamed a
-    // full script 8,478px below the viewport and the view never moved, so the tap read as the
-    // app doing nothing for 90s. Same rule as a chip: an explicit tap is consent to be taken
-    // to its result (see sendChatFollowup).
-    showSentTurn();
-    // This FIRES a script run (below) rather than arming one, so it names the RUN. Arming the
-    // composer here would strand the creator on Script after a card CTA they never aimed at
-    // the field — the one-shot's whole point.
-    noteRun("script");
-    setScriptAnchorHook(hookLine); // PR-2: cite this input hook in the script intro
-    if (ONE_BRAIN_ENABLED) {
-      // The ask is written out because the chat route persists it as the user turn — so the thread
-      // reads as the creator asking for this, which is exactly what pressing the CTA was. The hook
-      // itself rides as `anchor` (data), never folded into the sentence: the loop pins it onto the
-      // round-1 call verbatim, and a paraphrase would be a different anchor.
-      // A pack's row names itself ("hook 2", thread feel §4.7), so the thread says which one was
-      // scripted; from anywhere with no row number (a sheet, a remix, a result page) it stays as before.
-      const ask = label ? `Write the script for ${label}.` : "Write the script from this hook.";
-      setLastUserTurn(ask);
-      chat.reset();
-      void chat.start(ask, platform, "script", { anchor: hookLine });
-      return;
-    }
-    script.reset();
-    // ask empty — the carried hookLine anchors the script generation.
-    void script.start("", platform, hookLine, intent);
-  }, [script, chat, platform, intent, showSentTurn]);
+  const handleWriteScript = useCallback(
+    (hookLine: string, _audienceArchetype: string, label?: string) =>
+      sendOrHold(() => {
+        // New look: held while the last answer's stream is still open with its answer in, and sent once
+        // it has closed and folded (`sendOrHold`); every line below runs then, as it would at the tap.
+        // The script appends at the BOTTOM, but the hook card that started it can be thousands of
+        // pixels up — every completed turn keeps its cards, so pressing "Write the script →" on a
+        // card from an earlier turn is normal. Measured signed-in 2026-08-05: the run streamed a
+        // full script 8,478px below the viewport and the view never moved, so the tap read as the
+        // app doing nothing for 90s. Same rule as a chip: an explicit tap is consent to be taken
+        // to its result (see sendChatFollowup).
+        showSentTurn();
+        // This FIRES a script run (below) rather than arming one, so it names the RUN. Arming the
+        // composer here would strand the creator on Script after a card CTA they never aimed at
+        // the field — the one-shot's whole point.
+        noteRun("script");
+        setScriptAnchorHook(hookLine); // PR-2: cite this input hook in the script intro
+        if (ONE_BRAIN_ENABLED) {
+          // The ask is written out because the chat route persists it as the user turn — so the thread
+          // reads as the creator asking for this, which is exactly what pressing the CTA was. The hook
+          // itself rides as `anchor` (data), never folded into the sentence: the loop pins it onto the
+          // round-1 call verbatim, and a paraphrase would be a different anchor.
+          // A pack's row names itself ("hook 2", thread feel §4.7), so the thread says which one was
+          // scripted; from anywhere with no row number (a sheet, a remix, a result page) it stays as before.
+          const ask = label ? `Write the script for ${label}.` : "Write the script from this hook.";
+          setLastUserTurn(ask);
+          chat.reset();
+          void chat.start(ask, platform, "script", { anchor: hookLine });
+          return;
+        }
+        script.reset();
+        // ask empty — the carried hookLine anchors the script generation.
+        void script.start("", platform, hookLine, intent);
+      }),
+    [script, chat, platform, intent, showSentTurn, sendOrHold],
+  );
 
   // ── New look: "Script this one" from a text's result page (thread answers step 2) ──────────────
   // The page (/simulation/hook/…) left the text for its thread in sessionStorage (`leaveScriptFrom`),
@@ -1875,13 +1959,44 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // renders from the same clean per-turn path (live === reloaded).
   const { isDone: chatIsDone, isStreaming: chatIsStreaming, reset: chatReset } = chat;
   const chatDoneHandledRef = useRef(false);
+  // New look (thread depth, Task 3): both folds wait while one of the look's sheets is open
+  // (`open-sheets.ts`). A sheet opened on an answer that has just landed lives in the live turn, and
+  // the fold replaces that turn with its persisted copy: the sheet closed under the creator (measured
+  // on a phone, 5.5 s after it opened, nobody touching it). A fold that finds a sheet open does not
+  // start (its run stays live, `foldPending` stays true, so a follow-up tapped in the sheet is held)
+  // and is tried again once the last sheet has closed: the store's own change bumps its retry, never
+  // a render. Only a fold not yet started waits, so a retry never cancels one on its way. Flag off:
+  // the store is never read, the retries stay 0.
+  const [chatFoldRetry, setChatFoldRetry] = useState(0);
+  const [runFoldRetry, setRunFoldRetry] = useState(0);
+  const chatFoldWaitsRef = useRef(false);
+  const runFoldWaitsRef = useRef(false);
+  useEffect(() => {
+    if (!NEW_LOOK_ENABLED) return;
+    return subscribeOpenSheets(() => {
+      if (anySheetOpen()) return;
+      if (chatFoldWaitsRef.current) {
+        chatFoldWaitsRef.current = false;
+        setChatFoldRetry((n) => n + 1);
+      }
+      if (runFoldWaitsRef.current) {
+        runFoldWaitsRef.current = false;
+        setRunFoldRetry((n) => n + 1);
+      }
+    });
+  }, []);
   useEffect(() => {
     if (!chatIsDone) {
       // A new turn started (or state cleared) — re-arm for the next completion.
       chatDoneHandledRef.current = false;
+      chatFoldWaitsRef.current = false;
       return;
     }
     if (chatIsStreaming || chatDoneHandledRef.current) return;
+    if (NEW_LOOK_ENABLED && anySheetOpen()) {
+      chatFoldWaitsRef.current = true;
+      return;
+    }
     chatDoneHandledRef.current = true;
     let cancelled = false;
     void (async () => {
@@ -1898,7 +2013,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     return () => {
       cancelled = true;
     };
-  }, [chatIsDone, chatIsStreaming, chatReset, reloadChatThread, queryClient]);
+  }, [chatIsDone, chatIsStreaming, chatReset, reloadChatThread, queryClient, chatFoldRetry]);
 
   // ── Run completion → the thread owns it (thread unification) ────────────────
   // THE fix for "I ask for hooks, then want something else, and sometimes it doesn't work."
@@ -1940,9 +2055,15 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   useEffect(() => {
     if (!activeRunSkill || !activeRunSettled) {
       if (!activeRunIsDone) runDoneHandledRef.current = null; // re-arm for the next run
+      runFoldWaitsRef.current = false;
       return;
     }
     if (activeRunIsStreaming || runDoneHandledRef.current === activeRunSkill) return;
+    // New look: not while a sheet is open on it (see the chat's fold above).
+    if (NEW_LOOK_ENABLED && anySheetOpen()) {
+      runFoldWaitsRef.current = true;
+      return;
+    }
     runDoneHandledRef.current = activeRunSkill;
     let cancelled = false;
     void (async () => {
@@ -1963,6 +2084,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     activeRunReset,
     reloadChatThread,
     queryClient,
+    runFoldRetry,
   ]);
 
   // NOTE (2026-07-29): the "late follow-up → one more reload" effect that lived here is GONE, and
@@ -2008,6 +2130,31 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   }, [finishingNow]);
   const fieldFinishing = finishingNow && !finishingStalled;
 
+  // New look (thread depth, Task 2): the release of a follow-up held while the field was finishing
+  // (`sendOrHold`, above). It goes once no stream is open and the run that was finishing has folded
+  // into the thread: the chat's fold (on `isDone`, once its stream has closed) or any other run's (on
+  // `isDone` and `isClosed`) has read the thread again and reset the run. A stream that ended with
+  // no answer to fold (an error) lets it go at once; a fold whose reload failed, at the timer.
+  // A run whose answer is in and that has not folded into the thread yet: a fold on its way, or a
+  // run that has reported `done` with its stream still open (a skill's own run writes its closing
+  // line then; ruling 18 leaves the field at rest, but a follow-up sent from inside the thread there
+  // takes the live slot from an answer not yet in history: its pack left the screen for the new
+  // run's whole wait, and the route stores that line after the new question).
+  const foldPending =
+    (chat.isDone && !chat.isStreaming) ||
+    (activeRunSettled && !activeRunIsStreaming) ||
+    (activeRunIsDone && !activeRunIsClosed);
+  // Before paint, so no tap can land between the frame that shows the answer in (or the stream
+  // closed) and these.
+  useLayoutEffect(() => {
+    finishingRef.current = finishingNow;
+    foldPendingRef.current = foldPending;
+  }, [finishingNow, foldPending]);
+  useEffect(() => {
+    if (!followupHeld || isAnyStreaming || foldPending) return;
+    fireHeldFollowup();
+  }, [followupHeld, isAnyStreaming, foldPending, fireHeldFollowup]);
+
   // ── Chat follow-up chips (chat-followups.ts) ───────────────────────────────
   // A tapped follow-up continues the conversation in THIS chat thread: it echoes the prompt as the
   // optimistic user bubble (lastUserTurn) and re-enters the SSE loop (chat.start). No tool-switch,
@@ -2031,21 +2178,24 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     (prompt: string, skill?: string, opts?: { cards?: string[] }) => {
       const t = prompt.trim();
       if (!t) return;
-      // The answer appends at the BOTTOM, but the chip that started it can be thousands of pixels
-      // up — every completed turn keeps its row, so tapping one from an earlier turn is normal.
-      // Measured signed-in: tapping a chip 7,000px up ran the skill and streamed cards the creator
-      // never saw. An explicit tap is consent to be taken to its result.
-      showSentTurn();
-      setLastUserTurn(t);
-      chat.reset();
-      void chat.start(
-        t,
-        platform,
-        skill,
-        ONE_BRAIN_ENABLED && opts?.cards?.length ? { cards: opts.cards } : undefined,
-      );
+      // New look: held while the last answer's stream is still open (`sendOrHold`, as a card's script).
+      sendOrHold(() => {
+        // The answer appends at the BOTTOM, but the chip that started it can be thousands of pixels
+        // up — every completed turn keeps its row, so tapping one from an earlier turn is normal.
+        // Measured signed-in: tapping a chip 7,000px up ran the skill and streamed cards the creator
+        // never saw. An explicit tap is consent to be taken to its result.
+        showSentTurn();
+        setLastUserTurn(t);
+        chat.reset();
+        void chat.start(
+          t,
+          platform,
+          skill,
+          ONE_BRAIN_ENABLED && opts?.cards?.length ? { cards: opts.cards } : undefined,
+        );
+      });
     },
-    [chat, platform, showSentTurn],
+    [chat, platform, showSentTurn, sendOrHold],
   );
 
   // Stage a dropped/selected evidence file. Unsupported types (.docx/.pdf — D-09)
@@ -2903,7 +3053,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     e.preventDefault();
     // The send button's own checks (`ThreadField`: online, not busy, Stop while a stream runs),
     // repeated because Enter submits this form whatever the button shows (residual fix).
-    if (!online || submitting || profiling || isAnyStreaming || openingEdit) return;
+    if (!online || submitting || profiling || isAnyStreaming || openingEdit || followupHeld) return;
     if (nextSendRef.current !== null) return; // the first send is still starting
     if (!evidenceFile && !canSubmit) return;
     // Read only for a send that goes: an Enter that sends nothing must not move the cursor when the
@@ -4538,9 +4688,13 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             canSend={(evidenceFile ? !profiling : canSubmit) && nextSendLatch.phase === "off" && !slashActive}
             busy={submitting || profiling || openingEdit}
             online={online}
-            streaming={isAnyStreaming && !fieldFinishing}
-            finishing={fieldFinishing}
-            onStop={() => stopActive()}
+            // A held follow-up (thread depth, Task 2) shows Stop until it goes; Stop drops it.
+            streaming={(isAnyStreaming && !fieldFinishing) || followupHeld}
+            finishing={fieldFinishing && !followupHeld}
+            onStop={() => {
+              dropHeldFollowup();
+              stopActive();
+            }}
             // The staged video shows only while Simulate (or Edit) is selected. A failed run keeps it (the
             // failure turn's retry re-reads it); a sealed run and a thread switch clear it
             // (final review 1, `nextRunInputsRef`).
