@@ -19,7 +19,7 @@
 
 import { validateBlock } from "@/lib/tools/block-registry";
 import type { CorpusReferencesBlock, HookCardBlock, IdeaCardBlock, ScriptCardBlock, RemixCardBlock } from "@/lib/tools/blocks";
-import type { VideoTestCardBlock } from "@/lib/tools/profile-blocks";
+import type { EditBlock, VideoTestCardBlock } from "@/lib/tools/profile-blocks";
 
 export interface Indexed<B> {
   /** Position of the block in the ORIGINAL blocks array. */
@@ -33,6 +33,7 @@ export type AnswerPart =
   | { kind: "remix"; items: Indexed<RemixCardBlock>[] }
   | { kind: "script"; item: Indexed<ScriptCardBlock> }
   | { kind: "video"; item: Indexed<VideoTestCardBlock> }
+  | { kind: "edit"; item: Indexed<EditBlock> }
   /** Markdown, only in a turn with no result card. */
   | { kind: "text"; index: number; text: string }
   /** `input-request`, `outlier-grid`: the validated block, for its legacy renderer. */
@@ -46,6 +47,7 @@ export const RESULT_TYPES: ReadonlySet<string> = new Set([
   "script-card",
   "remix-card",
   "video-test-card",
+  "edit",
   "composed-card",
   "outlier-grid",
   "account-read",
@@ -122,6 +124,9 @@ export function partsOf(blocks: readonly unknown[]): AnswerPart[] {
         return;
       case "video-test-card":
         parts.push({ kind: "video", item: { index, block: block as VideoTestCardBlock } });
+        return;
+      case "edit":
+        parts.push({ kind: "edit", item: { index, block: block as EditBlock } });
         return;
       case "markdown":
         if (showText) parts.push({ kind: "text", index, text: (block.props as { text: string }).text });

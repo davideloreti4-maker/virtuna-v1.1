@@ -1,0 +1,20 @@
+# The web address's packages (Task 6), every one pinned. Compiled on a Mac for its image (Linux x86-64,
+# Python 3.12), from the worker folder:
+#   uv pip compile web-requirements.in -c store-requirements.txt --python-version 3.12 \
+#     --python-platform x86_64-manylinux_2_28 --no-header --no-annotate
+# Constrained by store-requirements.txt, so requests and what it needs are the same as in the other images.
+annotated-doc==0.0.7
+annotated-types==0.8.0
+anyio==4.16.0
+certifi==2025.10.5
+charset-normalizer==3.4.3
+fastapi==0.162.0
+idna==3.10
+opentelemetry-api==1.45.2
+pydantic==2.14.3
+pydantic-core==2.50.4
+requests==2.32.5
+starlette==1.10.0
+typing-extensions==4.16.0
+typing-inspection==0.4.5
+urllib3==2.5.0

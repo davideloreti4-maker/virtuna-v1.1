@@ -1,0 +1,24 @@
+{
+  "about": "E15's proof (slice B, Task 4): requests sent with the moment the video was paused on, each made on the house first cut of the owner's take, three runs each. m: six that point at the paused frame. n: three with no pointing word, where the tag alone is the pointer (S13, S15). c: five requests about the whole video, sent with a moment, which should still change the whole video, and two that name another place, which should land there. A moment is a word's index in the take or a share of the film, never a word's text; frame is the film frame it gives on that first cut. Every text asked to be written is made up. allowed: the pointing words the requests may use.",
+  "allowed": ["here", "this"],
+  "moments": [
+    { "id": "m01", "request": "Zoom in here.", "at": { "in": 22 }, "lands": "zoom", "frame": 276 },
+    { "id": "m02", "request": "Cut this part.", "at": { "in": 14 }, "lands": "cut", "frame": 154 },
+    { "id": "m03", "request": "Add a title \"Part two\" from here.", "at": { "before": 19, "ms": 150 }, "lands": "starts", "frame": 234 },
+    { "id": "m04", "request": "Add a call-out \"New tool\" here.", "at": { "in": 16 }, "lands": "starts", "frame": 190 },
+    { "id": "m05", "request": "Stress this word in the captions.", "at": { "in": 21 }, "lands": "word", "frame": 267 },
+    { "id": "m06", "request": "End the title here.", "at": { "after": 8, "ms": 300 }, "lands": "ends", "frame": 91 },
+    { "id": "n01", "request": "Add a title: New drop", "at": { "in": 14 }, "lands": "starts", "frame": 154 },
+    { "id": "n02", "request": "Add a call-out: Link in bio", "at": { "in": 16 }, "lands": "starts", "frame": 190 },
+    { "id": "n03", "request": "Zoom in", "at": { "in": 22 }, "lands": "zoom", "frame": 276 }
+  ],
+  "controls": [
+    { "id": "c08", "of": "r08", "at": { "film": 0.5 }, "whole": "pauses", "frame": 169 },
+    { "id": "c11", "of": "r11", "at": { "film": 0.5 }, "whole": "look", "frame": 169 },
+    { "id": "c12", "of": "r12", "at": { "film": 0.5 }, "whole": "look", "frame": 169 },
+    { "id": "c18", "of": "r18", "at": { "film": 0.5 }, "whole": "title-out", "frame": 169 },
+    { "id": "c19", "of": "r19", "at": { "film": 0.5 }, "whole": "faster", "frame": 169 },
+    { "id": "c31", "request": "Add a hook title at the start: New drop", "at": { "film": 0.5 }, "put": "start", "frame": 169 },
+    { "id": "c32", "request": "Add an end card that says Follow for more", "at": { "film": 0.5 }, "put": "end", "frame": 169 }
+  ]
+}

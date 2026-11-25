@@ -93,3 +93,11 @@ tests/fixtures/audio-smoke/smoke-test-results.json
 # Redundant with `.scratch/` above; kept explicit so the rig's output path is
 # discoverable from this file alone.
 .scratch/audit/
+
+# The worker's Python environment and caches
+/worker/.venv/
+__pycache__/
+.pytest_cache/
+
+# The film bundled for the render image (scripts/edit-bundle.ts)
+/worker/.bundle/

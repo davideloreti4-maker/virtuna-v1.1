@@ -60,6 +60,7 @@ const FALLBACK_TITLE: Record<PieceKind, string> = {
   remix: "Remix",
   text: "Text simulation",
   chat: "Chat",
+  edit: "Edit",
 };
 
 /** The title of a chat with none of its own (a video brought in and simulated often has none). */

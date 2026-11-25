@@ -32,9 +32,9 @@ const PROTECTED_PREFIXES = [
   "/discover",
   "/grow",
   "/reset-password", // recovery session required; page redirects to /login itself if absent
-  // You (plan 2026-11-24-you) and Earn (plan 2026-11-24-earn) exist under the new look only; with the
-  // flag off the list is as before.
-  ...(NEW_LOOK_ENABLED ? ["/you", "/earn"] : []),
+  // You (plan 2026-11-24-you), Earn (plan 2026-11-24-earn) and the editor (plan 2026-11-24-editor-screens-a)
+  // exist under the new look only; with the flag off the list is as before.
+  ...(NEW_LOOK_ENABLED ? ["/you", "/earn", "/edit"] : []),
 ];
 
 /**

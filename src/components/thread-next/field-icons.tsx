@@ -100,3 +100,21 @@ export const LoopIcon: ShellIcon = (props) => (
     <path d="M20 12.5V14a3 3 0 0 1-3 3H4" />
   </Glyph>
 );
+
+/** Edit (Home's card, the edit's card and Library's mark): scissors, the drawing's `I.cut` at this set's 24. */
+export const ScissorsIcon: ShellIcon = (props) => (
+  <Glyph {...props}>
+    <circle cx="6.6" cy="7.2" r="2.6" />
+    <circle cx="6.6" cy="16.8" r="2.6" />
+    <path d="M8.9 8.8 20.4 16.8M8.9 15.2 20.4 7.2" />
+  </Glyph>
+);
+
+/** More (Home's sixth card): three dots, the drawing's `I.more`. */
+export const MoreIcon: ShellIcon = (props) => (
+  <Glyph {...props}>
+    <circle cx="6" cy="12" r="1.45" fill="currentColor" />
+    <circle cx="12" cy="12" r="1.45" fill="currentColor" />
+    <circle cx="18" cy="12" r="1.45" fill="currentColor" />
+  </Glyph>
+);

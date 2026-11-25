@@ -47,6 +47,7 @@ import type { BillableAction } from "@/lib/pricing";
 // selector is built once and lights up per phase.
 export type ToolId =
   | "test"
+  | "edit"
   | "account"
   | "idea"
   | "hooks"
@@ -102,6 +103,9 @@ export const SKILLS: SkillMeta[] = [
   { id: "explore", label: "Explore", desc: "Find what's working",            command: "/explore", group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
   // ── Test — judge something real (a video · your own account). ──
   { id: "test",    label: "A real video", desc: "Watch-through + full Read",  command: "/test",    group: "creator",   modes: ["socials"], model: "Max",   enabled: true  },
+  // The editor (plan 2026-11-24-editor-screens-a): reached under the new look by Home's Edit card and the field's Edit pill, for an
+  // account the editor is open to. `enabled: false` keeps it out of every legacy menu, the v8 panel and the `/` list.
+  { id: "edit",    label: "Edit",    desc: "A raw take to a finished video", command: "/edit",    group: "creator",   modes: ["socials"], model: "Flash", enabled: false },
   { id: "account", label: "Your account", desc: "A Read on your posts",       command: "/account", group: "creator",   modes: ["socials"], model: "Flash", enabled: true  },
   // ── Ask — converse / probe. ──
   // ⚠️ "Ask the room" (`ask`) was DELETED here on 2026-07-28 — owner call, Lane 2 step 4.
@@ -204,6 +208,7 @@ const ICONS: Record<string, string> = {
   camera:
     '<rect x="2" y="4.5" width="12" height="8" rx="1.5"/><circle cx="8" cy="8.5" r="2.3"/><path d="M5.5 4.5l1-1.5h3l1 1.5"/>',
   search: '<circle cx="7" cy="7" r="4"/><path d="M10 10l3.5 3.5"/>',
+  scissors: '<circle cx="4.4" cy="4.8" r="1.8"/><circle cx="4.4" cy="11.2" r="1.8"/><path d="M5.9 5.8 13.6 11.2M5.9 10.2 13.6 4.8"/>',
   // The verb-chip mark (v6 Room prototype `.vi` ✦) — a 4-point sparkle, the composer's
   // ONE accent glyph (terracotta). Line-icon form (stroked) to stay on the no-emoji system.
   spark: '<path d="M8 3c.6 3.4 1.6 4.4 5 5-3.4.6-4.4 1.6-5 5-.6-3.4-1.6-4.4-5-5 3.4-.6 4.4-1.6 5-5z"/>',
@@ -225,6 +230,7 @@ export const SKILL_ICON: Record<ToolId, string> = {
   script: "doc",
   remix: "shuffle",
   test: "crosshair",
+  edit: "scissors",
   account: "search",
   chat: "chat",
   offer: "tag",
@@ -245,6 +251,7 @@ export const SKILL_ICON: Record<ToolId, string> = {
  */
 export const VERB_BY_TOOL: Record<ToolId, "Make" | "Test" | "Ask"> = {
   test: "Test",
+  edit: "Make", // the editor makes a finished video of a raw take; in no menu (see SKILLS)
   account: "Test", // Account Read = judge something real (your own posts) — owner-locked
   chat: "Ask", // the last skill under Ask, since `ask` was deleted (see SKILLS)
   idea: "Make",

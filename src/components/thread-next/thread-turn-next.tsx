@@ -71,6 +71,7 @@ import { resultLinkOf, useSealKeys } from "./use-seal-keys";
 import { useOncePerBurst } from "./use-once-per-burst";
 import { videoOfTurn } from "./user-turn";
 import { VideoAnswer } from "./video-answer";
+import { EditAnswer } from "./edit-answer";
 import { WaitingRow } from "./waiting-row";
 
 const EMPTY: GaugeState = { kind: "empty" };
@@ -273,6 +274,7 @@ function originalIndexOf(part: AnswerPart): number {
       return part.items[0]?.index ?? -1;
     case "script":
     case "video":
+    case "edit":
       return part.item.index;
     default:
       return part.index;
@@ -301,6 +303,8 @@ function PartView({
       return <RemixPart part={part} />;
     case "video":
       return <VideoAnswer block={part.item.block} />;
+    case "edit":
+      return <EditAnswer block={part.item.block} />;
     case "text":
       // A plain chat answer, through today's markdown renderer (its 15 px and its 68ch measure), at
       // the drawing's 22 leading (`.ax-say p`), in proportional figures so a hyphen stays tight
@@ -369,7 +373,8 @@ export function ThreadTurnNext({ userTurn, blocks, live, blockOrigins, showFollo
   // The chips follow the answer: none while it is still on its way, nor while its rows simulate (P4).
   const sim = useTextSim();
   const simulating = !!sim && sim.progress(simTextsOf(parts)) !== null;
-  const chips = showFollowups && !runLive && waiting === null && !simulating;
+  // An edit's card is the whole answer: the next step is in the editor, not in the chat (plan 2026-11-24-editor-screens-a).
+  const chips = showFollowups && !runLive && waiting === null && !simulating && !parts.some((part) => part.kind === "edit");
   const hasAssistantContent = shown.length > 0 || waiting !== null || hasError;
 
   return (

@@ -24,6 +24,18 @@ export const NEXT_SIMULATE_PLACEHOLDER = {
   video: "Send to simulate this video",
 } as const;
 
+/** Edit's placeholder (plan 2026-11-24-editor-screens-a): waiting for a video, and with one staged. */
+export const NEXT_EDIT_PLACEHOLDER = {
+  empty: "Add a video to edit",
+  video: "Send to edit this video",
+} as const;
+
+/** The placeholder of a skill that takes a video: Simulate's pair or Edit's. */
+export function videoPlaceholder(tool: "test" | "edit", staged: boolean): string {
+  const words = tool === "edit" ? NEXT_EDIT_PLACEHOLDER : NEXT_SIMULATE_PLACEHOLDER;
+  return staged ? words.video : words.empty;
+}
+
 /** The field on Home (spec 2026-11-23): its placeholder at rest, and once a skill that takes
  *  words is picked. A tool missing here keeps the thread's placeholder. */
 export const HOME_PLACEHOLDER_BY_TOOL: Partial<Record<ToolId, string>> = {

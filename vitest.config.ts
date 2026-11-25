@@ -10,6 +10,8 @@ export default defineConfig({
       "react-konva": new URL("./src/__mocks__/react-konva.tsx", import.meta.url).pathname,
       "konva/lib/Node": new URL("./src/__mocks__/konva-node.ts", import.meta.url).pathname,
       "@pmndrs/detect-gpu": new URL("./src/__mocks__/detect-gpu.ts", import.meta.url).pathname,
+      // `import "server-only"` (the edit worker's jobs.ts and r2.ts): Next resolves it itself; here it is an empty module.
+      "server-only": new URL("./src/__mocks__/server-only.ts", import.meta.url).pathname,
     },
   },
   test: {

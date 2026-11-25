@@ -1,0 +1,5 @@
+# What store-requirements.txt is compiled from (Task 6): store.py's packages, at the pins of pyproject.toml.
+# Constrained by media-requirements.txt, so the speech image keeps its own versions of what both need.
+boto3==1.43.125
+botocore==1.43.125
+requests==2.32.5

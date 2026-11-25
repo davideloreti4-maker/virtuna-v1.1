@@ -35,6 +35,7 @@ import {
   ReactionDistributionBlockSchema,
   PredictionGaugeBlockSchema,
   VideoTestCardBlockSchema,
+  EditBlockSchema,
 } from "./profile-blocks";
 import { ComposedCardBlockSchema } from "./composed-card-schema";
 
@@ -68,6 +69,8 @@ export const BLOCK_REGISTRY = {
   "reaction-distribution": { schema: ReactionDistributionBlockSchema as z.ZodType },
   "prediction-gauge": { schema: PredictionGaugeBlockSchema as z.ZodType },
   "video-test-card": { schema: VideoTestCardBlockSchema as z.ZodType },
+  // The editor's card (plan 2026-11-24-editor-screens-a): a door from a chat to its edit's page.
+  edit: { schema: EditBlockSchema as z.ZodType },
 } as const;
 
 export type BlockType = keyof typeof BLOCK_REGISTRY;

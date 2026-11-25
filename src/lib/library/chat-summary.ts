@@ -26,7 +26,7 @@ import { stopNumberOf } from "@/lib/thread-next/stop-number";
 import { sealKey, type SimSeal, type SimSealMap } from "@/lib/threads/sim-seals";
 import type { BroughtCardBlock, ScriptCardBlock } from "@/lib/tools/blocks";
 
-export type PieceKind = "video" | "script" | "remix" | "hooks" | "ideas" | "text" | "chat";
+export type PieceKind = "video" | "script" | "remix" | "hooks" | "ideas" | "text" | "chat" | "edit";
 export type Stage = "simulated" | "draft" | "chat";
 
 export interface SimSummary {
@@ -190,12 +190,15 @@ export function chatSummaryOf(bodies: readonly unknown[], seals: SimSealMap): Ch
     }
   }
 
+  // An edit's card (plan 2026-11-24-editor-screens-a): one a chat, counted nowhere; it leads a chat that holds nothing else,
+  // so the chat is read for one only when it holds no piece (a second pass over every block of every chat otherwise).
+  const edited = pieces.length === 0 && Array.isArray(bodies) && bodies.some((body) => partsOf(blocksOf(body)).some((part) => part.kind === "edit"));
   const last = pieces[pieces.length - 1];
   const frameVideo = sim ? (sim.link.type === "video" ? sim.link.analysisId : null) : lastVideo;
   return {
     counts,
-    lead: sim?.kind ?? last?.kind ?? "chat",
-    stage: sim ? "simulated" : last ? "draft" : "chat",
+    lead: sim?.kind ?? last?.kind ?? (edited ? "edit" : "chat"),
+    stage: sim ? "simulated" : last || edited ? "draft" : "chat",
     sim,
     frame: frameVideo ? frameOf(sealAt(seals, frameVideo)) : null,
   };

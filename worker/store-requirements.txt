@@ -1,0 +1,16 @@
+# store.py's packages in the render and speech images (Task 6), every one pinned. Compiled on a Mac for the images
+# (Linux x86-64, Python 3.12), from the worker folder:
+#   uv pip compile store-requirements.in -c media-requirements.txt --python-version 3.12 \
+#     --python-platform x86_64-manylinux_2_28 --no-header --no-annotate
+# Constrained by the speech image's own pins, so installing these there adds boto3 and what it needs and changes nothing else.
+boto3==1.43.125
+botocore==1.43.125
+certifi==2025.10.5
+charset-normalizer==3.4.3
+idna==3.10
+jmespath==1.1.0
+python-dateutil==2.9.0.post0
+requests==2.32.5
+s3transfer==0.19.3
+six==1.17.0
+urllib3==2.5.0

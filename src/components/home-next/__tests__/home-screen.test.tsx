@@ -80,9 +80,10 @@ describe("HomeScreen — the four skill cards", () => {
     expect(screen.getByRole("button", { name: "Remix" })).toHaveAccessibleDescription("Rebuild a proven video");
   });
 
-  it("the skill list is the four, with the ids the composer arms", () => {
+  it("the skill list is the five, with the ids the composer arms (Edit shown only where the editor is open)", () => {
     expect(HOME_SKILLS.map((s) => [s.id, s.label])).toEqual([
       ["test", "Simulate"],
+      ["edit", "Edit"],
       ["hooks", "Hooks"],
       ["script", "Script"],
       ["remix", "Remix"],

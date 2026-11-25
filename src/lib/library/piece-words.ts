@@ -25,6 +25,8 @@ export function insideLabel(summary: Pick<ChatSummary, "counts" | "lead">): stri
       return one(counts.videos, "Video", "videos");
     case "text":
       return one(counts.texts, "Text", "texts");
+    case "edit":
+      return "Edit";
     case "chat":
       return "Chat";
   }

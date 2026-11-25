@@ -262,6 +262,7 @@ export const NON_RECORD_BLOCKS: Record<string, string> = {
   // recorded above with its band/fraction, so recording these too would double-count one result.
   band: "a sub-block of a card whose own record already carries the band",
   personas: "a sub-block of a card whose own record already carries the result",
+  edit: "a door to the editor page: the edit lives in its own tables and is read there, so the chat has nothing to replay",
 };
 
 /** Caps on the record trail: compact by construction, since it rides on every later turn. */

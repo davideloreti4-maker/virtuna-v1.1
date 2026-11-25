@@ -280,3 +280,14 @@ export const VideoTestCardBlockSchema = z.object({
 });
 
 export type VideoTestCardBlock = z.infer<typeof VideoTestCardBlockSchema>;
+
+// ─── edit ────────────────────────────────────────────────────────────────────────
+// The editor's card in its chat (plan 2026-11-24-editor-screens-a, Task 4): only the edit's id. The card reads the edit's
+// title, length, look, picture and day from the edit itself (`GET /api/edit/edits/[id]`), so it is never out of date.
+
+export const EditBlockSchema = z.object({
+  type: z.literal("edit"),
+  props: z.object({ editId: z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i) }),
+});
+
+export type EditBlock = z.infer<typeof EditBlockSchema>;
