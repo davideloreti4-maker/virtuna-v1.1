@@ -12,7 +12,7 @@ import { useVideoMeta } from "@/hooks/use-video-meta";
 import { cn } from "@/lib/utils";
 import { VIDEO_ACCEPT, formatLength, validateVideoFile } from "@/lib/video-file";
 
-import { ChevronIcon, CloseIcon, DocIcon, SendIcon, StopIcon } from "./field-icons";
+import { CloseIcon, DocIcon, SendIcon, StopIcon } from "./field-icons";
 
 /**
  * The message field (new look, spec 2026-11-20 §4.1-4.3; reference
@@ -20,38 +20,25 @@ import { ChevronIcon, CloseIcon, DocIcon, SendIcon, StopIcon } from "./field-ico
  * every request lives in the composer, which passes them in. The field owns only what never
  * leaves it: its textarea ref (focus), the video picker, and the message for a refused file.
  *
- * In a thread (no `home`) it is a glass bar docked at the bottom:
+ * One layout, in a thread and on Home:
  *
- *   row 1   +  ·  the text  ·  send (Stop while a run streams)
+ *   row 1   +  ·  the text  ·  send (Stop while a run streams, until its answer is in)
  *   row 2   Simulate · Hooks · Script · Remix · More
  *
  * Geometry as drawn: radius 32, padding 8 / 8 / 10, 10 between the rows, 96 tall at rest and
  * 164 with a video tile. Pills 32 tall, 14 / 560, padding 8 and gap 4 on the phone, 12 and 6
  * from 768 up — built with 7 on the phone, see PILL.
  *
- * On Home (`home`, Home spec 2026-11-23 §3.1-3.2) the same field is a card in the page, solid,
- * not glass (nothing scrolls under it). No pills and no More: the four cards under it are the
- * skills. The text, the send button, the picker, the messages and the drop are the same code.
- *
- *   Hooks · 1 credit  ×        the picked skill, an ink pill (only while one is picked)
- *   the text, two lines at rest
- *   +  ·  Audience: @handle  ·  send
+ * In a thread it is a glass bar docked at the bottom. On Home (`home`, Home spec 2026-11-25 §2.4)
+ * it is the same field as a card in the page: solid with the resting shadow, not glass (nothing
+ * scrolls under it). The one behaviour Home adds: a skill can be picked there outside the field
+ * (a card, "/", More), and focus then moves to the next step, as a pill tap moves it.
  *
  * For an account the editor is open to (plan 2026-11-24-editor-screens-a, Task 16) a video is simulated or edited: the
- * thread's row has an Edit pill beside Simulate (`editOpen`), and on Home a staged video shows the two as a choice in the
- * picked skill's place (`home.videoSkill`). The caller may hand in the check a video passes to be staged (`validateVideo`:
- * the editor takes files Simulate does not) and a ref to the picker, to open it inside a tap of its own (`pickerRef`).
+ * row has an Edit pill beside Simulate (`editOpen`), in a thread and on Home, and with a video staged the two pills are
+ * the choice. The caller may hand in the check a video passes to be staged (`validateVideo`: the editor takes files
+ * Simulate does not) and a ref to the picker, to open it inside a tap of its own (`pickerRef`, Home's Edit card).
  */
-
-/** The field's Home layout: what it shows that the thread's does not. */
-export interface FieldHome {
-  audience: { label: string; open: boolean; onOpen(): void };   // "Audience: {label}", opens the audience sheet
-  picked: { label: string; price: number | null } | null;       // the picked skill: a pill above the text
-  onClearPicked(): void;                                        // the pill's cross, and Backspace in an empty text
-  /** A video staged with the editor open (plan 2026-11-24-editor-screens-a): Simulate or Edit, in the picked skill's place.
-   *  `simulate` false: Simulate cannot take this file (past its 200 MB). */
-  videoSkill?: { picked: "test" | "edit"; simulate: boolean; onPick(id: "test" | "edit"): void } | null;
-}
 
 type FieldTool = "test" | "edit" | "hooks" | "script" | "remix"; // the pills, in this order; Edit where the editor is open
 export interface ThreadFieldProps {
@@ -62,6 +49,9 @@ export interface ThreadFieldProps {
   priceOf(tool: ToolId): number | null;                                 // null = free (chat)
   canSend: boolean; busy: boolean; online: boolean;
   streaming: boolean; onStop(e: React.MouseEvent<HTMLButtonElement>): void;
+  /** Thread feel §4.6: the answer is in while its stream is still open (billing, a closing line
+   *  this look does not draw). The send arrow again, off until the stream closes. `streaming` wins. */
+  finishing?: boolean;
   video: File | null; onVideoChange(file: File | null): void;          // + and a dropped video; remove = onVideoChange(null)
   evidence: File | null; onRemoveEvidence(): void;                     // the profile read's staged file, shown as a chip
   onDropFile(file: File): void;                                         // a dropped non-video file (the composer routes it to evidence)
@@ -80,9 +70,10 @@ export interface ThreadFieldProps {
   moreOpen: boolean;
   /** Added in review: the text is invalid (`aria-invalid`), e.g. a non-TikTok link for Simulate. */
   invalid?: boolean;
-  /** The Home layout (see the top of this file). Absent or null: the thread's layout, unchanged. */
-  home?: FieldHome | null;
-  /** The editor is open to this account: the Edit pill in a thread's row (plan 2026-11-24-editor-screens-a). */
+  /** On Home (see the top of this file): the solid card, and focus follows a pick made outside the
+   *  field. Absent or false: the thread's field, unchanged. */
+  home?: boolean;
+  /** The editor is open to this account: the Edit pill in the row (plan 2026-11-24-editor-screens-a). */
   editOpen?: boolean;
   /** The video picker's input, for a caller that opens it inside its own tap (Home's Edit card). */
   pickerRef?: React.RefObject<HTMLInputElement | null>;
@@ -114,12 +105,6 @@ const TEXT_MAX_HEIGHT = 6 * 22 + 14;
  *  Phone padding 7, one under the drawn 8 (review ruling, Task 3 fix round 2): the ten pixels it
  *  frees let row 2 hold "Account · 5" armed on a 393 phone without scrolling. 12 from 768 up. */
 const PILL = "gap-0 px-[7px] md:px-3";
-
-/** The two things a staged video can be sent to, as Home's choice lists them (`FieldHome.videoSkill`). */
-const VIDEO_SKILLS = [
-  { id: "test", label: "Simulate" },
-  { id: "edit", label: "Edit" },
-] as const;
 
 /** A dropped file the field treats as a video (then checked by `validateVideo`). */
 function looksLikeVideo(file: File): boolean {
@@ -200,6 +185,7 @@ export function ThreadField({
   online,
   streaming,
   onStop,
+  finishing = false,
   video,
   onVideoChange,
   evidence,
@@ -218,7 +204,7 @@ export function ThreadField({
   onOpenMore,
   moreOpen,
   invalid,
-  home = null,
+  home = false,
   editOpen = false,
   pickerRef: givenPicker,
   validateVideo = validateVideoFile,
@@ -228,6 +214,7 @@ export function ThreadField({
   const ownPicker = useRef<HTMLInputElement>(null);
   const pickerRef = givenPicker ?? ownPicker;
   const simulateRef = useRef<HTMLButtonElement>(null);
+  const editRef = useRef<HTMLButtonElement>(null);
   const plusRef = useRef<HTMLButtonElement>(null);
   // A refused file's message (wrong type, too large). The composer's own errors come in `errors`.
   const [pickError, setPickError] = useState<string | null>(null);
@@ -243,10 +230,9 @@ export function ThreadField({
   // Counted, not read from `relatedTarget`: Safari sends none, and every child the drag crosses
   // fires its own enter and leave.
   const dragDepth = useRef(0);
-  // More (or Home's audience popover) was open when this tap began: the open layer closes on that
-  // pointerdown, and the click that follows must not open it again (a tap on More toggles it).
+  // More was open when this tap began: the open layer closes on that pointerdown, and the click
+  // that follows must not open it again (a tap on More toggles it).
   const moreWasOpen = useRef(false);
-  const audienceWasOpen = useRef(false);
 
   const focusText = () => textRef.current?.focus();
 
@@ -267,17 +253,18 @@ export function ThreadField({
     lastArmed.current = armedLabel;
   }, [armedLabel]);
 
-  // On Home a skill picked from a card arrives as `home.picked`: focus goes to the next step, as
-  // a pill tap does. Simulate or Edit with no video: +, because the text would open the phone's keyboard.
-  const pickedLabel = home?.picked?.label ?? null;
-  const lastPicked = useRef(pickedLabel);
+  // On Home a skill also arrives from outside the field (a card, "/", More): focus goes to the next
+  // step, as a pill tap does. Simulate or Edit with no video: +, because the text would open the
+  // phone's keyboard; unless that skill's own pill holds the focus, where its tap put it (as in a
+  // thread). Any other skill: the text, where a pill tap puts it too. Back to chat moves nothing.
+  const lastTool = useRef(tool);
   useEffect(() => {
-    if (pickedLabel && pickedLabel !== lastPicked.current) {
-      if ((tool === "test" || tool === "edit") && !video) plusRef.current?.focus();
-      else textRef.current?.focus();
-    }
-    lastPicked.current = pickedLabel;
-  }, [pickedLabel, tool, video]);
+    if (tool === lastTool.current) return;
+    lastTool.current = tool;
+    if (!home || tool === "chat") return;
+    if ((tool !== "test" && tool !== "edit") || video) textRef.current?.focus();
+    else if (document.activeElement !== (tool === "edit" ? editRef : simulateRef).current) plusRef.current?.focus();
+  }, [home, tool, video]);
 
   /** A picked or dropped video: checked here, so a refused file never reaches the composer. */
   const takeVideo = (file: File) => {
@@ -292,14 +279,15 @@ export function ThreadField({
     focusText();
   };
 
-  const sendEnabled = canSend && online && !busy;
+  const sendEnabled = canSend && online && !busy && !finishing;
+  // While a run finishes the arrow shows, off: never the spinner a busy send shows in its place.
+  const sendBusy = busy && !finishing;
   const shown = (list: Array<string | null>) => list.filter((m): m is string => Boolean(m));
   const shownErrors = shown([pickError, ...errors]);
   const shownNotes = shown(notes);
   const hasMessages = shownErrors.length + shownNotes.length > 0;
   const errorsId = `${uid}-errors`;
   const priceId = `${uid}-price`;
-  const pickedId = `${uid}-picked`;
   // The price of what is selected, a pill's or a More pick's: the pressed button's description.
   const selectedPrice = moreArmed ? moreArmed.price : FIELD_TOOLS.some((t) => t.id === tool) ? priceOf(tool) : null;
 
@@ -311,128 +299,13 @@ export function ThreadField({
       moreWasOpen.current = moreOpen;
     },
   };
-  /** A pointer tap that began while the control's layer was open only closed it. A keyboard click
-   *  (detail 0) never carries a stale flag. */
-  const tapOnlyClosed = (wasOpen: React.RefObject<boolean>, e: React.MouseEvent) => {
-    const closed = e.detail > 0 && wasOpen.current;
-    wasOpen.current = false;
+  /** A pointer tap that began while More was open only closed it. A keyboard click (detail 0)
+   *  never carries a stale flag. */
+  const tapOnlyClosedMore = (e: React.MouseEvent) => {
+    const closed = e.detail > 0 && moreWasOpen.current;
+    moreWasOpen.current = false;
     return closed;
   };
-  const tapOnlyClosedMore = (e: React.MouseEvent) => tapOnlyClosed(moreWasOpen, e);
-
-  // Clicked inside the tap: iOS Safari drops a picker opened any later.
-  const openPicker = () => pickerRef.current?.click();
-  // Home, Simulate or Edit picked and nothing staged: "+" is the only way on, so it says so.
-  const addVideoPill = Boolean(home) && (tool === "test" || tool === "edit") && !video;
-  // Home, a video staged with the editor open: Simulate or Edit, shown in the picked skill's place.
-  const videoChoice = video ? (home?.videoSkill ?? null) : null;
-  const choicePrice = videoChoice ? priceOf(videoChoice.picked) : null;
-
-  // The three controls both layouts draw, written once and placed by each. They differ only in
-  // size: the thread's 32 circles sit 2px in from its 36 row; Home's are 36.
-  //
-  // Home's "+" is one button in both of its looks, so the node, and a keyboard user's focus on it,
-  // survives the change when the picker stages a video. Its round look is the icon button's card
-  // surface at 36 (`IconButton surface="card"`).
-  const plus = home ? (
-    <button
-      ref={plusRef}
-      type="button"
-      aria-label="Add a video"
-      onClick={openPicker}
-      className={cn(
-        "tap-44 inline-flex h-9 shrink-0 items-center rounded-full duration-150 transition-[color,background-color,box-shadow,scale] motion-safe:active:scale-[0.98]",
-        addVideoPill
-          ? "gap-1.5 bg-action pl-2.5 pr-3.5 text-meta font-[560] text-action-foreground"
-          : "w-9 justify-center bg-surface-sunken text-foreground hover:bg-active",
-      )}
-    >
-      {addVideoPill ? (
-        <>
-          <PlusIcon size={16} strokeWidth={2.2} aria-hidden />
-          Add video
-        </>
-      ) : (
-        <PlusIcon size={18} strokeWidth={2} aria-hidden />
-      )}
-    </button>
-  ) : (
-    <IconButton
-      ref={plusRef}
-      surface="card"
-      aria-label="Add a video"
-      onClick={openPicker}
-      className="my-0.5 h-8 w-8 [&_svg]:size-[17px]"
-    >
-      <PlusIcon strokeWidth={2} aria-hidden />
-    </IconButton>
-  );
-
-  const text = (
-    <textarea
-      ref={textRef}
-      rows={home ? 2 : 1}
-      value={value}
-      onChange={(e) => {
-        setPickError(null);
-        onChange(e.target.value);
-      }}
-      onKeyDown={(e) => {
-        // On Home, Backspace in an empty text lets the picked skill go, as the pill's cross does.
-        // A fresh press only: a key held down to clear a long text must not take the skill with it.
-        if (home?.picked && e.key === "Backspace" && value === "" && !e.repeat) {
-          e.preventDefault();
-          home.onClearPicked();
-          return;
-        }
-        onKeyDown(e);
-      }}
-      placeholder={placeholder}
-      aria-label={ariaLabel}
-      aria-invalid={invalid || undefined}
-      aria-describedby={hasMessages ? errorsId : undefined}
-      className={
-        home
-          ? "block w-full resize-none bg-transparent px-1 py-[7px] text-title leading-[22px] text-foreground placeholder:text-foreground-secondary focus:outline-none"
-          : "min-w-0 flex-1 resize-none bg-transparent px-1 py-[7px] text-title leading-[22px] text-foreground placeholder:text-foreground-secondary focus:outline-none"
-      }
-    />
-  );
-
-  const send = (
-    <Button
-      // While a run streams this is Stop: a plain button whose click also cancels the
-      // default action, because Stop ends the stream at once and the same node is a
-      // submit again before the click's default action runs (composer.tsx, the second
-      // billed run).
-      type={streaming ? "button" : "submit"}
-      variant="primary"
-      size="sm"
-      aria-label={streaming ? "Stop the run" : sendLabel}
-      // Home: the picked skill and its price ("Hooks · 1 credit"), tied to no other control.
-      aria-describedby={!streaming && home?.picked ? pickedId : undefined}
-      disabled={!streaming && !sendEnabled}
-      loading={!streaming && busy}
-      onClick={
-        streaming
-          ? (e) => {
-              e.preventDefault();
-              onStop(e);
-            }
-          : undefined
-      }
-      className={cn(
-        home
-          ? "tap-44 h-9 min-h-0 w-9 min-w-0 shrink-0 rounded-full p-0 next:rounded-full"
-          : "tap-44 my-0.5 h-8 min-h-0 w-8 min-w-0 shrink-0 rounded-full p-0 next:rounded-full",
-        // Off, as drawn: a tint with a muted arrow, not the action fill at 40%.
-        "disabled:bg-surface-sunken disabled:text-foreground-muted disabled:opacity-100 disabled:shadow-none",
-        "next:disabled:opacity-100 next:disabled:shadow-none",
-      )}
-    >
-      {streaming ? <StopIcon aria-hidden /> : busy ? null : <SendIcon size={17} strokeWidth={2.3} aria-hidden />}
-    </Button>
-  );
 
   return (
     <div ref={anchorRef} className="relative">
@@ -476,9 +349,8 @@ export function ThreadField({
           if (firstOther) onDropFile(firstOther);
         }}
         className={cn(
-          home
-            ? "rounded-4xl bg-surface px-3.5 pb-3 pt-2.5 shadow-[var(--shadow-rest)] md:px-5 md:pb-3.5 md:pt-3"
-            : "rounded-4xl bg-glass px-2 pb-2.5 pt-2 shadow-[var(--shadow-float)]",
+          "rounded-4xl px-2 pb-2.5 pt-2",
+          home ? "bg-surface shadow-[var(--shadow-rest)]" : "bg-glass shadow-[var(--shadow-float)]",
           dragging && "ring-2 ring-[color:var(--focus-ring)]",
         )}
       >
@@ -495,9 +367,9 @@ export function ThreadField({
                 onClick={() => {
                   onDismissBrief();
                   // As a Simulate tap: with no video yet the next step is +, so the pill, not
-                  // the text (which would open the phone's keyboard). Home has no pill: +.
+                  // the text (which would open the phone's keyboard).
                   if (video) focusText();
-                  else (home ? plusRef : simulateRef).current?.focus();
+                  else simulateRef.current?.focus();
                 }}
                 className="h-7 w-7 [&_svg]:size-[14px]"
               >
@@ -529,189 +401,136 @@ export function ThreadField({
 
         {video && <VideoTile file={video} onRemove={removeVideo} />}
 
-        {home ? (
-          <>
-            {videoChoice && (
-              // In the picked skill's place, as tall as its pill: the pressed one is what the send does. Each is named
-              // for its skill alone; the pressed one's words, its price in them, are also send's description. The video
-              // itself is let go by its tile's cross.
-              <div role="group" aria-label="What to do with this video" className="flex gap-1.5 pb-1 pt-0.5">
-                {VIDEO_SKILLS.map(({ id, label }) => {
-                  const selected = videoChoice.picked === id;
-                  const price = selected ? choicePrice : null;
-                  return (
-                    <Chip
-                      key={id}
-                      surface="card"
-                      selected={selected}
-                      aria-label={label}
-                      aria-describedby={price != null ? priceId : undefined}
-                      disabled={id === "test" && !videoChoice.simulate}
-                      onClick={() => {
-                        setPickError(null);
-                        videoChoice.onPick(id);
-                      }}
-                      // The chip's own padding (12), not the thread pills' 7: there is room, and the text
-                      // starts where the picked skill's pill had it. `gap-0`: the label and its price are one run.
-                      className="gap-0"
-                    >
-                      <span id={selected ? pickedId : undefined}>
-                        {label}
-                        {price != null && <span className="opacity-[0.72]">{` · ${creditsLabel(price)}`}</span>}
-                      </span>
-                    </Chip>
-                  );
-                })}
-                <span hidden id={priceId}>
-                  {choicePrice != null ? creditsLabel(choicePrice) : ""}
-                </span>
-              </div>
+        {/* Row 1: + · text · send. The circles sit 2px in from the row's 36. */}
+        <div className="flex min-h-9 items-end gap-1.5">
+          <IconButton
+            ref={plusRef}
+            surface="card"
+            aria-label="Add a video"
+            // Clicked inside the tap: iOS Safari drops a picker opened any later.
+            onClick={() => pickerRef.current?.click()}
+            className="my-0.5 h-8 w-8 [&_svg]:size-[17px]"
+          >
+            <PlusIcon strokeWidth={2} aria-hidden />
+          </IconButton>
+          <textarea
+            ref={textRef}
+            rows={1}
+            value={value}
+            onChange={(e) => {
+              setPickError(null);
+              onChange(e.target.value);
+            }}
+            onKeyDown={onKeyDown}
+            placeholder={placeholder}
+            aria-label={ariaLabel}
+            aria-invalid={invalid || undefined}
+            aria-describedby={hasMessages ? errorsId : undefined}
+            className="min-w-0 flex-1 resize-none bg-transparent px-1 py-[7px] text-title leading-[22px] text-foreground placeholder:text-foreground-secondary focus:outline-none"
+          />
+          <Button
+            // While a run streams this is Stop: a plain button whose click also cancels the
+            // default action, because Stop ends the stream at once and the same node is a
+            // submit again before the click's default action runs (composer.tsx, the second
+            // billed run).
+            type={streaming ? "button" : "submit"}
+            variant="primary"
+            size="sm"
+            aria-label={streaming ? "Stop the run" : sendLabel}
+            disabled={!streaming && !sendEnabled}
+            loading={!streaming && sendBusy}
+            onClick={
+              streaming
+                ? (e) => {
+                    e.preventDefault();
+                    onStop(e);
+                  }
+                : undefined
+            }
+            className={cn(
+              "tap-44 my-0.5 h-8 min-h-0 w-8 min-w-0 shrink-0 rounded-full p-0 next:rounded-full",
+              // Off, as drawn: a tint with a muted arrow, not the action fill at 40%.
+              "disabled:bg-surface-sunken disabled:text-foreground-muted disabled:opacity-100 disabled:shadow-none",
+              "next:disabled:opacity-100 next:disabled:shadow-none",
             )}
-            {!videoChoice && home.picked && (
-              <div className="flex pb-1 pt-0.5">
-                <span
-                  data-part="picked-skill"
-                  className="inline-flex h-8 items-center gap-1 rounded-full bg-action pl-3 pr-1 text-meta font-[560] text-action-foreground"
+          >
+            {streaming ? <StopIcon aria-hidden /> : sendBusy ? null : <SendIcon size={17} strokeWidth={2.3} aria-hidden />}
+          </Button>
+        </div>
+
+        {/* Row 2: the pills and More. The scroller keeps a narrow phone usable; its 6px
+            above and below (taken back by margins) leave room for the 44px hit areas and the
+            focus ring, which a scroller would otherwise clip. */}
+        <div className="-mx-1 -mb-1.5 mt-1 overflow-x-auto px-1 py-1.5 [scrollbar-width:none]">
+          <div className="flex h-8 w-max min-w-full items-center gap-1 md:gap-1.5">
+            {FIELD_TOOLS.filter((pill) => pill.id !== "edit" || editOpen).map(({ id, label }) => {
+              const selected = tool === id;
+              return (
+                <Chip
+                  key={id}
+                  ref={id === "test" ? simulateRef : id === "edit" ? editRef : undefined}
+                  surface="card"
+                  selected={selected}
+                  // The name is the skill's and never changes; the price is the description.
+                  aria-label={label}
+                  aria-describedby={selected && selectedPrice != null ? priceId : undefined}
+                  onClick={(e) => {
+                    setPickError(null);
+                    onSelectTool(selected ? "chat" : id);
+                    // Simulate or Edit with no video: the next step is +, so focus stays on the pill
+                    // (the text would open the phone's keyboard). Every other tap: the text.
+                    // With a video staged the two pills are the choice of what the send does.
+                    if ((id === "test" || id === "edit") && !selected && !video) e.currentTarget.focus();
+                    else focusText();
+                  }}
+                  className={PILL}
                 >
-                  {/* Also send's description, so a keyboard user hears what the send spends. */}
-                  <span id={pickedId}>
-                    {home.picked.label}
-                    {home.picked.price != null && (
-                      <span className="opacity-[0.72]">{` · ${creditsLabel(home.picked.price)}`}</span>
-                    )}
-                  </span>
-                  <button
-                    type="button"
-                    aria-label={`Remove ${home.picked.label}`}
-                    onClick={() => {
-                      setPickError(null);
-                      home.onClearPicked();
-                      focusText();
-                    }}
-                    className="tap-44 flex size-6 items-center justify-center rounded-full transition-colors duration-150 hover:bg-action-foreground/15 active:bg-action-foreground/25"
-                  >
-                    <CloseIcon size={13} strokeWidth={2.4} aria-hidden />
-                  </button>
-                </span>
-              </div>
-            )}
-            {text}
-            <div className="mt-1.5 flex items-center gap-2">
-              {plus}
-              <button
-                type="button"
-                aria-label={`Audience: ${home.audience.label}`}
-                aria-haspopup="dialog"
-                aria-expanded={home.audience.open}
-                // As More's guard: on desktop the popover closes on this pointerdown, and the click
-                // that follows must not open it again.
-                onPointerDown={() => {
-                  audienceWasOpen.current = home.audience.open;
-                }}
+                  <Priced label={label} price={selected ? priceOf(id) : null} />
+                </Chip>
+              );
+            })}
+            {moreArmed ? (
+              // A skill picked in More is, while selected, exactly a pill: named for the skill
+              // (as drawn, so "tap Ideas" finds it), pressed, its price the description; a tap
+              // puts it back. Not a popup button while armed.
+              <Chip
+                {...moreProps}
+                selected
+                aria-label={moreArmed.label}
+                aria-describedby={moreArmed.price != null ? priceId : undefined}
                 onClick={(e) => {
-                  if (tapOnlyClosed(audienceWasOpen, e)) return;
-                  home.audience.onOpen();
+                  if (tapOnlyClosedMore(e)) return;
+                  setPickError(null);
+                  onSelectTool("chat");
+                  focusText();
                 }}
-                className="tap-44 inline-flex h-9 min-w-0 items-center gap-2 rounded-full bg-surface-sunken pl-3 pr-2.5 text-meta font-[560] text-foreground"
               >
-                <span aria-hidden className="size-2 shrink-0 rounded-full bg-foreground" />
-                {/* The handle is what matters: on a narrow screen the prefix goes first (under 360,
-                    and under 768 while the Add video pill takes the room). The name keeps it. */}
-                <span className="min-w-0 truncate">
-                  <span className={cn("max-[359px]:hidden", addVideoPill && "max-md:hidden")}>{"Audience: "}</span>
-                  {home.audience.label}
-                </span>
-                <ChevronIcon size={14} strokeWidth={2.2} aria-hidden className="shrink-0 rotate-90 text-foreground-secondary" />
-              </button>
-              <span className="flex-1" />
-              {send}
-            </div>
-          </>
-        ) : (
-          <>
-            {/* Row 1: + · text · send. The circles sit 2px in from the row's 36. */}
-            <div className="flex min-h-9 items-end gap-1.5">
-              {plus}
-              {text}
-              {send}
-            </div>
+                <Priced label={moreArmed.label} price={moreArmed.price} />
+              </Chip>
+            ) : (
+              <Chip
+                {...moreProps}
+                aria-label="More"
+                aria-haspopup="dialog"
+                aria-expanded={moreOpen}
+                onClick={(e) => {
+                  if (tapOnlyClosedMore(e)) return;
+                  onOpenMore();
+                }}
+              >
+                More
+              </Chip>
+            )}
+          </div>
+        </div>
 
-            {/* Row 2: the pills and More. The scroller keeps a narrow phone usable; its 6px
-                above and below (taken back by margins) leave room for the 44px hit areas and the
-                focus ring, which a scroller would otherwise clip. */}
-            <div className="-mx-1 -mb-1.5 mt-1 overflow-x-auto px-1 py-1.5 [scrollbar-width:none]">
-              <div className="flex h-8 w-max min-w-full items-center gap-1 md:gap-1.5">
-                {FIELD_TOOLS.filter((pill) => pill.id !== "edit" || editOpen).map(({ id, label }) => {
-                  const selected = tool === id;
-                  return (
-                    <Chip
-                      key={id}
-                      ref={id === "test" ? simulateRef : undefined}
-                      surface="card"
-                      selected={selected}
-                      // The name is the skill's and never changes; the price is the description.
-                      aria-label={label}
-                      aria-describedby={selected && selectedPrice != null ? priceId : undefined}
-                      onClick={(e) => {
-                        setPickError(null);
-                        onSelectTool(selected ? "chat" : id);
-                        // Simulate or Edit with no video: the next step is +, so focus stays on the pill
-                        // (the text would open the phone's keyboard). Every other tap: the text.
-                        if ((id === "test" || id === "edit") && !selected && !video) e.currentTarget.focus();
-                        else focusText();
-                      }}
-                      className={PILL}
-                    >
-                      <Priced label={label} price={selected ? priceOf(id) : null} />
-                    </Chip>
-                  );
-                })}
-                {moreArmed ? (
-                  // A skill picked in More is, while selected, exactly a pill: named for the skill
-                  // (as drawn, so "tap Ideas" finds it), pressed, its price the description; a tap
-                  // puts it back. Not a popup button while armed.
-                  <Chip
-                    {...moreProps}
-                    selected
-                    aria-label={moreArmed.label}
-                    aria-describedby={moreArmed.price != null ? priceId : undefined}
-                    onClick={(e) => {
-                      if (tapOnlyClosedMore(e)) return;
-                      setPickError(null);
-                      onSelectTool("chat");
-                      focusText();
-                    }}
-                  >
-                    <Priced label={moreArmed.label} price={moreArmed.price} />
-                  </Chip>
-                ) : (
-                  <Chip
-                    {...moreProps}
-                    aria-label="More"
-                    aria-haspopup="dialog"
-                    aria-expanded={moreOpen}
-                    onClick={(e) => {
-                      if (tapOnlyClosedMore(e)) return;
-                      onOpenMore();
-                    }}
-                  >
-                    More
-                  </Chip>
-                )}
-              </div>
-            </div>
-
-            {/* Descriptions, read with the controls that point at them (only the pills do; Home
-                shows its price on the picked skill's pill). */}
-            <span hidden id={priceId}>
-              {selectedPrice != null ? creditsLabel(selectedPrice) : ""}
-            </span>
-          </>
-        )}
+        {/* Descriptions, read with the controls that point at them (only the pills do). */}
+        <span hidden id={priceId}>
+          {selectedPrice != null ? creditsLabel(selectedPrice) : ""}
+        </span>
 
         {hasMessages && (
-          // On Home, in line with the text (its own `px-1`); the thread's block is unchanged.
-          <div id={errorsId} className={home ? "px-1 pt-2" : "px-2 pt-2"}>
+          <div id={errorsId} className="px-2 pt-2">
             {shownErrors.map((message, i) => (
               <p key={`e${i}-${message}`} role="alert" className="text-meta text-error">
                 {message}

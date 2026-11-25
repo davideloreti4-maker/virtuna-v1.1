@@ -2,10 +2,12 @@ import type { ShellIcon, ShellIconProps } from "@/components/shell/icons";
 
 /**
  * The answer cards' own glyphs, which neither the shell's set nor the field's has: upload ("Add
- * your take"), play ("Watch it run"), expand ("Open simulation"), video (a tile with no picture), and
- * the details sheet's copy, bookmark (Save) and external (a proof's video). Same drawing rules as
- * `field-icons.tsx` (24×24 viewBox, `currentColor`, round caps and joins, sized with `size`). The
- * paths and stroke weights are the drawing's (`.scratch/next-look/part3/answers/answers.html`, `I`).
+ * your take"), play ("Watch it run"), expand ("Open simulation"), video (a tile with no picture),
+ * film ("How to film it"), and the details sheet's copy, bookmark (Save) and external (a proof's
+ * video). Same drawing rules as `field-icons.tsx` (24×24 viewBox, `currentColor`, round caps and
+ * joins, sized with `size`). The paths and stroke weights are the drawing's
+ * (`.scratch/next-look/part3/answers/answers.html`, `I`; the film's from the step 2 film,
+ * `.scratch/next-look/part11/thread-ux/proto/index.html`, `IC.film`).
  */
 function Glyph({ size = 24, children, ...props }: ShellIconProps & { children: React.ReactNode }) {
   return (
@@ -55,6 +57,14 @@ export const VideoIcon: ShellIcon = (props) => (
   <Glyph {...props}>
     <rect x="3.5" y="5.5" width="17" height="13" rx="3" />
     <path d="M10.4 9.6v4.8l4-2.4z" />
+  </Glyph>
+);
+
+/** How to film it (`IC.film`, stroke 2): a camera's body and its lens. */
+export const FilmIcon: ShellIcon = (props) => (
+  <Glyph strokeWidth={2} {...props}>
+    <path d="M4 8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />
+    <path d="M16 11l4-2.5v7L16 13" />
   </Glyph>
 );
 

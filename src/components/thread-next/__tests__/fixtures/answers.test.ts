@@ -2,10 +2,16 @@ import { describe, expect, it } from "vitest";
 import { validateBlock } from "@/lib/tools/block-registry";
 import { readSimSeals } from "@/lib/threads/sim-seals";
 import {
+  ACCOUNT_READ_BARE,
+  ACCOUNT_READ_FULL,
   IDEAS_4,
   MEAL_PREP_HOOKS,
   REMIX_CAMERA,
+  REMIX_DECODED,
+  REMIX_FILMED,
   SCRIPT_AI,
+  SCRIPT_FILMED,
+  SCRIPT_PLANNED,
   SEALS_DONE,
   accountRead,
   broughtCard,
@@ -59,7 +65,13 @@ const BUILT: Array<[string, unknown]> = [
   ...MEAL_PREP_HOOKS.map((b, i): [string, unknown] => [`MEAL_PREP_HOOKS[${i}]`, b]),
   ...IDEAS_4.map((b, i): [string, unknown] => [`IDEAS_4[${i}]`, b]),
   ["SCRIPT_AI", SCRIPT_AI],
+  ["SCRIPT_FILMED", SCRIPT_FILMED],
+  ["SCRIPT_PLANNED", SCRIPT_PLANNED],
   ["REMIX_CAMERA", REMIX_CAMERA],
+  ["REMIX_FILMED", REMIX_FILMED],
+  ["REMIX_DECODED", REMIX_DECODED],
+  ["ACCOUNT_READ_FULL", ACCOUNT_READ_FULL],
+  ["ACCOUNT_READ_BARE", ACCOUNT_READ_BARE],
 ];
 
 describe("fixtures", () => {
@@ -83,6 +95,15 @@ describe("fixtures", () => {
     expect(IDEAS_4.map((b) => b.props.title)).toHaveLength(4);
     expect(SCRIPT_AI.props.beats.map((b) => b.timing)).toEqual(["0–3s", "3–8s", "8–14s", "14–20s", "20–24s"]);
     expect(SCRIPT_AI.props.openingBeatSeed).toBe(SCRIPT_AI.props.beats[0]?.content);
+    // Today's script has neither cues nor a plan; the filmed one has cues on some beats (not all) and
+    // a plan with its edit; the planned one a plan without an edit and no cue.
+    expect(SCRIPT_AI.props.beats.some((b) => b.filming) || SCRIPT_AI.props.production).toBeFalsy();
+    expect(SCRIPT_FILMED.props.beats.map((b) => b.content)).toEqual(SCRIPT_AI.props.beats.map((b) => b.content));
+    expect(SCRIPT_FILMED.props.beats.map((b) => !!b.filming)).toEqual([true, false, true, false, true]);
+    expect(SCRIPT_FILMED.props.production?.edit).toBeTruthy();
+    expect(SCRIPT_PLANNED.props.beats.some((b) => b.filming)).toBe(false);
+    expect(SCRIPT_PLANNED.props.production).toBeTruthy();
+    expect(SCRIPT_PLANNED.props.production).not.toHaveProperty("edit");
     expect(REMIX_CAMERA.props.formatBorrowed).toBe("Visual Hook → Concept → Tools → Footage");
     expect(REMIX_CAMERA.props.proof).toMatchObject({ handle: "lacapture", views: 154000, multiplier: 10.4, baselineLabel: "their average" });
   });

@@ -935,6 +935,42 @@
   }
 }
 
+/* The chat's feel (docs/superpowers/specs/2026-11-25-thread-feel-design.md, §4.2 to §4.5): a card's
+ * rows rising in when an answer lands (`.land` inside `[data-thread-landing]`, the thread's own name:
+ * the result page keys on `data-landing`; staggered by `--i` after `--landed`), the light over the
+ * run's words, the sweep over the outline's bars, a fresh score's arc drawing (the value path's
+ * length is 100), and a streamed word fading in. Used only by the new look's thread parts; each
+ * rests under reduced motion. */
+@keyframes thread-rise { from { opacity: 0; transform: translateY(6px); } }
+@keyframes thread-light { from { background-position: 130% 0; } to { background-position: -110% 0; } }
+@keyframes thread-sweep { from { background-position: 120% 0; } to { background-position: -100% 0; } }
+@keyframes gauge-draw { from { stroke-dasharray: 0 100; } }
+@keyframes word-in { from { opacity: 0; } }
+
+[data-thread-landing] .land {
+  animation: thread-rise 420ms var(--ease-out) both;
+  animation-delay: calc(var(--landed, 0ms) + var(--i, 0) * 70ms);
+}
+.run-words {
+  background-image: linear-gradient(90deg, var(--color-foreground-secondary) 0%, var(--color-foreground-secondary) 38%, var(--color-foreground) 50%, var(--color-foreground-secondary) 62%, var(--color-foreground-secondary) 100%);
+  background-size: 240% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: thread-light 2s linear infinite;
+}
+.ghost-bar {
+  background-image: linear-gradient(90deg, var(--color-surface-sunken) 0%, color-mix(in srgb, var(--color-foreground) 3%, transparent) 45%, var(--color-surface-sunken) 90%);
+  background-size: 220% 100%;
+  animation: thread-sweep 1.6s ease-in-out infinite;
+}
+.gauge-draw { animation: gauge-draw 700ms var(--ease-out) both; }
+.word-in { animation: word-in 240ms ease both; }
+@media (prefers-reduced-motion: reduce) {
+  [data-thread-landing] .land, .gauge-draw, .word-in, .ghost-bar { animation: none; }
+  .run-words { animation: none; background-image: none; color: var(--color-foreground-secondary); }
+}
+
 /* ============================================
  * BASE STYLES
  * ============================================ */

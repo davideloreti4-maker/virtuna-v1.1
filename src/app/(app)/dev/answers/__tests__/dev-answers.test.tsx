@@ -4,7 +4,7 @@
  * "Maven" turn, with the real pack. Nothing here sends anything.
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 
 vi.mock("@/lib/flags/new-look", () => ({ NEW_LOOK_ENABLED: true }));
 vi.mock("next/navigation", () => ({
@@ -25,6 +25,8 @@ describe("/dev/answers states", () => {
     render(<DevAnswers state="p3" skin="light" frames={null} />);
     expect(screen.getByRole("heading", { name: "Maven" })).toBeInTheDocument();
     expect(screen.getByText("3 hooks for a video about meal prep for busy students")).toBeInTheDocument();
+    // The pack's header counts its rows until one is simulated (thread feel §4.7).
+    expect(screen.getByText("3 hooks")).toBeInTheDocument();
     expect(screen.getByText("1 credit each")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Simulate all 3/ })).toHaveTextContent("3 credits");
     expect(screen.getByRole("button", { name: "Follow up: More hooks" })).toBeInTheDocument();
@@ -58,6 +60,7 @@ describe("/dev/answers states", () => {
   it("p12: four ideas, not simulated", () => {
     render(<DevAnswers state="p12" skin="light" frames={null} />);
     expect(screen.getByText("4 ideas for next week")).toBeInTheDocument();
+    expect(screen.getByText("4 ideas")).toBeInTheDocument();
     expect(screen.getByText("Short sessions stick better.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Simulate all 4/ })).toHaveTextContent("4 credits");
   });
@@ -112,11 +115,14 @@ describe("/dev/answers states", () => {
     expect(screen.getByRole("region", { name: "Remix 1 of 3" })).toBeInTheDocument();
   });
 
-  it("p13: the fallback card (the account read)", () => {
+  // Was the account read in the fallback card; the account read has its own card now (p14, p15), so
+  // the fallback card is shown on a block that still falls back.
+  it("p13: the fallback card (a composed answer)", () => {
     render(<DevAnswers state="p13" skin="light" frames={null} />);
-    expect(screen.getByText("Read my account")).toBeInTheDocument();
-    expect(screen.getByText("Your account")).toBeInTheDocument();
+    expect(screen.getByText("Compare my two hooks")).toBeInTheDocument();
+    expect(screen.getByText("Two hooks compared")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Show all" })).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText("Your account")).toBeNull();
   });
 
   it("p7: the hook's result page from the drawing's numbers", () => {
@@ -167,5 +173,237 @@ describe("/dev/answers states", () => {
   it("paints the asked skin on <html>", () => {
     render(<DevAnswers state="p5" skin="dark" frames={null} />);
     expect(document.documentElement.getAttribute("data-theme")).toBe("dark");
+  });
+});
+
+// Depth one tap away (thread depth §3), for looking at: nothing is sent.
+describe("/dev/answers: depth", () => {
+  const proven = () => [...document.querySelectorAll<HTMLElement>('[data-part="row-proof"]')];
+  const names = () => [...document.querySelectorAll('[data-part="beat-name"]')].map((n) => n.textContent);
+
+  it("p3: hook 1 shows the video it is built on, the other two nothing", () => {
+    render(<DevAnswers state="p3" skin="light" frames={null} />);
+    const rows = screen.getAllByRole("listitem");
+    expect(proven()).toHaveLength(1);
+    expect(within(rows[0]!).getByText("@dij.arc · 21K views")).toBeInTheDocument();
+    expect(rows[0]!.querySelector('[data-part="row-proof"] img')).toHaveAttribute("src", "/covers/c8.jpg");
+  });
+
+  it("p3v: a cover and views, views without a cover, a cover without views", () => {
+    render(<DevAnswers state="p3v" skin="light" frames={null} />);
+    const [a, b, c] = proven();
+    expect(a).toHaveTextContent(/^@dij\.arc · 21K views$/);
+    expect(a!.querySelector("img")).not.toBeNull();
+    expect(b).toHaveTextContent(/^@creator_one · 854K views$/);
+    expect(b!.querySelector("img")).toBeNull();
+    expect(c).toHaveTextContent(/^@creator_two$/);
+    expect(c!.querySelector("img")).toHaveAttribute("src", "/covers/c9.jpg");
+  });
+
+  it("p10: today's script, its beats named, no 'How to film it'", () => {
+    render(<DevAnswers state="p10" skin="light" frames={null} />);
+    expect(names()).toEqual(["Hook", "Setup", "Turn", "Payoff", "Call to action"]);
+    expect(screen.queryByRole("button", { name: "How to film it" })).toBeNull();
+  });
+
+  it("p10c: cues and a plan; pressing 'How to film it' opens the sheet, Escape closes it", async () => {
+    render(<DevAnswers state="p10c" skin="light" frames={null} />);
+    expect(names()).toHaveLength(5);
+    const button = screen.getByRole("button", { name: "How to film it" });
+    fireEvent.click(button);
+    const dialog = await screen.findByRole("dialog", { name: "How to film it" });
+    expect([...dialog.querySelectorAll('[data-sheet="film-beat"] h3')].map((h) => h.textContent)).toEqual(["Hook", "Turn", "Call to action"]);
+    expect([...dialog.querySelectorAll('[data-sheet="film-plan"] h3')].map((h) => h.textContent)).toEqual(["Shots", "Text on screen", "Setup", "Edit"]);
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(document.activeElement).toBe(button);
+  });
+
+  it("p10p: a plan with no edit and no cues: the plan's three rows alone", async () => {
+    render(<DevAnswers state="p10p" skin="light" frames={null} />);
+    fireEvent.click(screen.getByRole("button", { name: "How to film it" }));
+    const dialog = await screen.findByRole("dialog", { name: "How to film it" });
+    expect(dialog.querySelectorAll('[data-sheet="film-beat"]')).toHaveLength(0);
+    expect([...dialog.querySelectorAll('[data-sheet="film-plan"] h3')].map((h) => h.textContent)).toEqual(["Shots", "Text on screen", "Setup"]);
+  });
+});
+
+// A remix's "How to film it" (thread depth, second part §4), for looking at: the beats come from a
+// fixed answer (`loadBeats`), so nothing is fetched.
+describe("/dev/answers: a remix's How to film it", () => {
+  const kinds = (d: HTMLElement) =>
+    [...d.querySelectorAll<HTMLElement>("[data-sheet^='film-'], [data-part='film-ghost']")].map((r) => r.getAttribute("data-sheet") ?? "ghost");
+
+  it("p11c: a decode, beats and a plan; the beats read from the fixed answer, ghost rows first; nothing fetched", async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    try {
+      render(<DevAnswers state="p11c" skin="light" frames={null} />);
+      const button = screen.getByRole("button", { name: "How to film it" });
+      fireEvent.click(button);
+      const dialog = await screen.findByRole("dialog", { name: "How to film it" });
+      expect(kinds(dialog)).toEqual(["film-why", "ghost", "ghost", "film-plan", "film-plan", "film-plan", "film-plan"]);
+      // Its decode is as long as a real run's: folded, one "More".
+      expect(within(dialog).getAllByRole("button", { name: "More" })).toHaveLength(1);
+      await waitFor(() => expect(dialog.querySelector("[aria-busy]")).toBeNull(), { timeout: 5000 });
+      expect([...dialog.querySelectorAll('[data-sheet="film-remix-beat"] h3')].map((h) => h.textContent)).toEqual(["Hook", "Setup", "Turn", "Close"]);
+      expect(kinds(dialog).slice(-4)).toEqual(["film-plan", "film-plan", "film-plan", "film-plan"]);
+      fireEvent.keyDown(dialog, { key: "Escape" });
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      expect(document.activeElement).toBe(button);
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("p11d: a decode only: the sheet is the why row alone", async () => {
+    render(<DevAnswers state="p11d" skin="light" frames={null} />);
+    fireEvent.click(screen.getByRole("button", { name: "How to film it" }));
+    const dialog = await screen.findByRole("dialog", { name: "How to film it" });
+    expect(kinds(dialog)).toEqual(["film-why"]);
+    expect(within(dialog).queryByRole("button", { name: "More" })).toBeNull();
+  });
+
+  it("p11: today's remix has neither, so no button", () => {
+    render(<DevAnswers state="p11" skin="light" frames={null} />);
+    expect(screen.queryByRole("button", { name: "How to film it" })).toBeNull();
+  });
+});
+
+// The account read's own card (thread depth, second part §3), for looking at: nothing is sent.
+describe("/dev/answers: the account read", () => {
+  const part = (name: string) => document.querySelector<HTMLElement>(`[data-part="${name}"]`);
+
+  it("p14: everything: who, what works, to fix, the habits, the button and the account's chip", () => {
+    render(<DevAnswers state="p14" skin="light" frames={null} />);
+    expect(screen.getByText("Read my account")).toBeInTheDocument();
+    expect(part("account-who")).toHaveTextContent("@creator_one12.4K followers · 86 videos");
+    expect(within(part("account-works")!).getAllByRole("listitem")).toHaveLength(2);
+    expect(part("account-works")!.querySelectorAll('[data-part="account-cover"] img')).toHaveLength(2);
+    expect(within(part("account-fix")!).getByText("The middle loses people. Tighten it and cut the dead air.")).toBeInTheDocument();
+    expect(part("account-habits")).toHaveTextContent("21 of 30 videos are 30 s or shorter. Three videos open with “How I…”.");
+    expect(part("account-avatar")!.querySelector("img")).toHaveAttribute("src", "/avatars/creator-one.jpg");
+    // As in a thread (every handler here does nothing), so the button is not drawn disabled.
+    expect(screen.getByRole("button", { name: "Ideas from what works, 1 credit" })).toBeEnabled();
+    // No chip that starts an Ideas run under it (fix round 1): the card's button does.
+    expect(screen.getByRole("button", { name: "Follow up: Where am I weakest?" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Follow up: Ideas that fit me" })).toBeNull();
+  });
+
+  it("p15: no fix, no covers, no picture", () => {
+    render(<DevAnswers state="p15" skin="light" frames={null} />);
+    expect(part("account-fix")).toBeNull();
+    expect(screen.queryByText("To fix")).toBeNull();
+    // No cover given: each tile shows the video mark (fix round 3, spec §3 point 2). Was (round 2): no tiles.
+    expect(part("account-works")!.querySelectorAll('[data-part="account-cover"]')).toHaveLength(2);
+    expect(part("account-works")!.querySelectorAll('[data-part="account-cover-mark"]')).toHaveLength(2);
+    expect(part("account-works")!.querySelectorAll("img")).toHaveLength(0);
+    expect(part("account-avatar")).toHaveTextContent(/^CR$/);
+    expect(part("account-habits")).toHaveTextContent(/^18 of 30 videos are longer than 30 s\.$/);
+    expect(screen.getByRole("button", { name: "Ideas from what works, 1 credit" })).toBeInTheDocument();
+  });
+
+  it("p14: pressing the button sends nothing", () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    try {
+      render(<DevAnswers state="p14" skin="light" frames={null} />);
+      fireEvent.click(screen.getByRole("button", { name: "Ideas from what works, 1 credit" }));
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+});
+
+// The wait, the outline and the landing (thread feel §4.2, §4.3), for looking at: nothing is sent.
+describe("/dev/answers: the wait", () => {
+  const outline = (kind?: string) => document.querySelector(kind ? `[data-outline="${kind}"]` : "[data-outline]");
+  const cards = () => document.querySelectorAll('[data-answer="card"]');
+  const TOPICAL = "Reading 3 real videos matched to this subject";
+
+  it("w1: the line \"Thinking\" alone, no card", () => {
+    render(<DevAnswers state="w1" skin="light" frames={null} />);
+    expect(screen.getByRole("heading", { name: "Maven" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent(/^Thinking$/);
+    expect(outline()).toBeNull();
+    expect(cards()).toHaveLength(0);
+  });
+
+  it("w2: the hooks outline, its line and the usual length, no evidence", () => {
+    render(<DevAnswers state="w2" skin="light" frames={null} />);
+    expect(screen.getByText("3 hooks for a video about meal prep for busy students")).toBeInTheDocument();
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent("Writing hooks");
+    expect(status).toHaveTextContent("about 20 s");
+    expect(outline("pack")!.querySelectorAll('[data-part="ghost-row"]')).toHaveLength(3);
+    expect(document.querySelector('[data-part="evidence"]')).toBeNull();
+  });
+
+  it("w3: the hooks outline with what the run reads: three covers without pictures and the topical headline", () => {
+    render(<DevAnswers state="w3" skin="light" frames={null} />);
+    expect(screen.getByRole("status")).toHaveTextContent("Looking for videos on this topic");
+    const ghost = outline("pack")!;
+    expect(within(ghost as HTMLElement).getByText(TOPICAL)).toBeInTheDocument();
+    expect(ghost.querySelectorAll('[data-part="evidence-cover"]')).toHaveLength(3);
+    expect(ghost.querySelectorAll('[data-part="evidence-cover"] img')).toHaveLength(0);
+  });
+
+  it("w4: the script's outline", () => {
+    render(<DevAnswers state="w4" skin="light" frames={null} />);
+    expect(screen.getByRole("status")).toHaveTextContent("Writing your script");
+    expect(screen.getByRole("status")).toHaveTextContent("about 30 s");
+    expect(outline("script")!.querySelectorAll('[data-part="ghost-beat"]')).toHaveLength(5);
+  });
+
+  it("w5: the remix's outline with its post in the source row", () => {
+    render(<DevAnswers state="w5" skin="light" frames={null} />);
+    expect(screen.getByRole("status")).toHaveTextContent("Working out why it worked");
+    const ghost = outline("remix")!;
+    expect(within(ghost as HTMLElement).getByText("@creator_one")).toBeInTheDocument();
+    expect(within(ghost as HTMLElement).getByText("154K views")).toBeInTheDocument();
+    expect(ghost.querySelector('[data-part="ghost-source"]')).toBeNull();
+  });
+
+  it("w6: explore waits on the line alone", () => {
+    render(<DevAnswers state="w6" skin="light" frames={null} />);
+    expect(screen.getByRole("status")).toHaveTextContent(/^Scanning for outliers$/);
+    expect(outline()).toBeNull();
+    expect(cards()).toHaveLength(0);
+  });
+
+  it("wl: starts as w3, then the p3 pack lands in its place, rows one after another; nothing is sent", () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal("fetch", fetchSpy);
+    vi.useFakeTimers();
+    try {
+      render(<DevAnswers state="wl" skin="light" frames={null} />);
+      expect(outline("pack")).not.toBeNull();
+      expect(screen.getByText(TOPICAL)).toBeInTheDocument();
+      expect(document.querySelector("[data-thread-landing]")).toBeNull();
+      act(() => {
+        vi.advanceTimersByTime(2_499);
+      });
+      expect(outline("pack")).not.toBeNull();
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+      expect(outline()).toBeNull();
+      const group = document.querySelector<HTMLElement>("[data-thread-landing]")!;
+      expect(group).not.toBeNull();
+      expect(group.style.getPropertyValue("--landed")).toBe("0ms");
+      expect(screen.getByText("3 hooks")).toBeInTheDocument();
+      const rows = [...group.querySelectorAll<HTMLElement>("li")];
+      expect(rows.map((r) => r.style.getPropertyValue("--i"))).toEqual(["0", "1", "2"]);
+      expect(screen.getByRole("button", { name: /Simulate all 3/ }).closest<HTMLElement>(".land")!.style.getPropertyValue("--i")).toBe("3");
+      expect(screen.getByTestId("followup-row").closest<HTMLElement>(".land")!.style.getPropertyValue("--i")).toBe("6");
+      fireEvent.click(screen.getByRole("button", { name: /Simulate all 3/ }));
+      fireEvent.click(screen.getByRole("button", { name: "Follow up: More hooks" }));
+      expect(fetchSpy).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+      vi.unstubAllGlobals();
+    }
   });
 });

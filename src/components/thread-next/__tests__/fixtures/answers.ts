@@ -474,22 +474,203 @@ export const IDEA_SHEET: IdeaCardBlock = idea("The Two-Hour Study Lie", "Short s
 
 const SCRIPT_OPENING = "I fed 10 million viral videos into an AI to simulate your exact audience.";
 
-/** The opening line + `AXSC`, five beats ending at 0:24. */
-export const SCRIPT_AI: ScriptCardBlock = script(
-  [
-    { label: "Hook", content: SCRIPT_OPENING, timing: "0–3s" },
-    { label: "Setup", content: "It watched my draft and showed me who would scroll away.", timing: "3–8s" },
-    { label: "Turn", content: "Half of them were gone before my second sentence.", timing: "8–14s" },
-    { label: "Payoff", content: "So I cut the intro, ran it again, and they stayed.", timing: "14–20s" },
-    { label: "CTA", content: "Comment “sim” and I’ll run your video next.", timing: "20–24s" },
-  ],
-  { openingBeatSeed: SCRIPT_OPENING },
+const SCRIPT_AI_BEATS: readonly BeatInput[] = [
+  { label: "Hook", content: SCRIPT_OPENING, timing: "0–3s" },
+  { label: "Setup", content: "It watched my draft and showed me who would scroll away.", timing: "3–8s" },
+  { label: "Turn", content: "Half of them were gone before my second sentence.", timing: "8–14s" },
+  { label: "Payoff", content: "So I cut the intro, ran it again, and they stayed.", timing: "14–20s" },
+  { label: "CTA", content: "Comment “sim” and I’ll run your video next.", timing: "20–24s" },
+];
+
+/** The opening line + `AXSC`, five beats ending at 0:24. No filming cues, no plan: no "How to film it". */
+export const SCRIPT_AI: ScriptCardBlock = script(SCRIPT_AI_BEATS, { openingBeatSeed: SCRIPT_OPENING });
+
+/** A shoot plan as the runner sends it: the three it always has, and the edit it sometimes has. */
+const SHOOT_PLAN = {
+  shots: "One talking head at eye level and two screen recordings of the simulation.",
+  onScreenText: "The number on the hook, the drop-off on the turn.",
+  setup: "Phone at eye level, window light on your face, the mic close.",
+};
+
+/** The cue the model gave on some beats (the Hook, the Turn and the CTA), not on every one. */
+const FILMING: Partial<Record<string, string>> = {
+  Hook: "Close-up, handheld. Text on screen: 10 million videos. Flat, certain delivery.",
+  Turn: "Screen recording of the drop-off, then cut straight back to your face.",
+  CTA: "Lean into the camera with a half smile. Text on screen: comment sim.",
+};
+
+/** `SCRIPT_AI` filmed (thread depth §3.2): cues on three beats of five, and a plan with its edit. */
+export const SCRIPT_FILMED: ScriptCardBlock = script(
+  SCRIPT_AI_BEATS.map((b) => (FILMING[b.label!] ? { ...b, filming: FILMING[b.label!] } : b)),
+  { openingBeatSeed: SCRIPT_OPENING, production: { ...SHOOT_PLAN, edit: "Hard cuts only, no zooms. Keep the one-take feel." } },
 );
+
+/** `SCRIPT_AI` with a plan and no edit, and no cue on any beat. */
+export const SCRIPT_PLANNED: ScriptCardBlock = script(SCRIPT_AI_BEATS, { openingBeatSeed: SCRIPT_OPENING, production: SHOOT_PLAN });
 
 /** The remix sample: @lacapture's camera move. */
 export const REMIX_CAMERA: RemixCardBlock = remix("I’m gonna show y’all how you can fake a $10M camera move", {
   formatBorrowed: "Visual Hook → Concept → Tools → Footage",
   proof: proof({ handle: "lacapture", coverUrl: "/covers/c9.jpg", views: 154000, multiplier: 10.4, baselineLabel: "their average" }),
+});
+
+/** A remix run's decode of the original (made up), as a run writes it on every card it decoded. */
+const REMIX_DECODE = {
+  hookPattern: "It opens by daring a friend by name, so you wait for the reason.",
+  structure: "Dare, reveal, recipe, payoff.",
+  theTurn: "The whole meal costs less than his ramen.",
+  emotionalBeat: "Playful rivalry.",
+};
+
+/**
+ * A decode at the length real runs write it (made up): several long sentences in `hookPattern` and in
+ * `theTurn`, so the sheet's "Why the original worked" folds.
+ */
+export const REMIX_DECODE_LONG = {
+  hookPattern:
+    "The video opens on a direct dare aimed at a friend by name, which turns an ordinary recipe into a small bet the viewer wants to see settled. The reason is held back for three seconds, so the first frame asks a question instead of answering one, and the walk into the kitchen keeps the shot moving while the dare lands.",
+  structure: "Dare, reveal, recipe, payoff.",
+  theTurn:
+    "The turn comes when the price appears on screen: the whole meal costs less than the friend's last packet of ramen. That reframes meal prep from a chore into a win, and the comparison is concrete enough for viewers to repeat it in the comments.",
+  emotionalBeat: "Playful rivalry.",
+};
+
+/** A remix with everything "How to film it" reads: a long decode, a plan, and its beats in a blueprint (variant 1). */
+export const REMIX_FILMED: RemixCardBlock = remix("Sam, if you skip this meal prep, I’m eating your last ramen", {
+  formatBorrowed: "A dare → The reveal → The recipe",
+  proof: proof({ handle: "creator_one", coverUrl: "/covers/c8.jpg", views: 854_000 }),
+  sourceDecode: REMIX_DECODE_LONG,
+  production: {
+    shots: "Walk-in at arm's length, top-down on the counter, a close-up of the pot.",
+    onScreenText: "$4. One pot. Twenty minutes.",
+    setup: "Phone on a stack of books by the window.",
+    edit: "Cut on every step, no music under the dare.",
+  },
+  blueprintId: "bp-fixture-01",
+  blueprintVariant: 1,
+});
+
+/** A remix with its decode only, short (it shows whole, no "More"): no plan, no blueprint. */
+export const REMIX_DECODED: RemixCardBlock = remix("Nobody tells you the cheapest protein is in the freezer aisle", {
+  sourceDecode: REMIX_DECODE,
+});
+
+const sourceBeat = (index: number, role: string, t_start: number, t_end: number) => ({
+  index,
+  t_start,
+  t_end,
+  duration_s: t_end - t_start,
+  role,
+  spoken: null,
+  spoken_span_s: null,
+  on_screen_text: null,
+  visual_event: "a person in a kitchen",
+  audio_event: "speech",
+  cuts: 1,
+  weakness: null,
+});
+
+/**
+ * What `GET /api/remix/blueprint/[id]` answers for `REMIX_FILMED`'s blueprint (made up): the
+ * original's five beats with their times, and two adapted scripts (variant 0 and variant 1). Variant
+ * 1's beats: a hook with words, a shot and text on screen; a setup with a repair; a turn with a shot
+ * only; a payoff with nothing (no row); a close with words only.
+ */
+export const BLUEPRINT_ANSWER = {
+  script: [
+    [
+      { index: 0, spoken: "Variant zero opens here.", on_screen_text: "", shot: "Straight to camera" },
+      { index: 1, spoken: "Variant zero sets it up.", on_screen_text: "", shot: "Wide on the counter" },
+    ],
+    [
+      { index: 0, spoken: " Sam, if you skip this, I’m eating your last ramen. ", on_screen_text: "Day 1 of 5", shot: "phone at arm’s length, walking into the kitchen" },
+      { index: 1, spoken: "Four dollars. One pot. Twenty minutes.", on_screen_text: "$4", shot: "Top-down on the counter, ingredients in a row.", repair: "cut a second earlier than the original, its middle drags" },
+      { index: 2, spoken: "", on_screen_text: "", shot: "Lift the lid on the steam" },
+      { index: 3, spoken: "  ", on_screen_text: "", shot: " " },
+      { index: 4, spoken: "Your move, Sam.", on_screen_text: "", shot: "" },
+    ],
+  ],
+  blueprint: {
+    duration_s: 24,
+    words_per_second: 2.8,
+    has_speech: true,
+    from_fixed_buckets: false,
+    beats: [sourceBeat(0, "hook", 0, 3.2), sourceBeat(1, "setup", 3.2, 8.6), sourceBeat(2, "turn", 8.6, 14), sourceBeat(3, "payoff", 14, 20), sourceBeat(4, "close", 20, 24)],
+  },
+  frames: {},
+  scrubFrames: {},
+  clips: {},
+  sourceUrl: null,
+};
+
+/**
+ * Account reads shaped like a real run (`src/lib/account-read/account-read.ts`), not like the
+ * hand-written `accountRead()` above: every scraped post most viewed first, `working` and `fix` as
+ * the runner's mechanical lines, `recurringHooks` as `"How I…" (3 posts)`, `formatMix` under the
+ * runner's two labels, `dropPoints` empty. A made-up creator; covers and the picture are relative
+ * paths (not served on the dev page, so they show their no-picture state there).
+ */
+const accountVideo = (caption: string, views: number, n: number, cover: boolean) => ({
+  // c8 and c9 for the two that lead, as the other fixtures' covers.
+  ...(cover ? { coverUrl: `/covers/c${((n + 6) % 9) + 1}.jpg` } : {}),
+  views,
+  caption,
+  videoUrl: `/fixtures/account-video-${n}`,
+});
+
+/** 30 posts: the two that carry the account, two more that open like the first, then the rest. */
+const accountVideos = (cover: boolean) => [
+  accountVideo("How I meal prep a week for $12 #mealprep #budget #fyp", 854_000, 1, cover),
+  accountVideo("Stop buying protein bars, make these #protein", 146_000, 2, cover),
+  accountVideo("How I shop for the week on $20", 41_000, 3, cover),
+  accountVideo("How I cook rice for five days", 38_000, 4, cover),
+  ...Array.from({ length: 26 }, (_, i) => accountVideo(`Dorm kitchen, day ${i + 1}`, 20_000 - i * 500, i + 5, cover)),
+];
+
+/** An account read with everything: a picture, counts, two leading videos with covers, two fixes, both habits. */
+export const ACCOUNT_READ_FULL: AccountReadBlock = accountRead({
+  handle: "creator_one",
+  profile: {
+    handle: "creator_one",
+    displayName: "Creator One",
+    avatarUrl: "/avatars/creator-one.jpg",
+    verified: false,
+    followerCount: 12_400,
+    videoCount: 86,
+  },
+  analyzedVideos: accountVideos(true),
+  patterns: {
+    recurringHooks: ['"How I…" (3 posts)'],
+    formatMix: [
+      { label: "Short-form (≤30s)", count: 21, pct: 70 },
+      { label: "Long-form (>30s)", count: 9, pct: 30 },
+    ],
+    dropPoints: [],
+    working: ['short-form: "How I meal prep a…" — 854,000 views', 'short-form: "Stop buying protein bars, make…" — 146,000 views'],
+    fix: [
+      "lurker: retention drops mid-video — tighten the middle and cut dead air",
+      "scanner: hooks aren't surviving the first beat — sharpen your openers",
+    ],
+  },
+  trackRecord: { withinPct: 82, lastN: 4 },
+});
+
+/** A creator with no compared posts: no `fix`, no covers, no picture; most of the videos are long. */
+export const ACCOUNT_READ_BARE: AccountReadBlock = accountRead({
+  handle: "creator_two",
+  profile: { handle: "creator_two", displayName: "", avatarUrl: "", verified: false, followerCount: 3_100, videoCount: 41 },
+  analyzedVideos: accountVideos(false),
+  patterns: {
+    recurringHooks: [],
+    formatMix: [
+      { label: "Long-form (>30s)", count: 18, pct: 60 },
+      { label: "Short-form (≤30s)", count: 12, pct: 40 },
+    ],
+    dropPoints: [],
+    working: ['long-form: "How I meal prep a…" — 854,000 views', 'long-form: "Stop buying protein bars, make…" — 146,000 views'],
+    fix: [],
+  },
+  trackRecord: null,
 });
 
 const sealAt = (stopPct: number) => ({ pct: 70, band: null, at: "2026-11-21T00:00:00Z", population: population(stopPct) });

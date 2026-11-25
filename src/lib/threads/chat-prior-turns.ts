@@ -14,6 +14,13 @@
  * travel with the turn instead, and `chat-agent-loop.ts` replays them as the tool-call exchange they
  * actually were.
  *
+ * THE SECOND SHAPE (2026-11-25). A run the creator starts from a skill button goes through the
+ * direct hooks / ideas / script route, which stores the cards and then a closing line WITHOUT the
+ * stamp, or no closing line at all when the follow-up comes back empty. Only a stamped line ever
+ * picked cards up, so those runs never reached the model: asked "which of these would you post
+ * first", it asked the creator to paste the options. Those cards now ride as context records, the
+ * channel for work the creator ran themselves, never as a tool call the agent did not make.
+ *
  * Lives here rather than in the route because a Next.js `route.ts` may only export HTTP methods —
  * and because this is the piece worth testing directly.
  */
@@ -56,6 +63,44 @@ const CARD_BLOCK_TOOL: Record<string, string> = {
 };
 
 /**
+ * The name a generator goes by on the creator's side (the skill buttons, the run header's `skill`),
+ * used when its run reaches the model as a record. A tool name in a record would read as a door
+ * the agent opened, which is the one thing a record must never claim.
+ */
+const RUN_RECORD_NAME: Record<string, string> = {
+  generate_ideas: "ideas",
+  generate_hooks: "hooks",
+  write_script: "script",
+};
+
+/** One generator run collected from the rows since the last text row. */
+interface PendingRun {
+  name: string;
+  cards: number;
+  lines: string[];
+  /** How many records were already pending when the run began: where its own record line goes. */
+  at: number;
+}
+
+/**
+ * One record line for a run nobody announced, in the records' own style: what it is, how many are
+ * on screen, then the cards' lines quoted and joined by " · ".
+ *
+ * Both counts are printed when fewer lines are quoted than there are cards (the cap, or cards whose
+ * line was unreadable), for the reason the Explore record prints both: "8 on screen" over six quotes
+ * invites the model to describe two cards it was never shown.
+ */
+function runRecordLine(run: PendingRun): string {
+  const head = `${RUN_RECORD_NAME[run.name] ?? run.name}, ${run.cards} on screen`;
+  if (run.lines.length === 0) return head;
+  const quoting = run.lines.length < run.cards ? `, quoting ${run.lines.length}` : "";
+  // Whitespace collapsed inside each quote: the record is one "· " line of the app's note, and a
+  // newline in a card's text would open what reads as a new line of that note.
+  const quoted = run.lines.map((l) => `"${l.replace(/\s+/g, " ").trim()}"`);
+  return `${head}${quoting}: ${quoted.join(" · ")}`;
+}
+
+/**
  * The identifying line per card, the caps, and the reason both exist now live in `card-lines.ts`
  * (imported at the top of this file as `cardLineOf` / `MAX_LINES_PER_RUN`).
  *
@@ -72,6 +117,10 @@ const CARD_BLOCK_TOOL: Record<string, string> = {
  * join. `origin:"chat-agent"` is the confirmation, not the signal — the stamp exists for thread
  * rehydration, and is only trusted here alongside cards actually found in the rows just passed.
  *
+ * Cards that NO stamped line picks up (an unstamped line, the creator's next message, or the end of
+ * the thread comes first) were not the agent's run. Each such run becomes one record line, slotted
+ * among the other pending records at the place it was stored, and flushes with them.
+ *
  * WR-05 INVARIANT (unchanged): exactly ONE `markdown` block per message row, role attributed from
  * `msg.role`, so a conversational "turn" === a message and the `.slice(-MAX_PRIOR_TURNS)` cap counts
  * turns. If multi-block markdown messages are ever introduced, carry the role on the BLOCK before
@@ -79,8 +128,9 @@ const CARD_BLOCK_TOOL: Record<string, string> = {
  */
 export function openChatPriorTurns(hydratedMessages: HydratedMessage[]): ChatAgentPriorTurn[] {
   const turns: ChatAgentPriorTurn[] = [];
-  // Cards seen since the last text turn — the runs the NEXT assistant text turn is announcing.
-  let pendingRuns: Array<{ name: string; cards: number; lines: string[] }> = [];
+  // Cards seen since the last text turn — the runs the NEXT assistant text turn is announcing, if
+  // it is the agent's stamped line; otherwise they become records (see `recordRuns`).
+  let pendingRuns: PendingRun[] = [];
   // Non-generator skill results seen since the last text turn (see SKILL_BLOCK_RECORD). They are
   // flushed as their OWN turn immediately before the next conversational turn, which puts them in
   // the transcript at the moment they actually happened — and, crucially, still emits them when no
@@ -104,6 +154,22 @@ export function openChatPriorTurns(hydratedMessages: HydratedMessage[]): ChatAge
     });
     pendingRecords = [];
     pendingSheets = [];
+  };
+
+  // The pending runs no stamped line announced, turned into record lines and merged into
+  // `pendingRecords` in stored order: a Test and a hooks run before the same line read back in the
+  // order the creator made them.
+  const recordRuns = () => {
+    if (pendingRuns.length === 0) return;
+    const ordered: string[] = [];
+    let from = 0;
+    for (const run of pendingRuns) {
+      ordered.push(...pendingRecords.slice(from, run.at), runRecordLine(run));
+      from = run.at;
+    }
+    ordered.push(...pendingRecords.slice(from));
+    pendingRecords = ordered;
+    pendingRuns = [];
   };
 
   for (const msg of hydratedMessages) {
@@ -148,7 +214,7 @@ export function openChatPriorTurns(hydratedMessages: HydratedMessage[]): ChatAge
         const open = pendingRuns[pendingRuns.length - 1];
         const run = open && open.name === tool ? open : null;
         if (run) run.cards++;
-        else pendingRuns.push({ name: tool, cards: 1, lines: [] });
+        else pendingRuns.push({ name: tool, cards: 1, lines: [], at: pendingRecords.length });
         const current = run ?? pendingRuns[pendingRuns.length - 1]!;
         // The identifying line, capped in count and length. A card whose line is missing or not a
         // string is simply counted and not quoted — never a placeholder, which would read to the
@@ -164,6 +230,8 @@ export function openChatPriorTurns(hydratedMessages: HydratedMessage[]): ChatAge
       if (typeof props.text !== "string") continue;
       const role = msg.role === "assistant" ? "assistant" : "user";
       const dispatched = role === "assistant" && props.origin === "chat-agent" && pendingRuns.length > 0;
+      // Not the agent's announcement: the cards since the last text row are the creator's own runs.
+      if (!dispatched) recordRuns();
       // Records belong BEFORE the turn that follows them — they describe work already on screen.
       flushRecords();
       turns.push({
@@ -175,8 +243,9 @@ export function openChatPriorTurns(hydratedMessages: HydratedMessage[]): ChatAge
         // instead of announcing an empty card list.
         ...(dispatched
           ? {
-              toolRuns: pendingRuns.map(({ lines, ...r }) => ({
-                ...r,
+              toolRuns: pendingRuns.map(({ name, cards, lines }) => ({
+                name,
+                cards,
                 topic: lastUserText,
                 ...(lines.length > 0 ? { lines } : {}),
               })),
@@ -189,6 +258,9 @@ export function openChatPriorTurns(hydratedMessages: HydratedMessage[]): ChatAge
   }
   // A skill run at the very END of the thread — the commonest shape of all, because the creator
   // taps a skill and then asks about it. Without this flush that run is the one the model cannot see.
+  // Cards at the end with no line after them (a skill-button run whose follow-up came back empty)
+  // are records too: nothing announced them.
+  recordRuns();
   flushRecords();
 
   return turns.slice(-MAX_PRIOR_TURNS);

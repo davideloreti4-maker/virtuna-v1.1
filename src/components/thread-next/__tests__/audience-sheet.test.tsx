@@ -195,6 +195,14 @@ describe("AudienceSheet on desktop", () => {
     expect(dialog()).toHaveAttribute("data-side", "bottom");
   });
 
+  it("starts at the left edge of what it stands on (the field), and is centred under it when asked (Home's line)", () => {
+    const { unmount } = render(<WithField />);
+    expect(dialog()).toHaveAttribute("data-align", "start");
+    unmount();
+    render(<WithField side="bottom" align="center" />);
+    expect(dialog()).toHaveAttribute("data-align", "center");
+  });
+
   it("Escape closes it", () => {
     const onOpenChange = vi.fn();
     render(<WithField onOpenChange={onOpenChange} />);
@@ -292,5 +300,36 @@ describe("AudienceSheet focus", () => {
     await settle();
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(document.activeElement).toBe(screen.getByRole("textbox", { name: "Message" }));
+  });
+
+  // Home (spec 2026-11-25 §2.3): the sheet stands on the audience line, a button with no text in it.
+  // A click does not focus a button everywhere (Safari), and More's row leaves the page: the line
+  // that opened it, or the audience's own control, is where focus goes back.
+  it.each([
+    ["phone", false],
+    ["desktop", true],
+  ] as const)("on the %s: standing on a button, with nothing focused when it opened, focus goes to that button", async (_view, wide) => {
+    viewport(wide);
+    function OnTheLine({ open }: { open: boolean }) {
+      const anchorRef = useRef<HTMLButtonElement>(null);
+      return (
+        <>
+          <button ref={anchorRef} type="button">
+            For @creator_one
+          </button>
+          <textarea aria-label="Message" />
+          <AudienceSheet {...props({ open })} anchorRef={anchorRef} side="bottom" />
+        </>
+      );
+    }
+    const { rerender } = render(<OnTheLine open={false} />);
+    expect(document.activeElement).toBe(document.body);
+    rerender(<OnTheLine open />);
+    await settle();
+    expect(dialog().contains(document.activeElement)).toBe(true);
+    rerender(<OnTheLine open={false} />);
+    await settle();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "For @creator_one" }));
   });
 });

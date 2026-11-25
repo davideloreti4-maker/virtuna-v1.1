@@ -251,9 +251,12 @@ export const RECORDED_BLOCKS = Object.keys(SKILL_BLOCK_RECORD);
  */
 export const NON_RECORD_BLOCKS: Record<string, string> = {
   markdown: "the conversation itself — replayed as a turn",
-  "idea-card": "a generator's card — replayed as a tool run",
-  "hook-card": "a generator's card — replayed as a tool run",
-  "script-card": "a generator's card — replayed as a tool run",
+  "idea-card":
+    "a generator's card — replayed as a tool run when a chat-agent line announced it, otherwise one record line built in chat-prior-turns.ts",
+  "hook-card":
+    "a generator's card — replayed as a tool run when a chat-agent line announced it, otherwise one record line built in chat-prior-turns.ts",
+  "script-card":
+    "a generator's card — replayed as a tool run when a chat-agent line announced it, otherwise one record line built in chat-prior-turns.ts",
   "run-header": "UI chrome (the run capsule's title), carries no result",
   "input-request": "an inline FIELD awaiting the creator, not a result — recording it would read as an answer",
   "corpus-references": "a citation the model itself produced in the turn it is attached to",

@@ -387,6 +387,73 @@ and `FollowupChips`. Rules of these parts:
   a browser on the dev server, open `localhost`, not `127.0.0.1` (the cross-site check refuses POSTs
   from a different host name).
 
+The thread between a send and its answer (spec
+`docs/superpowers/specs/2026-11-25-thread-feel-design.md`; parts in `src/components/thread-next` and
+`src/lib/thread-next`):
+
+- **Where a new turn sits.** A turn sent in this visit goes to the top of the thread's window and the
+  answer grows under it; the view does not follow the growing end. Each turn is one element
+  (`data-turn`, `PersistedThreadStream`); the sent one takes the window's height as its least height
+  (`data-room`), so it can reach the top. A chat that was only opened ends at its end, with no room.
+  The scroll's rules live in `useThreadAutoscroll` (`anchorNextTurn`, `settle`, `scrollToLatest`); a
+  send is armed where its run really starts, and each send has a number (`data-send`) so the right
+  turn is found. "Go to the latest" (`JumpButton`) shows when more than 150 px of the answer is under
+  the field.
+- **The wait.** One status line (`RunStatus`): "Thinking" until the run is named, then the run's own
+  words from the stage it reports (`statusWords`; the table is in the spec, section 4.2) and, at the
+  right, how long such a run takes ("about 20 s", then "taking longer"). No dots, no counting clock,
+  never "Simulating your audience". Hooks, ideas, a script and a remix draw their card at once as an
+  outline (`AnswerOutline`) with the line in its header. What a run reads is one row
+  (`EvidenceRow`): up to five covers and the run's headline word for word.
+- **The landing.** When the cards arrive, their rows come in one after another (`land` inside a
+  `LandingGroup`, 420 ms each, 70 ms apart). It is drawn once per answer (`src/lib/thread-next/landing.ts`):
+  a turn that waited in this visit, or the copy mounted in its place within 1,600 ms. A chat opened
+  later is at rest.
+- **A score** that lands on a gauge in view draws its arc and counts up in 700 ms; a stored score is
+  at rest. **A plain answer** fades its new words in as they stream, and has Copy under its last text
+  part once it has ended.
+- **Motion classes** (`globals.css`, used only here): `land`, `run-words`, `ghost-bar`, `gauge-draw`,
+  `word-in`. `run-words` and `ghost-bar` loop only while a run is live. Nothing animates height, width,
+  top or left: a card takes its size at once and its parts fade in. Each class has its rest state under
+  reduced motion.
+- **The field** shows Stop until the answer is in. A run the chat dispatched keeps its stream open after
+  the cards: the field then shows its send arrow, off until the stream closes, and Stop again if that
+  takes more than 8 s. After a skill's own run the field is at rest from the moment the run reports done.
+- To look at it: `/dev/answers?state=w1|w2|w3|w4|w5|w6|wl` (`wl` plays a landing).
+- **A script's beat** carries its name above its words (spec `2026-11-25-thread-depth-design.md` §3.1,
+  `beatName`: the label as sent, "CTA" written "Call to action"): 12 / 16 at 640 in the secondary ink,
+  1 under, so a named beat is 17 taller; its outline draws a 9 bar there. Copy takes the words only.
+- **"How to film it"** (§3.2), under "Add your take" only when a beat has a filming cue or the script a
+  shoot plan: a quiet button, 40 tall, 14 / 570 in the secondary ink, the sunken fill and the ink on hover
+  and press; on a phone full width, 6 under the primary; from 768 on the primary's row, 8 to its right, 14
+  each side of its words. It opens the look's sheet (`FilmSheet`): a row per beat with a cue
+  (the name 13 / 18 at 640, its span "0 to 3 s" in the muted ink, the cue 14 / 20), then "Shots", "Text
+  on screen", "Setup", "Edit"; no button in it. `/dev/answers?state=p10c|p10p`.
+- **A hook's row** (§3.3) shows the video it is built on, 6 under its line: the cover 16 by 22 at radius
+  4 and "@handle · 854K views" (13 / 18, secondary, one line); it describes the row's button and is no
+  link of its own. Ideas show none. `/dev/answers?state=p3v`.
+- **A follow-up from inside the thread** (a card's or a sheet's "Script this one", a chip) tapped while a
+  run that has its answer in has not yet folded into the thread is held, not sent: the field shows Stop,
+  and it goes once that run has folded (at the latest after 8 s, never under an open sheet). Sent at the
+  tap it would cancel the open stream and the first answer would be stored after the new question.
+- **A fold waits for an open sheet.** A run is not folded into the thread while a sheet of the look
+  (`AnswerSheet`, counted in `src/lib/thread-next/open-sheets.ts`) is open: the fold replaces the live
+  turn, and the sheet with it. It runs when the sheet has closed.
+- **The account read's card** (spec `2026-11-25-thread-depth-2-design.md` §3; `AccountAnswer`, its words
+  from `src/lib/thread-next/account-card.ts`): who was read (the avatar 40, initials when there is no
+  picture; "@handle" 15 / 21 at 640; "12.4K followers · 86 videos" 13 / 18 secondary), then groups under
+  a hairline: "What works" (the two most viewed videos: the cover 30 by 40 at radius 6, the caption on
+  one line 15 / 21 at 520, its views 13 / 18; a cover that is missing or fails leaves the tile with the video mark in it), "To fix" (one plain
+  sentence pair for each of the runner's lines), one line of habits (13 / 19 secondary), and the primary
+  "Ideas from what works" with its price. A part with nothing to show is left out. No chip that starts
+  an Ideas run sits under it. `/dev/answers?state=p14|p15`.
+- **A remix's "How to film it"** (§4): the script card's quiet button under "Script it", there when the
+  page has a decode or a shoot plan. Its sheet: "Why the original worked" (each text folded to its lead,
+  one "More" for both), then your version beat by beat (read from the blueprint route when the sheet
+  first opens, two ghost rows meanwhile: the role's name, its span, the words in quotes, then the shot,
+  "On screen: …" and what to do differently in the secondary ink), then the plan's rows. A read that
+  failed is tried again at the next open. `/dev/answers?state=p11c|p11d`.
+
 Rules that are not in the spec:
 
 - Navigation glyphs come from `src/components/shell/icons.tsx` (the reference's own drawings),

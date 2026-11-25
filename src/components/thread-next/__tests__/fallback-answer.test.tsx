@@ -2,8 +2,9 @@
 
 /**
  * FallbackAnswer — the card for every block type without a card of its own (spec §4.6): a title,
- * the first three lines, and "Show all" when there are more. Fed by the real `fallbackOf` on the
- * drawing's account read (three "working" lines and one "fix").
+ * the first three lines, and "Show all" when there are more. Fed by the real `fallbackOf` on a
+ * profile read with three traits and how they react (four lines). The account read, the drawing's
+ * sample, has its own card since thread depth's second part.
  */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -14,18 +15,22 @@ vi.mock("@/lib/flags/new-look", () => ({ NEW_LOOK_ENABLED: true }));
 
 import { fallbackOf } from "@/lib/thread-next/fallback-lines";
 import { FallbackAnswer } from "../fallback-answer";
-import { accountRead, composed } from "./fixtures/answers";
+import { composed, profileRead } from "./fixtures/answers";
+
+/** Four lines: three traits, then how they react. */
+const fourLines = () =>
+  profileRead({ identity: { traits: ["Busy", "Budget-minded", "Up late"], commStyle: "Short and direct", drivers: ["Saving time"] } });
 
 afterEach(cleanup);
 
 describe("FallbackAnswer", () => {
   it("shows the title and three lines, then every line after 'Show all'", () => {
-    const { title, lines } = fallbackOf(accountRead());
+    const { title, lines } = fallbackOf(fourLines());
     expect(lines).toHaveLength(4);
     render(<FallbackAnswer title={title} lines={lines} />);
-    expect(screen.getByText("Your account")).toBeInTheDocument();
+    expect(screen.getByText("Late-night studiers")).toBeInTheDocument();
     for (const line of lines.slice(0, 3)) expect(screen.getByText(line)).toBeInTheDocument();
-    expect(screen.queryByText("Your first second is often a slow pan.")).toBeNull();
+    expect(screen.queryByText("They stay for a clear payoff.")).toBeNull();
 
     const more = screen.getByRole("button", { name: "Show all" });
     expect(more).toHaveAttribute("aria-expanded", "false");
@@ -34,7 +39,7 @@ describe("FallbackAnswer", () => {
     expect(screen.getByRole("button", { name: "Show less" })).toHaveAttribute("aria-expanded", "true");
 
     fireEvent.click(screen.getByRole("button", { name: "Show less" }));
-    expect(screen.queryByText("Your first second is often a slow pan.")).toBeNull();
+    expect(screen.queryByText("They stay for a clear payoff.")).toBeNull();
   });
 
   it("three lines or fewer: no 'Show all'", () => {
@@ -67,12 +72,24 @@ describe("FallbackAnswer", () => {
   });
 
   it("has no axe violations, collapsed or open", async () => {
-    const { title, lines } = fallbackOf(accountRead());
+    const { title, lines } = fallbackOf(fourLines());
     const { container } = render(<FallbackAnswer title={title} lines={lines} />);
     // @ts-expect-error -- vitest-axe matcher type augmentation not picked up
     expect(await axe(container)).toHaveNoViolations();
     fireEvent.click(screen.getByRole("button", { name: "Show all" }));
     // @ts-expect-error -- vitest-axe matcher type augmentation not picked up
     expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+// Thread feel §4.3: inside a landing the fallback card comes in as one part, first.
+describe("FallbackAnswer — its place in a landing", () => {
+  it("the card is one `land` at 0", () => {
+    const { title, lines } = fallbackOf(fourLines());
+    const { container } = render(<FallbackAnswer title={title} lines={lines} />);
+    const card = container.querySelector<HTMLElement>('[data-answer="card"]')!;
+    expect(card).toHaveClass("land");
+    // No index of its own: the landing's CSS reads a missing `--i` as 0.
+    expect(card.style.getPropertyValue("--i")).toBe("");
   });
 });

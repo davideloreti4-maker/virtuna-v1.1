@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { fallbackOf } from "@/lib/thread-next/fallback-lines";
 import {
-  accountRead,
   broughtCard,
   composed,
   corpus,
@@ -39,17 +38,6 @@ describe("fallbackOf", () => {
       title: "A timed plan",
       lines: ["Open on the receipt.", "Show the $5 bowl.", "Name the cost.", "Show the fix.", "Film in one take.", "Post before 8pm."],
     });
-  });
-
-  it("account read: what works, then what to fix", () => {
-    expect(fallbackOf(accountRead())).toEqual({
-      title: "Your account",
-      lines: ["Mostly talking to camera.", "Videos run 20 to 30 seconds.", "You post 4 times a week.", "Your first second is often a slow pan."],
-    });
-  });
-
-  it("account read with thin history: the title alone", () => {
-    expect(fallbackOf(accountRead({ fallback: "thin", patterns: undefined, profile: undefined }))).toEqual({ title: "Your account", lines: [] });
   });
 
   it("profile read: the subject, its traits, how they react", () => {

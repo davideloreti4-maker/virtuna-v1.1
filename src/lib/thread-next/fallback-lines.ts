@@ -6,7 +6,6 @@
  * | Type                  | Title              | Lines                                              |
  * |-----------------------|--------------------|----------------------------------------------------|
  * | composed-card         | deliverable.text   | body: bullets, note, column titles, timeline, beats|
- * | account-read          | "Your account"     | patterns.working, then patterns.fix                |
  * | profile-read          | subjectName        | identity.traits, then howTheyReact                 |
  * | multi-audience-read   | concept            | per audience: name · lever                         |
  * | corpus-references     | "Sources"          | @handle · views per source                         |
@@ -27,7 +26,6 @@
 
 import { validateBlock } from "@/lib/tools/block-registry";
 import type {
-  AccountReadBlock,
   BroughtCardBlock,
   CorpusReferencesBlock,
   MultiAudienceReadBlock,
@@ -76,10 +74,6 @@ function raw(type: string, props: unknown): { title: string | undefined; lines: 
     case "composed-card": {
       const p = props as ComposedCardBlock["props"];
       return { title: p.deliverable.text, lines: p.body.flatMap(slotLines) };
-    }
-    case "account-read": {
-      const p = props as AccountReadBlock["props"];
-      return { title: "Your account", lines: [...(p.patterns?.working ?? []), ...(p.patterns?.fix ?? [])] };
     }
     case "profile-read": {
       const p = props as ProfileReadBlock["props"];
