@@ -23,10 +23,8 @@ import { useReturnFocus } from "./use-return-focus";
  * the field's top edge, left-aligned with it, at the sheet's own phone width, so the drawn
  * content keeps its geometry: Radix Popover anchored to the field's outer element through
  * `anchorRef` (the one prop added to the planned interface; without it the sheet is used on
- * every width). On Home, where the field sits near the top of the page, it hangs from the
- * field's bottom edge instead (`side`, Home spec 2026-11-25 §2.4). Both are Radix layers: Escape
- * and a tap outside close them. A tap on the field's More button is such a tap outside: it closes
- * the popover, and the field does not reopen it.
+ * every width). Both are Radix layers: Escape and a tap outside close them. A tap on the field's
+ * More button is such a tap outside: it closes the popover, and the field does not reopen it.
  */
 
 /** The platform the next run is read for (the run lens). */
@@ -43,7 +41,6 @@ export interface MoreSheetProps {
   /** The field's outer element (the same ref the field takes as `anchorRef`): on desktop the
    *  popover stands on it. Added to the planned props; absent, More is the bottom sheet. */
   anchorRef?: React.RefObject<HTMLElement | null>;
-  side?: "top" | "bottom";                     // default "top" (a thread); Home passes "bottom"
 }
 
 /** The skills More offers, in the drawn order, with the drawn lines (PROMISE_BY_TOOL in
@@ -180,9 +177,7 @@ function MoreBody({
         <Row
           icon={DocIcon}
           label="Read a file"
-          // What comes out (Home spec 2026-11-25 §3): a read of the person. Not "an audience": the
-          // read saves one, but in general mode, which the audience sheet never lists.
-          line="Describes a person from a screenshot or notes"
+          line="Reads a person from a screenshot"
           price={readFilePrice}
           onClick={() => {
             // First, inside the tap: the composer clicks its file input here, and iOS Safari
@@ -218,7 +213,7 @@ function MoreBody({
 }
 
 export function MoreSheet(props: MoreSheetProps): React.JSX.Element {
-  const { open, onOpenChange, anchorRef, side } = props;
+  const { open, onOpenChange, anchorRef } = props;
   const wide = useMediaQuery("(min-width: 768px)");
   const titleId = useId();
 
@@ -233,7 +228,7 @@ export function MoreSheet(props: MoreSheetProps): React.JSX.Element {
       <Popover open={open} onOpenChange={onOpenChange}>
         <PopoverAnchor virtualRef={anchorRef as React.RefObject<HTMLElement>} />
         <PopoverContent
-          side={side ?? "top"}
+          side="top"
           align="start"
           sideOffset={10}
           collisionPadding={12}

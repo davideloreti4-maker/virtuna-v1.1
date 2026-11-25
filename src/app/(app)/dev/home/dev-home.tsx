@@ -3,82 +3,52 @@
 import { useRef, useState } from "react";
 
 import { BILLABLE_BY_TOOL, type ToolId } from "@/components/app/home/composer-controls";
-import { moneyOf } from "@/components/home-next/home-next";
 import { HomeScreen, type HomeMoney, type HomeRecentRow } from "@/components/home-next/home-screen";
 import { MenuButton } from "@/components/shell/menu-button";
 import { AudienceSheet } from "@/components/thread-next/audience-sheet";
 import {
-  HOME_PLACEHOLDER,
+  HOME_PLACEHOLDER_BY_TOOL,
   NEXT_PLACEHOLDER_BY_TOOL,
   NEXT_SIMULATE_PLACEHOLDER,
+  fieldSkillLabel,
 } from "@/components/thread-next/field-copy";
 import type { Lens } from "@/components/thread-next/more-sheet";
 import { ThreadField } from "@/components/thread-next/thread-field";
 import type { Audience } from "@/lib/audience/audience-types";
+import { headline, moneyWord } from "@/lib/earn/earn-words";
 import { creditCost } from "@/lib/pricing";
 
 /**
  * Home on local state, for /dev/home (`page.tsx`): the screen the composer draws, with the real
- * field (the thread's, as Home's solid card), the audience line under the greeting and the real
- * audience sheet standing on it. Under the field one of three (spec 2026-11-25 §2.5): Recent, the
- * cards (no chats; they stay when a skill is picked), or nothing (`pending`); "Money made" last, only
- * above zero (`moneyOf`, Home's own rule). The placeholders are the composer's own (`field-copy.ts`);
- * the values below are fixtures. Nothing here sends anything.
+ * field in its Home layout and the real audience sheet. The placeholders are the composer's own
+ * (`field-copy.ts`); the values below are fixtures. Nothing here sends anything.
  */
 
 /** The states the page can open in (`page.tsx` checks the name). */
-export type DevHomeState =
-  | "empty"
-  | "chats"
-  | "plain"
-  | "pending"
-  | "picked"
-  | "simulate"
-  | "noname"
-  | "unlimited"
-  | "audience"
-  | "general"
-  | "money";
+export type DevHomeState = "empty" | "chats" | "plain" | "picked" | "simulate" | "noname" | "unlimited" | "audience" | "money";
 
 const STATES: Record<
   DevHomeState,
-  {
-    tool?: ToolId;
-    noName?: boolean;
-    unlimited?: boolean;
-    noChats?: boolean;
-    plain?: boolean;
-    pending?: boolean;
-    sheet?: boolean;
-    general?: boolean;
-    money?: boolean;
-  }
+  { tool?: ToolId; noName?: boolean; unlimited?: boolean; noChats?: boolean; plain?: boolean; sheet?: boolean; money?: boolean }
 > = {
   empty: { noChats: true },
   chats: {},
   plain: { plain: true },
-  pending: { pending: true },
-  // A skill picked by a new creator: the cards are on the page, and they stay.
-  picked: { tool: "hooks", noChats: true },
-  simulate: { tool: "test", noChats: true },
+  picked: { tool: "hooks" },
+  simulate: { tool: "test" },
   noname: { noName: true },
   unlimited: { unlimited: true },
   audience: { sheet: true },
-  general: { general: true },
   money: { money: true },
 };
 
-/** The "Money made" row of the state `money`: Earn's answer for an enrolled creator with that many
- *  cents (null: the number could not be read), through Home's own rule (`moneyOf`), so the preview
- *  shows no row at $0 exactly as /home does. */
-const moneyRow = (earnedCents: number | null): HomeMoney | null =>
-  moneyOf({
-    link: "https://maven.example.test/?ref=DEV",
-    code: "DEV",
-    name: "Nia",
-    joined: 0,
-    whop: { canEnrol: true, knownAccount: true, username: "creator_one", earnedCents },
-  });
+/** The "Money made" row of the state `money`, in Earn's own words (as `moneyOf` in `home-next.tsx`
+ *  builds it): the amount from whole cents, none when the number could not be read. */
+const moneyRow = (earnedCents: number | null): HomeMoney => ({
+  state: "shown",
+  amount: earnedCents === null ? null : moneyWord(earnedCents),
+  hint: headline(),
+});
 
 /** A video frame, drawn: a figure at a desk with a camera, 9:16. */
 const FRAME =
@@ -124,18 +94,6 @@ const RECENT: HomeRecentRow[] = [
     when: null,
     summary: { tile: { lead: "script", frame: null, still: null }, line: "Script · 3d ago", gauge: null },
   },
-  {
-    id: "dev-4",
-    title: "Ideas for next week",
-    when: null,
-    summary: { tile: { lead: "ideas", frame: null, still: null }, line: "5 ideas · 4d ago", gauge: null },
-  },
-  {
-    id: "dev-5",
-    title: "Gym myths for beginners",
-    when: null,
-    summary: { tile: { lead: "chat", frame: null, still: null }, line: "Chat · 6d ago", gauge: null },
-  },
 ];
 
 /** Recent while that summary is out, or when it failed: the chat list's titles and times, each row
@@ -144,8 +102,6 @@ const RECENT_PLAIN: HomeRecentRow[] = [
   { id: "dev-1", title: "Meal prep for busy students", when: "2h ago" },
   { id: "dev-2", title: "Fake a $10M camera move", when: "5h ago" },
   { id: "dev-3", title: "Morning routine, no cuts", when: "3d ago" },
-  { id: "dev-4", title: "Ideas for next week", when: "4d ago" },
-  { id: "dev-5", title: "Gym myths for beginners", when: "6d ago" },
 ];
 
 const BASE: Audience = {
@@ -168,15 +124,12 @@ const BASE: Audience = {
   updated_at: "2026-11-01T00:00:00Z",
 };
 
-/** Two connected accounts and one described audience; the first is in use (`general`: none is). */
+/** Two connected accounts and one described audience; the first is in use. */
 const AUDIENCES: Audience[] = [
-  { ...BASE, id: "dev-one", name: "@creator_one", type: "personal", platform: "tiktok", source_account_id: "dev-acc-1" },
-  { ...BASE, id: "dev-two", name: "@creator_two", type: "personal", platform: "instagram", source_account_id: "dev-acc-2" },
+  { ...BASE, id: "dev-tests", name: "@nia.tests", type: "personal", platform: "tiktok", source_account_id: "dev-acc-1" },
+  { ...BASE, id: "dev-cooks", name: "@nia.cooks", type: "personal", platform: "instagram", source_account_id: "dev-acc-2" },
   { ...BASE, id: "dev-gym", name: "Gym people" },
 ];
-
-/** The General audience as the composer resolves it when none of the creator's own is in use. */
-const GENERAL: Audience = { ...BASE, id: "general", name: "General", is_general: true };
 
 // Today's strings (composer.tsx, the textarea's aria-label and the send button's), as /dev/field.
 const ARIA_LABEL: Partial<Record<ToolId, string>> = {
@@ -186,8 +139,6 @@ const ARIA_LABEL: Partial<Record<ToolId, string>> = {
   remix: "Paste a TikTok URL to decode and remix",
 };
 const SEND_LABEL: Partial<Record<ToolId, string>> = {
-  // The composer's own, so send never shares the Simulate pill's name.
-  test: "Send to simulate",
   hooks: "Generate hooks",
   chat: "Send message",
   script: "Generate script",
@@ -203,35 +154,34 @@ const priceOf = (tool: ToolId): number | null => {
 
 export function DevHome({
   state,
+  recentOnDesktop,
   earnedCents,
 }: {
   state: DevHomeState;
-  /** The state `money` only: what was earned, in whole cents; null for a number that could not be read. */
+  recentOnDesktop: boolean;
+  /** The state `money` only: what the row says, in whole cents; null for no amount. */
   earnedCents: number | null;
 }) {
   const start = STATES[state];
   const anchorRef = useRef<HTMLDivElement>(null);
-  // The audience sheet stands on the line under the greeting, as on /home.
-  const lineRef = useRef<HTMLButtonElement>(null);
   const [value, setValue] = useState("");
   const [tool, setTool] = useState<ToolId>(start.tool ?? "chat");
   const [video, setVideo] = useState<File | null>(null);
-  const [audienceId, setAudienceId] = useState<string | null>(start.general ? null : AUDIENCES[0]!.id);
+  const [audienceId, setAudienceId] = useState(AUDIENCES[0]!.id);
   const [sheetOpen, setSheetOpen] = useState(Boolean(start.sheet));
   const [lens, setLens] = useState<Lens>("tiktok");
 
-  const audience = AUDIENCES.find((a) => a.id === audienceId) ?? GENERAL;
+  const audience = AUDIENCES.find((a) => a.id === audienceId) ?? AUDIENCES[0]!;
+  const picked = tool !== "chat";
   const canSend =
     tool === "chat" ? value.trim() !== "" : tool === "test" ? video !== null || TIKTOK.test(value) : tool === "remix" ? TIKTOK.test(value) : true;
-  // As the composer shows it on Home: its own words with no skill picked, else the thread's.
+  // As the composer shows it on Home: Simulate keeps its own pair, the rest Home's words.
   const placeholder =
-    tool === "chat"
-      ? HOME_PLACEHOLDER
-      : tool === "test"
-        ? video
-          ? NEXT_SIMULATE_PLACEHOLDER.video
-          : NEXT_SIMULATE_PLACEHOLDER.empty
-        : (NEXT_PLACEHOLDER_BY_TOOL[tool] ?? NEXT_PLACEHOLDER_BY_TOOL.chat);
+    tool === "test"
+      ? video
+        ? NEXT_SIMULATE_PLACEHOLDER.video
+        : NEXT_SIMULATE_PLACEHOLDER.empty
+      : (HOME_PLACEHOLDER_BY_TOOL[tool] ?? NEXT_PLACEHOLDER_BY_TOOL[tool] ?? NEXT_PLACEHOLDER_BY_TOOL.chat);
 
   return (
     // On the phone /dev/home is not a place, so the shell draws its Back header in the band that
@@ -240,22 +190,18 @@ export function DevHome({
     <div className="flex min-h-full flex-col max-md:pt-[var(--mobile-nav-band)]">
       <HomeScreen
         greeting={start.noName ? "Good morning." : "Good morning, Nia."}
-        audience={{
-          name: audience.name,
-          general: audience.id === GENERAL.id,
-          open: sheetOpen,
-          onOpen: () => setSheetOpen(true),
-        }}
-        audienceRef={lineRef}
-        // Only the state `money` can have the row, and only above zero; no space is kept for it.
+        // Only the state `money` has the row; every other state is Home without it (no space kept).
         money={start.money ? moneyRow(earnedCents) : null}
         // The drawer's opener with a face of its own: the preview has no account to publish one.
         opener={<MenuButton variant="picture" face={{ picture: null, initials: start.noName ? "?" : "NL" }} />}
         credits={start.unlimited ? null : 30}
-        under={start.pending ? "pending" : start.noChats ? "cards" : "recent"}
+        picked={picked}
         onPickSkill={setTool}
-        recent={start.noChats || start.pending ? [] : start.plain ? RECENT_PLAIN : RECENT}
+        recent={start.noChats ? [] : start.plain ? RECENT_PLAIN : RECENT}
         onOpenThread={() => {}}
+        recentOnDesktop={recentOnDesktop}
+        // "More skills" opens the composer's More sheet on /home; nothing here.
+        onMore={() => {}}
         field={
           <ThreadField
             value={value}
@@ -295,10 +241,13 @@ export function DevHome({
             ariaLabel={ARIA_LABEL[tool] ?? "Paste a TikTok link"}
             sendLabel={SEND_LABEL[tool] ?? "Simulate"}
             anchorRef={anchorRef}
-            // More opens the composer's More sheet on /home; nothing here.
             onOpenMore={() => {}}
             moreOpen={false}
-            home
+            home={{
+              audience: { label: audience.name, open: sheetOpen, onOpen: () => setSheetOpen(true) },
+              picked: picked ? { label: fieldSkillLabel(tool), price: priceOf(tool) } : null,
+              onClearPicked: () => setTool("chat"),
+            }}
           />
         }
       />
@@ -314,9 +263,8 @@ export function DevHome({
         onNewAudience={() => setSheetOpen(false)}
         lens={lens}
         onLensChange={setLens}
-        anchorRef={lineRef}
+        anchorRef={anchorRef}
         side="bottom"
-        align="center"
       />
     </div>
   );

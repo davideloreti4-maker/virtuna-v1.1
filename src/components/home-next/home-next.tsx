@@ -6,6 +6,7 @@ import { useQueryClient } from "@tanstack/react-query";
 
 import { rowOf, titleOf } from "@/components/library-next/chat-row-data";
 import { MenuButton } from "@/components/shell/menu-button";
+import { useSideNavCollapse } from "@/components/shell/use-side-nav-collapse";
 import { useThreadActions } from "@/components/shell/use-thread-actions";
 import { shownThreadTitle } from "@/components/shell/use-thread-title";
 import { useThreadList, type ThreadSummary } from "@/hooks/queries";
@@ -18,34 +19,27 @@ import type { LibraryChat, LibraryPage } from "@/lib/library/library-page";
 import { whenLabel } from "@/lib/time-ago";
 
 import { firstNameOf, greetingFor } from "./greeting";
-import { HomeScreen, type HomeAudience, type HomeMoney, type HomeRecentRow, type HomeSkillId, type HomeUnder } from "./home-screen";
+import { HomeScreen, type HomeMoney, type HomeRecentRow, type HomeSkillId } from "./home-screen";
 
 /**
- * Home with its data (spec 2026-11-23 §3, redrawn by 2026-11-25 §2): the greeting's name from the
- * profile, the last chats, the money, and which of three things goes under the field (`underOf`). The
- * phone's top row carries the drawer's opener, which draws the face the shell publishes and reads
- * nothing here. The composer draws it and hands in the field, the audience line's values (spec
- * 2026-11-25 §2.3), the balance and the card's pick.
- *
- * Under the field (spec 2026-11-25 §2.5): nothing until the sidebar's chat list has answered, so a
- * creator with chats never sees the cards for a moment; then Recent when there is a row for it, else
- * the four cards (no titled chat, or the list failed). Recent shows beside the sidebar whether it is
- * open or the rail: with the cards gone the page would be empty under the field.
+ * Home with its data (spec 2026-11-23 §3): the greeting's name from the profile, the last chats,
+ * and whether the sidebar shows them beside the page. The phone's top row carries the drawer's
+ * opener, which draws the face the shell publishes and reads nothing here. The composer draws it and
+ * hands in the field, the balance and the skill state.
  *
  * Recent is the first page of Library's summary (`useLibraryRecent`: one
- * request under its own key, so a refetch never re-asks the pages the Library has loaded): its five
+ * request under its own key, so a refetch never re-asks the pages the Library has loaded): its three
  * chats last written to, each as Library draws it. While that request is out, when it failed, or while it is behind the sidebar's list (a chat
  * written to, renamed or deleted since), Recent is the sidebar list's titles and times, as before:
  * Home is the first screen of a session and never shows a gap or an error for it. A summary found
  * behind is asked for again, once for each state of the list. Nothing here is paid; a tap is a
  * navigation.
  *
- * "Money made" (Earn plan 2026-11-24, step C; ruling 18; spec 2026-11-25 §2.6) is `useEarn()`: the one
- * `GET /api/earn`, under the key Earn's page reads, so every reader shares it. See `moneyOf`.
+ * "Money made" (Earn plan 2026-11-24, step C; ruling 18) is `useEarn()`: the one `GET /api/earn`, under
+ * the key Earn's page reads, so every reader shares it. See `moneyOf`.
  */
 
-/** Recent's rows at most (spec 2026-11-25 §2.5). */
-export const HOME_RECENT_LIMIT = 5;
+export const HOME_RECENT_LIMIT = 3;
 
 /** Home's Recent (spec §3.1): the chats last written to, newest first, titled ones only (an untitled
  *  chat is empty). Not the sidebar's order: that one puts pinned chats first, and under the word
@@ -80,9 +74,9 @@ function timeOf(at: string): number | null {
   return Number.isFinite(t) ? t : null;
 }
 
-/** The chats Recent shows from the summary's first page: the five last written to, newest first.
- *  Not its first five: the page leads with the pinned chats, and an old one is not "recent". The
- *  page holds every chat among the thirty last written to, so these are the creator's latest five.
+/** The chats Recent shows from the summary's first page: the three last written to, newest first.
+ *  Not its first three: the page leads with the pinned chats, and an old one is not "recent". The
+ *  page holds every chat among the thirty last written to, so these are the creator's latest three.
  *  Equal times keep the page's order (its own by last message). Never an older page: Home asks for
  *  one page only. */
 export function recentChats(page: LibraryPage | undefined): LibraryChat[] {
@@ -118,50 +112,48 @@ export function summaryAgrees(shown: readonly LibraryChat[], threads: readonly T
 }
 
 /**
- * The "Money made" row from Earn's read (spec 2026-11-25 §2.6; rulings 18 and 24): only when Whop's
- * number says something was earned, in whole cents above zero. Nothing earned, a number that could not
- * be read, the payment side not read, not enrolled, a read still out or refused: null, so no row and no
- * space. The amount is in money words, the rate at the right is Earn's headline ("Earn 50%"). An answer
- * once in stays (react-query keeps it through a later failed read).
+ * The "Money made" row from Earn's read (rulings 18 and 24):
+ * - no answer yet: `loading` (the row's space is held);
+ * - refused or failed with nothing to show (a funnel visitor's 404, signed out, an error): null, so no
+ *   row, no space and no error on Home;
+ * - answered: `shown`. The amount is what Whop reported, in money words, and "$0" when there is none
+ *   (not enrolled, or the payment side not read: nothing earned through us is true). One case has no
+ *   amount: an enrolled creator (`whop.username` set) whose number could not be read (`earnedCents`
+ *   null) may have earned, so the row does not say "$0" to them. The rate at the right is Earn's
+ *   headline ("Earn 50%"), built from the rate's constant.
+ * An answer once in stays: a later failed read does not take the row away.
  */
-export function moneyOf(page: EarnPage | undefined): HomeMoney | null {
-  const cents = page?.whop?.earnedCents;
-  return typeof cents === "number" && cents > 0 ? { amount: moneyWord(cents), hint: headline() } : null;
-}
-
-/** What goes under the field: nothing until the chat list has answered (data or error), then Recent
- *  if there is a row for it, else the cards. */
-export function underOf(list: { data: unknown; isError: boolean }, rows: readonly HomeRecentRow[]): HomeUnder {
-  if (list.data === undefined && !list.isError) return "pending";
-  return rows.length > 0 ? "recent" : "cards";
+export function moneyOf(earn: { data: EarnPage | undefined; isError: boolean }): HomeMoney | null {
+  if (earn.data === undefined) return earn.isError ? null : { state: "loading" };
+  const whop = earn.data?.whop;
+  const cents = typeof whop?.earnedCents === "number" ? whop.earnedCents : null;
+  const unread = Boolean(whop?.username) && cents === null;
+  return { state: "shown", amount: unread ? null : moneyWord(cents ?? 0), hint: headline() };
 }
 
 export interface HomeNextProps {
   field: React.ReactNode;
-  audience: HomeAudience;
-  /** Set to the audience line, for the audience sheet to stand on. */
-  audienceRef?: React.Ref<HTMLButtonElement>;
   credits: number | null;
+  picked: boolean;
   onPickSkill(id: HomeSkillId): void;
+  onMore(): void;
   /** The editor is open to this account: Home shows its six cards (plan 2026-11-24-editor-screens-a). */
   editOpen?: boolean;
-  /** The six cards' More card: the field's More sheet. */
-  onMore?(): void;
 }
 
-export function HomeNext({ field, audience, audienceRef, credits, onPickSkill, editOpen = false, onMore }: HomeNextProps): React.JSX.Element {
+export function HomeNext({ field, credits, picked, onPickSkill, onMore, editOpen = false }: HomeNextProps): React.JSX.Element {
   // Until the profile has answered, the heading holds: "Good morning." growing a name a moment
   // later reads as a flicker on the first screen.
   // Only while the first attempt is out: the query stays pending through its retries, and a
   // failing request must not leave the heading blank (and busy) for as long as they take.
   const { data: profile, isPending, failureCount } = useProfile();
   const profilePending = isPending && failureCount === 0;
-  const list = useThreadList();
-  const threads = list.data;
+  const { data: threads } = useThreadList();
   const summary = useLibraryRecent();
   const earn = useEarn();
   const actions = useThreadActions();
   const queryClient = useQueryClient();
+  const { collapsed } = useSideNavCollapse();
   // Home never renders on the server (the shell's auth guard), so the clock is safe at first render.
   const [now] = useState(() => new Date());
 
@@ -197,18 +189,18 @@ export function HomeNext({ field, audience, audienceRef, credits, onPickSkill, e
   return (
     <HomeScreen
       greeting={profilePending ? null : greetingFor(now, firstNameOf(profile?.name))}
-      audience={audience}
-      audienceRef={audienceRef}
-      money={moneyOf(earn.data)}
+      money={moneyOf(earn)}
       opener={<MenuButton variant="picture" />}
       credits={credits}
       field={field}
-      under={underOf(list, recent)}
+      picked={picked}
       onPickSkill={onPickSkill}
       recent={recent}
       onOpenThread={openRecent}
-      editOpen={editOpen}
+      // The sidebar's own Recent is on screen only while it is open.
+      recentOnDesktop={collapsed}
       onMore={onMore}
+      editOpen={editOpen}
     />
   );
 }

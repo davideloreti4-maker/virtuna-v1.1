@@ -21,26 +21,22 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 /**
- * Home (spec 2026-11-23 §3, redrawn by 2026-11-25 §2, "the chats first, one field"): what /home shows
- * when no chat is open. Presentational: the composer draws the field and hands it in, and the
- * container (`home-next.tsx`) reads the greeting's name, the chats and the money, and says which of
- * three things go under the field.
+ * Home (spec 2026-11-23 §3; drawings `ax-p1.png`, `ax-p2.png`, `ax-d1.png`): what /home shows when
+ * no chat is open. Presentational: the composer draws the field and hands it in, and the container
+ * (`home-next.tsx`) reads the greeting's name, the chats and the sidebar's state.
  *
- *   phone                            desktop (beside the sidebar, open or the rail)
+ *   phone                            desktop (beside the sidebar)
  *   opener ··········· 30 credits    (no top row: the sidebar has both)
  *   Good morning, Nia.               Good morning, Nia.   (centred, a fifth down)
- *   For @handle ⌄                    For @handle ⌄        (centred)
+ *   Money made $0 ····· Earn 50% ›   Money made, as wide as the field (Earn, step C)
  *   the field                        the field, 720 wide
- *   under the field, one of three (`under`):
- *     pending  nothing (the chat list has not answered: no cards flash for a creator with chats)
- *     recent   Recent ··· Library, up to five chats, as wide as the field
- *     cards    the four skills, two by two / four in a row, as wide as the field, all one height
- *   Money made $58.80 ·· Earn 50% ›  last, only above zero
+ *   the four skills, two by two      the four skills in one row (two by two under 760)
+ *   More skills                      More skills (the More sheet: Ideas, Explore, Read my account)
  *
  * For an account the editor is open to (`editOpen`; plan 2026-11-24-editor-screens-a, drawing `editor-v2-row-A.png` screen 1)
  * the cards are six, two by two on a phone and three by two from 760: Simulate, Edit, Hooks, Script, Remix and More, which
- * completes the grid and opens the field's More sheet (`onMore`). They follow the cards' rules: only with no chats, as
- * wide as the field, all one height, staying on a pick. Every other account has the four, and More is in the field.
+ * takes the "More skills" line's place and opens the same sheet. Every other account keeps the four and the line.
+ *   Recent ············· Library     Recent only while the sidebar is the rail, as wide as the field
  *
  * A recent chat is drawn as Library draws it: its tile, its title, its line
  * ("3 hooks · simulated 2h ago"; a posted chat's line as Library's phone draws it, "Posted 4d ago ·
@@ -48,18 +44,12 @@ import { cn } from "@/lib/utils";
  * its gauge (a link to the result). Until
  * Library's summary is in (or when it failed), the same row with the plain chat mark and when it was
  * last written to as its line, so nothing moves when the summary lands.
+ * Departure from the drawing (spec §6): no Recent in the page on desktop while the sidebar lists the
+ * same chats.
  *
- * The audience line (spec 2026-11-25 §2.3): who the next run is for, under the greeting, a button that
- * opens the composer's audience sheet. From 768 that sheet is a popover centred under the line
- * (`audienceRef`), and its close hands the focus back to the line. The field is the
- * thread's own (spec §2.4), handed in by the composer.
- *
- * A card's tap picks its skill in the field and the cards stay: nothing on the page moves on a pick,
- * so no tap can land on something that slid into a card's place. More (Ideas, Explore, Read my
- * account) is the field's own.
- *
- * "Money made" (Earn plan 2026-11-24, step C; rulings 18 and 24; spec 2026-11-25 §2.6): one row at the
- * end of the page, a link to Earn, only when something was earned. See `HomeMoney`.
+ * "Money made" (Earn plan 2026-11-24, step C; rulings 18 and 24): one row between the greeting and the
+ * field, a link to Earn. See `HomeMoney`: with nothing passed Home is as it was before the row; while
+ * it is loading its space is held (empty, silent), so nothing moves when it lands.
  */
 
 export type HomeSkillId = "test" | "edit" | "hooks" | "script" | "remix";
@@ -81,9 +71,13 @@ const ICON_BY_SKILL: Record<HomeSkillId, ShellIcon> = {
   remix: LoopIcon,
 };
 
-/** What goes under the field (spec 2026-11-25 §2.5): nothing while the chat list has not answered,
- *  Recent for a creator with chats, the four cards for one with none. */
-export type HomeUnder = "pending" | "recent" | "cards";
+/** How long after a card pick Recent takes no click: the cards go on the pick and Recent slides up
+ *  into their place, so the second tap of a double tap would land on a chat (as `SETTLE_MS` in
+ *  `thread-next/answer-sheet.tsx`). */
+export const PICK_SETTLE_MS = 320;
+
+/** The clock that window is read from. Time is an outside thing: the window's test drives it by hand. */
+export const pickClock = { now: (): number => performance.now() };
 
 export interface HomeRecentRow {
   id: string;
@@ -100,29 +94,14 @@ export interface HomeRecentRow {
 export const MONEY_MADE = "Money made";
 
 /**
- * What feeds the "Money made" row (spec 2026-11-25 §2.6): given only when the amount earned is above
- * zero (`moneyOf` decides, from the cents). `amount` in money words ("$58.80"); `hint` is the rate at
- * the right ("Earn 50%"). Not passed, or null (nothing earned, no amount, loading, refused): no row and
- * no space.
+ * What feeds the "Money made" row (ruling 24b). Not passed, or null: no row and no space, Home as it was
+ * before the row.
+ * - `loading`: not known yet; the row's space is kept, empty and silent.
+ * - `shown`: the row. `amount` in money words ("$0"), or null when it could not be read (an enrolled
+ *   creator is not told "$0" for that: the row then says the label and the rate only); `hint` is the
+ *   rate at the right ("Earn 50%").
  */
-export interface HomeMoney {
-  amount: string;
-  hint: string;
-}
-
-/**
- * The audience line's values, from the composer (spec 2026-11-25 §2.3).
- * - `name`: the audience's name ("@creator_one"), shown as "For @creator_one".
- * - `general`: it is the General audience (the composer knows it by its id, not by its word): the line
- *   reads "For a general audience", and its name is not shown.
- * - `open`, `onOpen`: the audience sheet's state and what opens it.
- */
-export interface HomeAudience {
-  name: string;
-  general: boolean;
-  open: boolean;
-  onOpen(): void;
-}
+export type HomeMoney = { state: "loading" } | { state: "shown"; amount: string | null; hint: string };
 
 /** Under 360 wide the rate stays beside an amount of at most this many characters ("$240"); a longer
  *  one ("$24.50") takes its room (ruling 24a). From 360 the rate is always drawn. */
@@ -130,21 +109,19 @@ const MONEY_RATE_FITS_CHARS = 4;
 
 export interface HomeScreenProps {
   greeting: string | null;                   // null: not known yet (the profile is loading); the line holds its place
-  audience: HomeAudience;                    // the line under the greeting
-  /** The composer's ref, set to the audience line: the sheet's popover stands on it from 768. */
-  audienceRef?: React.Ref<HTMLButtonElement>;
-  /** "Money made", last (see `HomeMoney`): not passed or null, no row and no space. */
+  /** "Money made" (see `HomeMoney`): not passed or null, no row and no space. */
   money?: HomeMoney | null;
   /** The phone's way into the drawer (the creator's picture), first in the top row. Not given: none. */
   opener?: React.ReactNode;
   credits: number | null;                    // null: unlimited or not loaded, no pill
   field: React.ReactNode;                    // the field block
-  under: HomeUnder;                          // what goes under the field
-  onPickSkill(id: HomeSkillId): void;        // a card's tap: the skill is picked in the field, the cards stay
-  recent: HomeRecentRow[];                   // Recent's rows (drawn while `under` is "recent")
+  picked: boolean;                           // a skill is picked: the cards are not shown
+  onPickSkill(id: HomeSkillId): void;
+  recent: HomeRecentRow[];
   onOpenThread(id: string): void;
+  recentOnDesktop: boolean;                  // false while the sidebar lists the same chats
+  onMore(): void;                            // "More skills": the More sheet (Ideas, Explore, Read my account)
   editOpen?: boolean;                        // the editor is open to this account: six cards, More the sixth (E3)
-  onMore?(): void;                           // the six cards' More card: the field's More sheet
 }
 
 function SkillCard({ label, line, icon: Icon, onPick, popup = false }: { label: string; line: string; icon: ShellIcon; onPick(): void; popup?: boolean }) {
@@ -169,44 +146,6 @@ function SkillCard({ label, line, icon: Icon, onPick, popup = false }: { label: 
       <span id={`${uid}-line`} className="text-meta text-foreground-secondary">
         {line}
       </span>
-    </button>
-  );
-}
-
-/**
- * "For @handle ⌄" (spec 2026-11-25 §2.3): 15 / 22 in the secondary ink, the name at 560 in the ink, the
- * chevron 14 after a gap of 5. Its name for a screen reader is its words and what it does ("For
- * @handle, change audience"), so the name holds what is on screen. A long name gives way at the
- * edge of the page. No focus style of its own: the app's ring, as the cards and Library have.
- */
-function AudienceLine({ audience, lineRef }: { audience: HomeAudience; lineRef?: React.Ref<HTMLButtonElement> }) {
-  // From 768 the sheet is a popover under this line, and a press outside it (this line included)
-  // closes it on pointerdown: the click that follows must not open it again. As the field's More.
-  const wasOpen = useRef(false);
-  const who = audience.general ? "a general audience" : audience.name;
-  return (
-    <button
-      ref={lineRef}
-      type="button"
-      aria-label={`For ${who}, change audience`}
-      aria-haspopup="dialog"
-      aria-expanded={audience.open}
-      onPointerDown={() => {
-        wasOpen.current = audience.open;
-      }}
-      onClick={(e) => {
-        // A keyboard press (detail 0) never carries a stale flag.
-        const onlyClosed = e.detail > 0 && wasOpen.current;
-        wasOpen.current = false;
-        if (!onlyClosed) audience.onOpen();
-      }}
-      className="tap-44 mt-[5px] inline-flex max-w-full items-center gap-[5px] self-start px-1 text-ui leading-[22px] text-foreground-secondary hover:text-foreground md:mt-2 md:self-center"
-    >
-      <span className="min-w-0 truncate">
-        For{" "}
-        <span className="font-[560] text-foreground">{who}</span>
-      </span>
-      <ChevronIcon size={14} strokeWidth={2.2} aria-hidden className="shrink-0 rotate-90" />
     </button>
   );
 }
@@ -271,18 +210,20 @@ function RecentRow({ row, onOpen }: { row: HomeRecentRow; onOpen(id: string): vo
  * card's radius, the resting shadow), in ink: nothing coral, nothing green.
  * The rate is drawn at every width when it fits (ruling 24a): under 360 wide (Home's own width, the
  * container) it gives way only to an amount longer than `MONEY_RATE_FITS_CHARS`. The link's name
- * always holds it.
+ * always holds it. With no amount (it could not be read, ruling 24c) the row is the label and the rate.
  */
-function MoneyRow({ amount, hint }: HomeMoney) {
-  const rateGivesWay = amount.length > MONEY_RATE_FITS_CHARS;
+function MoneyRow({ amount, hint }: { amount: string | null; hint: string }) {
+  const rateGivesWay = amount !== null && amount.length > MONEY_RATE_FITS_CHARS;
   return (
     <Link
       href={EARN.href}
-      aria-label={`${MONEY_MADE}: ${amount}. ${hint}`}
+      aria-label={amount === null ? `${MONEY_MADE}. ${hint}` : `${MONEY_MADE}: ${amount}. ${hint}`}
       className="flex h-12 w-full items-center gap-2 rounded-2xl bg-surface px-4 shadow-[var(--shadow-rest)] transition-shadow duration-150 hover:shadow-[var(--shadow-lift)] md:px-5"
     >
       <span className="min-w-0 truncate text-ui text-foreground-secondary">{MONEY_MADE}</span>
-      <span className="shrink-0 whitespace-nowrap text-ui font-[640] tabular-nums text-foreground">{amount}</span>
+      {amount !== null && (
+        <span className="shrink-0 whitespace-nowrap text-ui font-[640] tabular-nums text-foreground">{amount}</span>
+      )}
       <span className="ml-auto flex shrink-0 items-center gap-1 pl-2">
         <span className={cn("whitespace-nowrap text-meta font-[560] text-foreground-secondary", rateGivesWay && "@max-[360px]:hidden")}>
           {hint}
@@ -295,20 +236,31 @@ function MoneyRow({ amount, hint }: HomeMoney) {
 
 export function HomeScreen({
   greeting,
-  audience,
-  audienceRef,
   money,
   opener,
   credits,
   field,
-  under,
+  picked,
   onPickSkill,
   recent,
   onOpenThread,
-  editOpen = false,
+  recentOnDesktop,
   onMore,
+  editOpen = false,
 }: HomeScreenProps): React.JSX.Element {
   const recentId = useId();
+  // When a card was last picked (see PICK_SETTLE_MS): a click on Recent inside the window is the
+  // second tap of a double tap on the card, not a choice, and is dropped.
+  const pickedAt = useRef(Number.NEGATIVE_INFINITY);
+  const pickSkill = (id: HomeSkillId) => {
+    pickedAt.current = pickClock.now();
+    onPickSkill(id);
+  };
+  const dropEarlyClick = (event: React.MouseEvent) => {
+    if (pickClock.now() - pickedAt.current >= PICK_SETTLE_MS) return;
+    event.preventDefault();
+    event.stopPropagation();
+  };
   return (
     <div
       data-testid="home-next"
@@ -341,40 +293,67 @@ export function HomeScreen({
           {greeting ?? "\u00A0"}
         </h1>
 
-        <AudienceLine audience={audience} lineRef={audienceRef} />
-
-        {/* 14 under the audience line on a phone, 22 from md up (spec 2026-11-25 §2.4). Its place is
-            always the fourth part of the column, so it is never remounted. */}
-        <div className="mx-auto mt-3.5 w-full max-w-[720px] md:mt-[22px]">{field}</div>
-
-        {under === "cards" && (
-          // As wide as the field. `auto-rows-fr`: every row as tall as the tallest, so a caption
-          // that wraps makes all the cards that tall (each cell stretches, each card fills it).
-          // Six for an account the editor is open to (E3): Simulate, Edit, Hooks, Script, Remix, and More
-          // as the sixth card, three by two from 760; else the four (no closed door, E11).
-          <ul
-            aria-label="Skills"
-            className={cn(
-              "mx-auto mt-3 grid w-full max-w-[720px] auto-rows-fr grid-cols-2 gap-2 @min-[760px]:mt-[18px] @min-[760px]:gap-4",
-              editOpen ? "@min-[760px]:grid-cols-3" : "@min-[760px]:grid-cols-4",
-            )}
+        {/* Nothing passed: nothing here (the place stays this child's, so the field is never remounted). */}
+        {money && (
+          // The same element held and shown: while it is loading, an empty row as tall as the row.
+          <div
+            data-part="money"
+            aria-hidden={money.state === "loading" || undefined}
+            className="mx-auto mt-3 w-full max-w-[720px] md:mt-7"
           >
-            {HOME_SKILLS.filter((skill) => skill.id !== "edit" || editOpen).map((skill) => (
-              <li key={skill.id} className="flex">
-                <SkillCard label={skill.label} line={skill.line} icon={ICON_BY_SKILL[skill.id]} onPick={() => onPickSkill(skill.id)} />
-              </li>
-            ))}
-            {editOpen && (
-              <li className="flex">
-                <SkillCard label="More" line="Ideas, Explore, your account" icon={MoreIcon} popup onPick={() => onMore?.()} />
-              </li>
-            )}
-          </ul>
+            {money.state === "shown" ? <MoneyRow amount={money.amount} hint={money.hint} /> : <div className="h-12" />}
+          </div>
         )}
 
-        {under === "recent" && (
+        {/* Under the row (held or shown), the field sits closer to it (16 from md up) than to the
+            greeting; with no row it is where it always was (28). */}
+        <div className={cn("mx-auto mt-3 w-full max-w-[720px]", money ? "md:mt-4" : "md:mt-7")}>{field}</div>
+
+        {!picked && (
+          <>
+            {/* Six for an account the editor is open to (E3): Simulate, Edit, Hooks, Script, Remix, and More as the
+                sixth card, three by two from 760; else the four and the "More skills" line, as before (no closed door, E11). */}
+            <ul
+              aria-label="Skills"
+              className={cn(
+                "mt-3 grid grid-cols-2 gap-2 @min-[760px]:mt-[18px] @min-[760px]:gap-4",
+                editOpen ? "@min-[760px]:grid-cols-3" : "@min-[760px]:grid-cols-4",
+              )}
+            >
+              {HOME_SKILLS.filter((skill) => skill.id !== "edit" || editOpen).map((skill) => (
+                <li key={skill.id} className="flex">
+                  <SkillCard label={skill.label} line={skill.line} icon={ICON_BY_SKILL[skill.id]} onPick={() => pickSkill(skill.id)} />
+                </li>
+              ))}
+              {editOpen && (
+                <li className="flex">
+                  <SkillCard label="More" line="Ideas, Explore, your account" icon={MoreIcon} popup onPick={onMore} />
+                </li>
+              )}
+            </ul>
+            {!editOpen && (
+              // Ideas, Explore and Read my account: on Home otherwise only behind "/", which nobody
+              // types on a phone. The thread's More sheet. `py-1` keeps the 44 px halo of
+              // `.tap-44` off the cards above (8 px away).
+              <button
+                type="button"
+                aria-haspopup="dialog"
+                onClick={onMore}
+                className="tap-44 mt-2 self-center py-1 text-ui text-foreground-secondary hover:text-foreground"
+              >
+                More skills
+              </button>
+            )}
+          </>
+        )}
+
+        {recent.length > 0 && (
           // From md up as wide as the field, so a title and its time are not a page apart.
-          <section aria-labelledby={recentId} className="mt-4 md:mx-auto md:mt-[26px] md:w-full md:max-w-[720px]">
+          <section
+            aria-labelledby={recentId}
+            onClickCapture={dropEarlyClick}
+            className={cn("mt-4 md:mx-auto md:mt-[26px] md:w-full md:max-w-[720px]", !recentOnDesktop && "md:hidden")}
+          >
             <div className="flex h-9 items-center justify-between px-1 md:h-7">
               <h2 id={recentId} className="text-ui font-[640] text-foreground" style={{ letterSpacing: "normal" }}>
                 Recent
@@ -389,13 +368,6 @@ export function HomeScreen({
               ))}
             </ul>
           </section>
-        )}
-
-        {money && (
-          // Last, 12 above it, as wide as the field.
-          <div data-part="money" className="mx-auto mt-3 w-full max-w-[720px]">
-            <MoneyRow amount={money.amount} hint={money.hint} />
-          </div>
         )}
       </div>
     </div>
