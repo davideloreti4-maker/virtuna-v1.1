@@ -4,9 +4,25 @@ const log = createLogger({ module: "engine.qwen.cost" });
 
 // Per-token rates ($/token). Unknown models fall back to qwen3.6-flash pricing — never throws.
 // qwen3.5-omni-plus is free during preview; we track tokens at $0 so GA cost projection works.
+//
+// Rows marked "list" are the provider's own International (Singapore) prices, read 2026-11-25 on
+// Alibaba Cloud Model Studio's pricing page: https://www.alibabacloud.com/help/en/model-studio/model-pricing
+// (our endpoint, dashscope-intl, is that region). The other rows predate that check.
+// ⚠️ This table holds ONE input and ONE output rate per model. It cannot hold a price per input
+// modality (omni bills audio input at a different rate), and it ignores the cache-hit discount.
 const PRICING: Record<string, { input: number; output: number }> = {
   "qwen3.5-omni-plus":  { input: 0.00 / 1_000_000, output: 0.00 / 1_000_000 }, // preview: free
-  "qwen3.5-omni-flash": { input: 0.10 / 1_000_000, output: 0.40 / 1_000_000 },
+  // list, 2026-11-25: input $0.40/M for text, image and video, but $3.00/M for AUDIO, which this
+  // table cannot hold (audio tokens are under-billed here at $0.40); output $2.20/M for text (the
+  // only output we ask for; text + audio output is $11.90/M). Was $0.10 / $0.40 until 2026-11-25.
+  "qwen3.5-omni-flash": { input: 0.40 / 1_000_000, output: 2.20 / 1_000_000 },
+  // list, 2026-11-25 (pricing page, Qwen Omni table): one input price for every modality, $0.15/M
+  // (cache hit $0.016/M, not modelled); output $0.47/M. Not used by default.
+  "qwen3.8-omni-flash": { input: 0.15 / 1_000_000, output: 0.47 / 1_000_000 },
+  // list, 2026-11-25 (pricing page, Qwen Flash table, and the model page
+  // https://www.alibabacloud.com/help/en/model-studio/qwen3-8-flash): FLAT $0.15 / $0.47 per M for
+  // any input up to 1M, unlike qwen3.7-flash's bands below. Measured 2026-11-25 and NOT adopted.
+  "qwen3.8-flash":      { input: 0.15 / 1_000_000, output: 0.47 / 1_000_000 },
   "qwen3.6-plus":       { input: 0.40 / 1_000_000, output: 2.40 / 1_000_000 },
   // qwen3.7-plus (Apollo, 2026-06-11): current promo rate (limited-time 20% off:
   // input $0.5→$0.4, output $2.0→$1.6). Revert to $0.50/$2.00 when the promo ends.
@@ -24,7 +40,8 @@ const PRICING: Record<string, { input: number; output: number }> = {
  * segments; Apollo ships a video plus its thinking budget).
  *
  * qwen3.7-flash (2026-08-04, the platform reasoning model): $0.03/$0.13 per M up to 32K input,
- * $0.10/$0.40 through 256K, $0.20/$0.80 through 1M.
+ * $0.10/$0.40 through 256K, $0.20/$0.80 through 1M. Matches the provider's list on 2026-11-25
+ * (pricing page above, Qwen Flash table, International).
  */
 const TIERED_PRICING: Record<string, { maxInputTokens: number; input: number; output: number }[]> = {
   "qwen3.7-flash": [
