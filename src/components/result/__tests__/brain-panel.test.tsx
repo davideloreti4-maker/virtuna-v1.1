@@ -110,11 +110,12 @@ afterEach(() => {
 });
 
 describe("BrainPanel: the signals card", () => {
-  it("one sentence from Focus, the moment line, the four signals and what each stands for; the picture and the caption as built", async () => {
+  it("the moment line, the four signals and what each stands for; the picture and the caption as built", async () => {
     const { container } = mount();
     await screen.findByTestId("cortex-stand-in");
-    expect(part(container, "focus-sentence").textContent).toBe("Focus is highest at 0:07 and lowest at 0:16.");
     expect(part(container, "moment-line").textContent).toBe("At 0:29 · the dashed line is at rest");
+    // The card opens on the moment line: nothing stands over it.
+    expect(container.querySelector('[data-result="brain-signals"]')!.firstElementChild).toBe(part(container, "moment-line"));
     const rows = [...container.querySelectorAll("[data-signal]")];
     expect(rows.map((row) => row.querySelector("[data-label]")!.textContent)).toEqual(["Eyes", "Focus", "Feeling", "Wandering"]);
     expect(rows.map((row) => row.querySelector("[data-meaning]")!.textContent)).toEqual([
@@ -123,7 +124,6 @@ describe("BrainPanel: the signals card", () => {
       "how much it moves them",
       "how far the mind drifts",
     ]);
-    expect(follows(part(container, "focus-sentence"), part(container, "moment-line"))).toBe(true);
     expect(follows(part(container, "moment-line"), rows[0]!)).toBe(true);
     // No bare numbers in the rows, no legend row.
     expect(container.querySelector("[data-value]")).toBeNull();
@@ -133,10 +133,14 @@ describe("BrainPanel: the signals card", () => {
     expect(screen.getByText("A model of attention, not a scan.")).toBeTruthy();
   });
 
-  it("draws the sentence of the run it shows (middle: a fall that ends before the cut names no scene)", async () => {
-    const { container } = mount(modelOf(middle));
-    await screen.findByTestId("cortex-stand-in");
-    expect(part(container, "focus-sentence").textContent).toBe("Focus is highest at 0:10 and lowest at 0:23.");
+  it("says no sentence about Focus: the model builds over its first seconds on every clip, so one would say the same of each", async () => {
+    for (const fixture of [early, middle]) {
+      const { container, unmount } = mount(modelOf(fixture));
+      await screen.findByTestId("cortex-stand-in");
+      expect(container.querySelector('[data-part="focus-sentence"]')).toBeNull();
+      expect(container.querySelector('[data-result="brain-signals"]')!.textContent).not.toMatch(/highest|lowest|stays level|scene changes/);
+      unmount();
+    }
   });
 
   it("at rest: no time in the corner, no moment line on the curves, the words and the brain at the clip's end", async () => {

@@ -350,7 +350,8 @@ the first block's layout parts (`FirstCard`, `WideFrame`, `LineFrame` in `first-
   "Most likely", the other rows keep its room), so the bars compare.
 - The brain's porcelain look is `look="porcelain-light" | "porcelain-dark"` on `CortexCanvas`
   (`cortex-porcelain.ts`); the default `"scan"` is the legacy look, unchanged. Its signals are said
-  in words (`brain-read.ts`): one sentence about Focus, and for each signal above, at or below rest.
+  in words (`brain-read.ts`): what each stands for, and above, at or below rest. No sentence sums
+  them up (the model builds over its first seconds on every clip, so one would say the same of each).
 - To look at it: `/dev/result?fixture=<name>` and `node scripts/result-shots.cjs --out <dir>`.
 - Each panel lays itself out for the width it gets, not the window's (container queries and
   `audienceLayoutFor`), so a tablet or a narrow window never cuts a part off. The line under the

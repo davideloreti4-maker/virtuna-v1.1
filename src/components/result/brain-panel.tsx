@@ -6,7 +6,7 @@ import { porcelainLegend, type PorcelainLook } from "@/components/audience-lens/
 import { Card } from "@/components/ui/card";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { predictedBold, type NetworkId } from "@/lib/brain/cortex-sim";
-import { FOCUS_LEVEL, SIGNAL_MEANING, focusSentence, momentLine, restWord } from "@/lib/result/brain-read";
+import { SIGNAL_MEANING, momentLine, restWord } from "@/lib/result/brain-read";
 import { brainTrackOf, type BrainSignal } from "@/lib/result/brain-track";
 import { timecode } from "@/lib/result/format";
 import type { VideoModel } from "@/lib/result/types";
@@ -19,11 +19,12 @@ const CortexCanvas = dynamic(() => import("@/components/audience-lens/CortexCanv
 
 /**
  * Brain. The existing 3D brain driven by the existing model at the playhead, in porcelain,
- * as built; and the signals card: one sentence about Focus, the moment the rows are read at, and four
- * signals, each its name and what it stands for, its curve over the clip against its resting level,
- * and a word for where it stands at that moment. Away from rest a coral line marks the video's moment
- * on every curve: besides the named scene, the video's moment is the one thing coral marks. A model
- * of attention, not a scan.
+ * as built; and the signals card: the moment the rows are read at, and four signals, each its name
+ * and what it stands for, its curve over the clip against its resting level, and a word for where it
+ * stands at that moment. No sentence sums the signals up: the model builds over its first seconds on
+ * every clip, so one read off its curve says nearly the same of each video. Away from rest a coral
+ * line marks the video's moment on every curve: besides the named scene, the video's moment is the
+ * one thing coral marks. A model of attention, not a scan.
  *
  * Phone: the brain card (232 tall), 10 below it the signals card, the caption under both. A panel 520
  * wide and up: the two cards side by side, 1 : 1.28, 16 apart, as tall as the signals card's content;
@@ -174,17 +175,10 @@ const Signals = memo(function Signals({
   const label = inner < NARROW_BELOW ? LABEL_W.narrow : LABEL_W.wide;
   const width = Math.max(40, inner - label - WORD_W - GAPS);
   const top = useMemo(() => Math.max(SCALE_TOP, ...signals.flatMap((s) => s.perSecond)), [signals]);
-  const sentence = useMemo(() => {
-    const focus = signals.find((signal) => signal.id === "dorsal_attention");
-    return focus ? focusSentence(focus.perSecond, model.audience.scenes) : FOCUS_LEVEL;
-  }, [signals, model]);
 
   return (
     <Card ref={cardRef} data-result="brain-signals" className="flex flex-col px-[18px] pb-2.5 pt-4 @min-[520px]:px-[22px]">
-      <p data-part="focus-sentence" className="text-title font-[640] text-foreground tabular-nums">
-        {sentence}
-      </p>
-      <p data-part="moment-line" className="mt-1.5 text-meta font-[560] text-foreground-secondary tabular-nums">
+      <p data-part="moment-line" className="text-meta font-[560] text-foreground-secondary tabular-nums">
         {momentLine(t)}
       </p>
       <div className="mt-1">

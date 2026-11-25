@@ -176,11 +176,13 @@ this list, this list is what stands.
   `Most likely` goes to the single longest bar as drawn, none on a tie.
 - The marker on Engagement's bar and the line on the Brain's curves are coral, as drawn, and only
   while the video is away from rest.
-- Brain, the sentence (section 4.3): the lowest second is read from the highest second on (the model
-  starts every clip at rest), and it is the first second Focus is down within 3 points of that low;
-  a lowest under 3 points below the highest is not named (`Focus is highest at 0:07.`); a scene change
-  is named only for a fall of 3 points or more that lands at that scene's start or within the second
-  after it.
+- Brain, the sentence (section 4.3): NOT SHOWN. Built first, then taken out on the owner's word
+  (2026-11-25, "lets go with your recommendation regarding the sentece"): the model behind the page
+  builds over its first seconds on every clip, so on every recorded run the sentence read "Focus is
+  highest at 0:07 to 0:10", and the drawn example ("highest at 0:02 and falls when the scene changes
+  at 0:03") cannot come out of it for a clip over about seven seconds. The card opens on the small
+  line (`At 0:29 · the dashed line is at rest`); the four rows with what each signal stands for and
+  its word stay.
 - Brain on a wide panel: the two cards side by side as tall as the signals card, the brain at the
   phone's size.
 - The landing (section 5): the count rolls from 1,000 in 1.5 s, the line draws itself, the dot at its
