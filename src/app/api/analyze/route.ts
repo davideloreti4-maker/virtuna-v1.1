@@ -33,6 +33,8 @@ import { resolveAndRehost } from "@/lib/engine/remix/resolve-and-rehost";
 import { analyzeVideoWithOmni } from "@/lib/engine/qwen/omni-analysis";
 import { runDecode, omniOutputToStructuralInput } from "@/lib/engine/remix/decode";
 import type { DecodeResult } from "@/lib/engine/remix/decode-types";
+import { ownsVideoPath } from "@/lib/storage/own-video-path";
+import { removeOrphanUpload } from "./upload-cleanup";
 
 /**
  * Phase 3 — Vercel Fluid Compute route config.
@@ -43,10 +45,13 @@ import type { DecodeResult } from "@/lib/engine/remix/decode-types";
  */
 
 // -------------------------------------------------------
-// Phase 3 (quick task 260528-nsb) — Orphan storage cleanup helpers
+// Phase 3 (quick task 260528-nsb) — Orphan storage cleanup
 //
-// cleanupUploadedStorage: Use after Zod validation succeeds (validated is available).
-// cleanupRawUpload: Use on early-return branches before Zod parse (only body available).
+// cleanupOrphanUpload runs on every branch that returns without a run that keeps the upload:
+// the 429, the audience refusal, the Zod failure, the cache hit and both pipeline failures.
+// It takes the raw body before the Zod parse and the validated input after it. What it may
+// delete is decided in ./upload-cleanup (the caller's own file, and only while no stored run
+// plays from it).
 //
 // NOT covered here (deferred — requires client-side try/finally):
 //   - Auth fail (line ~59): `body` not yet read; cleanup would need AbortController hook in Board.tsx
@@ -102,50 +107,20 @@ function backfillCreatorFollowers(
   })();
 }
 
-function cleanupUploadedStorage(
+async function cleanupOrphanUpload(
   service: ServiceClient,
-  validated: { input_mode: string; video_storage_path?: string | null },
+  input: { input_mode?: unknown; video_storage_path?: unknown },
+  userId: string,
   retentionOptedIn: boolean,
   log: Logger
-): void {
+): Promise<void> {
   if (
-    validated.input_mode === "video_upload" &&
-    validated.video_storage_path &&
+    input.input_mode === "video_upload" &&
+    typeof input.video_storage_path === "string" &&
+    input.video_storage_path &&
     !retentionOptedIn
   ) {
-    service.storage
-      .from("videos")
-      .remove([validated.video_storage_path])
-      .catch((err: unknown) => {
-        log.warn("storage_cleanup_failed", {
-          err: err instanceof Error ? err.message : String(err),
-          path: validated.video_storage_path,
-        });
-      });
-  }
-}
-
-function cleanupRawUpload(
-  service: ServiceClient,
-  body: Record<string, unknown>,
-  retentionOptedIn: boolean,
-  log: Logger
-): void {
-  if (
-    body.input_mode === "video_upload" &&
-    typeof body.video_storage_path === "string" &&
-    body.video_storage_path &&
-    !retentionOptedIn
-  ) {
-    service.storage
-      .from("videos")
-      .remove([body.video_storage_path])
-      .catch((err: unknown) => {
-        log.warn("storage_cleanup_failed", {
-          err: err instanceof Error ? err.message : String(err),
-          path: body.video_storage_path,
-        });
-      });
+    await removeOrphanUpload(service, { path: input.video_storage_path, userId, log });
   }
 }
 
@@ -519,6 +494,18 @@ export async function POST(request: Request) {
           { status: 400 }
         );
       }
+      // Authorization: everything below works on this path with the service client (the
+      // pipeline signs it, the orphan cleanup deletes it), which bypasses the bucket's
+      // policies. So the path must be the caller's own, and that is decided here, before
+      // either. Without it a signed-in user could have another account's video analysed, or
+      // deleted by a refused run. The same check guards /api/videos/sign.
+      if (!ownsVideoPath(body.video_storage_path, user.id)) {
+        log.warn("video_path_not_owned", { userId: user.id });
+        return Response.json(
+          { error: "Video does not belong to this account" },
+          { status: 403 }
+        );
+      }
     }
 
     // -------------------------------------------------------
@@ -563,7 +550,7 @@ export async function POST(request: Request) {
     const limit = DAILY_LIMITS[tier] ?? DAILY_LIMITS.free!;
     if (currentCount >= limit) {
       // Phase 3 (260528-nsb): cleanup orphan before 429 return — body + retentionOptedIn available here.
-      cleanupRawUpload(service, body as Record<string, unknown>, retentionOptedIn, log);
+      await cleanupOrphanUpload(service, body as Record<string, unknown>, user.id, retentionOptedIn, log);
       return Response.json(
         {
           error: "Daily analysis limit reached",
@@ -588,6 +575,7 @@ export async function POST(request: Request) {
     // Fails OPEN (a resolve error → fall through → General): a flaky lookup must never cost
     // a customer a paid Reading.
     // -------------------------------------------------------
+    let audienceRefusal: Response | null = null;
     try {
       const pinnedThread = await createOpenThreadLazy(user.id);
       const pinnedId =
@@ -595,14 +583,16 @@ export async function POST(request: Request) {
           .active_audience_id ?? null;
       if (pinnedId) {
         const pinned = await getAudience(supabase, pinnedId);
-        const refusal = requireSocialsAudience(pinned, "test");
-        if (refusal) {
-          cleanupRawUpload(service, body as Record<string, unknown>, retentionOptedIn, log);
-          return refusal;
-        }
+        audienceRefusal = requireSocialsAudience(pinned, "test");
       }
     } catch {
       // Non-fatal — fall through and run against General (D-04).
+    }
+    // Outside the fail-open block above: a refusal that was decided must be returned, whatever
+    // the cleanup does.
+    if (audienceRefusal) {
+      await cleanupOrphanUpload(service, body as Record<string, unknown>, user.id, retentionOptedIn, log);
+      return audienceRefusal;
     }
 
     // -------------------------------------------------------
@@ -629,7 +619,7 @@ export async function POST(request: Request) {
       validated = AnalysisInputSchema.parse(body);
     } catch (error) {
       // Phase 3 (260528-nsb): cleanup orphan on Zod validation failure — body + retentionOptedIn available.
-      cleanupRawUpload(service, body as Record<string, unknown>, retentionOptedIn, log);
+      await cleanupOrphanUpload(service, body as Record<string, unknown>, user.id, retentionOptedIn, log);
       return Response.json(
         { error: error instanceof Error ? error.message : "Invalid input" },
         { status: 400 }
@@ -686,10 +676,12 @@ export async function POST(request: Request) {
         engineVersion: cached.engine_version,
       });
 
-      // Phase 3 (260528-nsb) Mode A fix: cache hit returns without persisting video_storage_path
-      // for the NEW upload, so the uploaded object becomes an orphan. Clean it up now.
+      // Phase 3 (260528-nsb) Mode A fix: a cache hit returns without storing a run, so an
+      // upload that no stored run plays from is an orphan. For an upload the cache key is the
+      // path itself (computeContentHash), so a hit usually means the run that filled the cache
+      // plays from this very file: then the cleanup keeps it (it used to delete it).
       // Single call covers both wantsJSON and SSE sub-branches below.
-      cleanupUploadedStorage(service, validated, retentionOptedIn, log);
+      await cleanupOrphanUpload(service, validated, user.id, retentionOptedIn, log);
 
       if (wantsJSON) {
         return Response.json(sealForWire(cached));
@@ -858,7 +850,7 @@ export async function POST(request: Request) {
         });
       } catch (pipelineError) {
         // Phase 3 (260528-nsb): cleanup orphan on JSON-branch pipeline throw.
-        cleanupUploadedStorage(service, validated, retentionOptedIn, log);
+        await cleanupOrphanUpload(service, validated, user.id, retentionOptedIn, log);
         const message =
           pipelineError instanceof Error ? pipelineError.message : "Pipeline failed";
         log.error("Pipeline error (json)", { error: message });
@@ -1265,9 +1257,10 @@ export async function POST(request: Request) {
           const message =
             error instanceof Error ? error.message : "Pipeline failed";
           log.error("Pipeline error", { error: message });
-          // Phase 3 (260528-nsb): cleanup orphan on SSE pipeline throw.
-          cleanupUploadedStorage(service, validated, retentionOptedIn, log);
           send("error", { error: message });
+          // Phase 3 (260528-nsb): cleanup orphan on SSE pipeline throw. After the error frame,
+          // so the client hears first; before the stream closes, so the function stays alive.
+          await cleanupOrphanUpload(service, validated, user.id, retentionOptedIn, log);
         } finally {
           // Guard: client cancel (navigation) may have already closed the stream.
           try {
