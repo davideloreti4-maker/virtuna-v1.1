@@ -5,7 +5,7 @@
  * When the v6.1 profile redesign changes column names or shapes, ONLY THIS FILE
  * needs to update — every consumer references by semantic ROLE, not by column.
  *
- * Seven roles (GROUND-02 / RESEARCH 3C + N1 voice sample):
+ * Eleven roles (GROUND-02 / RESEARCH 3C, and the five facts of You, plan 2026-11-24-you):
  *   niche      — niche_primary + niche_sub
  *   audience   — target_audience JSON (age_range, gender_skew, geo, language)
  *   goals      — primary_goal + creator_stage
@@ -14,6 +14,15 @@
  *   platform   — the per-request platform param wins over target_platforms[0] (D-07)
  *                 (per-request param is injected externally; this map only covers the
  *                  profile-stored default fallback portion of the platform role)
+ *   voice      — writing_voice_description: how the creator sounds (You, "How you sound")
+ *   never      — never_do: what they never do, printed as a rule over the whole bundle
+ *   sells      — sells: what they sell
+ *   about      — about: who they are
+ *   film       — can_film: what they can film
+ *
+ * The last five are the creator's own free text, each read only through `youFact` (null while
+ * the new look is off) and printed inside a <<<USER_CONTENT>>> fence under a header this file
+ * writes, the way `formatVoice` always has.
  *
  * Each formatter receives the full creator_profiles row (typed narrowly to the
  * fields it actually reads) and returns a formatted string or null when the field
@@ -22,6 +31,9 @@
  * Does NOT import from the engine module or the scoring core (DDD bounded-context isolation, D-08).
  */
 
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
+import { YOU_FACT_KEYS, YOU_FACT_LIMITS, type YouFactKey } from "@/lib/you/facts";
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 /**
@@ -29,7 +41,24 @@
  * Adding a new role here + a formatter is the ONLY change needed when a new
  * profile concept is introduced.
  */
-export type Role = "niche" | "audience" | "goals" | "wins" | "flops" | "platform" | "voice";
+export type Role =
+  | "niche"
+  | "audience"
+  | "goals"
+  | "wins"
+  | "flops"
+  | "platform"
+  | "voice"
+  | "never"
+  | "sells"
+  | "about"
+  | "film";
+
+/**
+ * The roles that print one of the five facts of You. Their lines ride on top of the assembler's
+ * cap and are never shed (`bundleCharCap` in assembler.ts).
+ */
+export const YOU_ROLES: readonly Role[] = ["voice", "never", "sells", "about", "film"];
 
 /**
  * Narrow profile row type — only the columns the role-map reads.
@@ -60,11 +89,10 @@ export interface ProfileRow {
    * a budgeting app were about learning a dance, while sharing 0% of the sample's words. A longer,
    * better-chosen line was instead reproduced VERBATIM as 13% of the pack. Both directions leak.
    *
-   * ⚠️ There is no producer today — `creator_profiles` has no voice column at all (verified
-   * against prod 2026-08-13), and `apply-creator-persona.ts` no longer backfills it. Before wiring
-   * anything into this field, read `docs/superpowers/specs/2026-08-12-exemplar-fence-design.md`,
-   * and note that the guard in `apply-creator-persona.test.ts` only covers the AUDIENCE path — a
-   * profile-column producer would need its own.
+   * Its producer is the You page (plan 2026-11-24-you): a field asking for a description, with a
+   * hint against pasting a post. Read only through `youFact`. (`apply-creator-persona.ts` no longer
+   * backfills it; read `docs/superpowers/specs/2026-08-12-exemplar-fence-design.md` before wiring
+   * any other producer into this field.)
    *
    * 🔒 RENAMED from `writing_voice_sample` (2026-08-13) — this IS the fence. The old name invited
    * a specimen, which is the value measured to leak; the new one cannot be filled with a quoted
@@ -73,6 +101,67 @@ export interface ProfileRow {
    * at the assembled-bundle level.
    */
   writing_voice_description?: string | null;
+  /** You (plan 2026-11-24-you): who the creator is, in their words (≤ 200). Read only through `youFact`. */
+  about?: string | null;
+  /** What they sell, in their words (≤ 300). Read only through `youFact`. */
+  sells?: string | null;
+  /** What they can film (≤ 200). Read only through `youFact`. */
+  can_film?: string | null;
+  /** What they never do (≤ 300): printed as a rule over everything else. Read only through `youFact`. */
+  never_do?: string | null;
+}
+
+// ─── The five facts of You ────────────────────────────────────────────────────
+
+const SENTINELS = /<<<(?:END_)?USER_CONTENT>>>/gi;
+
+/** Strip every fence marker from the text. */
+export function stripSentinels(text: string): string {
+  let out = text;
+  for (let prev = ""; prev !== out; ) {
+    prev = out;
+    out = out.replace(SENTINELS, "");
+  }
+  return out;
+}
+
+/**
+ * One of the five facts of You as a writer may read it: the fence's own markers stripped, trimmed,
+ * at most the fact's limit (`YOU_FACT_LIMITS`), null when blank. The PATCH route and the database
+ * enforce the same limits on save; this reader does not rely on them, because the cap's room for the
+ * facts is bounded by these limits. A cut never splits a surrogate pair. Null for every fact while
+ * the new look is off (spec 2026-11-24 §6: nothing reads the columns while the flag is off; the
+ * live database is shared with builds that have it on).
+ */
+export function youFact(row: ProfileRow | null | undefined, key: YouFactKey): string | null {
+  if (!NEW_LOOK_ENABLED || !row) return null;
+  const value = row[key];
+  if (typeof value !== "string") return null;
+  const text = stripSentinels(value).trim();
+  const limit = YOU_FACT_LIMITS[key];
+  if (text.length <= limit) return text || null;
+  // Do not end on the first half of a surrogate pair (an emoji, say).
+  const end = /[\uD800-\uDBFF]/.test(text[limit - 1]!) ? limit - 1 : limit;
+  return text.slice(0, end).trimEnd() || null;
+}
+
+/**
+ * Whether a profile gives the writers nothing (null, or every field empty): the ONE thin check. The
+ * assembler prints the cold-start lines for it; the chat route's `coldStart` frame (`isColdStart`) and
+ * the ideas card line (`isThin`) are this same function. A creator who filled any of the five facts
+ * of You is not thin (with the flag off none is read, so none counts). Today's fields count as they
+ * always did (`target_audience` as an object).
+ */
+export function isProfileThin(row: ProfileRow | null): boolean {
+  if (row === null) return true;
+  const today =
+    Boolean(row.niche_primary) ||
+    Boolean(row.target_audience) ||
+    Boolean(row.primary_goal) ||
+    Boolean(row.past_wins?.length) ||
+    Boolean(row.past_flops?.length) ||
+    Boolean(row.target_platforms?.length);
+  return !today && YOU_FACT_KEYS.every((key) => youFact(row, key) === null);
 }
 
 // ─── Role formatters ──────────────────────────────────────────────────────────
@@ -172,15 +261,16 @@ function formatPlatform(row: ProfileRow): string | null {
  * INPUT side, in `apply-creator-persona.ts` and its guard test — not in this wording, which four
  * prompt-only rewrites in this lane have shown the model will ignore.
  *
- * Returns null when writing_voice_description is absent or blank (graceful cold-start).
- * The fence uses the same <<<USER_CONTENT>>> sentinels as all other user-supplied
- * content in the assembler (GROUND-02 injection-guard parity).
+ * Returns null when writing_voice_description is absent or blank (graceful cold-start), and
+ * while the new look is off (`youFact`). The fence uses the same <<<USER_CONTENT>>> sentinels as
+ * all other user-supplied content in the assembler (GROUND-02 injection-guard parity); `youFact`
+ * strips any the creator typed, so the description cannot close it.
  *
  * The instruction header is OUTSIDE the fence (assembler-controlled, trusted)
  * so the LLM sees it as a system directive, not user-supplied text.
  */
 function formatVoice(row: ProfileRow): string | null {
-  const description = row.writing_voice_description?.trim();
+  const description = youFact(row, "writing_voice_description");
   if (!description) return null;
   return [
     "Writing voice — Write in this voice: match its sentence rhythm, vocabulary register, and tone. Emulate STYLE only; do NOT reuse specific content or claims:",
@@ -189,6 +279,38 @@ function formatVoice(row: ProfileRow): string | null {
     "<<<END_USER_CONTENT>>>",
   ].join("\n");
 }
+
+/** A fact printed as the creator's own text: an assembler-written header outside the fence, their words inside. */
+export function fenced(header: string, text: string | null): string | null {
+  if (!text) return null;
+  return [header, "<<<USER_CONTENT>>>", text, "<<<END_USER_CONTENT>>>"].join("\n");
+}
+
+/**
+ * The headers of the four new lines. They are instructions to the model, so they say what the
+ * creator's words are for. Like the voice header they sit OUTSIDE the fence; the words inside are
+ * data. None of them quotes an example: an example line in a prompt is what gets copied (the
+ * measured voice defect, ProfileRow.writing_voice_description).
+ */
+export const NEVER_HEADER =
+  'Never: the creator\'s own rules, in their words. They hold over everything else in this bundle, the "Creator —" description and every override included. Break none of them. They limit what you write and are never material for it: a word a rule bans appears nowhere in your answer, in no form, and not in a denial either ("no X", "not a X", "without X"). Do not mention the rules:';
+/**
+ * Chat's never header. The writers' one (NEVER_HEADER) forbids even mentioning the rules, which a
+ * conversation about them needs ("should I run a giveaway?", "check my script against my never
+ * list"): here the rules hold over what chat drafts, and chat may talk about the rules themselves.
+ */
+export const CHAT_NEVER_HEADER =
+  'Never: the creator\'s own rules, in their words. They hold over anything you write for them, the "Creator —" description and every override included: break none of them in what you draft. You may talk about the rules themselves when the creator asks:';
+export const SELLS_HEADER =
+  "What the creator sells, in their words. Name an offer only when the ask is about selling or promoting it; never invent an offer, a price or a claim:";
+export const ABOUT_HEADER = "About the creator, in their words. Use it for fit; invent nothing beyond it:";
+export const FILM_HEADER =
+  'What the creator can film, in their words. Everything you suggest must be filmable within this; where the "Creator —" description says otherwise, this wins:';
+
+const formatNever = (row: ProfileRow) => fenced(NEVER_HEADER, youFact(row, "never_do"));
+const formatSells = (row: ProfileRow) => fenced(SELLS_HEADER, youFact(row, "sells"));
+const formatAbout = (row: ProfileRow) => fenced(ABOUT_HEADER, youFact(row, "about"));
+const formatFilm = (row: ProfileRow) => fenced(FILM_HEADER, youFact(row, "can_film"));
 
 // ─── PROFILE_ROLE_MAP ─────────────────────────────────────────────────────────
 
@@ -209,4 +331,17 @@ export const PROFILE_ROLE_MAP: Record<Role, (row: ProfileRow) => string | null> 
   flops: formatFlops,
   platform: formatPlatform,
   voice: formatVoice,
+  never: formatNever,
+  sells: formatSells,
+  about: formatAbout,
+  film: formatFilm,
 };
+
+/**
+ * A role's line as a mode prints it: chat prints "never" under its own header (CHAT_NEVER_HEADER);
+ * every other role, and "never" in every other mode, is PROFILE_ROLE_MAP's line.
+ */
+export function roleLineFor(mode: string, role: Role, row: ProfileRow): string | null {
+  if (role === "never" && mode === "chat") return fenced(CHAT_NEVER_HEADER, youFact(row, "never_do"));
+  return PROFILE_ROLE_MAP[role](row);
+}

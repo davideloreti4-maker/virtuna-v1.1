@@ -27,8 +27,11 @@ interface SavedItemsResponse {
 
 /**
  * QUERY: list saved items (optionally filtered by a flat item_type).
+ *
+ * `enabled: false` reads nothing until it turns true (Library asks for the list only once its
+ * Saved chip is selected); by default the list is read at once, as before.
  */
-export function useSavedItems(type?: SavedItemType) {
+export function useSavedItems(type?: SavedItemType, options: { enabled?: boolean } = {}) {
   return useQuery({
     queryKey: queryKeys.saved.list(type),
     queryFn: async () => {
@@ -37,6 +40,7 @@ export function useSavedItems(type?: SavedItemType) {
       if (!res.ok) throw new Error("Failed to fetch saved items");
       return res.json() as Promise<SavedItemsResponse>;
     },
+    enabled: options.enabled ?? true,
   });
 }
 
@@ -206,4 +210,57 @@ export function useDeleteSavedItem() {
       queryClient.invalidateQueries({ queryKey: queryKeys.saved.all });
     },
   });
+}
+
+// ─── Library (new look): a removal sent once its Undo has passed ────────────────────────────────
+
+/** `useDeleteSavedItem`'s DELETE, kept alive: Library sends a removal as the creator leaves
+ *  (another chip, a navigation, the page going), and it must still go out then. */
+async function deleteSavedItemKeptAlive(id: string): Promise<void> {
+  const res = await fetch(`/api/saved?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    keepalive: true,
+  });
+  if (!res.ok) throw new Error("Failed to remove saved item");
+}
+
+export interface SavedItemRemoval {
+  /** DELETE now; once it has gone through, the piece leaves the unfiltered list's cache. Resolves to
+   *  whether it was removed. */
+  remove(id: string): Promise<boolean>;
+}
+
+/**
+ * Library's "Remove from saved" (plan 2026-11-23-library): the screen shows "Removed." with an
+ * Undo first and sends nothing; this is the request once the Undo has passed.
+ *
+ * The piece is counted as saved until its delete has gone through: only then does it leave the
+ * unfiltered list's cache (`queryKeys.saved.list()`, which the chat's details sheet reads too). A
+ * refusal changes nothing there. Nothing is refetched while the screen is open, so no row moves;
+ * every saved list is marked stale, for the next screen that reads it.
+ *
+ * Plain calls over the client, not a mutation observer: a removal sent as the screen goes still
+ * lands in the cache.
+ */
+export function useSavedItemRemoval(): SavedItemRemoval {
+  const queryClient = useQueryClient();
+
+  return useMemo<SavedItemRemoval>(() => {
+    const key = queryKeys.saved.list();
+    return {
+      async remove(id) {
+        try {
+          await deleteSavedItemKeptAlive(id);
+        } catch {
+          return false;
+        } finally {
+          void queryClient.invalidateQueries({ queryKey: queryKeys.saved.all, refetchType: "none" });
+        }
+        // A refetch on its way would bring the row back.
+        await queryClient.cancelQueries({ queryKey: key });
+        queryClient.setQueryData<SavedItemsResponse>(key, (old) => old && { items: old.items.filter((item) => item.id !== id) });
+        return true;
+      },
+    };
+  }, [queryClient]);
 }

@@ -3,10 +3,22 @@ import { createClient } from "@/lib/supabase/server";
 import { resolveWhopPlanId, WHOP_TRIAL_PLAN_IDS } from "@/lib/whop/config";
 import { isPaidPlanId } from "@/lib/pricing";
 import { hasUsedTrial } from "@/lib/billing/trial-eligibility";
+import { checkoutReferrer, recordAttributed, type SubscriptionRead } from "@/lib/earn/referrer-of";
+import { whopBaseUrl, whopSettings } from "@/lib/earn/whop-affiliates";
 
 /** Whop's current checkout-session endpoint. Exported so the test can pin it. */
 export const WHOP_CHECKOUT_ENDPOINT =
   "https://api.whop.com/api/v1/checkout_configurations";
+
+/**
+ * Where the checkout is created. One address for Whop (Earn, ruling 25): with `WHOP_API_BASE_URL` set (the
+ * sandbox) the checkout follows it, as the affiliate calls do, so a sandbox test runs the whole path there.
+ * Absent or blank, it is `WHOP_CHECKOUT_ENDPOINT`, exactly as before; an address that is not https is not
+ * used either (the key would travel in the clear).
+ */
+function checkoutEndpoint(): string {
+  return process.env.WHOP_API_BASE_URL?.trim() ? `${whopBaseUrl()}/checkout_configurations` : WHOP_CHECKOUT_ENDPOINT;
+}
 
 export async function POST(request: Request) {
   try {
@@ -41,18 +53,26 @@ export async function POST(request: Request) {
     //    has to answer the SAME question for the UI — a CTA that promises a price this route
     //    then refuses is the chargeback shape we are avoiding.
     //    Fail-open on a read error: never block a purchase to protect a $1 guard.
-    let effectiveTrial = trial === true;
-    let trialDenied = false;
-    if (effectiveTrial) {
-      try {
+    //    The row is read at most ONCE per request: Earn's attribution (step 5) asks for the same
+    //    read instead of making a second one.
+    let subscriptionRead: Promise<SubscriptionRead> | undefined;
+    const readSubscription = () =>
+      (subscriptionRead ??= (async () => {
         // `*` not a column list — `trial_used_at` may predate its migration on some
         // environment, and naming a missing column rejects the whole SELECT.
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from("user_subscriptions")
           .select("*")
           .eq("user_id", user.id)
           .maybeSingle();
-        if (hasUsedTrial(data as Record<string, unknown> | null)) {
+        return { data: data as Record<string, unknown> | null, error };
+      })());
+    let effectiveTrial = trial === true;
+    let trialDenied = false;
+    if (effectiveTrial) {
+      try {
+        const { data } = await readSubscription();
+        if (hasUsedTrial(data)) {
           effectiveTrial = false;
           trialDenied = true;
         }
@@ -84,34 +104,62 @@ export async function POST(request: Request) {
     //    the URL (the test below now pins the URL too). The v1 endpoint takes the same
     //    fields and returns `id` as a `ch_…` checkout-session id, which is exactly what
     //    `<WhopCheckoutEmbed sessionId>` consumes.
-    const whopResponse = await fetch(
-      WHOP_CHECKOUT_ENDPOINT,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${process.env.WHOP_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          plan_id: whopProductId,
-          metadata: {
-            supabase_user_id: user.id,
-            supabase_email: user.email,
+    //    Earn (rulings 29 to 32 and 35, any look): the first purchase of a buyer who opened an
+    //    enrolled creator's link names that creator's Whop username as `affiliate_code`, so Whop
+    //    tracks the sale and pays them. Who that is comes from the request's own referral cookies
+    //    and the server's reads (src/lib/earn/referrer-of.ts), never from the body. The lookup never
+    //    throws and gives up after a second; without a referrer the request is exactly what it was
+    //    before, and nothing is looked up when there is no cookie or Whop is not configured.
+    const referrer = await checkoutReferrer({
+      configured: whopSettings() !== null,
+      buyer: user,
+      cookies: request.headers.get("cookie"),
+      subscription: readSubscription,
+    });
+    const createCheckout = (affiliateCode: string | null) =>
+      fetch(
+        checkoutEndpoint(),
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${process.env.WHOP_API_KEY}`,
+            "Content-Type": "application/json",
           },
-          // The funnel's buyer is an anonymous visitor mid-drill: any full-page redirect
-          // out of the embed must land them back in their room, not on /settings. The two
-          // paths are server-side literals (never client-supplied), so no open-redirect
-          // surface is added.
-          redirect_url: `${
-            process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-          }${
-            funnel === true
-              ? "/home?checkout=success"
-              : "/settings?tab=billing&checkout=success"
-          }`,
-        }),
-      }
-    );
+          body: JSON.stringify({
+            plan_id: whopProductId,
+            metadata: {
+              supabase_user_id: user.id,
+              supabase_email: user.email,
+            },
+            // The funnel's buyer is an anonymous visitor mid-drill: any full-page redirect
+            // out of the embed must land them back in their room, not on /settings. The two
+            // paths are server-side literals (never client-supplied), so no open-redirect
+            // surface is added.
+            redirect_url: `${
+              process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+            }${
+              funnel === true
+                ? "/home?checkout=success"
+                : "/settings?tab=billing&checkout=success"
+            }`,
+            ...(affiliateCode ? { affiliate_code: affiliateCode } : {}),
+          }),
+        }
+      );
+    let whopResponse = await createCheckout(referrer?.affiliateCode ?? null);
+    const attributed = referrer !== null && whopResponse.ok;
+    if (referrer && !whopResponse.ok) {
+      // A referral never costs a sale (ruling 32): whatever Whop refused, the same checkout is
+      // sent once more without the code, and from here the route answers as it always has. Only
+      // the status is logged: the refusal's body may name the referrer.
+      console.error(
+        `[checkout] whop refused a checkout with an affiliate code (${whopResponse.status}); sent again without it`
+      );
+      // The refused answer is never read: its body is let go, so its connection is not held. Not
+      // waited for, and it cannot throw into the checkout.
+      void whopResponse.body?.cancel().catch(() => {});
+      whopResponse = await createCheckout(null);
+    }
 
     // 6. Handle Whop API errors
     if (!whopResponse.ok) {
@@ -128,6 +176,10 @@ export async function POST(request: Request) {
     //    so the modal's heading can match the price the embed will show.
     const trialApplied = effectiveTrial && whopProductId === WHOP_TRIAL_PLAN_IDS[planId];
     const whopData = await whopResponse.json();
+    // Earn (ruling 31): the attributed buyer's referral row, written by the server once the
+    // checkout exists. It never throws and gives up after a second: the answer below is the same
+    // whether or not the row was written.
+    if (referrer && attributed) await recordAttributed(referrer, user.id);
     return NextResponse.json(
       {
         checkoutConfigId: whopData.id,

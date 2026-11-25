@@ -1,0 +1,258 @@
+{
+ "id": "fixture-ending",
+ "engine_version": "3.2.0",
+ "input_mode": "video_upload",
+ "video_storage_path": null,
+ "overall_score": 77,
+ "processing": false,
+ "heatmap": {
+  "weights": {
+   "fyp": 0.65,
+   "niche": 0.2,
+   "loyalist": 0.1,
+   "cross_niche": 0.05
+  },
+  "personas": [
+   {
+    "id": "fyp-1-tough_crowd-comedy",
+    "archetype": "tough_crowd",
+    "slot_type": "fyp",
+    "attentions": [
+     0.85,
+     0.8,
+     0.9,
+     0.85,
+     0.7
+    ],
+    "segment_reasons": {
+     "0": "Hook lands with energetic character contrast setup.",
+     "4": "Punchline lands, 92% watch-through complete, swiping out."
+    },
+    "swipe_predicted_at": 21
+   },
+   {
+    "id": "fyp-2-lurker-comedy",
+    "archetype": "lurker",
+    "slot_type": "fyp",
+    "attentions": [
+     0.85,
+     0.8,
+     0.85,
+     0.8,
+     0.35
+    ],
+    "segment_reasons": {
+     "0": "hook lands — fast-paced character intro grabs attention",
+     "4": "punchline lands — payoff complete, scrolling on"
+    },
+    "swipe_predicted_at": 21
+   },
+   {
+    "id": "fyp-3-high_engager-comedy",
+    "archetype": "high_engager",
+    "slot_type": "fyp",
+    "attentions": [
+     0.88,
+     0.91,
+     0.95,
+     0.93,
+     0.75
+    ],
+    "segment_reasons": {
+     "0": "Hook lands with fast-paced energy, instantly grabs attention.",
+     "4": "Punchline delivered, fully satisfied, swiping to next."
+    },
+    "swipe_predicted_at": 21
+   },
+   {
+    "id": "fyp-4-saver-comedy",
+    "archetype": "saver",
+    "slot_type": "fyp",
+    "attentions": [
+     0.8,
+     0.65,
+     0.25,
+     0.1,
+     0.05
+    ],
+    "segment_reasons": {
+     "0": "hook lands — funny gender-swap premise grabs attention",
+     "2": "joke drags on, contrast loses novelty, scrolling away",
+     "4": "already swiped, video ended"
+    },
+    "swipe_predicted_at": 8
+   },
+   {
+    "id": "fyp-5-sharer-comedy",
+    "archetype": "sharer",
+    "slot_type": "fyp",
+    "attentions": [
+     0.85,
+     0.78,
+     0.82,
+     0.79,
+     0.92
+    ],
+    "segment_reasons": {
+     "0": "hook grabs attention with energetic best friend trope",
+     "4": "punchline lands perfectly, triggers high share intent"
+    },
+    "swipe_predicted_at": 0
+   },
+   {
+    "id": "fyp-6-purposeful_viewer-comedy",
+    "archetype": "purposeful_viewer",
+    "slot_type": "fyp",
+    "attentions": [
+     0.88,
+     0.85,
+     0.87,
+     0.82,
+     0.3
+    ],
+    "segment_reasons": {
+     "0": "hook establishes clear comedic premise",
+     "4": "punchline lands, payoff complete, scrolling to next"
+    },
+    "swipe_predicted_at": 21
+   },
+   {
+    "id": "niche_deep-1-niche_deep_buyer-comedy",
+    "archetype": "niche_deep_buyer",
+    "slot_type": "niche",
+    "attentions": [
+     0.85,
+     0.8,
+     0.9,
+     0.85,
+     0.95
+    ],
+    "segment_reasons": {
+     "0": "hook lands with clear character contrast setup",
+     "4": "punchline delivers strong comedic payoff, matches niche humor taste"
+    },
+    "swipe_predicted_at": 0
+   },
+   {
+    "id": "niche_deep-2-niche_deep_scout-comedy",
+    "archetype": "niche_deep_scout",
+    "slot_type": "niche",
+    "attentions": [
+     0.85,
+     0.8,
+     0.85,
+     0.8,
+     0.3
+    ],
+    "segment_reasons": {
+     "0": "hook lands — fast-paced character intro grabs attention",
+     "4": "punchline delivered — payoff complete, scrolling away"
+    },
+    "swipe_predicted_at": 21
+   },
+   {
+    "id": "loyalist-1-loyalist-comedy",
+    "archetype": "loyalist",
+    "slot_type": "loyalist",
+    "attentions": [
+     0.9,
+     0.85,
+     0.8,
+     0.75,
+     0.35
+    ],
+    "segment_reasons": {
+     "0": "Hook lands instantly with relatable best friend energy.",
+     "4": "Punchline lands but pacing drags at the end, scrolling now."
+    },
+    "swipe_predicted_at": 21
+   },
+   {
+    "id": "cross_niche-1-cross_niche_curiosity-lifestyle",
+    "archetype": "cross_niche_curiosity",
+    "slot_type": "cross_niche",
+    "attentions": [
+     0.9,
+     0.85,
+     0.9,
+     0.92,
+     0.35
+    ],
+    "segment_reasons": {
+     "0": "Hook grabs attention immediately with energetic character contrast.",
+     "4": "Punchline lands, payoff complete. Ready to scroll to next video."
+    },
+    "swipe_predicted_at": 21
+   }
+  ],
+  "segments": [
+   {
+    "idx": 0,
+    "label": "Man in a light blue hoodie portrays a girl excitedly describing her best friend.",
+    "t_end": 3,
+    "t_start": 0,
+    "is_hook_zone": true,
+    "keyframe_uri": null
+   },
+   {
+    "idx": 1,
+    "label": "Man in a light blue hoodie portrays a girl excitedly describing her best friend.",
+    "t_end": 8,
+    "t_start": 3,
+    "is_hook_zone": false,
+    "keyframe_uri": null
+   },
+   {
+    "idx": 2,
+    "label": "Same actor, now in a dark tank top, portrays a guy who doesn't know basic facts about his best friend.",
+    "t_end": 17,
+    "t_start": 8,
+    "is_hook_zone": false,
+    "keyframe_uri": null
+   },
+   {
+    "idx": 3,
+    "label": "Cut back to the 'girl' character, now looking at a smartphone and smiling fondly.",
+    "t_end": 21,
+    "t_start": 17,
+    "is_hook_zone": false,
+    "keyframe_uri": null
+   },
+   {
+    "idx": 4,
+    "label": "Cut back to the 'guy' character, also looking at a phone before delivering the final punchline.",
+    "t_end": 29,
+    "t_start": 21,
+    "is_hook_zone": false,
+    "keyframe_uri": null
+   }
+  ],
+  "weighted_curve": [
+   0.8531460674157305,
+   0.8002247191011238,
+   0.7844943820224721,
+   0.7279775280898878,
+   0.5164044943820226
+  ],
+  "weights_source": "default",
+  "vs_niche_diff_pct": -0.05855056179775264,
+  "weighted_hook_score": 0.8531460674157305,
+  "niche_completion_pct": 0.7949999999999999,
+  "weighted_completion_pct": 0.7364494382022473
+ },
+ "persona_behavioral_aggregate": {
+  "loop_pct": 60.114285714285714,
+  "save_pct": 35.857142857142854,
+  "share_pct": 77.22857142857143,
+  "comment_pct": 61.885714285714286,
+  "completion_pct": 83.4,
+  "loop_percentile": "moderate intent",
+  "save_percentile": "low intent",
+  "share_percentile": "high intent",
+  "comment_percentile": "moderate intent",
+  "completion_percentile": "high intent"
+ },
+ "variants": {
+  "filmstrip_segments": []
+ }
+}

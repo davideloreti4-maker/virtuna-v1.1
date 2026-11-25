@@ -21,7 +21,10 @@ import { join } from 'node:path';
 //
 // SCOPE: thread/** (the cards, contract-owned) AND reading/** (the biggest
 // surface, still unaudited and next in line to be redesigned — locking the scale
-// BEFORE that pass is the whole point of a guard).
+// BEFORE that pass is the whole point of a guard). Also shell/** and thread-next/** (the new
+// look's thread field and frame, plan 2026-11-20), home-next/** (the new look's Home, plan 2026-11-23),
+// library-next/** (the new look's Library, plan 2026-11-23-library) and you-next/** (the new look's
+// You, plan 2026-11-24-you).
 //
 // WHAT IT BANS: any arbitrary pixel radius — tokens only. The 2026-07-19 unification
 // pass did the ~26 no-op rewrites (`rounded-[8px]` → `rounded-md`) the earlier, looser
@@ -34,7 +37,7 @@ import { join } from 'node:path';
 const COMPONENTS = join(__dirname, '..', '..'); // …/src/components
 
 /** The guarded surfaces, relative to src/components. */
-const GUARDED_DIRS = ['thread', 'reading'] as const;
+const GUARDED_DIRS = ['thread', 'thread-next', 'home-next', 'library-next', 'reading', 'shell', 'you-next'] as const;
 
 /** The token utilities (globals.css --radius-xs … --radius-3xl). Pixel literals are banned outright. */
 

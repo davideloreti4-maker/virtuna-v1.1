@@ -1,7 +1,9 @@
 import { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { SettingsPage } from "@/components/app/settings";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 import { createClient } from "@/lib/supabase/server";
-import { generateReferralCode } from "@/lib/referral/code-generator";
+import { ensureReferralCode, referralLink } from "@/lib/referral/ensure-code";
 import { getUserTier } from "@/lib/whop/subscription";
 import { hasAccessToTier } from "@/lib/whop/config";
 import {
@@ -33,6 +35,9 @@ type ValidTab = (typeof VALID_TABS)[number];
 export default async function Settings({ searchParams }: PageProps) {
   const params = await searchParams;
   const tabParam = params.tab || "";
+  // New look (Earn, ruling 3): the referral link lives on /earn, for every account; Settings has no
+  // Referrals tab there, so its address leads to Earn. Flag off: as before.
+  if (NEW_LOOK_ENABLED && tabParam === "referrals") redirect("/earn");
   const defaultTab: ValidTab = VALID_TABS.includes(tabParam as ValidTab)
     ? (tabParam as ValidTab)
     : "profile";
@@ -66,30 +71,10 @@ export default async function Settings({ searchParams }: PageProps) {
     earningsCents: 0,
   };
 
-  if (user && eligible) {
-    let { data: codeData } = await supabase
-      .from("referral_codes")
-      .select("code")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (!codeData) {
-      for (let i = 0; i < 5; i++) {
-        const code = generateReferralCode();
-        const { data, error } = await supabase
-          .from("referral_codes")
-          .insert({ user_id: user.id, code })
-          .select("code")
-          .single();
-        if (!error && data) {
-          codeData = data;
-          break;
-        }
-        if (error?.code !== "23505") break; // retry only on unique-constraint collision
-      }
-    }
-
-    const referralCode = codeData?.code ?? "";
+  // Under the new look the tab is not listed (ruling 3), so nothing of it is read or made here.
+  if (user && eligible && !NEW_LOOK_ENABLED) {
+    // Made on first view; retried only when the code was taken (src/lib/referral/ensure-code.ts).
+    const referralCode = (await ensureReferralCode(supabase, user.id)) ?? "";
 
     const { count: clicksCount } = await supabase
       .from("referral_clicks")
@@ -101,9 +86,7 @@ export default async function Settings({ searchParams }: PageProps) {
       .select("bonus_cents")
       .eq("referrer_user_id", user.id);
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-
-    referral.referralLink = `${appUrl}/?ref=${referralCode}`;
+    referral.referralLink = referralLink(referralCode);
     referral.clicks = clicksCount ?? 0;
     referral.conversions = conversions?.length ?? 0;
     referral.earningsCents = conversions?.reduce((sum, c) => sum + c.bonus_cents, 0) ?? 0;

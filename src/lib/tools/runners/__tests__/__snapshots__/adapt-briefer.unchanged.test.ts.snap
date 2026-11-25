@@ -1,0 +1,36 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`the adapt briefer's prompt for a creator with none of the five facts: as before > flag off: every user turn is the one recorded before Task 9 1`] = `
+{
+  "a full row · hooks · a chat ask": "1344 d00f5e5c28bbcb740495b2eea15f17b8244ec17c97acefb842c0aed5669a8297",
+  "a full row · hooks · a short ask": "1262 c3298af14cef610bd4460baa9cf17f0d3491c49b311e58113465766bceef5e58",
+  "a full row · ideas · a chat ask": "1344 d00f5e5c28bbcb740495b2eea15f17b8244ec17c97acefb842c0aed5669a8297",
+  "a full row · ideas · a short ask": "1262 c3298af14cef610bd4460baa9cf17f0d3491c49b311e58113465766bceef5e58",
+  "a full row · script · a chat ask": "1344 d00f5e5c28bbcb740495b2eea15f17b8244ec17c97acefb842c0aed5669a8297",
+  "a full row · script · a short ask": "1262 c3298af14cef610bd4460baa9cf17f0d3491c49b311e58113465766bceef5e58",
+  "a full row, the five absent · hooks · a chat ask": "1344 d00f5e5c28bbcb740495b2eea15f17b8244ec17c97acefb842c0aed5669a8297",
+  "a full row, the five absent · hooks · a short ask": "1262 c3298af14cef610bd4460baa9cf17f0d3491c49b311e58113465766bceef5e58",
+  "a full row, the five absent · ideas · a chat ask": "1344 d00f5e5c28bbcb740495b2eea15f17b8244ec17c97acefb842c0aed5669a8297",
+  "a full row, the five absent · ideas · a short ask": "1262 c3298af14cef610bd4460baa9cf17f0d3491c49b311e58113465766bceef5e58",
+  "a full row, the five absent · script · a chat ask": "1344 d00f5e5c28bbcb740495b2eea15f17b8244ec17c97acefb842c0aed5669a8297",
+  "a full row, the five absent · script · a short ask": "1262 c3298af14cef610bd4460baa9cf17f0d3491c49b311e58113465766bceef5e58",
+  "an empty row · hooks · a chat ask": "1150 1d0ed96f5b9506e89aef34b42906a85af44b3cc2f5bc388aa4753669108279fa",
+  "an empty row · hooks · a short ask": "1068 ce1600aba3921cce1c2399d8ad9731fca30c6c8c7cc6886a1dcb6d6c16f1e067",
+  "an empty row · ideas · a chat ask": "1150 1d0ed96f5b9506e89aef34b42906a85af44b3cc2f5bc388aa4753669108279fa",
+  "an empty row · ideas · a short ask": "1068 ce1600aba3921cce1c2399d8ad9731fca30c6c8c7cc6886a1dcb6d6c16f1e067",
+  "an empty row · script · a chat ask": "1150 1d0ed96f5b9506e89aef34b42906a85af44b3cc2f5bc388aa4753669108279fa",
+  "an empty row · script · a short ask": "1068 ce1600aba3921cce1c2399d8ad9731fca30c6c8c7cc6886a1dcb6d6c16f1e067",
+  "niche only · hooks · a chat ask": "1150 2fbd1f964ebf235ca26be04262e2bb174105e9eb1d4957ffa7cd758b098e4f22",
+  "niche only · hooks · a short ask": "1068 c8cd7353ca73bb477464221a78e00dfccaf92ad8d6f387610ab368a233db1ba0",
+  "niche only · ideas · a chat ask": "1150 2fbd1f964ebf235ca26be04262e2bb174105e9eb1d4957ffa7cd758b098e4f22",
+  "niche only · ideas · a short ask": "1068 c8cd7353ca73bb477464221a78e00dfccaf92ad8d6f387610ab368a233db1ba0",
+  "niche only · script · a chat ask": "1150 2fbd1f964ebf235ca26be04262e2bb174105e9eb1d4957ffa7cd758b098e4f22",
+  "niche only · script · a short ask": "1068 c8cd7353ca73bb477464221a78e00dfccaf92ad8d6f387610ab368a233db1ba0",
+  "no row · hooks · a chat ask": "1150 1d0ed96f5b9506e89aef34b42906a85af44b3cc2f5bc388aa4753669108279fa",
+  "no row · hooks · a short ask": "1068 ce1600aba3921cce1c2399d8ad9731fca30c6c8c7cc6886a1dcb6d6c16f1e067",
+  "no row · ideas · a chat ask": "1150 1d0ed96f5b9506e89aef34b42906a85af44b3cc2f5bc388aa4753669108279fa",
+  "no row · ideas · a short ask": "1068 ce1600aba3921cce1c2399d8ad9731fca30c6c8c7cc6886a1dcb6d6c16f1e067",
+  "no row · script · a chat ask": "1150 1d0ed96f5b9506e89aef34b42906a85af44b3cc2f5bc388aa4753669108279fa",
+  "no row · script · a short ask": "1068 ce1600aba3921cce1c2399d8ad9731fca30c6c8c7cc6886a1dcb6d6c16f1e067",
+}
+`;

@@ -65,6 +65,7 @@ import type { ProfileRow } from "@/lib/kc/profile-role-map";
 // on this path it moves to the fired simulation. Only the RunnerPinContext type is still referenced
 // (the accepted-but-unused `pin` input, kept so the route call site is unchanged).
 import type { RunnerPinContext } from "./predicted-pin";
+import { remixCreatorOf } from "./remix-creator";
 
 // ─── Input / Output types ─────────────────────────────────────────────────────
 
@@ -360,6 +361,10 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
       ...decodeResultToAdaptInput(decode, audienceNiche),
       blueprint,
       target: input.brief ?? null,
+      // The creator's own words from You (plan 2026-11-24-you): never, about them, how they sound,
+      // and what they sell when the brief asks to sell. Null with none to print or the new look off,
+      // and the prompt is as before.
+      creator: remixCreatorOf(profileRow, input.brief),
     };
 
     // ── STAGE: Adapting (real boundary — rewrite the concepts for your audience) ──

@@ -1,0 +1,227 @@
+{
+ "id": "fixture-holds",
+ "engine_version": "3.23.0",
+ "input_mode": "video_upload",
+ "video_storage_path": null,
+ "overall_score": 71,
+ "processing": false,
+ "heatmap": {
+  "weights": {
+   "fyp": 0.65,
+   "niche": 0.2,
+   "loyalist": 0.1,
+   "cross_niche": 0.05
+  },
+  "personas": [
+   {
+    "id": "fyp-1-tough_crowd-general",
+    "archetype": "tough_crowd",
+    "slot_type": "fyp",
+    "attentions": [
+     0.6,
+     0.1,
+     0,
+     0,
+     0
+    ],
+    "segment_reasons": {},
+    "swipe_predicted_at": 3
+   },
+   {
+    "id": "fyp-2-lurker-general",
+    "archetype": "lurker",
+    "slot_type": "fyp",
+    "attentions": [
+     0.7,
+     0.75,
+     0.8,
+     0.85,
+     0.8
+    ],
+    "segment_reasons": {},
+    "swipe_predicted_at": null
+   },
+   {
+    "id": "fyp-3-high_engager-general",
+    "archetype": "high_engager",
+    "slot_type": "fyp",
+    "attentions": [
+     0.8,
+     0.85,
+     0.9,
+     0.95,
+     0.9
+    ],
+    "segment_reasons": {},
+    "swipe_predicted_at": null
+   },
+   {
+    "id": "fyp-4-saver-general",
+    "archetype": "saver",
+    "slot_type": "fyp",
+    "attentions": [
+     0.6,
+     0.7,
+     0.8,
+     0.9,
+     0.95
+    ],
+    "segment_reasons": {},
+    "swipe_predicted_at": null
+   },
+   {
+    "id": "niche_deep-1-niche_deep_buyer-general",
+    "archetype": "niche_deep_buyer",
+    "slot_type": "niche",
+    "attentions": [
+     0.9,
+     0.95,
+     1,
+     1,
+     0.95
+    ],
+    "segment_reasons": {},
+    "swipe_predicted_at": null
+   },
+   {
+    "id": "niche_deep-2-niche_deep_scout-general",
+    "archetype": "niche_deep_scout",
+    "slot_type": "niche",
+    "attentions": [
+     0.8,
+     0.7,
+     0.6,
+     0.5,
+     0.4
+    ],
+    "segment_reasons": {},
+    "swipe_predicted_at": null
+   },
+   {
+    "id": "loyalist-1-loyalist-general",
+    "archetype": "loyalist",
+    "slot_type": "loyalist",
+    "attentions": [
+     0.95,
+     0.95,
+     0.98,
+     1,
+     0.95
+    ],
+    "segment_reasons": {},
+    "swipe_predicted_at": null
+   },
+   {
+    "id": "fyp-5-sharer-general",
+    "archetype": "sharer",
+    "slot_type": "fyp",
+    "attentions": [
+     0.7,
+     0.75,
+     0.8,
+     0.85,
+     0.9
+    ],
+    "segment_reasons": {},
+    "swipe_predicted_at": null
+   },
+   {
+    "id": "fyp-6-purposeful-viewer-general",
+    "archetype": "purposeful_viewer",
+    "slot_type": "fyp",
+    "attentions": [
+     0.6,
+     0.7,
+     0.8,
+     0.9,
+     0.95
+    ],
+    "segment_reasons": {},
+    "swipe_predicted_at": null
+   },
+   {
+    "id": "cross_niche-1-cross_niche_curiosity-lifestyle",
+    "archetype": "cross_niche_curiosity",
+    "slot_type": "cross_niche",
+    "attentions": [
+     0.4,
+     0.3,
+     0.2,
+     0.1,
+     0
+    ],
+    "segment_reasons": {},
+    "swipe_predicted_at": 9
+   }
+  ],
+  "segments": [
+   {
+    "idx": 0,
+    "label": "Title screen with bold text asking about moving costs and highlighting a 60-second price estimate.",
+    "t_end": 3,
+    "t_start": 0,
+    "is_hook_zone": true,
+    "keyframe_uri": null
+   },
+   {
+    "idx": 1,
+    "label": "Title screen with bold text asking about moving costs and highlighting a 60-second price estimate.",
+    "t_end": 4,
+    "t_start": 3,
+    "is_hook_zone": false,
+    "keyframe_uri": null
+   },
+   {
+    "idx": 2,
+    "label": "Comparison table showing advantages of using the service over standard quote portals.",
+    "t_end": 9,
+    "t_start": 4,
+    "is_hook_zone": false,
+    "keyframe_uri": null
+   },
+   {
+    "idx": 3,
+    "label": "Screen recording of filling out a multi-step questionnaire: apartment size, location, stairs, parking, extras, date.",
+    "t_end": 23,
+    "t_start": 9,
+    "is_hook_zone": false,
+    "keyframe_uri": null
+   },
+   {
+    "idx": 4,
+    "label": "Completion of the form, display of a price range (CHF 2'100 - 2'750), and final call to action to enter a phone number.",
+    "t_end": 37,
+    "t_start": 23,
+    "is_hook_zone": false,
+    "keyframe_uri": null
+   }
+  ],
+  "weighted_curve": [
+   0.6865168539325843,
+   0.6612359550561798,
+   0.6950561797752808,
+   0.741011235955056,
+   0.7393258426966292
+  ],
+  "weights_source": "default",
+  "vs_niche_diff_pct": -0.07537078651685414,
+  "weighted_hook_score": 0.6865168539325843,
+  "niche_completion_pct": 0.78,
+  "weighted_completion_pct": 0.7046292134831459
+ },
+ "persona_behavioral_aggregate": {
+  "loop_pct": 27.142857142857142,
+  "save_pct": 54,
+  "share_pct": 40.57142857142857,
+  "comment_pct": 27.542857142857144,
+  "completion_pct": 78,
+  "loop_percentile": "low intent",
+  "save_percentile": "moderate intent",
+  "share_percentile": "low intent",
+  "comment_percentile": "low intent",
+  "completion_percentile": "high intent"
+ },
+ "variants": {
+  "filmstrip_segments": []
+ }
+}

@@ -10,6 +10,7 @@ import {
   X,
 } from "@phosphor-icons/react";
 
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 import { cn } from "@/lib/utils";
 
 // ============================================
@@ -85,6 +86,28 @@ const VARIANT_CLASSES: Record<
     progress: "bg-info",
   },
 };
+
+/**
+ * New look (NEW_LOOK_ENABLED): the toast is floating chrome on the look's own surface, as the
+ * popover and the sheet are: the card fill, the 24 radius and the float shadow (its 1px ring is
+ * the hairline), all tokens, so it reads in light and dark. Monochrome: no tinted panel, no
+ * coloured progress line; only an error keeps a small red icon. The legacy panel above (a
+ * near-black inline fill under `text-foreground`) is ink on black in the light theme.
+ */
+const NEXT_PANEL =
+  "relative flex items-start gap-3 rounded-3xl bg-surface py-3 pl-4 pr-2 text-foreground shadow-[var(--shadow-float)]";
+
+const NEXT_ICON: Record<ToastVariant, string> = {
+  default: "text-foreground-secondary",
+  success: "text-foreground-secondary",
+  error: "text-error",
+  warning: "text-foreground-secondary",
+  info: "text-foreground-secondary",
+};
+
+/** The stack under the new look: under the phone's top safe area, 16 from the edges. */
+const NEXT_CONTAINER =
+  "fixed right-4 top-[calc(env(safe-area-inset-top)+16px)] z-[var(--z-toast)] flex w-[380px] max-w-[calc(100vw-2rem)] flex-col gap-3";
 
 // ============================================
 // Context
@@ -198,6 +221,57 @@ const Toast = React.forwardRef<HTMLDivElement, ToastProps>(
     const reducedMotionStyle: string = isExiting
       ? "motion-reduce:opacity-0"
       : "motion-reduce:opacity-100";
+
+    if (NEW_LOOK_ENABLED) {
+      return (
+        <div
+          ref={ref}
+          role="alert"
+          aria-live="polite"
+          className={cn(NEXT_PANEL, reducedMotionStyle)}
+          style={animationStyle}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+        >
+          {icon && <div className={cn("mt-[7px] shrink-0", NEXT_ICON[variant])}>{icon}</div>}
+
+          <div className="min-w-0 flex-1 py-1.5">
+            <p className="text-ui font-[560] text-foreground">{data.title}</p>
+            {data.description && (
+              <p className="mt-0.5 text-meta text-foreground-secondary">{data.description}</p>
+            )}
+            {data.action && (
+              <button
+                type="button"
+                onClick={data.action.onClick}
+                className="tap-44 mt-2 rounded-full bg-surface-sunken px-3 py-1 text-meta font-[560] text-foreground transition-colors duration-150 hover:bg-active"
+              >
+                {data.action.label}
+              </button>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={handleDismiss}
+            className="tap-44 flex size-8 shrink-0 items-center justify-center rounded-full text-foreground-secondary transition-colors duration-150 hover:bg-hover hover:text-foreground"
+            aria-label="Dismiss toast"
+          >
+            <X size={15} weight="bold" />
+          </button>
+
+          {duration > 0 && (
+            <div className="pointer-events-none absolute inset-x-5 bottom-[3px] h-0.5 overflow-hidden rounded-full">
+              <div
+                data-part="toast-progress"
+                className="h-full bg-foreground/20 transition-[width] duration-50 ease-linear"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          )}
+        </div>
+      );
+    }
 
     return (
       <div
@@ -373,7 +447,7 @@ export function ToastProvider({
     mounted && toasts.length > 0
       ? createPortal(
           <div
-            className={cn(
+            className={NEW_LOOK_ENABLED ? NEXT_CONTAINER : cn(
               "fixed top-4 right-4 z-[var(--z-toast)]",
               "flex w-[380px] max-w-[calc(100vw-2rem)] flex-col gap-3"
             )}

@@ -1,7 +1,12 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
+/* `dark` follows the theme attribute (it was `.dark`, a class nothing ever applied).
+   `next` targets the new look, for shape differences in shared primitives:
+   `rounded-md next:rounded-xl`. Both attributes are set on <html> by the root layout
+   only when NEXT_PUBLIC_NEW_LOOK is on, so with the flag off neither variant matches. */
+@custom-variant dark (&:is([data-theme="dark"] *));
+@custom-variant next (&:is([data-look="next"] *));
 
 @theme {
   /* ============================================
@@ -350,6 +355,35 @@
   --sh-string: #a5d6ff;
   --sh-keyword: #ff7b72;
   --sh-comment: #58595a;
+
+  /* --- NEXT LOOK (behind NEXT_PUBLIC_NEW_LOOK) — new token NAMES only ---
+   * @theme must know a name for Tailwind to generate its utility. The values are the light
+   * theme's. Nothing consumes these names while the flag is off. Existing tokens are re-valued
+   * in the scoped block after @theme, never here.
+   * Spec: docs/superpowers/specs/2026-11-18-foundation-look-and-shell-design.md */
+  --color-track: rgba(18, 18, 17, 0.07);
+  --color-gauge-track: rgba(18, 18, 17, 0.12);
+  --color-above: #17783b;
+  --color-above-soft: #e3f3e8;
+  --color-below: #ec4a35;
+  --color-below-text: #c5371f;
+  --color-below-soft: #fde9e4;
+  --color-glass: rgba(255, 255, 255, 0.78);
+  --color-scrim: rgba(0, 0, 0, 0.42);
+  --text-ui: 15px;                 /* text: 15 / 21 */
+  --text-ui--line-height: 1.4;
+  --text-ui--letter-spacing: -0.009em;
+  --text-meta: 13px;               /* meta: 13 / 18 */
+  --text-meta--line-height: calc(18 / 13);
+  --text-meta--letter-spacing: 0;
+  --text-figure: 62px;             /* figure: 62 / 58 */
+  --text-figure--line-height: calc(58 / 62);
+  --text-figure--letter-spacing: -0.055em;
+  --text-figure-lg: 76px;          /* large figure: 76 / 72 */
+  --text-figure-lg--line-height: calc(72 / 76);
+  --text-figure-lg--letter-spacing: -0.055em;
+  --radius-4xl: 32px;              /* sheet top, message field */
+  --shadow-sheet: 0 -20px 50px rgba(0, 0, 0, 0.3);
 }
 
 /* ============================================
@@ -366,6 +400,130 @@
   --color-red: var(--color-error);
   --color-red-transparent: oklch(0.60 0.20 25 / 0.15);
   --ease-out: var(--ease-out-cubic);
+}
+
+/* ============================================
+ * NEXT LOOK — behind NEXT_PUBLIC_NEW_LOOK (2026-11-19)
+ * ============================================
+ * Owner ruling 2026-11-18: this look replaces the flat-warm charcoal system; light is the
+ * default. While the flag is on, the root layout renders
+ * <html data-look="next" data-theme="light|dark"> and these blocks re-value the SAME semantic
+ * token names the app already consumes, so `bg-background`, `text-foreground`, `border-border`
+ * and `bg-action` follow without edits.
+ *
+ * `:root[data-look="next"]`, not `[data-look="next"]`: later `:root { … }` rules in this file
+ * (--focus-ring, the prefers-contrast block) have the specificity of a bare attribute selector
+ * and would win by source order.
+ *
+ * One declaration per line (the token tests parse line by line). Dark hex stays exact hex
+ * (Tailwind v4 compiles oklch with L < 0.15 wrong). Guarded by next-look-contrast.test.ts and
+ * design-token-drift.test.ts. Cut-over moves these values into @theme and deletes the scope. */
+:root[data-look="next"] {
+  color-scheme: light;
+
+  --color-background: #f4f3f0;
+  --color-surface: #ffffff;
+  --color-surface-elevated: #efeeea;
+  --color-surface-sunken: rgba(18, 18, 17, 0.06);
+  --color-border: rgba(17, 17, 16, 0.06);
+  --color-border-hover: rgba(17, 17, 16, 0.12);
+  --color-foreground: #121211;
+  --color-foreground-secondary: rgba(18, 18, 17, 0.6);
+  --color-foreground-muted: rgba(18, 18, 17, 0.46);
+  --color-action: #121211;
+  --color-action-foreground: #ffffff;
+  --color-hover: rgba(18, 18, 17, 0.04);
+  --color-active: rgba(18, 18, 17, 0.08);
+  --color-track: rgba(18, 18, 17, 0.07);
+  --color-gauge-track: rgba(18, 18, 17, 0.12);
+  --color-above: #17783b;
+  --color-above-soft: #e3f3e8;
+  --color-below: #ec4a35;
+  --color-below-text: #c5371f;
+  --color-below-soft: #fde9e4;
+  --color-glass: rgba(255, 255, 255, 0.78);
+  --color-scrim: rgba(0, 0, 0, 0.42);
+  --color-success: var(--color-above);
+  --color-error: var(--color-below-text);
+
+  /* Legacy raw tokens point at the new roles, so files that use them directly stay legible. */
+  --color-charcoal-app: var(--color-background);
+  --color-chrome: var(--color-background);
+  --color-charcoal-sidebar: var(--color-background);
+  --color-background-elevated: var(--color-background);
+  --color-charcoal-thread: var(--color-surface);
+  --color-charcoal-composer: var(--color-surface);
+  --color-surface-thread: var(--color-surface);
+  --color-charcoal-chip: var(--color-surface-elevated);
+  --color-cream-primary: var(--color-foreground);
+  --color-cream-secondary: var(--color-foreground-secondary);
+  --color-cream-muted: var(--color-foreground-muted);
+  --color-border-glass: var(--color-border);
+  --color-border-subtle: var(--color-border);
+
+  --focus-ring: var(--color-foreground);
+
+  /* Every card shadow starts with the hairline. */
+  --shadow-rest: 0 0 0 1px var(--color-border), 0 1px 1px rgba(0, 0, 0, 0.03), 0 10px 26px -12px rgba(0, 0, 0, 0.1), 0 34px 60px -34px rgba(0, 0, 0, 0.14);
+  --shadow-lift: 0 0 0 1px var(--color-border-hover), 0 14px 30px -12px rgba(0, 0, 0, 0.16), 0 40px 70px -34px rgba(0, 0, 0, 0.18);
+  --shadow-press: 0 0 0 1px var(--color-border), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-control: 0 0 0 1px var(--color-border), 0 2px 6px -2px rgba(0, 0, 0, 0.12);
+  --shadow-float: 0 0 0 1px var(--color-border), 0 14px 34px -12px rgba(0, 0, 0, 0.3);
+  --shadow-button: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 10px 20px -10px rgba(0, 0, 0, 0.45);
+  --shadow-sheet: 0 -20px 50px rgba(0, 0, 0, 0.3);
+}
+
+:root[data-look="next"][data-theme="dark"] {
+  color-scheme: dark;
+
+  --color-background: #08080a;
+  --color-surface: #131315;
+  --color-surface-elevated: #232326;
+  --color-surface-sunken: rgba(255, 255, 255, 0.07);
+  --color-border: rgba(255, 255, 255, 0.075);
+  --color-border-hover: rgba(255, 255, 255, 0.14);
+  --color-foreground: #f7f6f3;
+  --color-foreground-secondary: rgba(247, 246, 243, 0.62);
+  --color-foreground-muted: rgba(247, 246, 243, 0.38);
+  --color-action: #f7f6f3;
+  --color-action-foreground: #0b0b0c;
+  --color-hover: rgba(255, 255, 255, 0.05);
+  --color-active: rgba(255, 255, 255, 0.1);
+  --color-track: rgba(255, 255, 255, 0.09);
+  --color-gauge-track: rgba(255, 255, 255, 0.17);
+  --color-above: #62d892;
+  --color-above-soft: rgba(98, 216, 146, 0.14);
+  --color-below: #ff5f4c;
+  --color-below-text: #ff8778;
+  --color-below-soft: rgba(255, 98, 80, 0.16);
+  --color-glass: rgba(30, 30, 33, 0.78);
+  --color-scrim: rgba(0, 0, 0, 0.6);
+
+  /* Dark: depth is a step in surface tone, no glow. The button has no shadow; a zero shadow,
+     not `none`, because the value sits inside Tailwind's box-shadow list. */
+  --shadow-rest: 0 0 0 1px var(--color-border), inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 24px 50px -24px rgba(0, 0, 0, 0.9);
+  --shadow-lift: 0 0 0 1px var(--color-border-hover), inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 24px 50px -24px rgba(0, 0, 0, 0.9);
+  --shadow-press: 0 0 0 1px var(--color-border);
+  --shadow-control: 0 0 0 1px var(--color-border), 0 2px 6px -2px rgba(0, 0, 0, 0.12);
+  --shadow-float: 0 0 0 1px var(--color-border), 0 14px 34px -12px rgba(0, 0, 0, 0.7);
+  --shadow-button: 0 0 0 0 transparent;
+  --shadow-sheet: 0 -20px 50px rgba(0, 0, 0, 0.6);
+}
+
+/* More contrast, new look. The legacy block at the end of this file sets white hairlines on
+   `:root`; it cannot outrank the scope above, so the new look states its own. Muted text joins
+   secondary, as in the legacy block. */
+@media (prefers-contrast: more) {
+  :root[data-look="next"] {
+    --color-border: rgba(17, 17, 16, 0.2);
+    --color-border-hover: rgba(17, 17, 16, 0.32);
+    --color-foreground-muted: var(--color-foreground-secondary);
+  }
+  :root[data-look="next"][data-theme="dark"] {
+    --color-border: rgba(255, 255, 255, 0.2);
+    --color-border-hover: rgba(255, 255, 255, 0.3);
+    --color-foreground-muted: var(--color-foreground-secondary);
+  }
 }
 
 /* ============================================
@@ -863,6 +1021,20 @@ textarea:focus-visible,
 select:focus-visible,
 [contenteditable]:focus-visible {
   outline: none;
+}
+
+/* Next look: the ring sits 2px OUTSIDE the control (spec §7); its colour comes from
+   --focus-ring, re-valued in the scope. `:where()` keeps this at the specificity of the
+   app-wide rule above, so the text-field exception still wins. */
+:where([data-look="next"]) :focus-visible {
+  outline-offset: 2px;
+}
+
+/* Next look, type (spec §4.2): running text at weight 430 (Inter is variable), and every
+   number tabular, so figures do not shift as they count or update. */
+:where([data-look="next"]) body {
+  font-weight: 430;
+  font-variant-numeric: tabular-nums;
 }
 
 /* ============================================

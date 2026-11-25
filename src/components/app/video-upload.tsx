@@ -4,15 +4,8 @@ import * as React from "react";
 import { Info, Upload, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
-
-const MAX_FILE_SIZE = 200 * 1024 * 1024; // 200MB
-const ACCEPTED_VIDEO_TYPES = [
-  "video/mp4",
-  "video/quicktime",
-  "video/webm",
-  "video/x-msvideo",
-  "video/x-matroska",
-];
+import { useVideoMeta } from "@/hooks/use-video-meta";
+import { VIDEO_ACCEPT, formatFileSize, validateVideoFile } from "@/lib/video-file";
 
 /**
  * Props for the VideoUpload component
@@ -34,15 +27,6 @@ export interface VideoUploadProps {
   bare?: boolean;
 }
 
-/** Format bytes into human-readable string (e.g. "14.2 MB") */
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024)
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
-}
-
 /** Format seconds into "m:ss" duration string */
 function formatDuration(seconds: number): string {
   const mins = Math.floor(seconds / 60);
@@ -62,77 +46,14 @@ const VideoUpload = React.forwardRef<HTMLDivElement, VideoUploadProps>(
   ({ file, onFileSelect, uploadProgress, className, bare = false }, ref) => {
     const [isDragging, setIsDragging] = React.useState(false);
     const [error, setError] = React.useState<string | null>(null);
-    const [thumbnail, setThumbnail] = React.useState<string | null>(null);
-    const [duration, setDuration] = React.useState<number | null>(null);
     const [dataDisclosureOpen, setDataDisclosureOpen] = React.useState(false);
     const inputRef = React.useRef<HTMLInputElement>(null);
 
-    // Extract thumbnail and duration from video file
-    React.useEffect(() => {
-      if (!file) {
-        setThumbnail(null);
-        setDuration(null);
-        return;
-      }
-
-      const objectUrl = URL.createObjectURL(file);
-      const video = document.createElement("video");
-      video.preload = "metadata";
-      video.muted = true;
-      video.playsInline = true;
-
-      const cleanup = () => {
-        URL.revokeObjectURL(objectUrl);
-        video.removeAttribute("src");
-        video.load();
-      };
-
-      video.onloadeddata = () => {
-        setDuration(video.duration);
-
-        // Seek to a small offset to get a meaningful frame
-        video.currentTime = Math.min(0.5, video.duration / 4);
-      };
-
-      video.onseeked = () => {
-        try {
-          const canvas = document.createElement("canvas");
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          const ctx = canvas.getContext("2d");
-          if (ctx) {
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            setThumbnail(canvas.toDataURL("image/jpeg", 0.7));
-          }
-        } catch {
-          // Thumbnail extraction failed silently — preview will show without thumbnail
-        }
-        cleanup();
-      };
-
-      video.onerror = () => {
-        cleanup();
-      };
-
-      video.src = objectUrl;
-
-      return () => {
-        cleanup();
-      };
-    }, [file]);
-
-    function validateFile(f: File): string | null {
-      if (!ACCEPTED_VIDEO_TYPES.includes(f.type) && !f.name.match(/\.(mp4|mov|webm|avi|mkv)$/i)) {
-        return "Please select a video file (MP4, MOV, WebM)";
-      }
-      if (f.size > MAX_FILE_SIZE) {
-        return `File too large (${formatFileSize(f.size)}). Maximum size is 200MB.`;
-      }
-      return null;
-    }
+    // Thumbnail and duration from the video file
+    const { durationSec: duration, thumbnail } = useVideoMeta(file);
 
     function handleFileSelection(f: File) {
-      const validationError = validateFile(f);
+      const validationError = validateVideoFile(f);
       if (validationError) {
         setError(validationError);
         return;
@@ -207,7 +128,7 @@ const VideoUpload = React.forwardRef<HTMLDivElement, VideoUploadProps>(
           <input
             ref={inputRef}
             type="file"
-            accept="video/*"
+            accept={VIDEO_ACCEPT}
             aria-label="Upload video file"
             className="hidden"
             onChange={handleInputChange}

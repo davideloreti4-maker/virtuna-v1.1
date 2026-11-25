@@ -88,6 +88,7 @@ export function AmbientOverviewSheet({
   focusVideo,
   onTestVariant,
   attached = false,
+  barless = false,
 }: {
   audience: Audience;
   descriptors: AmbientCardDescriptor[];
@@ -108,6 +109,10 @@ export function AmbientOverviewSheet({
   /** The ＋ door, straight through to the rail. The phone gets the same door the desktop board has —
    *  the flag used to swap only the ≥xl rail and left one product with two rooms. */
   onTestVariant?: () => void;
+  /** New look (NEW_LOOK_ENABLED, plan 2026-11-20 thread field): no bar. The new field has no strip
+   *  above it, so the sheet stays mounted only for its room — a card's door (`roomExpanded`) still
+   *  opens it full screen. Default false: the bar renders exactly as before. */
+  barless?: boolean;
 }) {
   const meta = audienceToMeta(audience);
 
@@ -134,6 +139,7 @@ export function AmbientOverviewSheet({
 
   return (
     <div className="relative w-full" data-testid="ambient-overview-sheet" data-open={open}>
+      {barless ? null : (
       <button
         type="button"
         onClick={() => onOpenChange(true)}
@@ -188,6 +194,7 @@ export function AmbientOverviewSheet({
         )}
         <Caret up={open} bright={attached} />
       </button>
+      )}
 
       {/* `open` only ever flips from a client tap (the composer seeds it false), so the portal never
           renders during SSR and needs no mount gate — `document` is guaranteed here. */}

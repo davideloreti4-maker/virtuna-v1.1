@@ -29,6 +29,8 @@
  * RLS-scoped client — the service client only enriches rows the user already owns.
  */
 
+import { isStoredCover } from "@/lib/discover-next/covers";
+import { MIN_OUTLIER_MULTIPLIER } from "@/lib/grounding/outlier-gate";
 import { createServiceClient } from "@/lib/supabase/service";
 import type { createClient } from "@/lib/supabase/server";
 
@@ -53,6 +55,16 @@ export interface WatchlistSource {
   held: boolean;
   /** Set when a competitor profile backs this row — the /competitors/[handle] deep link. */
   profileHandle: string | null;
+  // The four below are for the new Discover. Optional so the old fixtures still compile; this read
+  // always fills them, and a reader takes a missing one as empty.
+  /** Every `tracked_accounts.id` this row rests on (a profile can fold in two spellings). */
+  trackedIds?: string[];
+  /** The profile id when the caller has a `user_competitors` link to it, else null. */
+  competitorId?: string | null;
+  /** Up to three covers Maven stores (public Storage), newest first, each once. */
+  covers?: string[];
+  /** Measured videos at 3× or more (`MIN_OUTLIER_MULTIPLIER`); `outlierCount` counts every one. */
+  provenCount?: number;
 }
 
 export interface LatestSourcePost {
@@ -67,11 +79,45 @@ export interface LatestSourcePost {
 export interface WatchlistData {
   sources: WatchlistSource[];
   latest: LatestSourcePost[];
+  /**
+   * True when a read of what the caller follows (`tracked_accounts`, `user_competitors`, or the
+   * `competitor_profiles` they lead to) failed. The list is then short, and a row may rest on
+   * records its `trackedIds` and `competitorId` do not name: a reader must not show it as "nobody
+   * yet", nor trust those ids to remove the row. A failed video read does not set it: the rows are
+   * whole, only their counts and covers are missing. Optional for the old fixtures; this read always
+   * fills it, and the old screen does not read it.
+   */
+  incomplete?: boolean;
 }
 
 /** Lowercased alphanumerics only — `khaby.lame` → `khabylame`, `Chris Bumstead` → `chrisbumstead`. */
 const normalize = (s: string | null | undefined) =>
   (s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+/** The covers a row carries. */
+const ROW_COVERS = 3;
+
+interface DatedCover {
+  url: string;
+  postedAt: string | null;
+}
+
+const timeOf = (c: DatedCover) => {
+  const t = Date.parse(c.postedAt ?? "");
+  return Number.isFinite(t) ? t : -Infinity;
+};
+
+/** The stored covers of a row, newest first (an undated one last), each once, at most three. */
+function newestCovers(...lists: (DatedCover[] | undefined)[]): string[] {
+  const all = lists.flatMap((list) => list ?? []);
+  all.sort((a, b) => timeOf(b) - timeOf(a) || 0);
+  const out: string[] = [];
+  for (const c of all) {
+    if (out.length === ROW_COVERS) break;
+    if (!out.includes(c.url)) out.push(c.url);
+  }
+  return out;
+}
 
 interface ProfileRow {
   id: string;
@@ -85,11 +131,11 @@ interface ProfileRow {
 export async function getWatchlistData(supabase: ServerClient): Promise<WatchlistData> {
   // Ownership: both reads are RLS-scoped to the caller.
   const [trackedRes, competitorsRes] = await Promise.all([
-    supabase.from("tracked_accounts").select("handle, platform"),
+    supabase.from("tracked_accounts").select("id, handle, platform"),
     supabase.from("user_competitors").select("competitor_id"),
   ]);
 
-  const tracked = (trackedRes.data ?? []) as { handle: string; platform: string }[];
+  const tracked = (trackedRes.data ?? []) as { id: string; handle: string; platform: string }[];
   const competitorIds = (competitorsRes.data ?? []).map((r) => r.competitor_id as string);
   const trackedHandles = tracked.map((t) => t.handle);
 
@@ -107,35 +153,51 @@ export async function getWatchlistData(supabase: ServerClient): Promise<Watchlis
   // matches it on the normalized display_name. Only the two ownership keys are queried —
   // there is no name search across profiles the user does not own.
   let profiles: ProfileRow[] = [];
+  let profilesError: unknown = null;
   if (profileFilters.length > 0) {
-    const { data } = await service
+    const { data, error } = await service
       .from("competitor_profiles")
       .select("id, tiktok_handle, display_name, avatar_url, follower_count, scrape_status")
       .or(profileFilters.join(","));
     profiles = (data ?? []) as ProfileRow[];
+    profilesError = error;
   }
 
-  // Measured outliers per tracked handle (the channel path's videos).
-  const outlierAgg = new Map<string, { n: number; best: number }>();
+  // As before, a failed read lists what the others reach; the failure is said, not swallowed. The
+  // profiles count with the two ownership reads: without them a linked creator drops off the list.
+  const incomplete = Boolean(trackedRes.error || competitorsRes.error || profilesError);
+  if (incomplete) {
+    console.error("[getWatchlistData] an ownership read failed", {
+      tracked: trackedRes.error ?? null,
+      competitors: competitorsRes.error ?? null,
+      profiles: profilesError ?? null,
+    });
+  }
+
+  // Measured outliers per tracked handle (the channel path's videos). The ingest keeps the
+  // rehosted cover in `metadata.cover_url` (`src/lib/channels/ingest.ts`).
+  const outlierAgg = new Map<string, { n: number; best: number; proven: number; covers: DatedCover[] }>();
   if (trackedHandles.length > 0) {
     const { data: outlierRows } = await supabase
       .from("scraped_videos")
-      .select("creator_handle, outlier_multiplier")
+      .select("creator_handle, outlier_multiplier, posted_at, cover_url:metadata->>cover_url")
       .in("creator_handle", trackedHandles)
       .not("outlier_multiplier", "is", null);
     for (const row of outlierRows ?? []) {
       const key = normalize(row.creator_handle);
       const m = Number(row.outlier_multiplier) || 0;
-      const agg = outlierAgg.get(key) ?? { n: 0, best: 0 };
+      const agg = outlierAgg.get(key) ?? { n: 0, best: 0, proven: 0, covers: [] };
       agg.n += 1;
       if (m > agg.best) agg.best = m;
+      if (m >= MIN_OUTLIER_MULTIPLIER) agg.proven += 1;
+      if (isStoredCover(row.cover_url)) agg.covers.push({ url: row.cover_url, postedAt: row.posted_at });
       outlierAgg.set(key, agg);
     }
   }
 
   // Recent posts per competitor profile + the latest strip (the competitor path's videos).
   const profileIds = profiles.map((p) => p.id);
-  const videoAgg = new Map<string, { n: number; newest: string | null }>();
+  const videoAgg = new Map<string, { n: number; newest: string | null; covers: DatedCover[] }>();
   const latest: LatestSourcePost[] = [];
   if (profileIds.length > 0) {
     // Service client for the same reason as the profiles above: `competitor_videos` is
@@ -150,9 +212,10 @@ export async function getWatchlistData(supabase: ServerClient): Promise<Watchlis
     const handleById = new Map(profiles.map((p) => [p.id, p.tiktok_handle]));
     const perSource = new Map<string, number>();
     for (const v of videoRows ?? []) {
-      const agg = videoAgg.get(v.competitor_id) ?? { n: 0, newest: null };
+      const agg = videoAgg.get(v.competitor_id) ?? { n: 0, newest: null, covers: [] };
       agg.n += 1;
       if (!agg.newest || (v.posted_at && v.posted_at > agg.newest)) agg.newest = v.posted_at;
+      if (isStoredCover(v.cover_url)) agg.covers.push({ url: v.cover_url, postedAt: v.posted_at });
       videoAgg.set(v.competitor_id, agg);
       // Strip: newest first, cover required, max 2 per source so one prolific account
       // doesn't take the whole shelf.
@@ -185,6 +248,10 @@ export async function getWatchlistData(supabase: ServerClient): Promise<Watchlis
       return n === byHandle || (byName.length > 0 && n === byName);
     });
     if (match) claimed.add(normalize(match.handle));
+    // Every tracked spelling the fold claims for this row (the tracked loop below skips them all),
+    // so Remove can clear each record the row rests on.
+    const claimedKey = match ? normalize(match.handle) : null;
+    const trackedIds = tracked.filter((t) => normalize(t.handle) === claimedKey).map((t) => t.id);
     const outliers = outlierAgg.get(byHandle) ?? (match ? outlierAgg.get(normalize(match.handle)) : undefined);
     const videos = videoAgg.get(p.id);
     sources.push({
@@ -202,6 +269,11 @@ export async function getWatchlistData(supabase: ServerClient): Promise<Watchlis
         match && normalize(match.handle) !== byHandle ? match.handle : null,
       held,
       profileHandle: p.tiktok_handle,
+      trackedIds,
+      // A profile can arrive through the tracked-handle filter alone, with no link to remove.
+      competitorId: competitorIds.includes(p.id) ? p.id : null,
+      covers: newestCovers(outliers?.covers, videos?.covers),
+      provenCount: outliers?.proven ?? 0,
     });
   }
 
@@ -222,6 +294,10 @@ export async function getWatchlistData(supabase: ServerClient): Promise<Watchlis
       mergedFrom: null,
       held: false,
       profileHandle: null,
+      trackedIds: [t.id],
+      competitorId: null,
+      covers: newestCovers(outliers?.covers),
+      provenCount: outliers?.proven ?? 0,
     });
   }
 
@@ -233,5 +309,5 @@ export async function getWatchlistData(supabase: ServerClient): Promise<Watchlis
       b.videosHeld - a.videosHeld,
   );
 
-  return { sources, latest };
+  return { sources, latest, incomplete };
 }

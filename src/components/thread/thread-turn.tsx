@@ -63,6 +63,9 @@ import {
 } from '@/lib/tools/chat-followups';
 import { useOnWriteScriptHook } from '@/lib/hook-test-context';
 import type { BlockOrigin } from '@/components/app/home/rehydrate-thread';
+import { videoOfTurn } from '@/components/thread-next/user-turn';
+import { ThreadTurnNext } from '@/components/thread-next/thread-turn-next';
+import { NEW_LOOK_ENABLED } from '@/lib/flags/new-look';
 
 /** The four skills that have an authored intro line (conversational-frame `introLine`). */
 const SKILLS_WITH_INTRO: readonly string[] = ['hooks', 'ideas', 'script', 'remix'];
@@ -146,6 +149,12 @@ export interface ThreadTurnProps {
    * not persisted yet.
    */
   blockOrigins?: BlockOrigin[];
+  /**
+   * Show the next-step chips under this turn's outro. Default `true` (every settled turn, as
+   * before). Under the new look `PersistedThreadStream` passes `false` for every turn but the
+   * last, so the chips sit under the last answer only (spec 2026-11-20 §4.4).
+   */
+  showFollowups?: boolean;
 }
 
 /** Read the persisted run stamp off the turn, if it has one. */
@@ -201,12 +210,22 @@ function topCard(blocks: unknown[]): { type: string; props: Record<string, unkno
   return null;
 }
 
-export function ThreadTurn({
+/**
+ * The fork (thread answers step 1, plan 2026-11-21 Task 5): the new look draws every turn through
+ * `ThreadTurnNext`; the flag-off build keeps this file's renderer, unchanged. The flag is a
+ * build-time constant, so the two never swap at runtime, and no hook runs before the branch.
+ */
+export function ThreadTurn(props: ThreadTurnProps) {
+  return NEW_LOOK_ENABLED ? <ThreadTurnNext {...props} /> : <ThreadTurnLegacy {...props} />;
+}
+
+function ThreadTurnLegacy({
   userTurn,
   blocks,
   live,
   ambientBaseIndex,
   blockOrigins,
+  showFollowups = true,
 }: ThreadTurnProps) {
   const onWriteScript = useOnWriteScriptHook();
 
@@ -334,7 +353,10 @@ export function ThreadTurn({
 
   return (
     <>
-      {userTurn?.trim() ? <ThreadUserTurn text={userTurn.trim()} /> : null}
+      {userTurn?.trim() ? (
+        // `video` is the new look's (the tile above the bubble): read only under the flag.
+        <ThreadUserTurn text={userTurn.trim()} video={NEW_LOOK_ENABLED ? videoOfTurn(blocks) : undefined} />
+      ) : null}
       {hasAssistantContent && (
         <ThreadAssistantTurn>
           {hasError && (() => {
@@ -411,7 +433,7 @@ export function ThreadTurn({
             <ThreadOutro
               text={outroText}
               chips={chips}
-              followups={followupsForKind(skill)}
+              followups={showFollowups ? followupsForKind(skill) : []}
               // Stage B (B2): the cards this turn actually put on screen, so a `carryCards` chip
               // ("Punch them up") sends THEM rather than a subject-less sentence the next run has
               // to guess at. Read off `body` — the same list the cards render from, after the

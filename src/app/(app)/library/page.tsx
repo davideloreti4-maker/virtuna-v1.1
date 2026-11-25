@@ -1,12 +1,17 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { PageShell } from "@/components/surfaces/surface-header";
 import { SavedShelf } from "@/components/saved/saved-shelf";
+import { LibraryNext, LibraryNextLoading } from "@/components/library-next/library-next";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 
 export const metadata: Metadata = {
   title: "Library | Maven",
-  description:
-    "Everything you've saved — Reads, ideas, hooks, scripts, outliers — ready to pull back into a thread.",
+  // New look (plan 2026-11-23-library): Library is the list of the creator's chats.
+  description: NEW_LOOK_ENABLED
+    ? "Your chats, what is in them and how they did."
+    : "Everything you've saved — Reads, ideas, hooks, scripts, outliers — ready to pull back into a thread.",
 };
 
 /**
@@ -30,12 +35,26 @@ export const metadata: Metadata = {
  * exact misalignment that audit fixed.
  */
 export default async function LibraryPage() {
+  // The session read (cookies) keeps the page dynamic, so `useSearchParams` below renders on the
+  // server with the request's parameters and the boundary's fallback is not seen in practice.
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (!user) return null;
+
+  // New look: one list of the creator's chats (spec 2026-11-23-library). The screen reads its chip
+  // and search from the address itself (`useSearchParams`), the one source of both, so it follows a
+  // navigation to another Library address. Flag off: the saved shelf, exactly as before (it reads
+  // no parameter).
+  if (NEW_LOOK_ENABLED) {
+    return (
+      <Suspense fallback={<LibraryNextLoading />}>
+        <LibraryNext />
+      </Suspense>
+    );
+  }
 
   return (
     <div className="relative min-h-full text-foreground">

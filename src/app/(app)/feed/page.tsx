@@ -3,11 +3,14 @@ import { createClient } from "@/lib/supabase/server";
 import { EMPTY_CORPUS, getDiscoverCorpus } from "@/lib/discover/corpus-reads";
 import { getWatchlistData, type WatchlistData } from "@/lib/discover/watchlist-reads";
 import { DiscoverHub, type DiscoverTab } from "@/components/discover/discover-hub";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
+import { NEXT_HUB_DESCRIPTION, nextHub } from "./next-hub";
 
 export const metadata: Metadata = {
   title: "Discover | Maven",
-  description:
-    "Proven outliers, curated collections, and the creators you watch — Remix any winner into a Read.",
+  description: NEW_LOOK_ENABLED
+    ? NEXT_HUB_DESCRIPTION
+    : "Proven outliers, curated collections, and the creators you watch — Remix any winner into a Read.",
 };
 
 const TAB_SET = new Set<DiscoverTab>(["outliers", "collections", "watchlist"]);
@@ -54,6 +57,7 @@ export default async function DiscoverRoute({
   } = await supabase.auth.getUser();
 
   if (!user) return null;
+  if (NEW_LOOK_ENABLED) return nextHub(supabase);
 
   const { tab } = await searchParams;
   const initialTab: DiscoverTab = TAB_SET.has(tab as DiscoverTab)

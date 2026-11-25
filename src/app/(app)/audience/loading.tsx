@@ -1,5 +1,7 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { PageShell } from "@/components/surfaces/surface-header";
+import { AudienceNextLoading } from "@/components/audience-next/audience-screen";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 
 /**
  * /audience route loading skeleton.
@@ -10,6 +12,8 @@ import { PageShell } from "@/components/surfaces/surface-header";
  * shared Skeleton primitive (warm shimmer + reduced-motion guard).
  */
 export default function AudienceLoading() {
+  // New look: the new screen's own outline, so the page that replaces it is the same screen.
+  if (NEW_LOOK_ENABLED) return <AudienceNextLoading pushed={false} />;
   return (
     <PageShell>
       {/* Header — heading left, the two actions right */}

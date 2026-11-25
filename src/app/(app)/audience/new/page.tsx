@@ -6,7 +6,13 @@
  */
 
 import { AudienceCreate, type CreateDoor } from "@/components/audience/audience-create";
+import { NewAudienceNext } from "@/components/audience-next/new-audience-next";
 import { PageShell, SurfaceHeader } from "@/components/surfaces/surface-header";
+import { resolveUserAudience } from "@/lib/audience/resolve-user-audience";
+import { ownAudiences } from "@/lib/audience-next/audience-model";
+import { doorOf } from "@/lib/audience-next/build-request";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
+import { createClient } from "@/lib/supabase/server";
 
 export const metadata = {
   title: "New audience | Maven",
@@ -29,6 +35,11 @@ export default async function NewAudiencePage({
   }>;
 }) {
   const sp = await searchParams;
+  // The new look's page: the old addresses keep choosing a row, and may bring the handle. A name repeated in
+  // the address comes as an array whatever the type says: no handle then.
+  if (NEW_LOOK_ENABLED) {
+    return <NewAudienceNext initialDoor={doorOf(sp)} prefill={typeof sp.handle === "string" ? sp.handle : ""} inUse={await audienceInUse()} />;
+  }
 
   const initialDoor: CreateDoor | undefined = DOOR_VALUES.includes(sp.door as CreateDoor)
     ? (sp.door as CreateDoor)
@@ -52,4 +63,22 @@ export default async function NewAudiencePage({
       </PageShell>
     </div>
   );
+}
+
+/**
+ * The new look's page: whether the creator already has an audience of their own in use. Then a read with too
+ * little to read offers only another try: general viewers is not what they use. Signed out, or a read that
+ * fails: no.
+ */
+async function audienceInUse(): Promise<boolean> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return false;
+    return ownAudiences([await resolveUserAudience(supabase, user.id)]).length > 0;
+  } catch {
+    return false;
+  }
 }

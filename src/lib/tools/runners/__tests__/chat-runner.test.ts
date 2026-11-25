@@ -53,7 +53,8 @@ vi.mock("@/lib/audience/resolve-audience-weights", () => ({
   resolveAudienceWeights: () => ({ weights: {} }),
 }));
 
-import { runChatPipeline, type ChatPipelineInput } from "../chat-runner";
+import { isProfileThin } from "@/lib/kc/profile-role-map";
+import { isColdStart, runChatPipeline, type ChatPipelineInput } from "../chat-runner";
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -80,6 +81,12 @@ beforeEach(() => {
   createMock.mockReset();
   assembleBundleMock.mockClear();
   createMock.mockResolvedValue(makeStream(["Hello", " world"]));
+});
+
+describe("isColdStart", () => {
+  it("the cold-start predicate is the assembler's own thin check, not a copy", () => {
+    expect(isColdStart).toBe(isProfileThin);
+  });
 });
 
 describe("runChatPipeline personaGrounding [runner]", () => {

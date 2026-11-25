@@ -1535,6 +1535,110 @@ export type Database = {
           },
         ]
       }
+      piece_posts: {
+        Row: {
+          attempts: number
+          comments: number | null
+          created_at: string
+          handle: string | null
+          id: string
+          last_attempt_at: string | null
+          likes: number | null
+          piece_key: string
+          piece_kind: string
+          platform: string
+          post_id: string | null
+          post_url: string
+          posted_at: string | null
+          read_at: string | null
+          read_error: string | null
+          reads: Json
+          removed_at: string | null
+          said_at: string | null
+          said_measure: string
+          said_number: number
+          saves: number | null
+          settled_at: string | null
+          shares: number | null
+          thread_id: string | null
+          updated_at: string
+          user_id: string
+          usual_posts: number | null
+          usual_views: number | null
+          views: number | null
+        }
+        Insert: {
+          attempts?: number
+          comments?: number | null
+          created_at?: string
+          handle?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          likes?: number | null
+          piece_key: string
+          piece_kind: string
+          platform?: string
+          post_id?: string | null
+          post_url: string
+          posted_at?: string | null
+          read_at?: string | null
+          read_error?: string | null
+          reads?: Json
+          removed_at?: string | null
+          said_at?: string | null
+          said_measure: string
+          said_number: number
+          saves?: number | null
+          settled_at?: string | null
+          shares?: number | null
+          thread_id?: string | null
+          updated_at?: string
+          user_id: string
+          usual_posts?: number | null
+          usual_views?: number | null
+          views?: number | null
+        }
+        Update: {
+          attempts?: number
+          comments?: number | null
+          created_at?: string
+          handle?: string | null
+          id?: string
+          last_attempt_at?: string | null
+          likes?: number | null
+          piece_key?: string
+          piece_kind?: string
+          platform?: string
+          post_id?: string | null
+          post_url?: string
+          posted_at?: string | null
+          read_at?: string | null
+          read_error?: string | null
+          reads?: Json
+          removed_at?: string | null
+          said_at?: string | null
+          said_measure?: string
+          said_number?: number
+          saves?: number | null
+          settled_at?: string | null
+          shares?: number | null
+          thread_id?: string | null
+          updated_at?: string
+          user_id?: string
+          usual_posts?: number | null
+          usual_views?: number | null
+          views?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "piece_posts_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       planned_posts: {
         Row: {
           content_id: string
@@ -1717,18 +1821,24 @@ export type Database = {
           created_at: string | null
           id: string
           user_id: string
+          whop_affiliate_id: string | null
+          whop_username: string | null
         }
         Insert: {
           code: string
           created_at?: string | null
           id?: string
           user_id: string
+          whop_affiliate_id?: string | null
+          whop_username?: string | null
         }
         Update: {
           code?: string
           created_at?: string | null
           id?: string
           user_id?: string
+          whop_affiliate_id?: string | null
+          whop_username?: string | null
         }
         Relationships: []
       }

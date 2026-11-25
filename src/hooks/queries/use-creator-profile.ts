@@ -12,7 +12,8 @@ import { queryKeys } from "@/lib/queries/query-keys";
 
 /**
  * Shape of GET /api/profile/creator-profile — the 14 9-card columns plus
- * `profile_interview_seen_at`. Matches the route's GET_COLUMNS whitelist 1:1.
+ * `profile_interview_seen_at`, plus, under the new look, the five facts of You.
+ * Matches the route's GET_COLUMNS whitelist 1:1.
  */
 export interface CreatorProfileResponse {
   profile_interview_seen_at: string | null;
@@ -36,6 +37,12 @@ export interface CreatorProfileResponse {
   time_of_day_aware: boolean | null;
   pain_points: string | null;
   storage_retention_opted_in?: boolean | null;
+  /** The five facts of You (plan 2026-11-24-you); present under the new look only. */
+  about?: string | null;
+  sells?: string | null;
+  writing_voice_description?: string | null;
+  can_film?: string | null;
+  never_do?: string | null;
 }
 
 /**

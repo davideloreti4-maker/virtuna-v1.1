@@ -187,6 +187,20 @@ export interface AdaptedBeat {
 }
 
 /**
+ * What the creator wrote on You (plan 2026-11-24-you) that remix takes: never, what they sell (only
+ * when the brief asks to sell, `remixCreatorOf`), about them, how they sound (a description, never a
+ * pasted post). Server-supplied, never accepted from a client (see AdaptWireDecode). Each reaches the
+ * prompt fenced as the creator's own words (`creatorFactsBlock`, adapt.ts). What they can film is not
+ * taken: remix borrows a source's shots.
+ */
+export interface RemixCreatorFacts {
+  never: string | null;
+  sells: string | null;
+  about: string | null;
+  voice: string | null;
+}
+
+/**
  * Input to the Adapt generator.
  *
  * Content-leak guard (D-01, Pitfall 1): AdaptInput has NO `luck` lane and NO caption/
@@ -227,19 +241,27 @@ export interface AdaptInput {
    * null → fall back to `niche`. Exists so a fitness source can be remixed into SaaS onboarding.
    */
   target: string | null;
+  /**
+   * The creator's own facts (`RemixCreatorFacts`), read from their profile row by the remix runner.
+   * Absent or null: the prompt is exactly as before. Only the remix runner sets it; the route and the
+   * drops pipe have no creator in reach and leave it out.
+   */
+  creator?: RemixCreatorFacts | null;
 }
 
 /**
  * The part of `AdaptInput` that crosses the wire to `POST /api/remix/adapt` — the decoded
- * anatomy only. `niche` travels as its own top-level field; `blueprint` and `target` are
+ * anatomy only. `niche` travels as its own top-level field; `blueprint`, `target` and `creator` are
  * SERVER-SUPPLIED and deliberately not accepted from a client: `blueprint` reaches the prompt
  * as verbatim text, so honouring a client-declared one would hand any caller a prompt-injection
- * lane past the D-01 guard the request schema exists to enforce (T-04-04).
+ * lane past the D-01 guard the request schema exists to enforce (T-04-04). `creator` is printed
+ * as the creator's own rules and words, so it comes from their profile row and nowhere else
+ * (`route.creator.test.ts` holds this at the route).
  *
  * Named rather than written out at each consumer so the wire contract has one definition — the
  * hook's request type and the fixture that stands in for it cannot drift apart.
  */
-export type AdaptWireDecode = Omit<AdaptInput, "niche" | "blueprint" | "target">;
+export type AdaptWireDecode = Omit<AdaptInput, "niche" | "blueprint" | "target" | "creator">;
 
 /**
  * A single niche-adapted concept produced by the Adapt generator (ADAPT-01).

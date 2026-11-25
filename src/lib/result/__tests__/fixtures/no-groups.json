@@ -1,0 +1,235 @@
+{
+ "id": "fixture-no-groups",
+ "engine_version": "3.0.0",
+ "input_mode": "video_upload",
+ "video_storage_path": null,
+ "overall_score": 79,
+ "processing": false,
+ "heatmap": {
+  "weights": {
+   "fyp": 0.8125,
+   "niche": 0,
+   "loyalist": 0.125,
+   "cross_niche": 0.0625
+  },
+  "personas": [
+   {
+    "id": "fyp-1-tough_crowd-comedy",
+    "slot_type": "fyp",
+    "attentions": [
+     0.85,
+     0.82,
+     0.58,
+     0.76,
+     0.88
+    ],
+    "segment_reasons": {
+     "0": "bizarre towel visual and rapid listing hook my commute scrolling instantly",
+     "2": "deadpan shift and sad piano drag pacing too much, testing my patience",
+     "4": "punchline lands with sharp contrast, satisfying payoff earns full watch-through"
+    },
+    "swipe_predicted_at": null
+   },
+   {
+    "id": "fyp-2-lurker-comedy",
+    "slot_type": "fyp",
+    "attentions": [
+     0.85,
+     0.92,
+     0.84,
+     0.9,
+     0.96
+    ],
+    "segment_reasons": {
+     "0": "hook landed — quirky towel/hoodie visual & rapid delivery immediately cuts through commute scroll.",
+     "4": "punchline lands with perfect deadpan contrast, sad piano meme payoff seals full watch-through."
+    },
+    "swipe_predicted_at": null
+   },
+   {
+    "id": "fyp-3-high_engager-comedy",
+    "slot_type": "fyp",
+    "attentions": [
+     0.85,
+     0.9,
+     0.95,
+     0.95,
+     1
+    ],
+    "segment_reasons": {
+     "0": "Comedy hook grabs instantly, perfect for commute scrolling.",
+     "4": "Deadpan punchline delivers maximum payoff, fully locked in."
+    },
+    "swipe_predicted_at": null
+   },
+   {
+    "id": "fyp-4-saver-comedy",
+    "slot_type": "fyp",
+    "attentions": [
+     0.85,
+     0.75,
+     0.9,
+     0.8,
+     0.6
+    ],
+    "segment_reasons": {
+     "0": "Hook lands — fast-paced character intro grabs my morning commute attention.",
+     "4": "Punchline delivered — solid laugh, but ready to keep scrolling."
+    },
+    "swipe_predicted_at": null
+   },
+   {
+    "id": "fyp-5-sharer-comedy",
+    "slot_type": "fyp",
+    "attentions": [
+     0.88,
+     0.94,
+     0.96,
+     0.91,
+     0.98
+    ],
+    "segment_reasons": {
+     "0": "fast-paced hook and comedic costume instantly grab attention during commute",
+     "4": "relatable contrast punchline lands perfectly, triggering strong intent to share with best friend"
+    },
+    "swipe_predicted_at": null
+   },
+   {
+    "id": "fyp-6-purposeful_viewer-comedy",
+    "slot_type": "fyp",
+    "attentions": [
+     0.8,
+     0.85,
+     0.9,
+     0.88,
+     0.95
+    ],
+    "segment_reasons": {
+     "0": "High-energy hook and clear character setup grab my attention instantly.",
+     "4": "Punchline lands perfectly with great comedic contrast, fully satisfying the commute watch."
+    },
+    "swipe_predicted_at": null
+   },
+   {
+    "id": "niche_deep-1-niche_deep_buyer-comedy",
+    "slot_type": "niche",
+    "attentions": [
+     0.85,
+     0.85,
+     0.92,
+     0.88,
+     0.95
+    ],
+    "segment_reasons": {
+     "0": "Hook lands — rapid-fire detail listing and funny costume grab my commute attention.",
+     "4": "Punchline delivers perfectly — deadpan contrast makes me save and share."
+    },
+    "swipe_predicted_at": null
+   },
+   {
+    "id": "niche_deep-2-niche_deep_scout-comedy",
+    "slot_type": "niche",
+    "attentions": [
+     0.85,
+     0.8,
+     0.95,
+     0.85,
+     0.95
+    ],
+    "segment_reasons": {
+     "0": "Visual skit hook lands instantly; enthusiastic tone sets up comedy premise.",
+     "2": "Sharp character/audio switch to deadpan guy creates strong comedic contrast.",
+     "4": "Final punchline delivers satisfying payoff with perfect deadpan timing."
+    },
+    "swipe_predicted_at": null
+   },
+   {
+    "id": "loyalist-1-loyalist-comedy",
+    "slot_type": "loyalist",
+    "attentions": [
+     0.9,
+     0.88,
+     0.92,
+     0.89,
+     0.95
+    ],
+    "segment_reasons": {
+     "0": "Fast-paced hook with quirky costume instantly grabs attention during commute.",
+     "2": "Costume and tonal shift to deadpan guy signals clear comedy contrast. Intriguing.",
+     "4": "Punchline lands perfectly. Highly relatable friendship dynamic matches comedy taste."
+    },
+    "swipe_predicted_at": null
+   },
+   {
+    "id": "cross_niche-1-cross_niche_curiosity-lifestyle",
+    "slot_type": "cross_niche",
+    "attentions": [
+     0.82,
+     0.78,
+     0.88,
+     0.84,
+     0.91
+    ],
+    "segment_reasons": {
+     "0": "hook lands — visual contrast and fast pacing catch commuter's eye",
+     "4": "punchline lands perfectly; relatable friend dynamic retains full attention"
+    },
+    "swipe_predicted_at": null
+   }
+  ],
+  "segments": [
+   {
+    "idx": 0,
+    "label": "Actor in a hoodie and towel on his head portrays a girl enthusiastically describing her best friend's details.",
+    "t_end": 3,
+    "t_start": 0,
+    "is_hook_zone": true,
+    "keyframe_uri": null
+   },
+   {
+    "idx": 1,
+    "label": "Actor in a hoodie and towel on his head portrays a girl enthusiastically describing her best friend's details.",
+    "t_end": 8,
+    "t_start": 3,
+    "is_hook_zone": false,
+    "keyframe_uri": null
+   },
+   {
+    "idx": 2,
+    "label": "Same actor, now in a tank top, portrays a guy who doesn't know basic facts about his best friend.",
+    "t_end": 17,
+    "t_start": 8,
+    "is_hook_zone": false,
+    "keyframe_uri": null
+   },
+   {
+    "idx": 3,
+    "label": "Actor as the 'girl' character looks at her phone, talking about pictures with her friend.",
+    "t_end": 21,
+    "t_start": 17,
+    "is_hook_zone": false,
+    "keyframe_uri": null
+   },
+   {
+    "idx": 4,
+    "label": "Actor as the 'guy' character delivers the final punchline about never having taken a photo with his friend.",
+    "t_end": 29,
+    "t_start": 21,
+    "is_hook_zone": false,
+    "keyframe_uri": null
+   }
+  ],
+  "weighted_curve": [
+   0.8476543209876541,
+   0.8627160493827162,
+   0.8569135802469137,
+   0.8669135802469136,
+   0.8965432098765432
+  ],
+  "weights_source": "default"
+ },
+ "persona_behavioral_aggregate": null,
+ "variants": {
+  "filmstrip_segments": []
+ }
+}

@@ -562,3 +562,85 @@ describe("runRemixPipeline — phase 4 clips", () => {
     expect(result.blueprint!.clipPaths).toEqual([]);
   });
 });
+
+// ─── The creator's own words (plan 2026-11-24-you, Task 9) ───────────────────
+
+describe("runRemixPipeline — the creator's facts of You reach adapt", () => {
+  const FACT_ROW = {
+    ...makeProfileRow(),
+    never_do: "No giveaways.",
+    sells: "A 12-week meal plan.",
+    about: "Nurse, mum of two.",
+    writing_voice_description: "Dry, short sentences.",
+    can_film: "Phone only.",
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockCleanup.mockResolvedValue(undefined);
+    mockCutBeatClips.mockResolvedValue({ files: [], dispose: vi.fn() });
+    mockUploadBeatClips.mockResolvedValue([]);
+  });
+
+  it("with the new look off no fact is read: adapt gets creator null", async () => {
+    setupHappyPath();
+    const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
+    await runRemixPipeline({ ...baseInput, profileRow: FACT_ROW, brief: "my meal plan launch" });
+    expect(mockGenerateAdaptConcepts.mock.calls[0]![0].creator).toBeNull();
+  });
+
+  it("with the new look on adapt gets never, what they sell, about them and how they sound, and not what they can film", async () => {
+    vi.resetModules();
+    vi.doMock("@/lib/flags/new-look", () => ({ NEW_LOOK_ENABLED: true }));
+    try {
+      setupHappyPath();
+      const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
+      await runRemixPipeline({ ...baseInput, profileRow: FACT_ROW, brief: "my meal plan launch" });
+      const adaptInput = mockGenerateAdaptConcepts.mock.calls[0]![0];
+      expect(adaptInput.creator).toEqual({
+        never: "No giveaways.",
+        sells: "A 12-week meal plan.",
+        about: "Nurse, mum of two.",
+        voice: "Dry, short sentences.",
+      });
+      // The rest of the input is what it always was.
+      expect(adaptInput.target).toBe("my meal plan launch");
+      expect(adaptInput.niche).toBe("fitness");
+
+      mockGenerateAdaptConcepts.mockClear();
+      await runRemixPipeline({ ...baseInput, profileRow: makeProfileRow() });
+      expect(mockGenerateAdaptConcepts.mock.calls[0]![0].creator).toBeNull();
+    } finally {
+      vi.doUnmock("@/lib/flags/new-look");
+      vi.resetModules();
+    }
+  });
+
+  it("with the new look on, what they sell reaches adapt only when the brief asks to sell", async () => {
+    vi.resetModules();
+    vi.doMock("@/lib/flags/new-look", () => ({ NEW_LOOK_ENABLED: true }));
+    try {
+      setupHappyPath();
+      const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
+      const creatorFor = async (profileRow: typeof FACT_ROW | Record<string, unknown>, brief?: string | null) => {
+        mockGenerateAdaptConcepts.mockClear();
+        await runRemixPipeline({ ...baseInput, profileRow, brief });
+        return mockGenerateAdaptConcepts.mock.calls[0]![0].creator;
+      };
+
+      const otherThree = { never: "No giveaways.", about: "Nurse, mum of two.", voice: "Dry, short sentences." };
+      expect(await creatorFor(FACT_ROW, "cooking for flatmates")).toEqual({ ...otherThree, sells: null });
+      expect(await creatorFor(FACT_ROW)).toEqual({ ...otherThree, sells: null });
+      expect(await creatorFor(FACT_ROW, "")).toEqual({ ...otherThree, sells: null });
+
+      const sellsOnly = { ...makeProfileRow(), sells: "A 12-week meal plan." };
+      expect(await creatorFor(sellsOnly, "cooking for flatmates")).toBeNull();
+      expect(await creatorFor(sellsOnly, "promote my meal plan")).toEqual({
+        never: null, sells: "A 12-week meal plan.", about: null, voice: null,
+      });
+    } finally {
+      vi.doUnmock("@/lib/flags/new-look");
+      vi.resetModules();
+    }
+  });
+});

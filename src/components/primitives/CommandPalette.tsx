@@ -57,6 +57,26 @@ export interface CommandPaletteProps {
   style?: CSSProperties;
   /** Keyboard shortcut to open (default: ⌘K) */
   shortcut?: { key: string; metaKey?: boolean; ctrlKey?: boolean };
+  /**
+   * Opt-in, off by default: an item whose title equals the query (case-blind, trimmed) is listed
+   * first, and its group first, so Enter opens it ("You" over the chats whose title holds "you").
+   * The other groups and items keep their order. Only the new look's shell sets it.
+   */
+  exactFirst?: boolean;
+}
+
+/** `groups` with the items titled exactly `query` first in their group, and those groups first. */
+function exactFirstOrder(groups: CommandGroup[], query: string): CommandGroup[] {
+  const wanted = query.trim().toLowerCase();
+  if (!wanted) return groups;
+  const exact = (item: CommandItem) => item.title.trim().toLowerCase() === wanted;
+  const ordered = groups.map((group) =>
+    group.items.some(exact)
+      ? { ...group, items: [...group.items.filter(exact), ...group.items.filter((item) => !exact(item))] }
+      : group,
+  );
+  const holds = (group: CommandGroup) => group.items.some(exact);
+  return [...ordered.filter(holds), ...ordered.filter((group) => !holds(group))];
 }
 
 /**
@@ -114,6 +134,7 @@ export function CommandPalette({
   className,
   style,
   shortcut = { key: "k", metaKey: true },
+  exactFirst = false,
 }: CommandPaletteProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -161,7 +182,8 @@ export function CommandPalette({
   const filterItems = (groups: CommandGroup[]): CommandGroup[] => {
     if (!search.trim()) return groups;
 
-    const query = search.toLowerCase();
+    // With `exactFirst` the query is trimmed here too, so "You " still finds "You" (off: as it always was).
+    const query = (exactFirst ? search.trim() : search).toLowerCase();
 
     return groups
       .map((group) => ({
@@ -176,7 +198,8 @@ export function CommandPalette({
       .filter((group) => group.items.length > 0);
   };
 
-  const groups = filterItems(normalizeItems());
+  const filtered = filterItems(normalizeItems());
+  const groups = exactFirst ? exactFirstOrder(filtered, search) : filtered;
 
   // Flatten for keyboard navigation
   const flatItems = groups.flatMap((g) => g.items.filter((i) => !i.disabled));

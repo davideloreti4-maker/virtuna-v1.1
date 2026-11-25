@@ -22,6 +22,22 @@ it disagrees with `globals.css`, measure and trust the CSS.
 - Borders 6% (`white/[0.06]`), hover 10%. Radius 4/6/8/12/16/20/24 — cards 12, inputs/buttons 8
 - Inter for chrome; Newsreader serif for voice-moments only (greeting/hero)
 
+### 🚧 New look in progress — behind `NEXT_PUBLIC_NEW_LOOK` (2026-11-19)
+
+The flat-warm charcoal system described here is being replaced (owner ruling 2026-11-18). With the
+flag on, `<html data-look="next" data-theme="light|dark">` re-values the semantic tokens: light by
+default, Inter only, ink buttons, glass only on floating chrome. Tokens and rules:
+`docs/DESIGN-SYSTEM.md` → "Next look". Spec:
+`docs/superpowers/specs/2026-11-18-foundation-look-and-shell-design.md`. While both looks exist:
+
+- Flag off must render exactly as before. Never change an existing `@theme` value.
+- New-look code lives in `src/components/shell/`, in `src/lib/theme/` and `src/lib/shell/`, in the
+  two new-look-only parts `src/components/ui/chip.tsx` and `icon-button.tsx`, in `next:`
+  variants on `src/components/ui`, and in the flag-gated mark in `src/components/brand/maven-logo.tsx`.
+- In new-look code write `shadow-[var(--shadow-float)]`, never `shadow-float`: Tailwind copies a
+  shadow token's value into its utility, so the utility ignores the scoped re-valuation.
+- Do not patch a legacy screen to look right inside the flag; each is replaced by its own part.
+
 ### 🔒 Accent dosage (LOCKED 2026-06-24) — read this before adding any colour
 
 **Monochrome by default. Default = NO accent.** The UI is cream-on-charcoal; colour is not a

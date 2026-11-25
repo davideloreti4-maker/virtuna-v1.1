@@ -1,14 +1,16 @@
 import { z } from "zod";
 
 import { stripUserContentMarkers } from "@/lib/user-content-markers";
+import { YOU_FACT_LIMITS } from "@/lib/you/facts";
 
 /**
  * Creator Profile validation schema for the creator-profile PATCH route.
  *
  * Two live writers: the settings tab's `ProfileSettingsForm` (9 cards, full edit) and
- * `WaitQuestions` (goal · stage · pain, asked inside /welcome's calibration wait). The 10-card
- * `ProfileInterviewModal` that this schema was written for was deleted 2026-08-14 — it had been
- * unreachable since `/analyze` became a redirect. No column changed; only the surfaces did.
+ * `WaitQuestions` (goal · stage · pain, asked inside /welcome's calibration wait), and, under the
+ * new look, the You page (one key per save). The 10-card `ProfileInterviewModal` that this schema
+ * was written for was deleted 2026-08-14 — it had been unreachable since `/analyze` became a
+ * redirect. No column changed; only the surfaces did.
  *
  * Every field is `.optional()` so a partial PATCH succeeds (the user can save
  * one card at a time from settings); `.nullable()` on most fields allows the
@@ -87,6 +89,12 @@ export const creatorProfilePatchSchema = z.object({
   time_of_day_aware: z.boolean().nullable().optional(),
   pain_points: z.string().max(500).nullable().optional(),
   storage_retention_opted_in: z.boolean().nullable().optional(),
+  // The five facts of You (plan 2026-11-24-you). The route drops them while the new look is off.
+  about: z.string().max(YOU_FACT_LIMITS.about).nullable().optional(),
+  sells: z.string().max(YOU_FACT_LIMITS.sells).nullable().optional(),
+  writing_voice_description: z.string().max(YOU_FACT_LIMITS.writing_voice_description).nullable().optional(),
+  can_film: z.string().max(YOU_FACT_LIMITS.can_film).nullable().optional(),
+  never_do: z.string().max(YOU_FACT_LIMITS.never_do).nullable().optional(),
 });
 
 export type CreatorProfilePatch = z.infer<typeof creatorProfilePatchSchema>;

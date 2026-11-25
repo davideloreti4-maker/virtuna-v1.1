@@ -37,7 +37,10 @@ import {
   type SourceData,
 } from "@/components/audience/audience-detail";
 import { AudienceForm } from "@/components/audience/audience-form";
+import { AudienceNext } from "@/components/audience-next/audience-next";
 import { PageShell } from "@/components/surfaces/surface-header";
+import { readAudiencePage } from "@/lib/audience-next/read-audience-page";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 
 export const metadata = {
   title: "Audience | Maven",
@@ -75,6 +78,23 @@ function Shell({ children }: { children: React.ReactNode }) {
   );
 }
 
+/**
+ * New look (spec 2026-11-25-audience, 3.1): this audience as a pushed page. The one server read decides what
+ * is shown: a connected account's id still redirects to that account's audience, an unknown id goes back to
+ * `/audience`, General and the presets show the invitation. `?edit=1` has no form here. Keyed by the
+ * audience shown.
+ */
+async function newLook(id: string) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  const read = await readAudiencePage(supabase, user.id, { route: "id", id }, new Date());
+  if (read.kind === "redirect") redirect(read.to); // outside any try: redirect() throws
+  return <AudienceNext key={read.kind === "audience" ? read.page.id : read.kind} read={read} />;
+}
+
 export default async function AudienceDetailPage({
   params,
   searchParams,
@@ -83,6 +103,7 @@ export default async function AudienceDetailPage({
   searchParams: Promise<{ edit?: string }>;
 }) {
   const { id } = await params;
+  if (NEW_LOOK_ENABLED) return newLook(id);
   const { edit } = await searchParams;
 
   const supabase = await createClient();

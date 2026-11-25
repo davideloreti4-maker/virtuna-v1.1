@@ -1,8 +1,14 @@
 import { PageShell } from "@/components/surfaces/surface-header";
 import { ShelfSkeleton } from "@/components/saved/saved-shelf";
+import { LibraryNextLoading } from "@/components/library-next/library-next";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 
 /**
  * /library route loading skeleton.
+ *
+ * New look (plan 2026-11-23-library): the new Library's own loading state (its header, chips and
+ * six quiet rows), so the screen that replaces it is the same one. Flag off: the shelf's skeleton,
+ * as below.
  *
  * ⚠️ This file was wrong twice over until 2026-08-02, and its own comment asserted the opposite —
  * it claimed to match the page "verbatim" while wrapping everything in `max-w-5xl` (1024px)
@@ -16,6 +22,7 @@ import { ShelfSkeleton } from "@/components/saved/saved-shelf";
  * state. There is no second set of numbers left to drift.
  */
 export default function LibraryLoading() {
+  if (NEW_LOOK_ENABLED) return <LibraryNextLoading />;
   return (
     <div className="relative min-h-full text-foreground">
       <PageShell>

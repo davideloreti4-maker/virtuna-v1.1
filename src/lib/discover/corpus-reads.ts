@@ -132,7 +132,7 @@ export const EMPTY_CORPUS: DiscoverCorpus = {
 const isDurableCover = (url: string | null): url is string =>
   !!url && /supabase\.co|ytimg\.com/.test(url);
 
-interface TeardownRow {
+export interface TeardownRow {
   id: string;
   video_url: string | null;
   cover_url: string | null;

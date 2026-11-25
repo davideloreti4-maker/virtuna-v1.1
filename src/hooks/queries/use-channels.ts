@@ -64,6 +64,27 @@ export function useChannelSearch(q: string) {
 }
 
 /**
+ * A refused add also says which of its two calls refused it (`step`: reading the account, or following
+ * it once read) and the HTTP status (none when the request got no answer), so a screen can tell a lapsed
+ * session or a refused follow from a handle that could not be read. The message is unchanged.
+ */
+export type AddChannelError = Error & { status?: number; step: "read" | "follow" };
+
+/** Marks an error with the call that refused it, and the status when there was an answer. */
+function addRefusal(error: Error, step: AddChannelError["step"], status?: number): AddChannelError {
+  return Object.assign(error, { step, status });
+}
+
+/** A call whose request got no answer (offline, aborted): its own error, marked with the step. */
+async function call(step: AddChannelError["step"], request: () => Promise<Response>): Promise<Response> {
+  try {
+    return await request();
+  } catch (error) {
+    throw addRefusal(error instanceof Error ? error : new Error(String(error)), step);
+  }
+}
+
+/**
  * MUTATION: add a channel = ingest (scrape-or-cache) then track (idempotent).
  * Surfaces the ingest route's typed error message (e.g. channel_not_found) so the
  * caller can toast it verbatim.
@@ -73,26 +94,30 @@ export function useAddChannel() {
 
   return useMutation({
     mutationFn: async (handle: string): Promise<AddChannelResult> => {
-      const ingestRes = await fetch("/api/channels/ingest", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ handle }),
-      });
+      const ingestRes = await call("read", () =>
+        fetch("/api/channels/ingest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ handle }),
+        }),
+      );
       if (!ingestRes.ok) {
         const body = (await ingestRes.json().catch(() => null)) as
           | { message?: string }
           | null;
-        throw new Error(body?.message ?? "Could not add this channel");
+        throw addRefusal(new Error(body?.message ?? "Could not add this channel"), "read", ingestRes.status);
       }
       const ingest = (await ingestRes.json()) as AddChannelResult;
 
       // Track the NORMALIZED handle the ingest resolved (idempotent upsert).
-      const trackRes = await fetch("/api/tracked-accounts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ platform: "tiktok", handle: ingest.handle }),
-      });
-      if (!trackRes.ok) throw new Error("Added the channel but couldn't track it");
+      const trackRes = await call("follow", () =>
+        fetch("/api/tracked-accounts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ platform: "tiktok", handle: ingest.handle }),
+        }),
+      );
+      if (!trackRes.ok) throw addRefusal(new Error("Added the channel but couldn't track it"), "follow", trackRes.status);
 
       return ingest;
     },

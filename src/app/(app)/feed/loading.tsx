@@ -1,5 +1,7 @@
 import { Skeleton } from "@/components/ui/skeleton";
 import { SURFACE_RADIAL_BG } from "@/components/surfaces/surface-canvas";
+import { DiscoverNextLoading } from "@/components/discover-next/discover-next";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 
 /**
  * Route skeleton for /feed — the DISCOVER hub. Mirrors the hub shell: radial backdrop,
@@ -8,6 +10,7 @@ import { SURFACE_RADIAL_BG } from "@/components/surfaces/surface-canvas";
  * hub's max-w-[1180px] root so there is no layout shift on hydrate.
  */
 export default function FeedLoading() {
+  if (NEW_LOOK_ENABLED) return <DiscoverNextLoading />;
   return (
     <div className="relative min-h-full" style={{ background: SURFACE_RADIAL_BG }}>
       <div className="mx-auto w-full max-w-[1180px] px-4 pb-24 pt-6 lg:px-6">

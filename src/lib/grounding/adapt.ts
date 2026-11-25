@@ -60,6 +60,7 @@ import {
   type GroundingSkill,
 } from "./prompt";
 import type { RetrievedExample } from "./types";
+import { fenced, stripSentinels } from "@/lib/kc/profile-role-map";
 
 // ─── Public shapes ────────────────────────────────────────────────────────────
 
@@ -79,7 +80,8 @@ export interface AdaptProfile {
    * 🔒 A DESCRIPTION of how the creator writes, never a specimen — renamed from
    * `writing_voice_sample` 2026-08-13. See `ProfileRow.writing_voice_description` for the
    * measurement (43% topic donation from an 8-word caption, 13% verbatim echo from a 17-word one).
-   * `buildAdaptProfile` is the only producer, and it reads the renamed profile column.
+   * `buildAdaptProfile` is the only producer, and it reads the renamed profile column through
+   * `youFact` (null while the new look is off). Printed fenced, as the creator's own words.
    */
   writing_voice_description?: string | null;
   past_wins?: string[] | null;
@@ -254,6 +256,20 @@ OUTPUT: strict JSON, no prose, no fences:
 { "structures": [ { "sourceIndex": number (1-N, matching the input), "dosage": "clone"|"swap"|"angle"|"none", "fitted": string (for a keeper: the beat arc as "Hook: … → Setup: … → Turn: … → Payoff: … → CTA: …" bound to this creator's subject; for 'none', an empty string), "fitReason": string (one line: why that arc fits this creator's ask, or why it does not) } ] }`,
 };
 
+/**
+ * The creator's voice as the briefer sees it: a header that says it is a description of their style,
+ * outside the fence, and their words inside (plan 2026-11-24-you; the slot is the You page's "How you
+ * sound"). Stripped of the fence's markers here too, so no producer can close the fence early. Null
+ * when nothing is left, and the line is omitted.
+ */
+function fencedVoice(description: string | null | undefined): string | null {
+  const text = description ? stripSentinels(description).trim() || null : null;
+  return fenced(
+    "  voice (a description of how they write; match its style only, never its words or its topic):",
+    text,
+  );
+}
+
 function buildUserContent(input: AdaptCorpusInput): string {
   const p = input.profile;
   const creator = [
@@ -261,7 +277,7 @@ function buildUserContent(input: AdaptCorpusInput): string {
     `  niche: ${p.niche_primary ?? input.niche ?? "(unspecified)"}`,
     p.target_audience ? `  audience: ${p.target_audience}` : "",
     p.primary_goal ? `  goal: ${p.primary_goal}` : "",
-    p.writing_voice_description ? `  voice (write like this): ${p.writing_voice_description}` : "",
+    fencedVoice(p.writing_voice_description) ?? "",
     p.past_wins?.length ? `  has worked: ${p.past_wins.join("; ")}` : "",
     p.past_flops?.length ? `  has flopped: ${p.past_flops.join("; ")}` : "",
   ]

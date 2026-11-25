@@ -7,11 +7,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 const ENV_KEYS = ["UPSTASH_REDIS_REST_URL", "UPSTASH_REDIS_REST_TOKEN"] as const;
 const saved: Record<string, string | undefined> = {};
 
-function mockUpstash(limit: ReturnType<typeof vi.fn>) {
+function mockUpstash(limit: ReturnType<typeof vi.fn>, windows: unknown[][] = []) {
   vi.doMock("@upstash/redis", () => ({ Redis: class {} }));
   vi.doMock("@upstash/ratelimit", () => ({
     Ratelimit: class {
-      static slidingWindow() {
+      static slidingWindow(...args: unknown[]) {
+        windows.push(args);
         return {};
       }
       limit = limit;
@@ -82,5 +83,23 @@ describe("rateLimitGuard", () => {
     const { rateLimitGuard } = await import("../rate-limit");
 
     expect(await rateLimitGuard("u1", "chat")).toBeNull();
+  });
+
+  it("the enrolment at the payment partner has its own budget of 3 a minute; a key without one keeps 20", async () => {
+    process.env.UPSTASH_REDIS_REST_URL = "https://example.upstash.io";
+    process.env.UPSTASH_REDIS_REST_TOKEN = "token";
+    const windows: unknown[][] = [];
+    const limit = vi
+      .fn()
+      .mockResolvedValue({ success: true, limit: 3, remaining: 2, reset: Date.now() + 30_000 });
+    mockUpstash(limit, windows);
+    const { rateLimitGuard } = await import("../rate-limit");
+
+    expect(await rateLimitGuard("u1", "earn-whop")).toBeNull();
+    expect(await rateLimitGuard("u1", "earn")).toBeNull();
+    expect(windows).toEqual([
+      [3, "60 s"],
+      [20, "60 s"],
+    ]);
   });
 });

@@ -56,8 +56,9 @@
  * It also cost more than it looked. `cardsOnScreen` sat OUTSIDE CONVERSATION_CHAR_BUDGET (6 lines
  * x 120 chars), so the emitted block reached 1,844 chars against a documented 700 — enough to push
  * a calibrated-audience bundle over BUNDLE_CHAR_CAP and silently evict the corpus (measured live
- * through /api/tools/chat: 838 + 2,779 = 6,183 > 6,000). Turns-only measures 5,210/6,000 and
- * nothing sheds.
+ * through /api/tools/chat: 838 + 2,779 = 6,183 > 6,000, the cap then). Turns-only measures
+ * 5,210/6,000 and nothing sheds. (Since 2026-11-24 a creator's facts of You ride on top of the
+ * 6,000 cap and are never shed: see `bundleCharCap`.)
  *
  * Removing it also retires the `cards`/`cardsOnScreen` mutual-exclusion contract that had to be
  * enforced in two places, because the contradiction it guarded can no longer be constructed.

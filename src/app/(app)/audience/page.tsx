@@ -17,10 +17,29 @@ import {
   type ConnectedAccount,
 } from "@/lib/connected-accounts/connected-accounts-repo";
 import { AudienceManager, type AccountOption } from "@/components/audience/audience-manager";
+import { AudienceNext } from "@/components/audience-next/audience-next";
+import { readAudiencePage } from "@/lib/audience-next/read-audience-page";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 
 export const metadata = {
-  title: "Your audiences | Maven",
+  title: NEW_LOOK_ENABLED ? "Audience | Maven" : "Your audiences | Maven",
 };
+
+/**
+ * New look (spec 2026-11-25-audience, 3.1): the audience new chats use, as one page. The one server read
+ * decides what is shown, and keeps the old `?tab=account` address redirecting to that account's audience.
+ * Keyed by the audience shown, so another audience is a fresh screen.
+ */
+async function newLook({ tab, account }: { tab?: string; account?: string }) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+  const read = await readAudiencePage(supabase, user.id, { route: "index", tab, account }, new Date());
+  if (read.kind === "redirect") redirect(read.to); // outside any try: redirect() throws
+  return <AudienceNext key={read.kind === "audience" ? read.page.id : read.kind} read={read} />;
+}
 
 /** Slim the repo row to what the roster needs (client-serializable). */
 function toOption(a: ConnectedAccount): AccountOption {
@@ -38,6 +57,7 @@ export default async function AudiencePage({
 }: {
   searchParams: Promise<{ tab?: string; account?: string }>;
 }) {
+  if (NEW_LOOK_ENABLED) return newLook(await searchParams);
   const { tab, account: accountParam } = await searchParams;
 
   const supabase = await createClient();
