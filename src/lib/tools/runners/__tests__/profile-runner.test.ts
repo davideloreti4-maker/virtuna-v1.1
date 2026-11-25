@@ -7,7 +7,8 @@
  * Coverage (the <behavior> + acceptance_criteria):
  *   - Flash tier (text) → forensic null/absent, model "sim1-flash"; READ uses
  *     QWEN_REASONING_MODEL (NEVER omni — Pitfall 1).
- *   - Max tier (person-video) → forensic present (band word + cues), model "sim1-max".
+ *   - Max tier (person-video) → forensic present (band word + cues), model "sim1-max"; the READ
+ *     is text (the watch's signal + transcript) and also uses QWEN_REASONING_MODEL.
  *   - D-08 isolation: the READ system message is BEHAVIORAL_SYSTEM_PROMPT_FLASH/_MAX
  *     byte-for-byte (no evidence/goal/successCriterion bytes); the untrusted data lives
  *     only in the USER message.
@@ -230,7 +231,7 @@ describe("runProfile — D-08 isolation + Pitfall 1 model routing", () => {
     expect(user).toContain(GOAL_SENTINEL);
   });
 
-  it("max READ uses BEHAVIORAL_SYSTEM_PROMPT_MAX as the byte-stable system message", async () => {
+  it("max READ uses BEHAVIORAL_SYSTEM_PROMPT_MAX and the reasoning model (text-only; the watch heard the video)", async () => {
     mockReadReturns(MAX_READ);
     const bake = vi.fn(async () => ({ signature: makeSignature(1), subjectKind: "person" as const }));
     const saveAudience = vi.fn(async (_supabase: unknown, _input: Partial<Audience>) => makeSavedAudience("aud-4"));
@@ -242,8 +243,11 @@ describe("runProfile — D-08 isolation + Pitfall 1 model routing", () => {
       model: string;
       messages: { role: string; content: string }[];
     };
-    expect(params.model).toBe(QWEN_OMNI_MODEL);
+    // The READ's input is the watch's TEXT (signal + transcript): nothing for the audio model to hear.
+    expect(params.model).toBe(QWEN_REASONING_MODEL);
+    expect(params.model).not.toBe(QWEN_OMNI_MODEL);
     expect(params.messages[0]!.content).toBe(BEHAVIORAL_SYSTEM_PROMPT_MAX);
+    expect(typeof params.messages[1]!.content).toBe("string");
   });
 });
 

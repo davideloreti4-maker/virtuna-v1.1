@@ -53,9 +53,22 @@ describe("calculateCost — banded pricing for qwen3.7-flash", () => {
   it("still rates the flat-priced models, including the plus rollback target", () => {
     const plus = calculateCost("qwen3.7-plus", { prompt_tokens: 10_000, completion_tokens: 1_000 });
     expect(plus).toBeCloseTo(cents((10_000 * 0.40 + 1_000 * 1.60) / 1_000_000), 10);
-    // the omni audio sensor is unaffected by the reasoning-model move
+    // the omni audio sensor, at the provider's list (2026-11-25): $0.40 text/image/video in, $2.20 text out
     const omni = calculateCost("qwen3.5-omni-flash", { prompt_tokens: 10_000, completion_tokens: 1_000 });
-    expect(omni).toBeCloseTo(cents((10_000 * 0.10 + 1_000 * 0.40) / 1_000_000), 10);
+    expect(omni).toBeCloseTo(cents((10_000 * 0.40 + 1_000 * 2.20) / 1_000_000), 10);
+  });
+
+  it("rates the 3.8 models at their own list price, not the unknown-model fallback", () => {
+    // qwen3.8-flash is FLAT: the same rate at 10K input as at 300K (no bands, unlike 3.7-flash)
+    const short = calculateCost("qwen3.8-flash", { prompt_tokens: 10_000, completion_tokens: 1_000 });
+    expect(short).toBeCloseTo(cents((10_000 * 0.15 + 1_000 * 0.47) / 1_000_000), 10);
+    const long = calculateCost("qwen3.8-flash", { prompt_tokens: 300_000, completion_tokens: 1_000 });
+    expect(long).toBeCloseTo(cents((300_000 * 0.15 + 1_000 * 0.47) / 1_000_000), 10);
+    const omni38 = calculateCost("qwen3.8-omni-flash", { prompt_tokens: 10_000, completion_tokens: 1_000 });
+    expect(omni38).toBeCloseTo(cents((10_000 * 0.15 + 1_000 * 0.47) / 1_000_000), 10);
+    // the fallback ($0.25 / $1.50, qwen3.6-flash) is what a 3.8 trial was billed at before these rows
+    const fallback = calculateCost("qwen3.6-flash", { prompt_tokens: 10_000, completion_tokens: 1_000 });
+    expect(short).toBeLessThan(fallback);
   });
 
   it("falls back on a genuinely unknown model rather than throwing", () => {

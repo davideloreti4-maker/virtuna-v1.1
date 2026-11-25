@@ -35,8 +35,10 @@ import { z } from "zod";
 export type StimulusKind = "text" | "file_text" | "image" | "video";
 
 /**
- * The resolved SIM-1 tier (D-03). `flash` → `QWEN_REASONING_MODEL` (qwen3.7-flash,
- * deaf, vision-capable); `max` → `QWEN_OMNI_MODEL` (qwen3.5-omni-flash, audio).
+ * The resolved SIM-1 tier (D-03). `flash` = text / file / image; `max` = a person-video,
+ * whose audio is heard once by the omni person-video watch (`QWEN_OMNI_MODEL`,
+ * audience/profile-bake.ts). The profile READ after it is text on both tiers and runs on
+ * `QWEN_REASONING_MODEL` (see tier.ts).
  * NOTE: omni-**flash** the model name ≠ SIM-1-**Flash** the tier (see tier.ts).
  */
 export type Sim1Tier = "flash" | "max";
