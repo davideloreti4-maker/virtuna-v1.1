@@ -1,0 +1,8 @@
+// The repo's type check leaves scripts/ out. This checks the edit tool's own:
+//   pnpm exec tsc -p scripts/tsconfig.edit.json
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": { "noEmit": true, "incremental": false },
+  "include": ["edit-*.ts", "edit-types.d.ts", "../src/app/dev-edit/dev-edit.tsx", "../next-env.d.ts"],
+  "exclude": ["../node_modules"]
+}

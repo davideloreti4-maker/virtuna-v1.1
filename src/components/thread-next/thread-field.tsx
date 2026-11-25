@@ -36,6 +36,11 @@ import { ChevronIcon, CloseIcon, DocIcon, SendIcon, StopIcon } from "./field-ico
  *   Hooks · 1 credit  ×        the picked skill, an ink pill (only while one is picked)
  *   the text, two lines at rest
  *   +  ·  Audience: @handle  ·  send
+ *
+ * For an account the editor is open to (plan 2026-11-24-editor-screens-a, Task 16) a video is simulated or edited: the
+ * thread's row has an Edit pill beside Simulate (`editOpen`), and on Home a staged video shows the two as a choice in the
+ * picked skill's place (`home.videoSkill`). The caller may hand in the check a video passes to be staged (`validateVideo`:
+ * the editor takes files Simulate does not) and a ref to the picker, to open it inside a tap of its own (`pickerRef`).
  */
 
 /** The field's Home layout: what it shows that the thread's does not. */
@@ -43,9 +48,12 @@ export interface FieldHome {
   audience: { label: string; open: boolean; onOpen(): void };   // "Audience: {label}", opens the audience sheet
   picked: { label: string; price: number | null } | null;       // the picked skill: a pill above the text
   onClearPicked(): void;                                        // the pill's cross, and Backspace in an empty text
+  /** A video staged with the editor open (plan 2026-11-24-editor-screens-a): Simulate or Edit, in the picked skill's place.
+   *  `simulate` false: Simulate cannot take this file (past its 200 MB). */
+  videoSkill?: { picked: "test" | "edit"; simulate: boolean; onPick(id: "test" | "edit"): void } | null;
 }
 
-type FieldTool = "test" | "hooks" | "script" | "remix"; // the four pills, in this order
+type FieldTool = "test" | "edit" | "hooks" | "script" | "remix"; // the pills, in this order; Edit where the editor is open
 export interface ThreadFieldProps {
   value: string; onChange(value: string): void;
   onKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>): void;
@@ -74,12 +82,19 @@ export interface ThreadFieldProps {
   invalid?: boolean;
   /** The Home layout (see the top of this file). Absent or null: the thread's layout, unchanged. */
   home?: FieldHome | null;
+  /** The editor is open to this account: the Edit pill in a thread's row (plan 2026-11-24-editor-screens-a). */
+  editOpen?: boolean;
+  /** The video picker's input, for a caller that opens it inside its own tap (Home's Edit card). */
+  pickerRef?: React.RefObject<HTMLInputElement | null>;
+  /** The check a picked or dropped video passes before it is staged; Simulate's (`validateVideoFile`) unless given. */
+  validateVideo?(file: File): string | null;
 }
 
-/** The four pills, in the drawn order. "Simulate" is the video test (`test`), never the General
- *  `simulate` verb (seam map §2.3). */
+/** The pills, in the drawn order. "Simulate" is the video test (`test`), never the General
+ *  `simulate` verb (seam map §2.3). Edit is shown only where the editor is open (`editOpen`). */
 const FIELD_TOOLS: ReadonlyArray<{ id: FieldTool; label: string }> = [
   { id: "test", label: "Simulate" },
+  { id: "edit", label: "Edit" },
   { id: "hooks", label: "Hooks" },
   { id: "script", label: "Script" },
   { id: "remix", label: "Remix" },
@@ -100,7 +115,13 @@ const TEXT_MAX_HEIGHT = 6 * 22 + 14;
  *  frees let row 2 hold "Account · 5" armed on a 393 phone without scrolling. 12 from 768 up. */
 const PILL = "gap-0 px-[7px] md:px-3";
 
-/** A dropped file the field treats as a video (then checked by `validateVideoFile`). */
+/** The two things a staged video can be sent to, as Home's choice lists them (`FieldHome.videoSkill`). */
+const VIDEO_SKILLS = [
+  { id: "test", label: "Simulate" },
+  { id: "edit", label: "Edit" },
+] as const;
+
+/** A dropped file the field treats as a video (then checked by `validateVideo`). */
 function looksLikeVideo(file: File): boolean {
   return file.type.startsWith("video/") || /\.(mp4|mov|webm|avi|mkv|m4v)$/i.test(file.name);
 }
@@ -198,10 +219,14 @@ export function ThreadField({
   moreOpen,
   invalid,
   home = null,
+  editOpen = false,
+  pickerRef: givenPicker,
+  validateVideo = validateVideoFile,
 }: ThreadFieldProps): React.JSX.Element {
   const uid = useId();
   const textRef = useRef<HTMLTextAreaElement>(null);
-  const pickerRef = useRef<HTMLInputElement>(null);
+  const ownPicker = useRef<HTMLInputElement>(null);
+  const pickerRef = givenPicker ?? ownPicker;
   const simulateRef = useRef<HTMLButtonElement>(null);
   const plusRef = useRef<HTMLButtonElement>(null);
   // A refused file's message (wrong type, too large). The composer's own errors come in `errors`.
@@ -243,12 +268,12 @@ export function ThreadField({
   }, [armedLabel]);
 
   // On Home a skill picked from a card arrives as `home.picked`: focus goes to the next step, as
-  // a pill tap does. Simulate with no video: +, because the text would open the phone's keyboard.
+  // a pill tap does. Simulate or Edit with no video: +, because the text would open the phone's keyboard.
   const pickedLabel = home?.picked?.label ?? null;
   const lastPicked = useRef(pickedLabel);
   useEffect(() => {
     if (pickedLabel && pickedLabel !== lastPicked.current) {
-      if (tool === "test" && !video) plusRef.current?.focus();
+      if ((tool === "test" || tool === "edit") && !video) plusRef.current?.focus();
       else textRef.current?.focus();
     }
     lastPicked.current = pickedLabel;
@@ -256,7 +281,7 @@ export function ThreadField({
 
   /** A picked or dropped video: checked here, so a refused file never reaches the composer. */
   const takeVideo = (file: File) => {
-    const problem = validateVideoFile(file);
+    const problem = validateVideo(file);
     setPickError(problem);
     if (!problem) onVideoChange(file);
   };
@@ -297,8 +322,11 @@ export function ThreadField({
 
   // Clicked inside the tap: iOS Safari drops a picker opened any later.
   const openPicker = () => pickerRef.current?.click();
-  // Home, Simulate picked and nothing staged: "+" is the only way on, so it says so.
-  const addVideoPill = Boolean(home) && tool === "test" && !video;
+  // Home, Simulate or Edit picked and nothing staged: "+" is the only way on, so it says so.
+  const addVideoPill = Boolean(home) && (tool === "test" || tool === "edit") && !video;
+  // Home, a video staged with the editor open: Simulate or Edit, shown in the picked skill's place.
+  const videoChoice = video ? (home?.videoSkill ?? null) : null;
+  const choicePrice = videoChoice ? priceOf(videoChoice.picked) : null;
 
   // The three controls both layouts draw, written once and placed by each. They differ only in
   // size: the thread's 32 circles sit 2px in from its 36 row; Home's are 36.
@@ -503,7 +531,43 @@ export function ThreadField({
 
         {home ? (
           <>
-            {home.picked && (
+            {videoChoice && (
+              // In the picked skill's place, as tall as its pill: the pressed one is what the send does. Each is named
+              // for its skill alone; the pressed one's words, its price in them, are also send's description. The video
+              // itself is let go by its tile's cross.
+              <div role="group" aria-label="What to do with this video" className="flex gap-1.5 pb-1 pt-0.5">
+                {VIDEO_SKILLS.map(({ id, label }) => {
+                  const selected = videoChoice.picked === id;
+                  const price = selected ? choicePrice : null;
+                  return (
+                    <Chip
+                      key={id}
+                      surface="card"
+                      selected={selected}
+                      aria-label={label}
+                      aria-describedby={price != null ? priceId : undefined}
+                      disabled={id === "test" && !videoChoice.simulate}
+                      onClick={() => {
+                        setPickError(null);
+                        videoChoice.onPick(id);
+                      }}
+                      // The chip's own padding (12), not the thread pills' 7: there is room, and the text
+                      // starts where the picked skill's pill had it. `gap-0`: the label and its price are one run.
+                      className="gap-0"
+                    >
+                      <span id={selected ? pickedId : undefined}>
+                        {label}
+                        {price != null && <span className="opacity-[0.72]">{` · ${creditsLabel(price)}`}</span>}
+                      </span>
+                    </Chip>
+                  );
+                })}
+                <span hidden id={priceId}>
+                  {choicePrice != null ? creditsLabel(choicePrice) : ""}
+                </span>
+              </div>
+            )}
+            {!videoChoice && home.picked && (
               <div className="flex pb-1 pt-0.5">
                 <span
                   data-part="picked-skill"
@@ -572,12 +636,12 @@ export function ThreadField({
               {send}
             </div>
 
-            {/* Row 2: the four pills and More. The scroller keeps a narrow phone usable; its 6px
+            {/* Row 2: the pills and More. The scroller keeps a narrow phone usable; its 6px
                 above and below (taken back by margins) leave room for the 44px hit areas and the
                 focus ring, which a scroller would otherwise clip. */}
             <div className="-mx-1 -mb-1.5 mt-1 overflow-x-auto px-1 py-1.5 [scrollbar-width:none]">
               <div className="flex h-8 w-max min-w-full items-center gap-1 md:gap-1.5">
-                {FIELD_TOOLS.map(({ id, label }) => {
+                {FIELD_TOOLS.filter((pill) => pill.id !== "edit" || editOpen).map(({ id, label }) => {
                   const selected = tool === id;
                   return (
                     <Chip
@@ -591,9 +655,9 @@ export function ThreadField({
                       onClick={(e) => {
                         setPickError(null);
                         onSelectTool(selected ? "chat" : id);
-                        // Simulate with no video: the next step is +, so focus stays on the pill
+                        // Simulate or Edit with no video: the next step is +, so focus stays on the pill
                         // (the text would open the phone's keyboard). Every other tap: the text.
-                        if (id === "test" && !selected && !video) e.currentTarget.focus();
+                        if ((id === "test" || id === "edit") && !selected && !video) e.currentTarget.focus();
                         else focusText();
                       }}
                       className={PILL}

@@ -1235,6 +1235,227 @@ export type Database = {
         }
         Relationships: []
       }
+      edit_jobs: {
+        Row: {
+          call_id: string | null
+          created_at: string
+          error: string | null
+          finished_at: string | null
+          id: string
+          input: Json | null
+          kind: string
+          progress: number
+          result: Json | null
+          stage: string | null
+          started_at: string | null
+          status: string
+          take_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          call_id?: string | null
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          input?: Json | null
+          kind: string
+          progress?: number
+          result?: Json | null
+          stage?: string | null
+          started_at?: string | null
+          status?: string
+          take_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          call_id?: string | null
+          created_at?: string
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          input?: Json | null
+          kind?: string
+          progress?: number
+          result?: Json | null
+          stage?: string | null
+          started_at?: string | null
+          status?: string
+          take_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edit_jobs_take_owner_fkey"
+            columns: ["take_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "edit_takes"
+            referencedColumns: ["id", "user_id"]
+          },
+        ]
+      }
+      edit_takes: {
+        Row: {
+          analysis: Json | null
+          bytes: number
+          created_at: string
+          error: string | null
+          facts: Json | null
+          id: string
+          name: string
+          source_path: string
+          status: string
+          updated_at: string
+          user_id: string
+          words: Json | null
+        }
+        Insert: {
+          analysis?: Json | null
+          bytes: number
+          created_at?: string
+          error?: string | null
+          facts?: Json | null
+          id?: string
+          name: string
+          source_path: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          words?: Json | null
+        }
+        Update: {
+          analysis?: Json | null
+          bytes?: number
+          created_at?: string
+          error?: string | null
+          facts?: Json | null
+          id?: string
+          name?: string
+          source_path?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          words?: Json | null
+        }
+        Relationships: []
+      }
+      edit_turns: {
+        Row: {
+          at: number | null
+          created_at: string
+          doc: Json | null
+          edit_id: string
+          findings: Json
+          kept: Json
+          kind: string
+          n: number
+          request: string | null
+          say: string
+        }
+        Insert: {
+          at?: number | null
+          created_at?: string
+          doc?: Json | null
+          edit_id: string
+          findings?: Json
+          kept?: Json
+          kind: string
+          n: number
+          request?: string | null
+          say: string
+        }
+        Update: {
+          at?: number | null
+          created_at?: string
+          doc?: Json | null
+          edit_id?: string
+          findings?: Json
+          kept?: Json
+          kind?: string
+          n?: number
+          request?: string | null
+          say?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edit_turns_edit_id_fkey"
+            columns: ["edit_id"]
+            isOneToOne: false
+            referencedRelation: "edits"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      edits: {
+        Row: {
+          created_at: string
+          export_job: string | null
+          export_turn: number | null
+          head: number | null
+          id: string
+          look: string | null
+          style: Json | null
+          take_id: string
+          thread_id: string | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          export_job?: string | null
+          export_turn?: number | null
+          head?: number | null
+          id?: string
+          look?: string | null
+          style?: Json | null
+          take_id: string
+          thread_id?: string | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          export_job?: string | null
+          export_turn?: number | null
+          head?: number | null
+          id?: string
+          look?: string | null
+          style?: Json | null
+          take_id?: string
+          thread_id?: string | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "edits_export_job_fkey"
+            columns: ["export_job"]
+            isOneToOne: false
+            referencedRelation: "edit_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "edits_take_owner_fkey"
+            columns: ["take_id", "user_id"]
+            isOneToOne: false
+            referencedRelation: "edit_takes"
+            referencedColumns: ["id", "user_id"]
+          },
+          {
+            foreignKeyName: "edits_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       engine_training_videos: {
         Row: {
           bucket_match: boolean | null

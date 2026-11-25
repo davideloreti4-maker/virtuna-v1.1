@@ -52,7 +52,8 @@ describe("slashMatches", () => {
   });
 
   it("its copy is Home's cards' and More's rows', word for word", () => {
-    for (const home of HOME_SKILLS) {
+    // Edit is in no "/" list: the list is open to everyone and the editor is not; it is reached by its card and the field's pill.
+    for (const home of HOME_SKILLS.filter((skill) => skill.id !== "edit")) {
       const skill = SLASH_SKILLS.find((s) => s.id === home.id);
       expect(skill?.label).toBe(home.label);
       expect(skill?.line).toBe(home.line);

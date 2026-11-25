@@ -36,7 +36,7 @@
  *   useIdeasStream drives IdeasThreadView rendered above the composer when active.
  */
 
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 // CreditWallRefusal / isCreditWallRefusal went with `askAudience` (step 4) — it was the one
 // caller here that had to distinguish "refused" from "failed" to avoid recording a dead ask.
 import { reportCredit402 } from "@/lib/billing/credit-wall";
@@ -116,10 +116,14 @@ import { SlashMenu, slashMatches } from "@/components/thread-next/slash-menu";
 import {
   HOME_PLACEHOLDER_BY_TOOL,
   NEXT_PLACEHOLDER_BY_TOOL,
-  NEXT_SIMULATE_PLACEHOLDER,
   fieldSkillLabel,
+  videoPlaceholder,
 } from "@/components/thread-next/field-copy";
 import { HomeNext } from "@/components/home-next/home-next";
+// ── The editor's door (plan 2026-11-24-editor-screens-a, Task 16): new look only ──
+import { sendToEditor, simulates, stageableVideo, videoSkillOf } from "@/components/editor/start-edit";
+import { useEditOpen } from "@/components/editor/use-edit-open";
+import { validateVideoFile } from "@/lib/video-file";
 import { TextSimProvider } from "@/components/thread-next/text-sim";
 import { VideoRunning } from "@/components/thread-next/video-running";
 import { ThreadHeader } from "@/components/thread-next/thread-header";
@@ -260,6 +264,7 @@ const V8_SLASH_HIDDEN: readonly ToolId[] = [DEFAULT_TOOL];
 // vague placeholder ("Ask anything…") is now a dead end, not a small blemish.
 const PLACEHOLDER_BY_TOOL: Record<ToolId, string> = {
   test: PLACEHOLDER_EMPTY,
+  edit: "Add a raw take to edit…", // never shown: Edit is in no legacy menu (enabled: false)
   // Account takes NO input — the read resolves your own handle. Send runs it.
   account: "No input needed — press send and I'll read your latest posts…",
   idea: "A topic to build ideas around — or leave empty and I'll pick the angles…",
@@ -392,6 +397,12 @@ export interface ComposerProps {
 
 export function Composer({ className, onThreadChange, onEngagedChange, onConversationChange, onRehydratingChange, railHost = null }: ComposerProps) {
   const router = useRouter();
+  // The editor (plan 2026-11-24-editor-screens-a): whether it is open to this account (asked under the new look only), the
+  // field's video picker, which Home's Edit card clicks inside its own tap, and a send to the editor in flight. Its own flag,
+  // not `submitting`: that one is the video test's upload, and shows its running card in a chat whose last run was a Simulate.
+  const editOpen = useEditOpen();
+  const videoPickerRef = useRef<HTMLInputElement | null>(null);
+  const [openingEdit, setOpeningEdit] = useState(false);
   const { toast } = useToast();
   const reducedMotion = usePrefersReducedMotion();
   // P2 (A2a): ≥xl the room lives in HomePageLayout's rail, not the dock. useMediaQuery is SSR-safe
@@ -1170,7 +1181,10 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
                   // bare topic submit is inert for Profile.
                   : activeTool === "profile"
                     ? false
-                    : (isValidTikTok || file !== null) && !submitting;
+                    // Edit (the editor's door): a video and nothing else; a link is not a take.
+                    : activeTool === "edit"
+                      ? file !== null && !submitting
+                      : (isValidTikTok || file !== null) && !submitting;
 
   // ── Open-thread rehydration (Task 3 — D-14/THREAD-07) ─────────────────────
   // On mount, fetch the user's open-thread messages from GET /api/threads/open
@@ -2138,6 +2152,40 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   const handleSubmit = useCallback(async (toolOverride?: ToolId) => {
     const tool = toolOverride ?? activeTool;
 
+    // The editor (plan 2026-11-24-editor-screens-a, Task 16): a staged video sent with Edit goes to its own page. No run and no
+    // chat of this thread's: the take, its upload and the edit with its chat are the editor's (`start-edit.ts`). A door that
+    // does not open leaves the video staged and Edit armed, with its one sentence by the field.
+    if (tool === "edit") {
+      setSubmitError(null);
+      setOpeningEdit(true);
+      let opened = false;
+      try {
+        const sent = await sendToEditor(file, (href) => {
+          router.push(href);
+          // The field lets the video go as a transition asked for with the navigation's own (the router's `push` is one), so
+          // React commits the two together: until the editor's page takes the screen this one stays as it was sent (the
+          // video, Edit, the send busy), and a page that never comes leaves the field free, at rest, not busy for good.
+          startTransition(() => {
+            setFile(null);
+            setActiveTool(DEFAULT_TOOL);
+            setOpeningEdit(false);
+          });
+        });
+        opened = sent.ok;
+        if (!sent.ok) setSubmitError(sent.problem);
+      } finally {
+        if (!opened) setOpeningEdit(false);
+      }
+      return;
+    }
+
+    // With the editor open the field stages what either skill takes (`stageableVideo`), so a video sent with Simulate is held
+    // to Simulate's own limits here: its sentence by the field, the video still staged, nothing uploaded and no chat made.
+    if (tool === "test" && editOpen && file) {
+      const problem = validateVideoFile(file);
+      if (problem) return setSubmitError(problem);
+    }
+
     // Sending is consent to be shown the result. Re-pin BEFORE any branch runs — including the
     // ones that bail (the audience gate, an expired session, a bad URL), because those render
     // their notice at the bottom of the thread too, and a creator who had scrolled up to re-read
@@ -2540,7 +2588,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       setSubmitting(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTool, file, testBrief, isValidTikTok, trimmedUrl, stream, ideas, hooks, chat, script, remix, explore, platform, intent, persistedHookBlocks, persistedIdeaBlocks, hooksBlocks, ideasBlocks, selectedAudience, router, reloadProfileThread, queryClient, setActiveThreadId, scrollThreadToBottom]);
+  }, [activeTool, file, editOpen, testBrief, isValidTikTok, trimmedUrl, stream, ideas, hooks, chat, script, remix, explore, platform, intent, persistedHookBlocks, persistedIdeaBlocks, hooksBlocks, ideasBlocks, selectedAudience, router, reloadProfileThread, queryClient, setActiveThreadId, scrollThreadToBottom]);
 
   // ── Seam 4 — the launch-seed inlet (THE-CONTRACT.md §3) ────────────────────────
   // A surface (the start page's embedded composer) hands a composed intent off as a
@@ -2692,7 +2740,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     e.preventDefault();
     // The send button's own checks (`ThreadField`: online, not busy, Stop while a stream runs),
     // repeated because Enter submits this form whatever the button shows (residual fix).
-    if (!online || submitting || profiling || isAnyStreaming) return;
+    if (!online || submitting || profiling || isAnyStreaming || openingEdit) return;
     if (nextSendRef.current !== null) return; // the first send is still starting
     if (!evidenceFile && !canSubmit) return;
     // Read only for a send that goes: an Enter that sends nothing must not move the cursor when the
@@ -4213,15 +4261,13 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // Flag-off nothing here is built: `nextField` is null and the builder never runs.
   const buildNextField = () => {
     const placeholder =
-      activeTool === "test"
-        ? file
-          ? NEXT_SIMULATE_PLACEHOLDER.video
-          : NEXT_SIMULATE_PLACEHOLDER.empty
+      activeTool === "test" || activeTool === "edit"
+        ? videoPlaceholder(activeTool, file !== null)
         : NEXT_PLACEHOLDER_BY_TOOL[activeTool] ?? PLACEHOLDER_BY_TOOL[activeTool];
     // Home (spec 2026-11-23) has its own words at rest and for the skills that take a topic;
-    // Simulate keeps its pair, and a skill without Home words keeps the thread's.
+    // Simulate and Edit keep their pair, and a skill without Home words keeps the thread's.
     const shownPlaceholder =
-      nextHomeShown && activeTool !== "test" ? HOME_PLACEHOLDER_BY_TOOL[activeTool] ?? placeholder : placeholder;
+      nextHomeShown && activeTool !== "test" && activeTool !== "edit" ? HOME_PLACEHOLDER_BY_TOOL[activeTool] ?? placeholder : placeholder;
     const ariaLabel =
       activeTool === "idea"
         ? "Idea topic or angle (leave empty for Auto)"
@@ -4238,11 +4284,13 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
                   ? "A niche to explore"
                   : activeTool === "account"
                     ? "Read your account (send to start)"
+                    : activeTool === "edit"
+                      ? "Add a video to edit"
                     : hasSimulation
                   ? "Ask about this simulation"
                   : "Paste a TikTok link";
     // "Stop the run" is the field's own name for the disc while a run streams.
-    const sendLabel = evidenceFile ? "Read this evidence" : activeTool === "test" ? "Send to simulate" : activeTool === "idea" ? "Generate ideas" : activeTool === "hooks" ? "Generate hooks" : activeTool === "chat" ? "Send message" : activeTool === "script" ? "Generate script" : activeTool === "remix" ? "Remix video" : activeTool === "explore" ? "Run Explore" : activeTool === "account" ? "Read my account" : "Simulate";
+    const sendLabel = evidenceFile ? "Read this evidence" : activeTool === "test" ? "Send to simulate" : activeTool === "edit" ? "Send to edit" : activeTool === "idea" ? "Generate ideas" : activeTool === "hooks" ? "Generate hooks" : activeTool === "chat" ? "Send message" : activeTool === "script" ? "Generate script" : activeTool === "remix" ? "Remix video" : activeTool === "explore" ? "Run Explore" : activeTool === "account" ? "Read my account" : "Simulate";
     // A skill picked in More (Ideas, Explore, Read my account) has no pill: the More button names
     // it, with its price, while it is selected — so the field always says what the next send spends.
     // The account read is "Account" there (review ruling, fix round 2: its full name with the price
@@ -4306,24 +4354,34 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             // While the "/" skills are open the text is a search, not a message: Enter picks a skill,
             // and a tap on send must not send the slash.
             canSend={(evidenceFile ? !profiling : canSubmit) && nextSendLatch.phase === "off" && !slashActive}
-            busy={submitting || profiling}
+            busy={submitting || profiling || openingEdit}
             online={online}
             streaming={isAnyStreaming}
             onStop={() => stopActive()}
-            // The staged video shows only while Simulate is selected. A failed run keeps it (the
+            // The staged video shows only while Simulate (or Edit) is selected. A failed run keeps it (the
             // failure turn's retry re-reads it); a sealed run and a thread switch clear it
             // (final review 1, `nextRunInputsRef`).
-            video={activeTool === "test" ? file : null}
+            video={activeTool === "test" || activeTool === "edit" ? file : null}
             onVideoChange={(f) => {
               setFile(f);
+              // What the editor's door said about the video that was there (its own sentence, or Simulate's limit held at the
+              // send) goes with that video. Only where the editor is open, and never the video test's own two sentences,
+              // which stay until the text or the skill changes, as before.
+              if (editOpen && submitError !== null && submitError !== ERROR_UPLOAD_FAILED && submitError !== ERROR_SESSION_EXPIRED) setSubmitError(null);
               if (f) {
                 // One attachment at a time: the video replaces a staged evidence file.
                 setEvidenceFile(null);
                 setEvidenceError(null);
-                // A video in the field can only be simulated (spec §4.2).
-                handleUserSelectTool("test");
+                // A video in the field is simulated (spec §4.2), or edited where the editor is open: when Edit was
+                // picked, or only the editor takes the file (plan 2026-11-24-editor-screens-a).
+                handleUserSelectTool(videoSkillOf(f, activeTool, editOpen));
               }
             }}
+            // The editor's door: Home's Edit card opens this picker; with the editor open the field stages what either
+            // skill takes (a take past Simulate's 200 MB), and a thread's row has the Edit pill.
+            pickerRef={videoPickerRef}
+            validateVideo={editOpen ? stageableVideo : undefined}
+            editOpen={editOpen}
             evidence={evidenceFile}
             onRemoveEvidence={() => {
               setEvidenceFile(null);
@@ -4368,6 +4426,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
                     audience: { label: effectiveAudience.name, open: audienceSheetOpen, onOpen: () => setAudienceSheetOpen(true) },
                     picked: activeTool === DEFAULT_TOOL ? null : { label: fieldSkillLabel(activeTool), price: priceOfTool(activeTool) },
                     onClearPicked: () => handleUserSelectTool(DEFAULT_TOOL),
+                    // A staged video with the editor open: Simulate or Edit, switched in the field.
+                    videoSkill:
+                      editOpen && file && (activeTool === "test" || activeTool === "edit")
+                        ? { picked: activeTool, simulate: simulates(file), onPick: handleUserSelectTool }
+                        : null,
                   }
                 : null
             }
@@ -4694,7 +4757,12 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           credits={shownBalance(usage, billingTier, isTrial)}
           // The cards go while a skill is picked and while the "/" list is open over them.
           picked={activeTool !== DEFAULT_TOOL || slashActive}
-          onPickSkill={handleUserSelectTool}
+          onPickSkill={(id) => {
+            handleUserSelectTool(id);
+            // Edit's card opens the video picker inside the tap: iOS drops a picker opened any later.
+            if (id === "edit") videoPickerRef.current?.click();
+          }}
+          editOpen={editOpen}
           // "More skills": the field's own More sheet; a pick there arms as a pill tap does.
           onMore={() => setMoreOpen(true)}
         />

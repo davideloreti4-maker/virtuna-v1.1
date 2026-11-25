@@ -63,9 +63,10 @@ export function NextShell({ children }: { children: React.ReactNode }) {
   // the route, before the browser paints, so no tap on the new screen (a Library row setting the
   // marker) can come before it. The row's name for an untitled chat and Library's scroll go with
   // the marker. After the Back below there is nothing to drop: Library takes its scroll on arrival.
+  // An edit opened from the chat keeps it too (plan 2026-11-24-editor-screens-a).
   const threadBack = useShellStore((s) => s.threadBack);
   useLayoutEffect(() => {
-    if (pathname === "/home" || pathname.startsWith("/simulation/")) return;
+    if (pathname === "/home" || pathname.startsWith("/simulation/") || pathname.startsWith("/edit/")) return;
     const shell = useShellStore.getState();
     if (shell.threadBack !== null || shell.threadTitleHint !== null) shell.setThreadBack(null);
   }, [pathname]);
@@ -95,6 +96,8 @@ export function NextShell({ children }: { children: React.ReactNode }) {
   // a chat's Back only ever returns to Library. Every other pushed page keeps Back.
   const menuInBand = inThread && !threadBack;
   const onPlace = onPlaceScreen(pathname, threadOpen);
+  // The editor draws its own header in the band: Back, Undo, Redo and Export (E19), more than the pushed header's one action.
+  const ownHeader = pathname.startsWith("/edit/");
   // While the list loads the title stays empty, so the header does not flash "New chat" first.
   const threadTitle = useThreadTitle();
 
@@ -108,7 +111,7 @@ export function NextShell({ children }: { children: React.ReactNode }) {
       <div className="h-screen overflow-hidden bg-background">
         <SideNav actions={actions} />
 
-        {!onPlace && (
+        {!onPlace && !ownHeader && (
           // The band is exactly what <main> reserves (MOBILE_NAV_BAND below the safe area), from the
           // same constant, so the two cannot drift; the 40px row is centred in it. A column flex,
           // not a row: as a row item the header would shrink to its content and lose its width.

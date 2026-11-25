@@ -169,6 +169,7 @@ describe("hasResultCard", () => {
         "script-card",
         "remix-card",
         "video-test-card",
+        "edit",
         "composed-card",
         "outlier-grid",
         "account-read",

@@ -1,0 +1,17 @@
+# What media-requirements.txt is compiled from (Task 4): torch and torchaudio's CPU builds, faster-whisper, silero-vad,
+# num2words, and what WhisperX 3.8.6's aligner imports. Constrained by media-constraints.txt.
+torch==2.8.0
+torchaudio==2.8.0
+transformers==4.57.6
+huggingface-hub==0.35.3
+tokenizers==0.22.1
+safetensors==0.6.2
+numpy==2.2.6
+pandas==2.2.3
+nltk==3.9.4
+faster-whisper==1.2.0
+ctranslate2==4.6.0
+av==15.1.0
+onnxruntime==1.23.1
+silero-vad==6.2.3
+num2words==0.5.14

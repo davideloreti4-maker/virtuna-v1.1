@@ -7,7 +7,7 @@ import { PushPin } from "@phosphor-icons/react";
 import type { ShellIcon } from "@/components/shell/icons";
 import { SmallGauge } from "@/components/thread-next/answer-gauge";
 import { VideoIcon } from "@/components/thread-next/answer-icons";
-import { BulbIcon, DocIcon, LoopIcon, PenIcon } from "@/components/thread-next/field-icons";
+import { BulbIcon, DocIcon, LoopIcon, PenIcon, ScissorsIcon } from "@/components/thread-next/field-icons";
 import { StoredStill, VideoThumb } from "@/components/thread-next/video-answer";
 import type { PieceKind } from "@/lib/library/chat-summary";
 import type { PostedUsual } from "@/lib/posted/posted";
@@ -128,6 +128,7 @@ const MARK: Record<PieceKind, ShellIcon> = {
   ideas: BulbIcon,
   text: DocIcon,
   chat: ChatIcon,
+  edit: ScissorsIcon,
 };
 
 /**

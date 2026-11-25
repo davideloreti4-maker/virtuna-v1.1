@@ -37,8 +37,8 @@ export const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0
 export const SAID_MEASURES = ["stop", "end"] as const;
 export const READ_ERRORS = ["gone", "failed"] as const;
 
-/** What a posted piece can be: the Library's piece kinds, without a plain chat. */
-export type PostedPieceKind = Exclude<PieceKind, "chat">;
+/** What a posted piece can be: the Library's piece kinds, without a plain chat or an edit (an edit's post is piece 3's). */
+export type PostedPieceKind = Exclude<PieceKind, "chat" | "edit">;
 /** Every kind once (a kind added to `PieceKind` and missing here, or one too many, fails the types). */
 const KINDS = { video: true, script: true, remix: true, hooks: true, ideas: true, text: true } satisfies Record<PostedPieceKind, true>;
 export const PIECE_KINDS = Object.keys(KINDS) as readonly PostedPieceKind[];

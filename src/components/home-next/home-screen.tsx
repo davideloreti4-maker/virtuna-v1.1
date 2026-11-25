@@ -15,7 +15,7 @@ import {
 } from "@/components/library-next/chat-row";
 import { EARN } from "@/components/shell/nav-config";
 import type { ShellIcon } from "@/components/shell/icons";
-import { ChevronIcon, DocIcon, LoopIcon, PenIcon, PulseIcon } from "@/components/thread-next/field-icons";
+import { ChevronIcon, DocIcon, LoopIcon, MoreIcon, PenIcon, PulseIcon, ScissorsIcon } from "@/components/thread-next/field-icons";
 import { creditsLabel } from "@/components/thread-next/thread-field";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -32,6 +32,10 @@ import { cn } from "@/lib/utils";
  *   the field                        the field, 720 wide
  *   the four skills, two by two      the four skills in one row (two by two under 760)
  *   More skills                      More skills (the More sheet: Ideas, Explore, Read my account)
+ *
+ * For an account the editor is open to (`editOpen`; plan 2026-11-24-editor-screens-a, drawing `editor-v2-row-A.png` screen 1)
+ * the cards are six, two by two on a phone and three by two from 760: Simulate, Edit, Hooks, Script, Remix and More, which
+ * takes the "More skills" line's place and opens the same sheet. Every other account keeps the four and the line.
  *   Recent ············· Library     Recent only while the sidebar is the rail, as wide as the field
  *
  * A recent chat is drawn as Library draws it: its tile, its title, its line
@@ -48,11 +52,12 @@ import { cn } from "@/lib/utils";
  * it is loading its space is held (empty, silent), so nothing moves when it lands.
  */
 
-export type HomeSkillId = "test" | "hooks" | "script" | "remix";
+export type HomeSkillId = "test" | "edit" | "hooks" | "script" | "remix";
 
-/** The four skills, in the drawn order. "Simulate" is the video test (`test`). */
+/** The skills, in the drawn order. "Simulate" is the video test (`test`); Edit only for an account the editor is open to. */
 export const HOME_SKILLS: ReadonlyArray<{ id: HomeSkillId; label: string; line: string }> = [
   { id: "test", label: "Simulate", line: "See who keeps watching" },
+  { id: "edit", label: "Edit", line: "A raw take to a finished video" },
   { id: "hooks", label: "Hooks", line: "Openings for an idea" },
   { id: "script", label: "Script", line: "A full script, timed" },
   { id: "remix", label: "Remix", line: "Rebuild a proven video" },
@@ -60,6 +65,7 @@ export const HOME_SKILLS: ReadonlyArray<{ id: HomeSkillId; label: string; line: 
 
 const ICON_BY_SKILL: Record<HomeSkillId, ShellIcon> = {
   test: PulseIcon,
+  edit: ScissorsIcon,
   hooks: PenIcon,
   script: DocIcon,
   remix: LoopIcon,
@@ -115,18 +121,19 @@ export interface HomeScreenProps {
   onOpenThread(id: string): void;
   recentOnDesktop: boolean;                  // false while the sidebar lists the same chats
   onMore(): void;                            // "More skills": the More sheet (Ideas, Explore, Read my account)
+  editOpen?: boolean;                        // the editor is open to this account: six cards, More the sixth (E3)
 }
 
-function SkillCard({ id, label, line, onPick }: { id: HomeSkillId; label: string; line: string; onPick(id: HomeSkillId): void }) {
-  // Named for the skill alone, so "tap Hooks" finds it; its line is the description.
+function SkillCard({ label, line, icon: Icon, onPick, popup = false }: { label: string; line: string; icon: ShellIcon; onPick(): void; popup?: boolean }) {
+  // Named for the skill alone, so "tap Hooks" finds it; its line is the description. `popup`: the card opens a sheet (More).
   const uid = useId();
-  const Icon = ICON_BY_SKILL[id];
   return (
     <button
       type="button"
       aria-labelledby={`${uid}-name`}
       aria-describedby={`${uid}-line`}
-      onClick={() => onPick(id)}
+      aria-haspopup={popup ? "dialog" : undefined}
+      onClick={onPick}
       // As drawn: the tile radius (20) and padding 12 / 14 / 13, 16 / 18 in the row of four.
       className="flex w-full flex-col items-start rounded-2xl bg-surface px-3.5 pb-[13px] pt-3 text-left shadow-[var(--shadow-rest)] transition-shadow duration-150 hover:shadow-[var(--shadow-lift)] @min-[760px]:px-[18px] @min-[760px]:py-4"
     >
@@ -239,6 +246,7 @@ export function HomeScreen({
   onOpenThread,
   recentOnDesktop,
   onMore,
+  editOpen = false,
 }: HomeScreenProps): React.JSX.Element {
   const recentId = useId();
   // When a card was last picked (see PICK_SETTLE_MS): a click on Recent inside the window is the
@@ -303,24 +311,39 @@ export function HomeScreen({
 
         {!picked && (
           <>
-            <ul className="mt-3 grid grid-cols-2 gap-2 @min-[760px]:mt-[18px] @min-[760px]:grid-cols-4 @min-[760px]:gap-4">
-              {HOME_SKILLS.map((skill) => (
+            {/* Six for an account the editor is open to (E3): Simulate, Edit, Hooks, Script, Remix, and More as the
+                sixth card, three by two from 760; else the four and the "More skills" line, as before (no closed door, E11). */}
+            <ul
+              aria-label="Skills"
+              className={cn(
+                "mt-3 grid grid-cols-2 gap-2 @min-[760px]:mt-[18px] @min-[760px]:gap-4",
+                editOpen ? "@min-[760px]:grid-cols-3" : "@min-[760px]:grid-cols-4",
+              )}
+            >
+              {HOME_SKILLS.filter((skill) => skill.id !== "edit" || editOpen).map((skill) => (
                 <li key={skill.id} className="flex">
-                  <SkillCard id={skill.id} label={skill.label} line={skill.line} onPick={pickSkill} />
+                  <SkillCard label={skill.label} line={skill.line} icon={ICON_BY_SKILL[skill.id]} onPick={() => pickSkill(skill.id)} />
                 </li>
               ))}
+              {editOpen && (
+                <li className="flex">
+                  <SkillCard label="More" line="Ideas, Explore, your account" icon={MoreIcon} popup onPick={onMore} />
+                </li>
+              )}
             </ul>
-            {/* Ideas, Explore and Read my account: on Home otherwise only behind "/", which nobody
-                types on a phone. The thread's More sheet. `py-1` keeps the 44 px halo of
-                `.tap-44` off the cards above (8 px away). */}
-            <button
-              type="button"
-              aria-haspopup="dialog"
-              onClick={onMore}
-              className="tap-44 mt-2 self-center py-1 text-ui text-foreground-secondary hover:text-foreground"
-            >
-              More skills
-            </button>
+            {!editOpen && (
+              // Ideas, Explore and Read my account: on Home otherwise only behind "/", which nobody
+              // types on a phone. The thread's More sheet. `py-1` keeps the 44 px halo of
+              // `.tap-44` off the cards above (8 px away).
+              <button
+                type="button"
+                aria-haspopup="dialog"
+                onClick={onMore}
+                className="tap-44 mt-2 self-center py-1 text-ui text-foreground-secondary hover:text-foreground"
+              >
+                More skills
+              </button>
+            )}
           </>
         )}
 

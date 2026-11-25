@@ -36,6 +36,7 @@ import { VideoTestCardRenderer } from '@/components/thread/video-test-card-block
 import { CorpusReferencesBlockRenderer } from '@/components/thread/corpus-references-block';
 import { BroughtCardRenderer } from '@/components/thread/brought-card-block';
 import { ComposedCardRenderer } from '@/components/thread/composed-card-block';
+import { EditBlockRenderer } from '@/components/thread/edit-block';
 import { UnsupportedBlock } from './unsupported-block';
 
 // Component map: same keys as BLOCK_REGISTRY (TypeScript enforces completeness).
@@ -69,6 +70,7 @@ const BLOCK_COMPONENTS: Record<BlockType, React.ComponentType<{ block: any }>> =
   "reaction-distribution": ReactionDistributionBlockRenderer,
   "prediction-gauge": PredictionGaugeBlockRenderer,
   "video-test-card": VideoTestCardRenderer,
+  edit: EditBlockRenderer,
 };
 
 export interface MessageBlocksProps {

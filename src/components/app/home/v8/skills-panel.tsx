@@ -53,6 +53,8 @@ export const PROMISE_BY_TOOL: Record<ToolId, string> = {
   explore: "See what's breaking out — in your niche, or any competitor's.",
   test: "Upload a real video or paste a link. SIM-1 Max watches it the way your audience would and hands back the full read.",
   account: "A read on your own posts — what's landing, what isn't, and why.",
+  // Never shown here: Edit is `enabled: false` in SKILLS (the editor is reached from Home under the new look).
+  edit: "A raw take in, a finished video out: cut, captioned and labelled, then changed by asking.",
   // The default lane's promise, rewritten for its AUTO identity. Honest about the seam:
   // the chat agent calls ideas / hooks / scripts as real tools (skill-dispatch.ts), and
   // answers in its own voice when the ask isn't one of them.

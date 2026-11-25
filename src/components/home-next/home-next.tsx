@@ -137,9 +137,11 @@ export interface HomeNextProps {
   picked: boolean;
   onPickSkill(id: HomeSkillId): void;
   onMore(): void;
+  /** The editor is open to this account: Home shows its six cards (plan 2026-11-24-editor-screens-a). */
+  editOpen?: boolean;
 }
 
-export function HomeNext({ field, credits, picked, onPickSkill, onMore }: HomeNextProps): React.JSX.Element {
+export function HomeNext({ field, credits, picked, onPickSkill, onMore, editOpen = false }: HomeNextProps): React.JSX.Element {
   // Until the profile has answered, the heading holds: "Good morning." growing a name a moment
   // later reads as a flicker on the first screen.
   // Only while the first attempt is out: the query stays pending through its retries, and a
@@ -198,6 +200,7 @@ export function HomeNext({ field, credits, picked, onPickSkill, onMore }: HomeNe
       // The sidebar's own Recent is on screen only while it is open.
       recentOnDesktop={collapsed}
       onMore={onMore}
+      editOpen={editOpen}
     />
   );
 }

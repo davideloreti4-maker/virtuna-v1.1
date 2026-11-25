@@ -1,0 +1,33 @@
+{
+  "about": "Part 3's proof (Task 14): plain requests on the owner's take, each made on its house first cut (a creator never sees a raw edit) and run three times by scripts/edit-agent-proof.ts. Across the whole file they name two single words of the take and no more (takeWords: one to hang a call-out and a zoom on, one that closes a sentence, to punch in at, to stress and to swap); every text they ask to be written is made up. expect: done, the change is made and nothing else; refused, say tells what cannot be done and the edit changes only by the possible part. setup: what the script puts on the first cut before the request.",
+  "takeWords": ["Claude", "available"],
+  "requests": [
+    { "id": "r01", "request": "Make the captions bigger.", "start": "first-cut", "expect": "done" },
+    { "id": "r02", "request": "Put the captions higher, above my chin.", "start": "first-cut", "expect": "done" },
+    { "id": "r03", "request": "Use the pill caption style.", "start": "first-cut", "expect": "done", "note": "The brief's 'pop' is what a first cut already has: asked for the other look, so there is a change to see." },
+    { "id": "r04", "request": "Turn the captions off.", "start": "first-cut", "expect": "done" },
+    { "id": "r05", "request": "Change the hook to say \"Day one\".", "start": "first-cut", "expect": "done", "note": "The brief's 'add a hook title' on a first cut, which has one." },
+    { "id": "r06", "request": "Add a call-out \"New tool\" when I say Claude.", "start": "first-cut", "expect": "done" },
+    { "id": "r07", "request": "Add a closing line \"Follow for more\" over the last two seconds.", "start": "first-cut", "expect": "done" },
+    { "id": "r08", "request": "Make it snappier: cut the pauses shorter.", "start": "first-cut", "expect": "done" },
+    { "id": "r09", "request": "Cut out the first second.", "start": "first-cut", "expect": "done" },
+    { "id": "r10", "request": "Remove everything after the last word.", "start": "first-cut", "setup": "loose-ends", "expect": "done", "note": "Task 14b: a first cut already ends on its last word, so the script first returns the film to the take's own ends." },
+    { "id": "r11", "request": "Make it warmer.", "start": "first-cut", "expect": "done" },
+    { "id": "r12", "request": "Black and white please.", "start": "first-cut", "expect": "done" },
+    { "id": "r13", "request": "Slowly zoom in on my face over the whole video.", "start": "first-cut", "expect": "done" },
+    { "id": "r14", "request": "Punch in when I say available.", "start": "first-cut", "expect": "done" },
+    { "id": "r15", "request": "Add a progress bar at the top.", "start": "first-cut", "expect": "done" },
+    { "id": "r16", "request": "Stress the word \"available\" in the captions.", "start": "first-cut", "expect": "done" },
+    { "id": "r17", "request": "In the captions, write \"out\" instead of \"available\".", "start": "first-cut", "expect": "done" },
+    { "id": "r18", "request": "Remove the title.", "start": "first-cut", "expect": "done" },
+    { "id": "r19", "request": "Make the whole video 1.25 times faster.", "start": "first-cut", "expect": "done" },
+    { "id": "r20", "request": "Move the call-out so it does not cover my mouth.", "start": "first-cut", "setup": "callout-on-mouth", "expect": "done", "note": "A first cut has no call-out: the script puts one over the mouth first." },
+    { "id": "r21", "request": "Captions lower and in the pill style.", "start": "first-cut", "expect": "done", "note": "The 2026-11-19 proof's request, with the look a first cut does not already have." },
+    { "id": "r22", "request": "Zoom in on \"Claude\" and add a whoosh.", "start": "first-cut", "expect": "refused", "note": "The 2026-11-19 proof's request. The kit has no sounds yet: the zoom may be done, the whoosh is said not possible." },
+    { "id": "r23", "request": "Make me taller.", "start": "first-cut", "expect": "refused" },
+    { "id": "r24", "request": "Add background music.", "start": "first-cut", "expect": "refused" },
+    { "id": "r25", "request": "Make me look younger.", "start": "first-cut", "expect": "refused", "note": "Task 14b: with r23, a request about the person, which no operation changes." },
+    { "id": "r26", "request": "Change my background.", "start": "first-cut", "expect": "refused", "note": "Task 14b: a request about the place the creator is in." },
+    { "id": "r27", "request": "Cut the silence before I start.", "start": "first-cut", "setup": "loose-ends", "expect": "done", "note": "Task 14b: r10's mirror, on the same base." }
+  ]
+}

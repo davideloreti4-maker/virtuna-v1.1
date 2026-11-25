@@ -1,0 +1,74 @@
+{
+  "presets": [
+    {
+      "id": "sentences",
+      "name": "Sentences",
+      "description": "Whole sentences in small white type, as a phone captions a video. A light label holds the hook.",
+      "pauseMs": 250,
+      "captions": { "on": true, "look": "plain", "font": "tiktok", "size": 52, "y": 0.76, "maxWords": 10, "highlight": null },
+      "title": { "on": true, "y": 0.18, "frames": 90, "look": "label", "size": 64, "ink": "#111111", "stays": true },
+      "punchIns": null,
+      "look": "natural"
+    },
+    {
+      "id": "clean",
+      "name": "Clean",
+      "description": "Small captions on a dark pill. Calm, no zooms.",
+      "pauseMs": 320,
+      "captions": { "on": true, "look": "pill", "font": "inter", "size": 68, "y": 0.76, "maxWords": 4, "highlight": null },
+      "title": { "on": true, "y": 0.18, "frames": 90, "look": "label", "size": 110 },
+      "punchIns": null,
+      "look": "natural"
+    },
+    {
+      "id": "one-word",
+      "name": "One word",
+      "description": "One huge word at a time, tight cuts, hard zooms.",
+      "pauseMs": 150,
+      "captions": { "on": true, "look": "pop", "font": "tiktok", "size": 150, "y": 0.64, "maxWords": 1, "highlight": "#ffe14a" },
+      "title": { "on": true, "y": 0.2, "frames": 60, "look": "bold", "size": 140 },
+      "punchIns": { "perMin": 14, "zoom": 1.2 },
+      "look": "natural"
+    },
+    {
+      "id": "highlighter",
+      "name": "Highlighter",
+      "description": "Each word lights up on a block of colour.",
+      "pauseMs": 220,
+      "captions": { "on": true, "look": "highlight", "font": "montserrat", "size": 88, "y": 0.7, "maxWords": 3, "highlight": "#4ade80" },
+      "title": { "on": true, "y": 0.2, "frames": 75, "look": "outline", "size": 130 },
+      "punchIns": { "perMin": 6, "zoom": 1.15 },
+      "look": "natural"
+    },
+    {
+      "id": "key-words",
+      "name": "Key words",
+      "description": "Plain white captions; only the words that matter take colour.",
+      "pauseMs": 250,
+      "captions": { "on": true, "look": "plain", "font": "montserrat", "size": 88, "y": 0.72, "maxWords": 4, "highlight": "#ffe14a" },
+      "title": { "on": true, "y": 0.2, "frames": 75, "look": "bold", "size": 120 },
+      "punchIns": { "perMin": 6, "zoom": 1.12 },
+      "look": "natural"
+    },
+    {
+      "id": "mono",
+      "name": "Black and white",
+      "description": "Black and white, quiet type, unhurried.",
+      "pauseMs": 350,
+      "captions": { "on": true, "look": "plain", "font": "inter", "size": 72, "y": 0.74, "maxWords": 4, "highlight": null },
+      "title": null,
+      "punchIns": null,
+      "look": "mono"
+    },
+    {
+      "id": "bold-pop",
+      "name": "Bold pop",
+      "description": "Big white words, the one being said in yellow. A hook up top, light zooms.",
+      "pauseMs": 220,
+      "captions": { "on": true, "look": "pop", "font": "tiktok", "size": 96, "y": 0.72, "maxWords": 3, "highlight": "#ffe14a" },
+      "title": { "on": true, "y": 0.2, "frames": 75, "look": "bold", "size": 130 },
+      "punchIns": { "perMin": 8, "zoom": 1.15 },
+      "look": "natural"
+    }
+  ]
+}

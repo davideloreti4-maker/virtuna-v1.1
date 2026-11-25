@@ -1,0 +1,6 @@
+# What web-requirements.txt is compiled from (Task 6): the web address's packages. FastAPI with the Starlette it
+# was first built with and pydantic at its release of two weeks before; requests for the rows.
+fastapi==0.162.0
+starlette==1.10.0
+pydantic==2.14.3
+requests==2.32.5
