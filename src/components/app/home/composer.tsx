@@ -5094,10 +5094,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           // limit (`readingsBalanceLabel`'s rule). An account with no plan still runs its skills.
           credits={shownBalance(usage, billingTier, isTrial)}
           // A card's tap: the skill is picked in the field, as a pill tap does; the cards stay. Edit's
-          // card also opens the video picker inside the tap: iOS drops a picker opened any later.
+          // card also opens the video picker inside the tap (iOS drops a picker opened any later),
+          // unless a video is already staged: then the tap only picks Edit for it.
           onPickSkill={(id) => {
             handleUserSelectTool(id);
-            if (id === "edit") videoPickerRef.current?.click();
+            if (id === "edit" && !file) videoPickerRef.current?.click();
           }}
           // The editor open: six cards, the sixth More, which opens the field's own More sheet.
           editOpen={editOpen}

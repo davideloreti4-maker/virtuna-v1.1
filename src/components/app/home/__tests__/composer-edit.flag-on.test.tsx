@@ -153,6 +153,18 @@ describe("Home's door to the editor", () => {
     expect(askedOf("/api/edit/takes")).toEqual([]);
   });
 
+  it("a video already staged: the Edit card picks Edit and does not open the picker again", async () => {
+    await renderHome();
+    const edit = await findCard("Edit");
+    pick(clip());
+    await waitFor(() => expect(pill("Simulate")).toHaveAttribute("aria-pressed", "true"));
+    const click = vi.spyOn(picker(), "click");
+    fireEvent.click(edit);
+    await waitFor(() => expect(pill("Edit")).toHaveAttribute("aria-pressed", "true"));
+    expect(click).not.toHaveBeenCalled();
+    expect(text().placeholder).toBe("Send to edit this video");
+  });
+
   it("Edit, then a video: staged as an Edit, and its send signs for the take, makes the edit and opens its page", async () => {
     await renderHome();
     fireEvent.click(await findCard("Edit"));
