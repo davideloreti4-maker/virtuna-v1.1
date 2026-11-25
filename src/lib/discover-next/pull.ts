@@ -31,8 +31,8 @@ export const PULL_INPUT_MAX = 200;
 const WORDS_MIN = 3;
 
 /** A multiple from which a pulled video is proof, and the one past which it is shaky. */
-const PROVEN_FROM = 3;
-const EXTREME_FROM = 100;
+export const PROVEN_FROM = 3;
+export const EXTREME_FROM = 100;
 
 /** What a pull reads: a creator ("@jay.makes") or words. `input` is what the server is sent. */
 export type PullSubject =
@@ -148,7 +148,7 @@ export interface PulledVideo extends CardVideo {
 const HASHTAG = /#(?=[\p{L}\p{N}_]*\p{L})[\p{L}\p{N}_]+/gu;
 
 /** The caption as a card's line: without its hashtags, spaces collapsed; null when nothing is left. */
-function captionLine(caption: unknown): string | null {
+export function captionLine(caption: unknown): string | null {
   if (typeof caption !== "string") return null;
   const line = caption.replace(HASHTAG, " ").replace(/\s+/g, " ").trim();
   return line || null;

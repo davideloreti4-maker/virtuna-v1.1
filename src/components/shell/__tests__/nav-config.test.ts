@@ -29,6 +29,7 @@ describe('activePlace: which place is lit', () => {
     ['/feed', 'discover'],
     ['/feed/discover', 'discover'],
     ['/competitors', 'discover'],
+    ['/competitors/jay.makes', 'discover'],
     ['/discover', 'discover'],
     ['/library', 'library'],
     ['/saved', 'library'],
@@ -111,6 +112,23 @@ describe("backInHistory: Discover's pushed pages go back to the grid as it was l
       expect(backInHistory(pathname)).toBe(false);
     },
   );
+});
+
+describe("backInHistory: a creator's page goes back to the Watchlist as it was left", () => {
+  it.each(['/competitors/jay.makes', '/competitors/nia.cooks'])('%s goes back in history', (pathname) => {
+    expect(backInHistory(pathname)).toBe(true);
+  });
+
+  it.each(['/competitors', '/competitors/', '/competitors/compare', '/competitors/jay.makes/videos'])(
+    '%s does not',
+    (pathname) => {
+      expect(backInHistory(pathname)).toBe(false);
+    },
+  );
+
+  it('with no history to go back in, Back goes up to Discover', () => {
+    expect(backTarget('/competitors/jay.makes')).toBe('/feed');
+  });
 });
 
 describe('backInHistory: You, Earn and Settings go back to where the menu opened them', () => {

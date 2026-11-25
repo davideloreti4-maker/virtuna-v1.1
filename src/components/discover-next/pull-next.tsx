@@ -1,24 +1,19 @@
 "use client";
 
 import * as React from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { useThreadActions } from "@/components/shell/use-thread-actions";
 import { useToast } from "@/components/ui/toast";
 import { useAddChannel, type AddChannelError } from "@/hooks/queries/use-channels";
 import { reportSession401 } from "@/lib/auth/session-expired";
 import { followRefused } from "@/lib/discover-next/discover-words";
 import type { PullTarget, PulledVideo } from "@/lib/discover-next/pull";
 import { keepPullOnlyAt, takePull } from "@/lib/discover-next/pull-intent";
-import { pulledVideoSaveOf } from "@/lib/discover-next/saved-ref";
-import { leaveRemixFrom } from "@/lib/thread-next/remix-from";
 
 import { PullScreen, PullScreenLoading, type FollowState } from "./pull-screen";
-import { PulledSheet, type PulledSheetProps } from "./pulled-sheet";
-import { RemixSheet } from "./remix-sheet";
+import { PulledVideoLayer } from "./pulled-video-next";
 import { usePull } from "./use-pull";
-import { useVideoSave } from "./use-video-save";
 
 /**
  * The pull page with its data (spec 3.6): `/feed/discover?input=…` under the new look. The route reads
@@ -48,20 +43,11 @@ export interface PullNextProps {
   followed: boolean;
 }
 
-/** The open video's sheet, with its own Save (keyed by the video: each starts with its own mark). */
-function OpenedSheet({ video, ...rest }: Omit<PulledSheetProps, "saved" | "saveReady" | "onSave">) {
-  const row = useMemo(() => pulledVideoSaveOf(video), [video]);
-  const save = useVideoSave(row);
-  // A list that could not be read is still a choice: a press asks for it again.
-  return <PulledSheet video={video} saved={save.saved} saveReady={save.ready || save.unread} onSave={save.toggle} {...rest} />;
-}
-
 function PullPage({ subject, followed }: PullNextProps) {
   const router = useRouter();
   const { toast } = useToast();
   const { state, start } = usePull(subject.kind === "not-tiktok" ? null : subject);
   const add = useAddChannel();
-  const { newThreadAt } = useThreadActions();
 
   // Arrival: the intent a Pull button armed, taken once and kept.
   const taken = useRef<boolean | null>(null);
@@ -95,10 +81,9 @@ function PullPage({ subject, followed }: PullNextProps) {
     }
   };
 
-  // The pulled video's sheet, the question before a remix, and the card they both go back to.
+  // The pulled video's sheet (its layer asks before a remix), and the card they both go back to.
   const [opened, setOpened] = useState<PulledVideo | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [asking, setAsking] = useState(false);
   const card = useRef<HTMLElement | null>(null);
   const toCard = () => card.current;
 
@@ -108,37 +93,10 @@ function PullPage({ subject, followed }: PullNextProps) {
     setSheetOpen(true);
   };
 
-  // A remix left for Home, from this card or another: every card's Remix waits until the page goes. A remix
-  // is paid, and one is all a creator asked for. Left as of the last press, not the last render.
-  const [waiting, setWaiting] = useState(false);
-  const starting = useRef(false);
-  const startRemix = (brief: string | null) => {
-    const video = opened;
-    if (!video || starting.current || waiting) return;
-    if (!leaveRemixFrom({ url: video.videoUrl ?? "", platform: video.platform, brief })) return;
-    starting.current = true;
-    setWaiting(true);
-    newThreadAt("/home");
-  };
-
   return (
     <>
       <PullScreen target={subject} state={state} onPull={pull} follow={followState} onFollow={() => void onFollow()} onOpen={open} />
-      {opened && (
-        <OpenedSheet
-          key={opened.id}
-          video={opened}
-          open={sheetOpen}
-          onOpenChange={setSheetOpen}
-          remixWaiting={waiting}
-          onRemix={() => {
-            setSheetOpen(false);
-            setAsking(true);
-          }}
-          returnFocus={toCard}
-        />
-      )}
-      <RemixSheet open={asking} onOpenChange={setAsking} onRemix={startRemix} returnFocus={toCard} />
+      <PulledVideoLayer video={opened} open={sheetOpen} onOpenChange={setSheetOpen} returnFocus={toCard} />
     </>
   );
 }

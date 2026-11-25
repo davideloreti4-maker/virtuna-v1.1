@@ -1,18 +1,18 @@
 "use client";
 
 import * as React from "react";
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 import { usePushedTitle } from "@/components/result/use-pushed-title";
 import { Chip } from "@/components/ui/chip";
-import { cardName } from "@/lib/discover-next/card";
 import { DISCOVER_STRINGS, pullNone, pullRunning, videosRead } from "@/lib/discover-next/discover-words";
 import type { PullState, PullTarget, PulledVideo } from "@/lib/discover-next/pull";
 import { cn } from "@/lib/utils";
 
 import { PullOffer } from "./pull-offer";
+import { PulledCard } from "./pulled-card";
 import { PushedHeader } from "./pushed-header";
-import { CARD_BOX, VideoCardFace, VideoCardOutline, cardDescribedBy } from "./video-card";
+import { VideoCardOutline } from "./video-card";
 import { useWide } from "./use-wide";
 import { GRID } from "./videos-panel";
 
@@ -82,27 +82,6 @@ function FollowButton({ state, onFollow }: { state: FollowState; onFollow(): voi
     >
       {done ? S.following : S.follow}
     </Chip>
-  );
-}
-
-/** A pulled video as a card: the library card's face, as a button (it has no page; a press opens its sheet). */
-function PulledCard({ video, onOpen }: { video: PulledVideo; onOpen(video: PulledVideo, from: HTMLElement): void }) {
-  const id = useId();
-  return (
-    <button
-      type="button"
-      aria-label={cardName(video)}
-      aria-describedby={cardDescribedBy(id, video)}
-      aria-haspopup="dialog"
-      onClick={(e) => {
-        // Safari does not focus a button on a tap: focused here, so the sheet has it to hand back.
-        e.currentTarget.focus();
-        onOpen(video, e.currentTarget);
-      }}
-      className={cn(CARD_BOX, "w-full text-left")}
-    >
-      <VideoCardFace video={video} id={id} />
-    </button>
   );
 }
 

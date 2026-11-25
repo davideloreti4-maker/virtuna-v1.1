@@ -5,7 +5,8 @@
  * anything the page does not know reads as its default. The address is the one source of the view:
  * the hub reads it and writes it with the History API, so Back from a video returns to the same grid.
  *
- * Also the other Discover addresses: a video's page, a collection's page, the pull page. Pure, and
+ * Also the other Discover addresses: a video's page, a collection's page, the pull page, a followed
+ * creator's page and the new-audience page that builds their audience. Pure, and
  * in neither a server nor a client module (as `lib/library/library-view.ts`).
  */
 
@@ -101,3 +102,43 @@ export function collectionHref({ slug, category }: { slug: string; category: Col
 export function pullHref(input: string): string {
   return `${DISCOVER_PATH}/discover?input=${encodeURIComponent(input)}`;
 }
+
+/** A handle as an address carries it: trimmed, without its "@", lower case. */
+const bareHandle = (handle: string): string => handle.trim().replace(/^@+/, "").toLowerCase();
+
+/** The creator an address names: decoded when it came encoded, trimmed, without "@", lower case; "" for none. */
+export function creatorHandleOf(segment: string | null | undefined): string {
+  let raw = segment ?? "";
+  try {
+    raw = decodeURIComponent(raw);
+  } catch {
+    // A stray "%": read as written.
+  }
+  return bareHandle(raw);
+}
+
+/** A followed creator's page. */
+export function creatorHref(handle: string): string {
+  return `/competitors/${encodeURIComponent(bareHandle(handle))}`;
+}
+
+/** The one segment under `/competitors` that is another page: the old comparison, a redirect under the new look. */
+const COMPARE_SEGMENT = "compare";
+
+/**
+ * The page a profile handle names, as its address reads it (`creatorHandleOf`), or null when it names none:
+ * nothing left of it ("@", blanks), or `compare`, whose address is the old comparison's. Ask this before
+ * linking a creator to `creatorHref`.
+ */
+export function creatorPageHandle(profileHandle: string | null | undefined): string | null {
+  const handle = creatorHandleOf(profileHandle);
+  return handle && handle !== COMPARE_SEGMENT ? handle : null;
+}
+
+/** The new-audience page with the "Another creator" row chosen and its field filled. */
+export function audienceFromHref(handle: string): string {
+  return `/audience/new?door=handle&handle=${encodeURIComponent(bareHandle(handle))}`;
+}
+
+/** The Watchlist chip of Discover. */
+export const WATCHLIST_HREF = discoverHref({ ...DEFAULT_DISCOVER_VIEW, tab: "watchlist" });

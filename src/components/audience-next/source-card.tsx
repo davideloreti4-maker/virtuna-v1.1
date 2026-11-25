@@ -24,7 +24,7 @@ import { Face } from "./face";
 const S = AUDIENCE_STRINGS;
 
 /** Read again: an arrow round a circle, clockwise (the drawing's round button; 24×24, 1.75, as the shell's glyphs). */
-function ReadAgainIcon(props: ShellIconProps) {
+export function ReadAgainIcon(props: ShellIconProps) {
   return (
     <svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75} strokeLinecap="round" strokeLinejoin="round" {...props}>
       <path d="M19.5 12a7.5 7.5 0 1 1-2.35-5.45L19.5 8.6" />

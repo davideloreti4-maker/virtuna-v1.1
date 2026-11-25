@@ -6,7 +6,7 @@
  */
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { isValidElement, type ReactElement } from "react";
-import { cleanup, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 
 vi.setConfig({ testTimeout: 30_000 });
 
@@ -37,6 +37,7 @@ async function thrown(run: () => unknown): Promise<string> {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   vi.doUnmock("@/lib/flags/new-look");
   vi.resetModules();
 });
@@ -180,11 +181,15 @@ describe("/dev/discover", () => {
     expect(screen.getByRole("link", { name: "Back to Discover" })).toHaveAttribute("href", "/feed?tab=collections");
   });
 
-  it("watchlist: the Watchlist chip, one card of rows (one that could not be read), the Follow row last", async () => {
+  it("watchlist: the Watchlist chip, one card of rows (one that could not be read, one a link to the creator's page), the Follow row last", async () => {
     await shown("watchlist");
     expect(within(screen.getByRole("group", { name: "Discover" })).getByRole("button", { name: "Watchlist" })).toHaveAttribute(
       "aria-pressed",
       "true",
+    );
+    expect(within(screen.getByRole("list", { name: "Watchlist" })).getByRole("link", { name: "@nia.cooks" })).toHaveAttribute(
+      "href",
+      "/competitors/nia.cooks",
     );
     const rows = within(screen.getByRole("list", { name: "Watchlist" })).getAllByRole("button");
     expect(rows.length).toBeGreaterThanOrEqual(5);
@@ -271,5 +276,193 @@ describe("/dev/discover", () => {
     await shown("pull-failed");
     expect(screen.getByRole("alert")).toHaveTextContent("Couldn't read @kai.wanders.");
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+  });
+
+  // ─── A followed creator's page ───────────────────────────────────────────────
+
+  const creatorCard = () => document.querySelector<HTMLElement>('[data-part="creator-card"]');
+  /** The card's one line under the name ("@jay.makes · TikTok · read 13 Jul · 12 videos"). */
+  const creatorLine = () => creatorCard()!.querySelector<HTMLElement>("[aria-live]")!.textContent;
+  const cardName = () => within(creatorCard()!).getByRole("heading", { level: 2 }).textContent;
+  const readAgain = () => within(creatorCard()!).getByRole("button", { name: "Read again" });
+  const column = () => document.querySelector<HTMLElement>('[data-part="creator"]')!;
+  const terms = () => within(column()).queryAllByRole("term").map((t) => t.textContent);
+  const values = () => within(column()).queryAllByRole("definition").map((d) => d.textContent);
+  const theirCards = () => within(screen.getByRole("list", { name: "Their videos" })).getAllByRole("button");
+  const badges = () => theirCards().map((c) => c.querySelector('[data-part="badge"]')?.textContent ?? null);
+  const READ_TODAY = "Read today. Maven reads a creator once a day.";
+  /** Made-up reads and waits take 1.5 s here: the clock is the test's from this point. */
+  const timed = () => vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+
+  it("creator: the card, the line, four figures, Build their audience, Pull, twelve videos, the first ▲ 12×", async () => {
+    await shown("creator");
+    expect(screen.getByRole("heading", { level: 1, name: "@jay.makes" })).toBeInTheDocument();
+    expect(cardName()).toBe("Jay Makes");
+    expect(creatorCard()!.querySelector("[data-face] img")).not.toBeNull();
+    expect(creatorCard()!.querySelector('[data-part="bio"]')!.textContent!.split("\n")).toHaveLength(2);
+    expect(creatorLine()).toBe("@jay.makes · TikTok · read\u00a013\u00a0Jul · 12\u00a0videos");
+    expect(readAgain()).not.toHaveAttribute("aria-disabled");
+    // The real rule's figures, from the profile and the read's median.
+    expect(terms()).toEqual(["Followers", "Likes", "Posts", "Usual views"]);
+    expect(values()).toEqual(["15.4M", "369.1M", "6.4K", "8.6K"]);
+    expect(screen.getByRole("link", { name: "Build their audience" })).toHaveAttribute(
+      "href",
+      "/audience/new?door=handle&handle=jay.makes",
+    );
+    expect(screen.queryByRole("button", { name: "Simulate a video for their viewers" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Pull their best videos · 5 credits" })).toBeInTheDocument();
+    // The phone's More in the card (the desk's stands in the header).
+    expect(within(creatorCard()!).getByRole("button", { name: "More: @jay.makes" })).toBeInTheDocument();
+    // Twelve videos, biggest jump first: three proven, the rest without a badge.
+    expect(screen.getByText("Biggest jump")).toBeInTheDocument();
+    expect(theirCards()).toHaveLength(12);
+    expect(badges()).toEqual(["12×", "4.8×", "3.1×", null, null, null, null, null, null, null, null, null]);
+    expect(theirCards()[0]!.querySelector('[data-part="views"]')!.textContent).toBe("106K views");
+    // The drawn covers (one that does not load), the captions without hashtags, one with no caption.
+    expect(document.querySelectorAll('[data-part="videos"] img[src^="data:image/svg+xml"]').length).toBeGreaterThanOrEqual(10);
+    expect(document.body.textContent).not.toMatch(/#\p{L}/u);
+    expect(theirCards().filter((c) => c.getAttribute("aria-label") === "Video by @jay.makes")).toHaveLength(1);
+  });
+
+  it("creator: Read again reads for 1.5 s here, then the line says read 25 Nov and the button is dimmed", async () => {
+    await shown("creator");
+    timed();
+    fireEvent.click(readAgain());
+    expect(readAgain()).toHaveAttribute("aria-busy", "true");
+    expect(creatorLine()).toBe("@jay.makes · TikTok · Reading… · 12\u00a0videos");
+    act(() => {
+      vi.advanceTimersByTime(1500);
+    });
+    expect(readAgain()).not.toHaveAttribute("aria-busy");
+    expect(creatorLine()).toBe("@jay.makes · TikTok · read\u00a025\u00a0Nov · 12\u00a0videos");
+    expect(readAgain()).toHaveAttribute("aria-disabled", "true");
+    expect(readAgain()).toHaveAccessibleDescription(READ_TODAY);
+  });
+
+  it("creator-audience: Simulate a video for their viewers, built 14 Nov; a press waits 1.5 s and stops", async () => {
+    await shown("creator-audience");
+    const simulate = screen.getByRole("button", { name: "Simulate a video for their viewers" });
+    expect(simulate).toHaveAccessibleDescription("Their audience was built 14 Nov.");
+    expect(screen.queryByRole("link", { name: "Build their audience" })).toBeNull();
+    timed();
+    fireEvent.click(simulate);
+    expect(simulate).toHaveAttribute("aria-busy", "true");
+    act(() => {
+      vi.advanceTimersByTime(1500);
+    });
+    expect(simulate).not.toHaveAttribute("aria-busy");
+  });
+
+  it("creator-fresh: Read again dimmed, and why", async () => {
+    await shown("creator-fresh");
+    expect(creatorLine()).toBe("@jay.makes · TikTok · read\u00a025\u00a0Nov · 12\u00a0videos");
+    expect(readAgain()).toHaveAttribute("aria-disabled", "true");
+    expect(readAgain()).not.toHaveAttribute("aria-busy");
+    expect(readAgain()).toHaveAccessibleDescription(READ_TODAY);
+  });
+
+  it("creator-reading: Read again busy, Reading… in the line, held there", async () => {
+    await shown("creator-reading");
+    timed();
+    expect(readAgain()).toHaveAttribute("aria-busy", "true");
+    expect(readAgain()).toHaveAttribute("aria-disabled", "true");
+    expect(creatorLine()).toBe("@jay.makes · TikTok · Reading… · 12\u00a0videos");
+    fireEvent.click(readAgain());
+    act(() => {
+      vi.advanceTimersByTime(10_000);
+    });
+    expect(creatorLine()).toBe("@jay.makes · TikTok · Reading… · 12\u00a0videos");
+  });
+
+  it("creator-held: Couldn't be read and its sentence, no figures", async () => {
+    await shown("creator-held");
+    expect(cardName()).toBe("@jay.makes");
+    expect(creatorLine()).toBe("Couldn't be read");
+    expect(creatorCard()!.querySelector("[data-face] img")).toBeNull();
+    expect(creatorCard()!.querySelector('[data-part="bio"]')).toBeNull();
+    expect(screen.getByText("Maven couldn't read this account. Read again, or remove it.")).toBeInTheDocument();
+    expect(document.querySelector("dl")).toBeNull();
+    expect(screen.queryByRole("link", { name: "Build their audience" })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Their videos" })).toBeNull();
+    // Remove stays offered.
+    expect(within(creatorCard()!).getByRole("button", { name: "More: @jay.makes" })).toBeInTheDocument();
+  });
+
+  it("creator-empty: No videos read yet", async () => {
+    await shown("creator-empty");
+    const section = screen.getByRole("region", { name: "Their videos" });
+    expect(within(section).getByText("No videos read yet. Read again to get their latest.")).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Their videos" })).toBeNull();
+    expect(creatorLine()).toBe("@jay.makes · TikTok · read\u00a013\u00a0Jul");
+    // No read's median, so no Usual views.
+    expect(terms()).toEqual(["Followers", "Likes", "Posts"]);
+    expect(screen.getByRole("link", { name: "Build their audience" })).toBeInTheDocument();
+  });
+
+  it("creator-long: a 60-character name, a five-line bio with a 40-character word, a 24-character handle, captions empty to 200 characters", async () => {
+    await shown("creator-long");
+    const handle = "nia.cooks.weeknight.food";
+    expect(handle).toHaveLength(24);
+    expect(screen.getByRole("heading", { level: 1, name: `@${handle}` })).toBeInTheDocument();
+    expect(cardName()).toHaveLength(60);
+    const bio = creatorCard()!.querySelector('[data-part="bio"]')!.textContent!;
+    expect(bio.split("\n")).toHaveLength(5);
+    expect(bio.length).toBeGreaterThanOrEqual(280);
+    expect(bio.length).toBeLessThanOrEqual(320);
+    expect(bio.split(/\s+/).some((word) => word.length === 40)).toBe(true);
+    // Another year's read carries its year: the longest line the card can hold.
+    expect(creatorLine()).toBe(`@${handle} · TikTok · read\u00a030\u00a0Dec\u00a02025 · 8\u00a0videos`);
+    expect(terms()).toEqual(["Followers", "Likes", "Posts", "Usual views"]);
+    expect(screen.getByRole("button", { name: "Pull their best videos · 5 credits" })).toBeInTheDocument();
+    const names = theirCards().map((c) => c.getAttribute("aria-label") ?? "");
+    expect(names).toHaveLength(8);
+    expect(names.filter((name) => name.length === 200)).toHaveLength(1);
+    expect(names).toContain(`Video by @${handle}`);
+    expect(Math.min(...names.map((name) => name.length))).toBeLessThanOrEqual(6);
+    // Past 100 first.
+    expect(badges()[0]).toBe("100×+");
+    expect(document.body.textContent).not.toMatch(/#\p{L}/u);
+  });
+
+  it("creator-gone: the sentence and Watchlist", async () => {
+    await shown("creator-gone");
+    expect(screen.getByRole("heading", { level: 1, name: "Creator" })).toBeInTheDocument();
+    expect(screen.getByText("This creator isn't on your watchlist.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Watchlist" })).toHaveAttribute("href", "/feed?tab=watchlist");
+    expect(creatorCard()).toBeNull();
+  });
+
+  it("creator-failed: the alert and Try again", async () => {
+    await shown("creator-failed");
+    expect(screen.getByRole("alert")).toHaveTextContent("Couldn't load this creator.");
+    expect(within(screen.getByRole("alert")).getByRole("button", { name: "Try again" })).toBeInTheDocument();
+    expect(creatorCard()).toBeNull();
+  });
+
+  it("creator-loading: the outline, busy", async () => {
+    await shown("creator-loading");
+    expect(screen.getByRole("heading", { level: 1, name: "Creator" })).toBeInTheDocument();
+    expect(screen.getByTestId("creator-next")).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("list", { name: "Videos" })).toHaveAttribute("aria-busy", "true");
+    expect(document.querySelectorAll('[data-part="outline"]').length).toBeGreaterThan(7);
+    expect(creatorCard()).toBeNull();
+  });
+
+  it("creator-sheet: the first video's sheet, 12× their average, Remix this · 10 credits", async () => {
+    await shown("creator-sheet");
+    // Named by the first video's caption (the biggest jump), without its hashtags.
+    const sheet = screen.getByRole("dialog");
+    expect(sheet).toHaveAccessibleName("I tried to build a desk with no tools");
+    expect(within(sheet).getByText("12× their average")).toBeInTheDocument();
+    expect(within(sheet).getByRole("button", { name: "Remix this · 10 credits" })).toBeInTheDocument();
+    expect(within(sheet).getByRole("link", { name: "Watch on TikTok, opens in a new tab" })).toHaveAttribute(
+      "href",
+      expect.stringMatching(/^https:\/\/videos\.example\//),
+    );
+    // Save marks here only.
+    const save = within(sheet).getByRole("button", { name: "Save" });
+    expect(save).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(save);
+    expect(within(screen.getByRole("dialog")).getByRole("button", { name: "Save" })).toHaveAttribute("aria-pressed", "true");
   });
 });

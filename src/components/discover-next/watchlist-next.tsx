@@ -5,9 +5,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { useToast } from "@/components/ui/toast";
-import { removeCompetitor } from "@/app/actions/competitors/remove";
-import { useAddChannel, useUntrackChannel, type AddChannelError } from "@/hooks/queries/use-channels";
-import { reportSession401 } from "@/lib/auth/session-expired";
+import { useAddChannel, type AddChannelError } from "@/hooks/queries/use-channels";
+import { raiseSessionExpired, reportSession401 } from "@/lib/auth/session-expired";
 import type { WatchlistSource } from "@/lib/discover/watchlist-reads";
 import { pullHref } from "@/lib/discover-next/discover-view";
 import { followingToast, removeRefused } from "@/lib/discover-next/discover-words";
@@ -15,6 +14,7 @@ import { armPull } from "@/lib/discover-next/pull-intent";
 import { filterRows, pullInput, removalOf, rowKey, type HubWatchlist } from "@/lib/discover-next/watchlist";
 
 import { FollowSheet, type FollowStatus } from "./follow-sheet";
+import { useRemoveCreator } from "./use-remove-creator";
 import { WatchlistPanel } from "./watchlist-panel";
 
 /**
@@ -32,7 +32,8 @@ import { WatchlistPanel } from "./watchlist-panel";
  * - Pull: the intent is armed, then the pull page opens; only that press starts a pull there.
  * - Remove: the row leaves at once; then every record it rests on is cleared, side by side (each
  *   followed spelling, and the competitor link). All done: the page reads the watchlist again. One
- *   refused: the row comes back, a toast says so, and the page reads again (part may have gone).
+ *   refused: the row comes back, a toast says so, and the page reads again (part may have gone). The
+ *   session lapsed: the same, with the app's sign-in dialog in place of the toast.
  */
 export interface WatchlistNextProps {
   watchlist: HubWatchlist;
@@ -57,7 +58,7 @@ export function WatchlistNext({ watchlist, failed: readFailed, query, libraryCou
   const router = useRouter();
   const { toast } = useToast();
   const add = useAddChannel();
-  const untrack = useUntrackChannel();
+  const removeCreator = useRemoveCreator();
   const failed = readFailed || watchlist.incomplete === true;
 
   // Rows taken off the screen by Remove. A row stays off while its removal is out, and once done until
@@ -89,26 +90,15 @@ export function WatchlistNext({ watchlist, failed: readFailed, query, libraryCou
         return copy;
       });
     mark({ pending: true, on });
-    const calls: Promise<unknown>[] = [
-      ...removal.trackedIds.map((id) => untrack.mutateAsync(id)),
-      ...(removal.competitorId
-        ? [
-            // An answer with an error is a refusal, as a thrown call is.
-            Promise.resolve(removal.competitorId)
-              .then(removeCompetitor)
-              .then((result) => {
-                if (result?.error) throw new Error(result.error);
-              }),
-          ]
-        : []),
-    ];
-    const results = await Promise.allSettled(calls);
+    const answer = await removeCreator(removal);
     removing.current.delete(key);
-    if (results.some((r) => r.status === "rejected")) {
-      mark(null);
-      toast({ variant: "error", title: removeRefused(source.handle) });
-    } else {
+    if (answer === "done") {
       mark({ pending: false, on });
+    } else {
+      mark(null);
+      // A lapsed session is the app's own dialog, with no toast under it.
+      if (answer === "session") raiseSessionExpired();
+      else toast({ variant: "error", title: removeRefused(source.handle) });
     }
     router.refresh();
   };
@@ -162,7 +152,8 @@ export function WatchlistNext({ watchlist, failed: readFailed, query, libraryCou
   };
 
   // "Try again": once the watchlist is read again, its notice goes, and the focus with it: to the
-  // panel's first control. A retry that fails again keeps the notice, and the focus on its button.
+  // panel's first control, a link (a row with a creator's page) or a button. A retry that fails again
+  // keeps the notice, and the focus on its button.
   const panelRef = useRef<HTMLDivElement>(null);
   const retried = useRef(false);
   const retry = () => {
@@ -173,7 +164,7 @@ export function WatchlistNext({ watchlist, failed: readFailed, query, libraryCou
     if (!retried.current || failed) return;
     retried.current = false;
     const active = document.activeElement;
-    if (!active || active === document.body) panelRef.current?.querySelector<HTMLElement>("button")?.focus();
+    if (!active || active === document.body) panelRef.current?.querySelector<HTMLElement>("a[href], button")?.focus();
   }, [failed]);
 
   return (

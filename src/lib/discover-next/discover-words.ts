@@ -6,6 +6,7 @@
  * channel, scrape, track, usual, thread, Test). Pure.
  */
 
+import { AUDIENCE_STRINGS } from "@/lib/audience-next/audience-words";
 import { viewsLabel } from "@/lib/multiple-words";
 
 import { PULL_PRICE, REMIX_PRICE, creditsWords } from "./remix";
@@ -17,6 +18,9 @@ const FOLLOW_A_CREATOR = "Follow a creator";
 const FOLLOW = "Follow";
 const TRY_AGAIN = "Try again";
 const BACK_TO_DISCOVER = "Back to Discover";
+const HELD = "Couldn't be read";
+const PULL_THEIR_BEST = `Pull their best videos · ${creditsWords(PULL_PRICE)}`;
+const NO_VIDEOS_YET = "No videos read yet.";
 
 export const DISCOVER_STRINGS = {
   hub: {
@@ -73,8 +77,8 @@ export const DISCOVER_STRINGS = {
     tryAgain: TRY_AGAIN,
   },
   watchlist: {
-    held: "Couldn't be read",
-    pull: `Pull their best videos · ${creditsWords(PULL_PRICE)}`,
+    held: HELD,
+    pull: PULL_THEIR_BEST,
     openOnTikTok: "Open on TikTok",
     remove: "Remove",
     cancel: "Cancel",
@@ -99,6 +103,30 @@ export const DISCOVER_STRINGS = {
     follow: FOLLOW,
     following: "Following",
     order: BIGGEST_JUMP,
+    tryAgain: TRY_AGAIN,
+  },
+  creator: {
+    /** The page's title before it knows the creator (loading, gone, failed), as "Collection" and "Video". */
+    title: "Creator",
+    readAgain: "Read again",
+    reading: "Reading…",
+    readToday: "Read today. Maven reads a creator once a day.",
+    held: HELD,
+    heldLine: "Maven couldn't read this account. Read again, or remove it.",
+    build: "Build their audience",
+    buildLine: "Then simulate your video for their viewers. About two minutes. Free.",
+    simulate: "Simulate a video for their viewers",
+    /** Choosing their audience for new chats was refused: the Audience page's own sentence. */
+    simulateFailed: AUDIENCE_STRINGS.switchFailed,
+    pull: PULL_THEIR_BEST,
+    videos: "Their videos",
+    order: BIGGEST_JUMP,
+    noVideos: `${NO_VIDEOS_YET} Read again to get their latest.`,
+    /** No videos, and read today: Read again is dimmed, so the sentence does not send them to it. */
+    noVideosToday: NO_VIDEOS_YET,
+    gone: "This creator isn't on your watchlist.",
+    watchlist: "Watchlist",
+    failed: "Couldn't load this creator.",
     tryAgain: TRY_AGAIN,
   },
 } as const;
@@ -165,6 +193,42 @@ export function removeQuestion(handle: string): string {
 /** The toast when a remove is refused. */
 export function removeRefused(handle: string): string {
   return `Couldn't remove ${at(handle)}.`;
+}
+
+/** A card's foot on a creator's page: "106K views", "1 view" (counted as the card's byline and the sheet count). */
+export function viewsWords(n: number): string {
+  return `${viewsLabel(n)} ${n === 1 ? "view" : "views"}`;
+}
+
+/** A space that does not break a line. */
+const NO_BREAK = " ";
+
+/**
+ * The creator's card line: "@jay.makes · TikTok · read 13 Jul · 12 videos". A part not known is left out
+ * with its dot: `handle` null when the heading already is the handle, `read` null when never read, a
+ * `videos` of 0 leaves the count out. The line breaks at its dots only: the spaces inside a part ("read 13
+ * Jul", "12 videos") are no-break spaces, so a narrow card never ends a line on "read" or "12".
+ */
+export function creatorLine({ handle, read, videos }: { handle: string | null; read: string | null; videos: number }): string {
+  return [handle !== null ? at(handle) : null, PLATFORM_NAMES.tiktok, read, videos > 0 ? videosCount(videos) : null]
+    .filter((part): part is string => part !== null)
+    .map((part) => part.replace(/ /g, NO_BREAK))
+    .join(" · ");
+}
+
+/** Under "Simulate a video for their viewers": "Their audience was built 14 Nov." */
+export function audienceBuilt(day: string): string {
+  return `Their audience was built ${day}.`;
+}
+
+/** The toast when Read again fails. */
+export function readFailed(handle: string): string {
+  return `Couldn't read ${at(handle)}. Try again later.`;
+}
+
+/** The More button's name (it shows only its dots): "More: @jay.makes". */
+export function creatorMore(handle: string): string {
+  return `${DISCOVER_STRINGS.video.more}: ${at(handle)}`;
 }
 
 /** The Follow sheet while Maven reads the account. */
