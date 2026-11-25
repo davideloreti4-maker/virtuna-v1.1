@@ -12,7 +12,8 @@ import { cn } from "@/lib/utils";
 
 import { AnswerCard, AnswerFoot, AnswerPrimary, CardHeader, PROSE, keepHyphens } from "./answer-card";
 import { GaugeSlot, type GaugeState } from "./answer-gauge";
-import { CheckIcon, CopyIcon, FilmIcon, UploadIcon } from "./answer-icons";
+import { CheckIcon, CopyIcon, UploadIcon } from "./answer-icons";
+import { WithFilmButton } from "./film-button";
 import { FilmSheet } from "./film-sheet";
 import { useCopyText } from "./sheet-actions";
 
@@ -46,17 +47,16 @@ export function scriptLastLand(beatCount: number): number {
  *   its result page once the thread and its key are known (step 2, `opener.href`).
  * - The one primary "Add your take" (upload icon, free, the arrow). Under it, only when the script
  *   has a beat with a filming cue or a shoot plan (`filmNotesOf`), the quiet "How to film it" (thread
- *   depth §3.2): it opens the look's sheet (`FilmSheet`), which hands the focus back to it on close.
+ *   depth §3.2, `WithFilmButton`, shared with the remix card): it opens the look's sheet
+ *   (`FilmSheet`), which hands the focus back to it on close.
  * - In a landing (thread feel §4.3, `[data-thread-landing] .land`): the beats come in one after another,
  *   then the button (with "How to film it"). The card itself takes its height at once.
  *
  * Geometry as drawn: rows 2 / 2 on a 28 · 3 · 1fr grid 10 apart; the time 12 / 21 in the muted ink
  * 6 down; the rail 3 wide on 13% of the ink; the text 15 / 21, 6 above and 8 under (the opening's
  * 2 under, then the 40 slot and 4). A named beat: the name 12 / 16 at 640 in the secondary ink takes
- * the 6 above and has 1 under, so it is 17 taller. "How to film it" 40 tall, 14 / 570 in the
- * secondary ink, the film icon 17, 7 apart, centred (step 2 film, `.quiet`): on a phone 6 under the
- * primary, full width, as filmed; from md on the primary's row, 8 to its right, 14 each side of its
- * words, centred on it (fix round 1). The header's "Script" 14 / 640 in ink (`.tq-h b`).
+ * the 6 above and has 1 under, so it is 17 taller. "How to film it": see `WithFilmButton`. The
+ * header's "Script" 14 / 640 in ink (`.tq-h b`).
  */
 export function ScriptAnswer({
   block,
@@ -143,28 +143,7 @@ export function ScriptAnswer({
           quiet "How to film it" comes in with it, as filmed. */}
       <div className="land" style={landStyle(scriptLastLand(beats.length))}>
         <AnswerFoot>
-          {notes ? (
-            // A phone: the primary across the card, the quiet button under it, full width. From md the
-            // primary is as wide as its content at the card's start, so the quiet button joins its row,
-            // 8 to its right, as wide as its words: centred across a wide card it sat far from it (fix
-            // round 1, seen at 1440). The primary itself is the same either way.
-            <div className="md:flex md:items-center md:gap-2">
-              {primary}
-              <button
-                ref={setFilmButton}
-                type="button"
-                aria-haspopup="dialog"
-                aria-expanded={film === true}
-                onClick={() => setFilm(true)}
-                className="mt-1.5 flex h-10 w-full cursor-pointer items-center justify-center gap-[7px] rounded-xl text-reading font-[570] text-foreground-secondary transition-colors duration-150 hover:bg-surface-sunken hover:text-foreground active:bg-surface-sunken active:text-foreground md:mt-0 md:w-auto md:shrink-0 md:px-3.5"
-              >
-                <FilmIcon size={17} aria-hidden className="shrink-0" />
-                How to film it
-              </button>
-            </div>
-          ) : (
-            primary
-          )}
+          {notes ? <WithFilmButton primary={primary} expanded={film === true} onOpen={() => setFilm(true)} buttonRef={setFilmButton} /> : primary}
         </AnswerFoot>
       </div>
       {/* Mounted from the first press on, so it can animate closed; a card never pressed carries none. */}

@@ -2,9 +2,13 @@ import { describe, expect, it } from "vitest";
 import { validateBlock } from "@/lib/tools/block-registry";
 import { readSimSeals } from "@/lib/threads/sim-seals";
 import {
+  ACCOUNT_READ_BARE,
+  ACCOUNT_READ_FULL,
   IDEAS_4,
   MEAL_PREP_HOOKS,
   REMIX_CAMERA,
+  REMIX_DECODED,
+  REMIX_FILMED,
   SCRIPT_AI,
   SCRIPT_FILMED,
   SCRIPT_PLANNED,
@@ -64,6 +68,10 @@ const BUILT: Array<[string, unknown]> = [
   ["SCRIPT_FILMED", SCRIPT_FILMED],
   ["SCRIPT_PLANNED", SCRIPT_PLANNED],
   ["REMIX_CAMERA", REMIX_CAMERA],
+  ["REMIX_FILMED", REMIX_FILMED],
+  ["REMIX_DECODED", REMIX_DECODED],
+  ["ACCOUNT_READ_FULL", ACCOUNT_READ_FULL],
+  ["ACCOUNT_READ_BARE", ACCOUNT_READ_BARE],
 ];
 
 describe("fixtures", () => {

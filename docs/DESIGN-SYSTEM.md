@@ -418,6 +418,20 @@ The thread between a send and its answer (spec
 - **A fold waits for an open sheet.** A run is not folded into the thread while a sheet of the look
   (`AnswerSheet`, counted in `src/lib/thread-next/open-sheets.ts`) is open: the fold replaces the live
   turn, and the sheet with it. It runs when the sheet has closed.
+- **The account read's card** (spec `2026-11-25-thread-depth-2-design.md` §3; `AccountAnswer`, its words
+  from `src/lib/thread-next/account-card.ts`): who was read (the avatar 40, initials when there is no
+  picture; "@handle" 15 / 21 at 640; "12.4K followers · 86 videos" 13 / 18 secondary), then groups under
+  a hairline: "What works" (the two most viewed videos: the cover 30 by 40 at radius 6, the caption on
+  one line 15 / 21 at 520, its views 13 / 18; a cover that is missing or fails leaves the tile with the video mark in it), "To fix" (one plain
+  sentence pair for each of the runner's lines), one line of habits (13 / 19 secondary), and the primary
+  "Ideas from what works" with its price. A part with nothing to show is left out. No chip that starts
+  an Ideas run sits under it. `/dev/answers?state=p14|p15`.
+- **A remix's "How to film it"** (§4): the script card's quiet button under "Script it", there when the
+  page has a decode or a shoot plan. Its sheet: "Why the original worked" (each text folded to its lead,
+  one "More" for both), then your version beat by beat (read from the blueprint route when the sheet
+  first opens, two ghost rows meanwhile: the role's name, its span, the words in quotes, then the shot,
+  "On screen: …" and what to do differently in the secondary ink), then the plan's rows. A read that
+  failed is tried again at the next open. `/dev/answers?state=p11c|p11d`.
 
 Rules that are not in the spec:
 

@@ -13,10 +13,10 @@
  *       takes), and for a run that ends in a card of its own (hooks, ideas, script, remix) that card
  *       drawn at once as its outline with the line as its header (§4.3); what the run reads under
  *       the line. A plain chat answer's text as it streams, word by word (`StreamedAnswer`)
- *     → after: one part per result (`partsOf`): a card per pack, script, remix and video, a chat
- *       answer's text (Copy under the last text part once the turn has ended, rulings 17), the
- *       interactive legacy blocks, the fallback card for the rest; under a pack, the one computed
- *       sentence
+ *     → after: one part per result (`partsOf`): a card per pack, script, remix, video and account
+ *       read, a chat answer's text (Copy under the last text part once the turn has ended, rulings
+ *       17), the interactive legacy blocks, the fallback card for the rest; under a pack, the one
+ *       computed sentence
  *     → the two chips, under the last answer only
  *
  * The landing (§4.3, rulings 11): a turn that waited in this visit and then shows its cards draws
@@ -52,11 +52,13 @@ import type { StageState } from "@/components/thread/progress-checklist";
 import { SkillRunError } from "@/components/thread/run-notices";
 import { ThreadUserTurn } from "@/components/thread/thread-shell";
 import type { LiveRun, ThreadTurnProps } from "@/components/thread/thread-turn";
+import { useFollowupHandler } from "@/lib/followup-context";
 import { useOnWriteScriptHook } from "@/lib/hook-test-context";
 import { runErrorCopy } from "@/lib/net/run-failure";
 import { BlockOriginContext, ThreadIdContext } from "@/lib/save-provenance-context";
 import { useOnTestScript } from "@/lib/script-test-context";
 import { scriptBrief } from "@/lib/script-utils";
+import { accountCardOf } from "@/lib/thread-next/account-card";
 import { answerIsIn } from "@/lib/thread-next/answer-in";
 import { hasResultCard, partsOf, type AnswerPart } from "@/lib/thread-next/answer-parts";
 import { fallbackOf } from "@/lib/thread-next/fallback-lines";
@@ -67,11 +69,12 @@ import { rowProofOf } from "@/lib/thread-next/row-proof";
 import { USUAL_S, outlineOf, statusWords, usualNote } from "@/lib/thread-next/run-status";
 import { sealKey } from "@/lib/threads/sim-seals";
 import { blockTypesOf, cardLinesOf, classifyTurn, type ChatTurnKind } from "@/lib/tools/chat-followups";
-import type { ScriptCardBlock } from "@/lib/tools/blocks";
+import type { AccountReadBlock, ScriptCardBlock } from "@/lib/tools/blocks";
 import type { RunEvidence } from "@/lib/tools/evidence";
 import type { BlockOrigin } from "@/components/app/home/rehydrate-thread";
 import type { TextResultAs } from "@/lib/result/text-result";
 
+import { AccountAnswer, accountLands } from "./account-answer";
 import { NextAssistantTurn } from "./assistant-label";
 import type { GaugeState } from "./answer-gauge";
 import { AnswerOutline } from "./answer-outline";
@@ -260,6 +263,17 @@ function RemixPart({ part }: { part: Extract<AnswerPart, { kind: "remix" }> }) {
   );
 }
 
+/**
+ * The account read's card (thread depth, second part §3). Its one button sends its ask as an Ideas run
+ * through the thread's one way to send a follow-up (`useFollowupHandler`: the composer's, which holds
+ * it while the last run is still closing). An Ideas run costs a credit: a tap that lands twice sends
+ * one (`useOncePerBurst`). Outside the composer (a dev page) the button is drawn and does nothing.
+ */
+function AccountPart({ block }: { block: AccountReadBlock }) {
+  const followup = useOncePerBurst(useFollowupHandler());
+  return <AccountAnswer block={block} onIdeas={followup ? (ask) => followup(ask, "ideas") : undefined} />;
+}
+
 /** Every text this turn's rows can simulate: the same strings they fire (pack rows, the script's
  *  opener, the remix hooks). */
 function simTextsOf(parts: readonly AnswerPart[]): string[] {
@@ -291,6 +305,7 @@ function originalIndexOf(part: AnswerPart): number {
     case "script":
     case "video":
     case "edit":
+    case "account":
       return part.item.index;
     default:
       return part.index;
@@ -310,6 +325,8 @@ function lastLandOf(part: AnswerPart): number {
       const first = part.items[0];
       return first ? remixLands(first.block, part.items.length > 1).last : 0;
     }
+    case "account":
+      return accountLands(accountCardOf(part.item.block.props)).last;
     default:
       return 0;
   }
@@ -338,6 +355,8 @@ function PartView({
       return <ScriptPart block={part.item.block} />;
     case "remix":
       return <RemixPart part={part} />;
+    case "account":
+      return <AccountPart block={part.item.block} />;
     case "video":
       // In a landing it comes in whole, first; the video's card is not touched (rulings 9).
       return (

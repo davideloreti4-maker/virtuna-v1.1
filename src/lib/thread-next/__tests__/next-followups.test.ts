@@ -19,7 +19,16 @@ describe("nextFollowups", () => {
     expect(nextFollowups(kind).map((f) => f.label)).toEqual(labels);
   });
 
-  it.each<ChatTurnKind>(["explore", "account", "predict", "profile", "read"])("%s takes its first two", (kind) => {
+  // Was: the account read took its first two ("Ideas that fit me", "Where am I weakest?"). Fix round 1
+  // of thread depth's second part: its card's own button starts the Ideas run, so no chip under it does.
+  it("account: no chip that starts an Ideas run, the other stays", () => {
+    const picked = nextFollowups("account");
+    expect(picked.map((f) => f.label)).toEqual(["Where am I weakest?"]);
+    expect(picked.some((f) => f.skill === "ideas")).toBe(false);
+    expect(picked[0]).toBe(followupsForKind("account").find((f) => f.label === "Where am I weakest?"));
+  });
+
+  it.each<ChatTurnKind>(["explore", "predict", "profile", "read"])("%s takes its first two", (kind) => {
     expect(nextFollowups(kind)).toEqual(followupsForKind(kind).slice(0, 2));
   });
 
