@@ -1891,23 +1891,32 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // post-turn swap effect (below) and the in-thread input affordance (a Remix from a pasted link
   // persists its card server-side, then calls this so the card surfaces in-place). no-store: this is
   // a live poll for a just-persisted block; a cached GET would serve the pre-run thread.
-  const reloadChatThread = useCallback(async (): Promise<boolean> => {
+  // Its two halves, for the folds below (new look: a sheet opened while the read is out must stop
+  // the fold between them): reading the thread (its messages, or null for a failed or empty read)
+  // and putting what was read on screen.
+  type ChatThreadMessages = Array<{ role?: string; blocks?: Array<{ type?: string; props?: unknown }> }>;
+  const readChatThread = useCallback(async (): Promise<ChatThreadMessages | null> => {
     try {
       const res = await fetch('/api/threads/open', { cache: 'no-store' });
-      if (!res.ok) return false;
-      const data = (await res.json()) as {
-        messages?: Array<{ role?: string; blocks?: Array<{ type?: string; props?: unknown }> }>;
-      };
+      if (!res.ok) return null;
+      const data = (await res.json()) as { messages?: ChatThreadMessages };
       const messages = data.messages ?? [];
-      if (messages.length === 0) return false;
-      setPersistedChatTurns(orderedTurns(messages));
-      setPersistedChatBlocks(orderedAssistantBlocks(messages).filter((b) => b.type === 'markdown'));
-      return true;
+      return messages.length === 0 ? null : messages;
     } catch {
       // Network error — leave current state; the next reload reconciles it.
-      return false;
+      return null;
     }
   }, []);
+  const applyChatThread = useCallback((messages: ChatThreadMessages) => {
+    setPersistedChatTurns(orderedTurns(messages));
+    setPersistedChatBlocks(orderedAssistantBlocks(messages).filter((b) => b.type === 'markdown'));
+  }, []);
+  const reloadChatThread = useCallback(async (): Promise<boolean> => {
+    const messages = await readChatThread();
+    if (!messages) return false;
+    applyChatThread(messages);
+    return true;
+  }, [readChatThread, applyChatThread]);
 
   // The in-thread input affordance (input-request block) reloads the chat thread on completion so its
   // result card surfaces in-place. Memoised so the block's context consumers don't re-render each pass.
@@ -2005,8 +2014,23 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       // Persisted history gains the finished turn, THEN the live turn clears — swapping live→persisted
       // with no flash and no dup. chatReset() runs ONLY on a successful reload (and if not cancelled) —
       // a failed fetch must NOT clear an unpersisted turn.
-      const ok = await reloadChatThread();
-      if (cancelled || !ok) return;
+      const messages = await readChatThread();
+      if (!messages) return;
+      // Cancelled while the read was out (a new send took the live slot): the read still goes on
+      // screen, or the finished turn is neither live nor in history until the next fold. Nothing is reset.
+      if (cancelled) {
+        applyChatThread(messages);
+        return;
+      }
+      // New look: a sheet opened while the read was out is in the live turn, and the swap would close
+      // it under the creator. Nothing is applied: the fold waits as one that found a sheet before it
+      // started, and reads afresh once the last sheet has closed.
+      if (NEW_LOOK_ENABLED && anySheetOpen()) {
+        chatDoneHandledRef.current = false;
+        chatFoldWaitsRef.current = true;
+        return;
+      }
+      applyChatThread(messages);
       chatReset();
       // New look (thread feel, spec §5.1): the turn is in history, and with it the chat's stored
       // title, so the list is read again (the sidebar, Home's Recent, the header). Flag off: as before.
@@ -2015,7 +2039,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     return () => {
       cancelled = true;
     };
-  }, [chatIsDone, chatIsStreaming, chatReset, reloadChatThread, queryClient, chatFoldRetry]);
+  }, [chatIsDone, chatIsStreaming, chatReset, readChatThread, applyChatThread, queryClient, chatFoldRetry]);
 
   // ── Run completion → the thread owns it (thread unification) ────────────────
   // THE fix for "I ask for hooks, then want something else, and sometimes it doesn't work."
@@ -2069,8 +2093,21 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     runDoneHandledRef.current = activeRunSkill;
     let cancelled = false;
     void (async () => {
-      const ok = await reloadChatThread();
-      if (cancelled || !ok) return;
+      const messages = await readChatThread();
+      if (!messages) return;
+      // Cancelled while the read was out: the read still goes on screen, nothing is reset (see the
+      // chat's fold above).
+      if (cancelled) {
+        applyChatThread(messages);
+        return;
+      }
+      // New look: a sheet opened while the read was out (see the chat's fold above).
+      if (NEW_LOOK_ENABLED && anySheetOpen()) {
+        runDoneHandledRef.current = null;
+        runFoldWaitsRef.current = true;
+        return;
+      }
+      applyChatThread(messages);
       activeRunReset?.();
       // New look: as the chat's fold above, the list is read again for the title the run stored.
       if (NEW_LOOK_ENABLED) void queryClient.invalidateQueries({ queryKey: queryKeys.threads.list() });
@@ -2084,7 +2121,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     activeRunIsDone,
     activeRunIsStreaming,
     activeRunReset,
-    reloadChatThread,
+    readChatThread,
+    applyChatThread,
     queryClient,
     runFoldRetry,
   ]);
