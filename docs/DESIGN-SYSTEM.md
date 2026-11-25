@@ -366,6 +366,40 @@ and `FollowupChips`. Rules of these parts:
   a browser on the dev server, open `localhost`, not `127.0.0.1` (the cross-site check refuses POSTs
   from a different host name).
 
+The thread between a send and its answer (spec
+`docs/superpowers/specs/2026-11-25-thread-feel-design.md`; parts in `src/components/thread-next` and
+`src/lib/thread-next`):
+
+- **Where a new turn sits.** A turn sent in this visit goes to the top of the thread's window and the
+  answer grows under it; the view does not follow the growing end. Each turn is one element
+  (`data-turn`, `PersistedThreadStream`); the sent one takes the window's height as its least height
+  (`data-room`), so it can reach the top. A chat that was only opened ends at its end, with no room.
+  The scroll's rules live in `useThreadAutoscroll` (`anchorNextTurn`, `settle`, `scrollToLatest`); a
+  send is armed where its run really starts, and each send has a number (`data-send`) so the right
+  turn is found. "Go to the latest" (`JumpButton`) shows when more than 150 px of the answer is under
+  the field.
+- **The wait.** One status line (`RunStatus`): "Thinking" until the run is named, then the run's own
+  words from the stage it reports (`statusWords`; the table is in the spec, section 4.2) and, at the
+  right, how long such a run takes ("about 20 s", then "taking longer"). No dots, no counting clock,
+  never "Simulating your audience". Hooks, ideas, a script and a remix draw their card at once as an
+  outline (`AnswerOutline`) with the line in its header. What a run reads is one row
+  (`EvidenceRow`): up to five covers and the run's headline word for word.
+- **The landing.** When the cards arrive, their rows come in one after another (`land` inside a
+  `LandingGroup`, 420 ms each, 70 ms apart). It is drawn once per answer (`src/lib/thread-next/landing.ts`):
+  a turn that waited in this visit, or the copy mounted in its place within 1,600 ms. A chat opened
+  later is at rest.
+- **A score** that lands on a gauge in view draws its arc and counts up in 700 ms; a stored score is
+  at rest. **A plain answer** fades its new words in as they stream, and has Copy under its last text
+  part once it has ended.
+- **Motion classes** (`globals.css`, used only here): `land`, `run-words`, `ghost-bar`, `gauge-draw`,
+  `word-in`. `run-words` and `ghost-bar` loop only while a run is live. Nothing animates height, width,
+  top or left: a card takes its size at once and its parts fade in. Each class has its rest state under
+  reduced motion.
+- **The field** shows Stop until the answer is in. A run the chat dispatched keeps its stream open after
+  the cards: the field then shows its send arrow, off until the stream closes, and Stop again if that
+  takes more than 8 s. After a skill's own run the field is at rest from the moment the run reports done.
+- To look at it: `/dev/answers?state=w1|w2|w3|w4|w5|w6|wl` (`wl` plays a landing).
+
 Rules that are not in the spec:
 
 - Navigation glyphs come from `src/components/shell/icons.tsx` (the reference's own drawings),

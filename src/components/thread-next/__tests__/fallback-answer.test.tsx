@@ -76,3 +76,15 @@ describe("FallbackAnswer", () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 });
+
+// Thread feel §4.3: inside a landing the fallback card comes in as one part, first.
+describe("FallbackAnswer — its place in a landing", () => {
+  it("the card is one `land` at 0", () => {
+    const { title, lines } = fallbackOf(accountRead());
+    const { container } = render(<FallbackAnswer title={title} lines={lines} />);
+    const card = container.querySelector<HTMLElement>('[data-answer="card"]')!;
+    expect(card).toHaveClass("land");
+    // No index of its own: the landing's CSS reads a missing `--i` as 0.
+    expect(card.style.getPropertyValue("--i")).toBe("");
+  });
+});

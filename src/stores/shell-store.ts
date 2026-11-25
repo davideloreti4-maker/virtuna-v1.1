@@ -58,6 +58,10 @@ interface ShellState {
    * one name (`useThreadTitle`). For that chat only (`id`). Null: none.
    */
   threadTitleHint: { id: string; title: string } | null;
+  /** The hint alone, Back's marker and Library's scroll untouched. The composer names a chat with no
+   *  title from its first message this way (thread feel §5.1), so the header does not say "New chat"
+   *  until the list is read again. */
+  setThreadTitleHint: (hint: { id: string; title: string } | null) => void;
   /** How far Library was scrolled when a row opened its chat, and at which address: Library takes
    *  it on its way back (`takeLibraryScroll`). Null: nothing to put back. */
   libraryScroll: LibraryScroll | null;
@@ -113,6 +117,7 @@ export const useShellStore = create<ShellState>()((set, get) => ({
   setThreadBack: (path, extras) =>
     set({ threadBack: path, threadTitleHint: extras?.title ?? null, libraryScroll: extras?.scroll ?? null }),
   backFromThread: () => set({ threadBack: null, threadTitleHint: null }),
+  setThreadTitleHint: (hint) => set({ threadTitleHint: hint }),
   takeLibraryScroll: () => {
     const scroll = get().libraryScroll;
     if (scroll !== null) set({ libraryScroll: null });

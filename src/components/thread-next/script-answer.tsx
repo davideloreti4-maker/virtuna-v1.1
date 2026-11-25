@@ -3,6 +3,7 @@
 import { IconButton } from "@/components/ui/icon-button";
 import type { ScriptCardBlock } from "@/lib/tools/blocks";
 import { clockLabel, timingEnd, timingStart } from "@/lib/thread-next/beat-timing";
+import { afterRows, landStyle, rowLand } from "@/lib/thread-next/landing";
 import { cn } from "@/lib/utils";
 
 import { AnswerCard, AnswerFoot, AnswerPrimary, CardHeader, PROSE, keepHyphens } from "./answer-card";
@@ -16,6 +17,11 @@ export function scriptText(beats: readonly { content: string }[]): string {
     .map((beat) => beat.content.trim())
     .filter((content) => content.length > 0)
     .join("\n\n");
+}
+
+/** The place of a script's last part in a landing: its button, after the last staggered beat. */
+export function scriptLastLand(beatCount: number): number {
+  return afterRows(beatCount);
 }
 
 /**
@@ -32,6 +38,8 @@ export function scriptText(beats: readonly { content: string }[]): string {
  *   looks its seal up by). Simulated: the gauge with its number and "would stop to watch", a link to
  *   its result page once the thread and its key are known (step 2, `opener.href`).
  * - The one primary "Add your take" (upload icon, free, the arrow).
+ * - In a landing (thread feel §4.3, `[data-thread-landing] .land`): the beats come in one after another,
+ *   then the button. The card itself takes its height at once.
  *
  * Geometry as drawn: rows 2 / 2 on a 28 · 3 · 1fr grid 10 apart; the time 12 / 21 in the muted ink
  * 6 down; the rail 3 wide on 13% of the ink; the text 15 / 21, 6 above and 8 under (the opening's
@@ -79,7 +87,7 @@ export function ScriptAnswer({
         {beats.map((beat, i) => {
           const start = timingStart(beat.timing);
           return (
-            <li key={i} data-part="beat" className="grid grid-cols-[28px_3px_minmax(0,1fr)] gap-x-2.5 p-0.5">
+            <li key={i} data-part="beat" className="land grid grid-cols-[28px_3px_minmax(0,1fr)] gap-x-2.5 p-0.5" style={landStyle(rowLand(i))}>
               <span data-part="time" className="pt-1.5 text-label leading-[21px] text-foreground-muted tabular-nums">
                 {start !== null ? clockLabel(start) : ""}
               </span>
@@ -103,14 +111,17 @@ export function ScriptAnswer({
           );
         })}
       </ol>
-      <AnswerFoot>
-        <AnswerPrimary
-          icon={<UploadIcon size={20} aria-hidden className="shrink-0" />}
-          label="Add your take"
-          onClick={onAddTake}
-          trailingArrow
-        />
-      </AnswerFoot>
+      {/* A plain block: the footer's own top margin still sits between the beats and the button. */}
+      <div className="land" style={landStyle(scriptLastLand(beats.length))}>
+        <AnswerFoot>
+          <AnswerPrimary
+            icon={<UploadIcon size={20} aria-hidden className="shrink-0" />}
+            label="Add your take"
+            onClick={onAddTake}
+            trailingArrow
+          />
+        </AnswerFoot>
+      </div>
     </AnswerCard>
   );
 }

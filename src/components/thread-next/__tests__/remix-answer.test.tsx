@@ -211,3 +211,40 @@ describe("RemixAnswer — several remixes", () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 });
+
+// Thread feel §4.3: inside a landing the source row, the headline, the slot, the steps and the button
+// come in in that order.
+describe("RemixAnswer — its places in a landing", () => {
+  const iOf = (el: Element | null) => (el as HTMLElement | null)?.style.getPropertyValue("--i") ?? null;
+  const headline = () => screen.getByText(/fake a \$10M camera move/);
+
+  it("source 0, headline 1, slot 2, steps 3, button 4", () => {
+    const { container } = render(<RemixAnswer items={[REMIX_CAMERA]} hookOf={empty} onScript={() => {}} />);
+    expect(container.querySelector('[data-answer="card"]')).not.toHaveClass("land");
+    expect(iOf(container.querySelector('[data-part="cover"]')!.closest(".land"))).toBe("0");
+    expect(iOf(headline().closest(".land"))).toBe("1");
+    expect(iOf(screen.getByRole("button", { name: /^Simulate the hook: / }).closest(".land"))).toBe("2");
+    expect(iOf(container.querySelector('[data-part="steps"]')!.closest(".land"))).toBe("3");
+    expect(iOf(screen.getByRole("button", { name: /^Script it/ }).closest(".land"))).toBe("4");
+  });
+
+  it("without a source row or steps the rest move up", () => {
+    render(<RemixAnswer items={[remix("A hook with nothing borrowed", { formatBorrowed: "" })]} hookOf={empty} onScript={() => {}} />);
+    expect(iOf(screen.getByText(/A hook with nothing borrowed/).closest(".land"))).toBe("0");
+    expect(iOf(screen.getByRole("button", { name: /^Simulate the hook: / }).closest(".land"))).toBe("1");
+    expect(iOf(screen.getByRole("button", { name: /^Script it/ }).closest(".land"))).toBe("2");
+  });
+
+  it("the slot's place is one element whether the hook is simulated or not, so its number is not landed again", () => {
+    const { rerender } = render(<RemixAnswer items={[REMIX_CAMERA]} hookOf={empty} />);
+    const place = screen.getByRole("button", { name: /^Simulate the hook: / }).closest(".land");
+    rerender(<RemixAnswer items={[REMIX_CAMERA]} hookOf={() => ({ state: { kind: "done", value: 52 }, href: "/dev/answers?state=p7" })} />);
+    expect(screen.getByRole("link", { name: /^Open the result: / }).closest(".land")).toBe(place);
+  });
+
+  it("several remixes: the pager after the button", () => {
+    render(<RemixAnswer items={THREE} hookOf={empty} onScript={() => {}} />);
+    expect(iOf(screen.getByRole("button", { name: /^Script it/ }).closest(".land"))).toBe("4");
+    expect(iOf(screen.getByRole("button", { name: "Next" }).closest(".land"))).toBe("5");
+  });
+});

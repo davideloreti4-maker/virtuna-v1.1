@@ -61,6 +61,8 @@ let calls: Call[] = [];
 let holdHooksOpen = false;
 let threadFixture: unknown = historyThread();
 let audiencesFixture: unknown[] = [];
+/** Streams the test writes itself (`holdStream`), by path; none set, every stream answers as before. */
+let streamReplies: Record<string, (signal: AbortSignal | null | undefined) => Response> = {};
 
 /** One settled turn of history: a question and a plain answer (the open thread by default). */
 function historyThread() {
@@ -100,6 +102,8 @@ function installFetch() {
   global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     calls.push({ url, init });
+    const reply = Object.entries(streamReplies).find(([path]) => url.includes(path))?.[1];
+    if (reply) return reply(init?.signal);
     if (url.includes("/api/tools/hooks")) return sse(init?.signal, holdHooksOpen);
     if (url.includes("/api/tools/chat") || url.includes("/api/analyze")) return sse(init?.signal, false);
     if (url.includes("/api/threads/open")) return json(threadFixture);
@@ -219,6 +223,7 @@ const simulatedGauge = (value: number) => document.querySelector(`[data-gauge="d
 beforeEach(() => {
   cleanup();
   holdHooksOpen = false;
+  streamReplies = {};
   threadFixture = historyThread();
   audiencesFixture = [];
   upload.mockReset();
@@ -830,6 +835,9 @@ describe("fix round 1: the measured block", () => {
     Object.defineProperty(region, "scrollHeight", { configurable: true, get: () => 2068 });
     Object.defineProperty(region, "clientHeight", { configurable: true, get: () => 800 });
     region.scrollTop = 200; // reading an earlier card
+    // The scroll event the browser delivers for it (happy-dom sends none): the reserve follows the
+    // autoscroll hook's pin, and the creator's own scroll is what releases it.
+    fireEvent.scroll(region);
     ro.report(164);
     await waitFor(() => expect(region.style.getPropertyValue("--field-reserve")).toBe("164px"));
     expect(region.scrollTop).toBe(200);
@@ -2123,7 +2131,8 @@ describe("step 2: 'Script this one' from a result page lands in its thread", () 
     expect(sessionStorage.getItem("maven:script-from")).toBeNull();
     // The script's turn sits after the thread's history.
     const historyRow = screen.getByText(hook);
-    const ask = await screen.findByText("Write the script from this hook.");
+    // The turn's bubble. (Not the header: a card's button never names a chat, it sits under a turn.)
+    const ask = await screen.findByText("Write the script from this hook.", { selector: "p" });
     expect(historyRow.compareDocumentPosition(ask) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // Once: nothing more fires.
     await act(async () => {
@@ -2166,5 +2175,1225 @@ describe("step 2: 'Script this one' from a result page lands in its thread", () 
       await new Promise((r) => setTimeout(r, 30));
     });
     expect(requests("/api/tools/chat")).toHaveLength(0);
+  });
+});
+
+// ── Thread feel, step 1 (Task 1): a sent turn sits at the top ────────────────────────────────────
+
+/**
+ * A stream (by path: "/api/tools/chat", "/api/tools/hooks") that stays open, so the run is still
+ * on screen as the live turn: the test pushes its frames and ends it (`end`) when it means to.
+ */
+function holdStream(path: string) {
+  const encoder = new TextEncoder();
+  let controller: ReadableStreamDefaultController<Uint8Array> | null = null;
+  const early: string[] = [];
+  const settleFrames = () =>
+    act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+  streamReplies[path] = (signal) => {
+    const body = new ReadableStream<Uint8Array>({
+      start(c) {
+        controller = c;
+        for (const frame of early.splice(0)) c.enqueue(encoder.encode(frame));
+        signal?.addEventListener("abort", () =>
+          c.error(new DOMException("The operation was aborted.", "AbortError")),
+        );
+      },
+    });
+    return { ok: true, status: 200, body, json: async () => ({}) } as unknown as Response;
+  };
+  return {
+    push: async (event: string, data: unknown) => {
+      const frame = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+      if (controller) controller.enqueue(encoder.encode(frame));
+      else early.push(frame);
+      await settleFrames();
+    },
+    end: async () => {
+      controller?.close();
+      await settleFrames();
+    },
+  };
+}
+const holdChat = () => holdStream("/api/tools/chat");
+
+/** The creator's motion setting: reduced, so the moves land at once. Only the exact query matches. */
+function reduceMotion() {
+  vi.stubGlobal("matchMedia", (query: string) => ({
+    matches: query === "(prefers-reduced-motion: reduce)",
+    media: query,
+    onchange: null,
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    addListener: () => {},
+    removeListener: () => {},
+    dispatchEvent: () => false,
+  }));
+}
+
+const region = () => screen.getByTestId("composer-thread-region");
+const turnsIn = () => [...region().querySelectorAll<HTMLElement>("[data-turn]")];
+
+/**
+ * The thread's layout, by hand (happy-dom does none): the region is 800 tall at the viewport's
+ * top, with no padding (no stylesheet here). Turn `i` (the `[data-turn]` elements, in order)
+ * starts at `tops[i]` in the content and its content (its last child) ends at `ends[i]`. Every box
+ * is read against the live scrollTop, as a browser's is. The arrays can be changed as the thread
+ * grows.
+ */
+function layOut(geo: { tops: number[]; ends: number[]; scrollHeight: number }) {
+  const el = region();
+  Object.defineProperty(el, "scrollHeight", { configurable: true, get: () => geo.scrollHeight });
+  Object.defineProperty(el, "clientHeight", { configurable: true, get: () => 800 });
+  const box = (top: number, bottom: number) =>
+    ({ top, bottom, height: bottom - top, left: 0, right: 0, width: 0, x: 0, y: top, toJSON: () => ({}) }) as DOMRect;
+  const original = Element.prototype.getBoundingClientRect;
+  vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+    if (this === el) return box(0, 800);
+    const turns = turnsIn();
+    const i = turns.indexOf(this as HTMLElement);
+    if (i >= 0) return box(geo.tops[i]! - el.scrollTop, geo.ends[i]! - el.scrollTop);
+    const parent = this.parentElement ? turns.indexOf(this.parentElement) : -1;
+    if (parent >= 0 && this.parentElement!.lastElementChild === this) {
+      return box(geo.ends[parent]! - 40 - el.scrollTop, geo.ends[parent]! - el.scrollTop);
+    }
+    return original.call(this);
+  });
+  return el;
+}
+
+/** The thread's content grew: the autoscroll hook's observer (on the region's first child) fires. */
+function grown(ro: ReturnType<typeof stubResizeObserver>) {
+  const content = region().firstElementChild!;
+  const found = ro.observers.filter((o) => o.targets.includes(content) && !o.disconnected);
+  expect(found).toHaveLength(1);
+  act(() => found[0]!.cb([], {} as ResizeObserver));
+}
+
+const askInField = (ask: string) => {
+  fireEvent.change(text(), { target: { value: ask } });
+  fireEvent.click(send());
+};
+
+describe("thread feel (Task 1): a sent turn sits at the top", () => {
+  it("a send from the field takes the sent turn's top to 8 under the window's top, not to the end, and the answer then grows under it", async () => {
+    reduceMotion();
+    const ro = stubResizeObserver();
+    holdChat();
+    await renderComposer();
+    const geo = { tops: [22], ends: [1300], scrollHeight: 1400 };
+    const el = layOut(geo);
+    grown(ro);
+    expect(el.scrollTop).toBe(1400); // an opened chat: at its end, as today
+
+    askInField("what should I post next?");
+    await waitFor(() => expect(turnsIn()).toHaveLength(2));
+    geo.tops.push(1330);
+    geo.ends.push(1500);
+    geo.scrollHeight = 3000;
+    grown(ro);
+    expect(el.scrollTop).toBe(1330 - 8);
+    expect(el.scrollTop).not.toBe(geo.scrollHeight);
+
+    // The answer streams under it: the view stays where the send put it.
+    geo.ends[1] = 2600;
+    geo.scrollHeight = 3800;
+    grown(ro);
+    expect(el.scrollTop).toBe(1322);
+  });
+
+  it("the room: none on a chat only opened; the last turn's once a turn is sent; gone after a thread switch", async () => {
+    holdChat();
+    await renderComposer();
+    expect(turnsIn()).toHaveLength(1);
+    expect(region().querySelector("[data-room]")).toBeNull();
+
+    askInField("what should I post next?");
+    await waitFor(() => expect(turnsIn()).toHaveLength(2));
+    expect(turnsIn().map((t) => t.hasAttribute("data-room"))).toEqual([false, true]);
+
+    threadFixture = { ...historyThread(), threadId: "t2" };
+    act(() => useBoardStore.getState().switchThread());
+    await waitFor(() => expect(requests("/api/threads/open").length).toBeGreaterThan(1));
+    await waitFor(() => expect(screen.getByText("First answer.")).toBeInTheDocument());
+    await waitFor(() => expect(turnsIn()).toHaveLength(1));
+    expect(region().querySelector("[data-room]")).toBeNull();
+  });
+
+  it("the room's trim: the phone's band, the 8 above the turn and the dock's own space under the field (30), and 8 + 24 from md", async () => {
+    await renderComposer();
+    const dock = screen.getByTestId("next-field-dock").className.split(/\s+/);
+    const under = (prefix: "" | "md:") =>
+      Number(dock.find((c) => c.startsWith(`${prefix}pb-[`) && (prefix || !c.includes(":")))!.match(/(\d+)px/)![1]);
+    const classes = region().className.split(/\s+/);
+    expect(classes).toContain(`[--thread-room-trim:calc(var(--nav-pt)+${8 + under("")}px)]`);
+    expect(classes).toContain(`md:[--thread-room-trim:${8 + under("md:")}px]`);
+  });
+
+  /** Wait a few frames: long enough for a settle on the next frame to have run, if one was due. */
+  const someFrames = () =>
+    act(async () => {
+      await new Promise((r) => setTimeout(r, 80));
+    });
+
+  it("a skill's cards in (`isDone`): an end that landed 90 under the field is brought up 98, once", async () => {
+    reduceMotion();
+    const ro = stubResizeObserver();
+    const run = holdStream("/api/tools/hooks"); // held open after `done`: the run stays the live turn
+    await renderComposer();
+    const geo = { tops: [22], ends: [1300], scrollHeight: 1400 };
+    const el = layOut(geo);
+    grown(ro);
+
+    fireEvent.click(pill("Hooks"));
+    askInField("gym myths");
+    await waitFor(() => expect(turnsIn()).toHaveLength(2));
+    geo.tops.push(1330);
+    geo.ends.push(1500);
+    geo.scrollHeight = 4000;
+    grown(ro);
+    expect(el.scrollTop).toBe(1322);
+
+    // The cards land 90 under the visible end (800 tall, no padding without a stylesheet).
+    const hook = (rank: number) => ({ props: { hookLine: `Gym myth number ${rank}`, rank, scrollQuote: "ok that is me" } });
+    await run.push("content", { blocks: [hook(1), hook(2), hook(3)] });
+    geo.ends[1] = 1322 + 800 + 90;
+    grown(ro);
+    await someFrames();
+    expect(el.scrollTop).toBe(1322); // not before the run says it is done
+
+    await run.push("done", {});
+    await waitFor(() => expect(el.scrollTop).toBe(1322 + 98));
+
+    // Once per answer: what comes after (the closing line, a re-render) does not move it again.
+    geo.ends[1] += 90;
+    await run.push("followup", { text: "Want a script for the first one?" });
+    grown(ro);
+    await someFrames();
+    expect(el.scrollTop).toBe(1420);
+  });
+
+  it("Explore's own Run (its Search popover) is a send like every other: its turn is taken to the top, though the creator had scrolled up", async () => {
+    reduceMotion();
+    const ro = stubResizeObserver();
+    holdStream("/api/tools/explore");
+    await renderComposer();
+    const geo = { tops: [22], ends: [1300], scrollHeight: 1400 };
+    const el = layOut(geo);
+    grown(ro);
+    // Back up the thread, as after an earlier send's long answer: the pin is let go.
+    el.scrollTop = 400;
+    fireEvent.scroll(el);
+
+    fireEvent.click(pill("More"));
+    fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: /^Explore/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Search" }));
+    // The popover's own button, not the field's send (whose name is also "Run Explore").
+    const runs = await screen.findAllByRole("button", { name: "Run Explore" });
+    fireEvent.click(runs.find((b) => b !== send())!);
+    await waitFor(() => expect(requests("/api/tools/explore")).toHaveLength(1));
+    await waitFor(() => expect(turnsIn()).toHaveLength(2));
+    geo.tops.push(1330);
+    geo.ends.push(1500);
+    geo.scrollHeight = 4000;
+    grown(ro);
+    expect(el.scrollTop).toBe(1330 - 8);
+    expect(turnsIn()[1]!.hasAttribute("data-room")).toBe(true);
+  });
+
+  it("a run the chat dispatched: brought up when its cards are in, its stream still open; nothing more at the close", async () => {
+    reduceMotion();
+    const ro = stubResizeObserver();
+    const chat = holdChat(); // held open after the cards: billing and the closing line still to come
+    await renderComposer();
+    const geo = { tops: [22], ends: [1300], scrollHeight: 1400 };
+    const el = layOut(geo);
+    grown(ro);
+
+    askInField("hooks about meal prep for busy students");
+    await waitFor(() => expect(turnsIn()).toHaveLength(2));
+    geo.tops.push(1330);
+    geo.ends.push(1500);
+    geo.scrollHeight = 4000;
+    grown(ro);
+    expect(el.scrollTop).toBe(1322);
+
+    await chat.push("dispatch", { skill: "hooks" });
+    await chat.push("stage", { name: "Generating", status: "done" });
+    // The cards land 90 under the visible end.
+    geo.ends[1] = 1322 + 800 + 90;
+    for (const block of MEAL_PREP_HOOKS) await chat.push("block", { block });
+    grown(ro);
+    await waitFor(() => expect(el.scrollTop).toBe(1322 + 98));
+
+    // The closing line streams (not drawn under cards), then the stream closes: no second move.
+    geo.ends[1] += 90;
+    await chat.push("token", { delta: "Hook 1 is the one to film." });
+    await chat.push("done", {});
+    await chat.end();
+    grown(ro);
+    await someFrames();
+    expect(el.scrollTop).toBe(1420);
+  });
+
+  it("the fold: a run lands in the live turn, the thread is reloaded, and its persisted copy takes its place with the room, the view and the landing it had (the landing only inside its window)", async () => {
+    reduceMotion();
+    const ro = stubResizeObserver();
+    const chat = holdChat();
+    await renderComposer();
+    const geo = { tops: [22], ends: [1300], scrollHeight: 1400 };
+    const el = layOut(geo);
+    grown(ro);
+
+    const ask = "hooks about meal prep for busy students";
+    askInField(ask);
+    await waitFor(() => expect(turnsIn()).toHaveLength(2));
+    geo.tops.push(1330);
+    geo.ends.push(1500);
+    geo.scrollHeight = 4000;
+    grown(ro);
+    expect(el.scrollTop).toBe(1322);
+    const live = turnsIn()[1]!;
+    expect(live.dataset.send).toBe("1");
+    expect(live.hasAttribute("data-room")).toBe(true);
+
+    // The run waits, then its cards land in the live turn.
+    await chat.push("dispatch", { skill: "hooks" });
+    await chat.push("stage", { name: "Generating", status: "active" });
+    await chat.push("stage", { name: "Generating", status: "done" });
+    for (const block of MEAL_PREP_HOOKS) await chat.push("block", { block });
+    await waitFor(() => expect(liveRows()).toHaveLength(3));
+    expect(live.querySelector("[data-thread-landing]")).not.toBeNull();
+
+    // The fold: the server holds the turn now; the stream closes and the thread is reloaded.
+    threadFixture = {
+      ...historyThread(),
+      messages: [
+        ...historyThread().messages,
+        { id: "u2", thread_id: "t1", role: "user", blocks: [{ type: "markdown", props: { text: ask } }], created_at: "2026-11-25T00:00:00.000Z" },
+        {
+          id: "m2",
+          thread_id: "t1",
+          role: "assistant",
+          blocks: [{ type: "run-header", props: { skill: "hooks" } }, ...MEAL_PREP_HOOKS, { type: "markdown", props: { text: "Hook 1 is the one to film." } }],
+          created_at: "2026-11-25T00:00:00.000Z",
+        },
+      ],
+    };
+    const opens = requests("/api/threads/open").length;
+    await chat.push("token", { delta: "Hook 1 is the one to film." });
+    await chat.push("done", {});
+    await chat.end();
+    await waitFor(() => expect(requests("/api/threads/open").length).toBeGreaterThan(opens));
+    await waitFor(() => expect(live.isConnected).toBe(false));
+
+    const turns = turnsIn();
+    expect(turns).toHaveLength(2);
+    const copy = turns[1]!;
+    expect(copy.textContent).toContain(MEAL_PREP_HOOKS[0]!.props.hookLine);
+    expect(copy.hasAttribute("data-room")).toBe(true);
+    expect(region().querySelector("[data-send]")).toBeNull();
+    grown(ro); // the layout pass after the reload: the view is not pinned, so it is not followed
+    expect(el.scrollTop).toBe(1322);
+    // Inside the window the copy carries the landing on; after it, it is no longer one.
+    expect(copy.querySelector("[data-thread-landing]")).not.toBeNull();
+    await waitFor(() => expect(copy.querySelector("[data-thread-landing]")).toBeNull(), { timeout: 3_000 });
+    expect(copy.isConnected).toBe(true);
+    expect(el.scrollTop).toBe(1322);
+  });
+
+  it("a plain chat answer whose stream ends 300 under the field is left where it is (the button's case)", async () => {
+    reduceMotion();
+    const ro = stubResizeObserver();
+    const chat = holdChat();
+    await renderComposer();
+    const geo = { tops: [22], ends: [1300], scrollHeight: 1400 };
+    const el = layOut(geo);
+    grown(ro);
+
+    askInField("what should I post next?");
+    await waitFor(() => expect(turnsIn()).toHaveLength(2));
+    geo.tops.push(1330);
+    geo.ends.push(1322 + 800 + 300);
+    geo.scrollHeight = 4000;
+    grown(ro);
+    await chat.push("token", { delta: "Post the gym myth one first." });
+    await chat.end();
+    await someFrames();
+    expect(el.scrollTop).toBe(1322);
+  });
+
+  it("a plain chat answer: brought up when its stream ends (the chat's run carries no `isDone`)", async () => {
+    reduceMotion();
+    const ro = stubResizeObserver();
+    const chat = holdChat();
+    await renderComposer();
+    const geo = { tops: [22], ends: [1300], scrollHeight: 1400 };
+    const el = layOut(geo);
+    grown(ro);
+
+    askInField("what should I post next?");
+    await waitFor(() => expect(turnsIn()).toHaveLength(2));
+    geo.tops.push(1330);
+    geo.ends.push(1500);
+    geo.scrollHeight = 4000;
+    grown(ro);
+    expect(el.scrollTop).toBe(1322);
+
+    await chat.push("token", { delta: "Post the gym myth one first." });
+    geo.ends[1] = 1322 + 800 + 90;
+    grown(ro);
+    await someFrames();
+    expect(el.scrollTop).toBe(1322); // still streaming: the view stays where the send put it
+
+    // The server has the turn now: the fold after the stream reloads it into history, same place.
+    threadFixture = {
+      ...historyThread(),
+      messages: [
+        ...historyThread().messages,
+        { id: "u2", thread_id: "t1", role: "user", blocks: [{ type: "markdown", props: { text: "what should I post next?" } }], created_at: "2026-11-25T00:00:00.000Z" },
+        { id: "m2", thread_id: "t1", role: "assistant", blocks: [{ type: "markdown", props: { text: "Post the gym myth one first." } }], created_at: "2026-11-25T00:00:00.000Z" },
+      ],
+    };
+    await chat.push("done", {});
+    await chat.end();
+    await waitFor(() => expect(el.scrollTop).toBe(1322 + 98));
+    await someFrames();
+    expect(el.scrollTop).toBe(1420);
+    expect(turnsIn()).toHaveLength(2); // folded into history, the last turn keeps the room
+    expect(turnsIn()[1]!.hasAttribute("data-room")).toBe(true);
+  });
+
+  it("a field-height change after the anchor does not re-pin a short answer that fills the window: the view stays as the answer grows", async () => {
+    // With a short answer the room fills the window, so the anchored view IS at the scroll's end.
+    // Reading "within 120 of the end" there took it for a pinned thread and re-pinned it: the next
+    // growth then followed the end again, and the question scrolled away. The field's reserve
+    // follows the hook's pin instead.
+    reduceMotion();
+    const ro = stubResizeObserver();
+    holdChat();
+    await renderComposer();
+    const geo = { tops: [22], ends: [1300], scrollHeight: 1400 };
+    const el = layOut(geo);
+    grown(ro);
+
+    askInField("what should I post next?");
+    await waitFor(() => expect(turnsIn()).toHaveLength(2));
+    geo.tops.push(1330);
+    geo.ends.push(1500); // a short answer: the room holds it
+    geo.scrollHeight = 1330 - 8 + 800; // the room makes the anchored place the scroll's end
+    grown(ro);
+    expect(el.scrollTop).toBe(1322);
+    expect(el.scrollHeight - el.clientHeight - el.scrollTop).toBe(0);
+
+    // The field's block changes height (a tile staged, the draft's lines), then the answer grows.
+    ro.report(140);
+    await waitFor(() => expect(el.style.getPropertyValue("--field-reserve")).toBe("140px"));
+    expect(el.scrollTop).toBe(1322);
+    geo.ends[1] = 2600;
+    geo.scrollHeight = 3000;
+    grown(ro);
+    expect(el.scrollTop).toBe(1322);
+  });
+
+  it("the same question sent a second time is taken to the top too (a new send, in the re-used live slot)", async () => {
+    reduceMotion();
+    const ro = stubResizeObserver();
+    const chat = holdChat();
+    await renderComposer();
+    const geo = { tops: [22], ends: [1300], scrollHeight: 1400 };
+    const el = layOut(geo);
+    grown(ro);
+
+    askInField("what should I post next?");
+    await waitFor(() => expect(turnsIn()).toHaveLength(2));
+    geo.tops.push(1330);
+    geo.ends.push(1500);
+    geo.scrollHeight = 4000;
+    grown(ro);
+    expect(el.scrollTop).toBe(1322);
+    await chat.push("token", { delta: "Post the gym myth one first." });
+    await chat.end(); // no `done`: the live turn stays in its slot (no fold), as a stopped answer does
+
+    // The creator scrolls back up to the first answer, then sends the SAME question again (a retry
+    // after a stopped answer). The live slot is re-used; the send is still a new turn.
+    el.scrollTop = 400;
+    fireEvent.scroll(el);
+    holdChat();
+    askInField("what should I post next?");
+    await waitFor(() => expect(requests("/api/tools/chat")).toHaveLength(2));
+    await waitFor(() => expect(turnsIn()[1]!.dataset.send).toBe("2"));
+    grown(ro);
+    expect(el.scrollTop).toBe(1330 - 8);
+  });
+
+  it("a skill run with no question (Hooks with an empty field, Auto) is taken to the top, and so is the next one", async () => {
+    reduceMotion();
+    const ro = stubResizeObserver();
+    const run = holdStream("/api/tools/hooks");
+    await renderComposer();
+    const geo = { tops: [22], ends: [1300], scrollHeight: 1400 };
+    const el = layOut(geo);
+    grown(ro);
+
+    fireEvent.click(pill("Hooks"));
+    fireEvent.click(send()); // nothing typed: Auto, no bubble
+    await waitFor(() => expect(turnsIn()).toHaveLength(2));
+    expect(turnsIn()[1]!.dataset.turn).toBe("answer");
+    geo.tops.push(1330);
+    geo.ends.push(1500);
+    geo.scrollHeight = 4000;
+    grown(ro);
+    expect(el.scrollTop).toBe(1322);
+    const hook = (rank: number) => ({ props: { hookLine: `Gym myth number ${rank}`, rank, scrollQuote: "ok that is me" } });
+    await run.push("content", { blocks: [hook(1), hook(2), hook(3)] });
+    // Stopped with its cards in: no `done`, so it never folds; its cards stay in the live slot.
+    fireEvent.click(inField().getByRole("button", { name: "Stop the run" }));
+    await waitFor(() => expect(inField().queryByRole("button", { name: "Stop the run" })).toBeNull());
+    expect(turnsIn()).toHaveLength(2);
+
+    el.scrollTop = 400;
+    fireEvent.scroll(el);
+    holdStream("/api/tools/hooks");
+    await waitFor(() => expect(pill("Hooks")).toHaveAttribute("aria-pressed", "false"));
+    fireEvent.click(pill("Hooks"));
+    await waitFor(() => expect(send()).not.toBeDisabled());
+    fireEvent.click(send());
+    await waitFor(() => expect(requests("/api/tools/hooks")).toHaveLength(2));
+    await waitFor(() => expect(turnsIn()[1]!.dataset.send).toBe("2"));
+    grown(ro);
+    expect(el.scrollTop).toBe(1322);
+  });
+
+  it("the field's height read while pinned, with the anchor landing before React commits: the anchor holds, and the answer grows under it", async () => {
+    // A real send clears the field (its block gets shorter) and mounts the turn in one frame: the
+    // field's observer (still pinned) and the content's (the anchor) report in one batch, and React
+    // commits after both. The reserve's follow must ask the hook again then, not trust its stale read.
+    reduceMotion();
+    const ro = stubResizeObserver();
+    holdChat();
+    await renderComposer();
+    const geo = { tops: [22], ends: [1300], scrollHeight: 1400 };
+    const el = layOut(geo);
+    grown(ro); // an opened chat at its end: pinned
+
+    askInField("what should I post next?");
+    await waitFor(() => expect(turnsIn()).toHaveLength(2));
+    geo.tops.push(1330);
+    geo.ends.push(1500);
+    geo.scrollHeight = 3000;
+    const content = region().firstElementChild!;
+    const contentObserver = ro.observers.find((o) => o.targets.includes(content) && !o.disconnected)!;
+    act(() => {
+      ro.report(88); // the field's block, shorter: read while still pinned
+      contentObserver.cb([], {} as ResizeObserver); // the anchor, before React commits
+    });
+    await waitFor(() => expect(el.style.getPropertyValue("--field-reserve")).toBe("88px"));
+    expect(el.scrollTop).toBe(1322);
+
+    geo.ends[1] = 2600;
+    geo.scrollHeight = 3800;
+    grown(ro);
+    expect(el.scrollTop).toBe(1322);
+  });
+
+  describe("a send arms where its run starts, so the answer still in the live slot is never taken for it", () => {
+    const link = "https://www.tiktok.com/@creator_one/video/7300000000000000001";
+    /** /api/analyze refuses: the link run fails and its failure turn (with Retry) is the tail. */
+    function failVideoRead() {
+      const base = global.fetch;
+      global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (String(input).includes("/api/analyze")) {
+          calls.push({ url: String(input), init });
+          return { ok: false, status: 500, json: async () => ({ error: "boom" }) } as unknown as Response;
+        }
+        return base(input, init);
+      }) as typeof fetch;
+    }
+    /** An opened chat, then a chat answer that ended without folding: it stays in the live slot. */
+    async function answerInLiveSlot() {
+      reduceMotion();
+      const ro = stubResizeObserver();
+      const chat = holdChat();
+      failVideoRead();
+      await renderComposer();
+      const geo = { tops: [22], ends: [1300], scrollHeight: 1400 };
+      const el = layOut(geo);
+      grown(ro);
+      askInField("what should I post next?");
+      await waitFor(() => expect(turnsIn()).toHaveLength(2));
+      geo.tops.push(1330);
+      geo.ends.push(1500);
+      geo.scrollHeight = 3000;
+      grown(ro);
+      expect(el.scrollTop).toBe(1322);
+      await chat.push("token", { delta: "Post the gym myth one first." });
+      await chat.end();
+      const live = turnsIn()[1]!;
+      expect(live.dataset.send).toBe("1");
+      return { ro, el, geo, live };
+    }
+    /** A link sent to Simulate, refused: its turn is the tail, with its failure and a Retry. */
+    async function failedVideoTurn() {
+      fireEvent.click(pill("Simulate"));
+      fireEvent.change(text(), { target: { value: link } });
+      fireEvent.click(send());
+      await screen.findByText(/Couldn’t finish that read/);
+      await waitFor(() => expect(turnsIn()).toHaveLength(3));
+    }
+
+    it("a video sent with an answer still in the live slot: the video's turn (the tail) is taken to the top; the answer is not re-stamped or re-mounted", async () => {
+      const { ro, el, geo, live } = await answerInLiveSlot();
+      el.scrollTop = 400;
+      fireEvent.scroll(el);
+      await failedVideoTurn();
+      expect(turnsIn()[1]).toBe(live);
+      expect(live.dataset.send).toBe("1");
+      expect(turnsIn()[2]!.dataset.send).toBe("2");
+      geo.tops.push(1530);
+      geo.ends.push(1700);
+      geo.scrollHeight = 3200;
+      grown(ro);
+      expect(el.scrollTop).toBe(1530 - 8);
+    });
+
+    it("(a) a send that bails before it starts a run (Retry, with no clip and no link left): no new number, no turn re-mounted, the room as it was, the view at the end", async () => {
+      const { ro, el, geo, live } = await answerInLiveSlot();
+      await failedVideoTurn();
+      geo.tops.push(1530);
+      geo.ends.push(1700);
+      geo.scrollHeight = 3200;
+      grown(ro);
+      const tailTurn = turnsIn()[2]!;
+      const sendsBefore = turnsIn().map((t) => t.dataset.send ?? null);
+      const roomBefore = turnsIn().map((t) => t.hasAttribute("data-room"));
+
+      // The creator scrolls up, empties the field, and taps Retry: nothing to read, nothing runs.
+      el.scrollTop = 400;
+      fireEvent.scroll(el);
+      fireEvent.change(text(), { target: { value: "" } });
+      fireEvent.click(screen.getByRole("button", { name: /^Retry/ }));
+      expect(turnsIn()[1]).toBe(live); // the tap's own render
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 30));
+      });
+      expect(requests("/api/analyze")).toHaveLength(1);
+      const after = turnsIn();
+      expect(after[1]).toBe(live);
+      expect(after[2]).toBe(tailTurn);
+      expect(after.map((t) => t.dataset.send ?? null)).toEqual(sendsBefore);
+      expect(after.map((t) => t.hasAttribute("data-room"))).toEqual(roomBefore);
+      // At the end, as a send that bails always left it (happy-dom does not clamp: scrollHeight).
+      expect(el.scrollTop).toBe(el.scrollHeight);
+      grown(ro);
+      expect(el.scrollTop).toBe(el.scrollHeight);
+    });
+
+    it("(b) the same start, then a send that starts a run: nothing is stamped before the run starts, and the turn taken to the top holds the NEW question", async () => {
+      const { ro, el, live } = await answerInLiveSlot();
+      el.scrollTop = 400;
+      fireEvent.scroll(el);
+      holdChat();
+      askInField("and the week after?");
+      // The tap's own render, before the run starts (after the chat's own await): the answer in the
+      // live slot is untouched, and a frame now takes nothing to the top.
+      expect(turnsIn()[1]).toBe(live);
+      expect(live.dataset.send).toBe("1");
+      grown(ro);
+      expect(el.scrollTop).toBe(el.scrollHeight);
+
+      await waitFor(() => expect(requests("/api/tools/chat")).toHaveLength(2));
+      await waitFor(() => expect(turnsIn()[1]!.dataset.send).toBe("2"));
+      const sent = turnsIn()[1]!;
+      expect(sent).not.toBe(live);
+      expect(sent.textContent).toContain("and the week after?");
+      expect(sent.textContent).not.toContain("Post the gym myth one first.");
+      grown(ro);
+      expect(el.scrollTop).toBe(1322);
+    });
+  });
+
+  it("a video send whose upload is refused after its turn appeared: the turn goes, `anchored` is back to what it was (no room under the last turn), and the pin rule puts the view at the end", async () => {
+    reduceMotion();
+    const ro = stubResizeObserver();
+    let refuse!: () => void;
+    upload.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          refuse = () => resolve({ error: { message: "refused" } });
+        }),
+    );
+    await renderComposer();
+    const geo = { tops: [22], ends: [1300], scrollHeight: 1400 };
+    const el = layOut(geo);
+    grown(ro);
+    expect(region().querySelector("[data-room]")).toBeNull(); // a chat only opened: no room
+
+    fireEvent.change(inField().getByLabelText("Choose a video file"), { target: { files: [clip()] } });
+    fireEvent.click(send());
+    // The video's turn (the tail, "uploading") appears with the send, and is taken to the top.
+    await waitFor(() => expect(turnsIn()).toHaveLength(2));
+    expect(turnsIn()[1]!.hasAttribute("data-room")).toBe(true);
+    geo.tops.push(1330);
+    geo.ends.push(1500);
+    geo.scrollHeight = 3000;
+    grown(ro);
+    expect(el.scrollTop).toBe(1322);
+
+    // The upload is refused before the run starts: the error by the field, the turn gone.
+    await act(async () => refuse());
+    await waitFor(() => expect(turnsIn()).toHaveLength(1));
+    expect(requests("/api/analyze")).toHaveLength(0);
+    expect(region().querySelector("[data-room]")).toBeNull();
+    geo.tops.pop();
+    geo.ends.pop();
+    geo.scrollHeight = 1400;
+    grown(ro);
+    expect(el.scrollTop).toBe(1400); // the end (happy-dom does not clamp: scrollHeight)
+    // …and the end is followed again.
+    geo.ends[0] = 1600;
+    geo.scrollHeight = 1700;
+    grown(ro);
+    expect(el.scrollTop).toBe(1700);
+  });
+
+  it("(c) a new chat's first send is taken to the top and takes the room: the id it gets is its own, not a switch", async () => {
+    document.cookie = `${ACTIVE_THREAD_COOKIE}=${NEW_THREAD_SENTINEL}; path=/`;
+    try {
+      reduceMotion();
+      const ro = stubResizeObserver();
+      holdChat();
+      threadFixture = { messages: [] }; // a blank new chat, as the server answers the sentinel
+      await renderHome();
+      askInField("what should I post this week?");
+      await waitFor(() => expect(requests("/api/threads/new")).toHaveLength(1));
+      await waitFor(() => expect(turnsIn()).toHaveLength(1));
+      expect(turnsIn()[0]!.hasAttribute("data-room")).toBe(true);
+
+      const geo = { tops: [12], ends: [200], scrollHeight: 1000 };
+      const el = layOut(geo);
+      grown(ro);
+      expect(el.scrollTop).toBe(12 - 8);
+      expect(turnsIn()[0]!.hasAttribute("data-room")).toBe(true);
+    } finally {
+      document.cookie = `${ACTIVE_THREAD_COOKIE}=; path=/; max-age=0`;
+    }
+  });
+
+  it('"Go to the latest" shows while more than 150 of the answer is under the field, sits in the dock outside the measured field, and takes the thread to its end', async () => {
+    reduceMotion();
+    const ro = stubResizeObserver();
+    await renderComposer();
+    const geo = { tops: [22], ends: [2000], scrollHeight: 2100 };
+    const el = layOut(geo);
+    grown(ro);
+    expect(screen.queryByRole("button", { name: "Go to the latest" })).toBeNull();
+
+    // The creator scrolls back up to read.
+    el.scrollTop = 200;
+    fireEvent.scroll(el);
+    const jump = await screen.findByRole("button", { name: "Go to the latest" });
+    expect(screen.getByTestId("next-field-dock").contains(jump)).toBe(true);
+    expect(fieldBlock().contains(jump)).toBe(false);
+
+    fireEvent.click(jump);
+    expect(el.scrollTop).toBe(2100 - 800);
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Go to the latest" })).toBeNull());
+
+    // …and the end is followed again.
+    geo.ends[0] = 2600;
+    geo.scrollHeight = 2700;
+    grown(ro);
+    expect(el.scrollTop).toBe(2700);
+  });
+
+  it('"Go to the latest" from the keyboard: the button goes once the end is in view, and the focus is in the field\'s text, not on the page; a tap leaves the focus alone (no keyboard over the end on a phone)', async () => {
+    reduceMotion();
+    const ro = stubResizeObserver();
+    await renderComposer();
+    const geo = { tops: [22], ends: [2000], scrollHeight: 2100 };
+    const el = layOut(geo);
+    grown(ro);
+
+    el.scrollTop = 200;
+    fireEvent.scroll(el);
+    const jump = await screen.findByRole("button", { name: "Go to the latest" });
+    jump.focus();
+    fireEvent.keyDown(jump, { key: "Enter" });
+    fireEvent.click(jump);
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Go to the latest" })).toBeNull());
+    expect(document.activeElement).toBe(text());
+
+    // A tap (a pointer): the view goes to the end, the focus is not moved into the field.
+    text().blur();
+    el.scrollTop = 200;
+    fireEvent.scroll(el);
+    const again = await screen.findByRole("button", { name: "Go to the latest" });
+    fireEvent.pointerDown(again);
+    fireEvent.click(again);
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Go to the latest" })).toBeNull());
+    expect(document.activeElement).not.toBe(text());
+  });
+});
+
+// ── Thread feel, step 1 (Task 4): the field while a run finishes, the title, the script's message ──
+
+const waitMs = (ms: number) =>
+  act(async () => {
+    await new Promise((r) => setTimeout(r, ms));
+  });
+const stopButton = () => inField().queryByRole("button", { name: "Stop the run" });
+/** The live pack's rows, once its cards are drawn. */
+const liveRows = () => screen.getAllByRole("button", { name: /^Simulate: / });
+
+describe("thread feel (Task 4): the field shows Stop only until the answer is in (spec §4.6)", () => {
+  it("a chat-dispatched run: Stop while it works and bills; once its cards are in, the send arrow, off, and Enter sends nothing; at rest once the stream closes", async () => {
+    const chat = holdChat();
+    await renderComposer();
+    askInField("hooks about meal prep for busy students");
+    await waitFor(() => expect(requests("/api/tools/chat")).toHaveLength(1));
+    await chat.push("dispatch", { skill: "hooks" });
+    await chat.push("stage", { name: "Generating", status: "active" });
+    expect(stopButton()).toBeEnabled();
+    await chat.push("stage", { name: "Generating", status: "done" });
+    await chat.push("stage", { name: "Ranking", status: "done" });
+    // Every stage done, no card yet (the run bills before it writes them): still Stop.
+    expect(stopButton()).toBeEnabled();
+
+    for (const block of MEAL_PREP_HOOKS) await chat.push("block", { block });
+    await waitFor(() => expect(liveRows()).toHaveLength(3));
+    expect(stopButton()).toBeNull();
+    expect(send()).toHaveAttribute("aria-label", "Send message");
+    expect(send()).toBeDisabled();
+    // Enter still sends nothing while the stream is open.
+    fireEvent.change(text(), { target: { value: "and one more thing" } });
+    fireEvent.keyDown(text(), { key: "Enter" });
+    await waitMs(50);
+    expect(requests("/api/tools/chat")).toHaveLength(1);
+    // The closing line streams (this look does not draw it under cards): the arrow stays off.
+    await chat.push("token", { delta: "Hook 1 is the one to film." });
+    expect(stopButton()).toBeNull();
+    expect(send()).toBeDisabled();
+
+    await chat.push("done", {});
+    await chat.end();
+    await waitFor(() => expect(send()).not.toBeDisabled());
+    expect(stopButton()).toBeNull();
+    expect(send()).toHaveAttribute("aria-label", "Send message");
+  });
+
+  it("a stream that outlasts its cards by 8 s (a closing line that stalls): Stop again, and it ends the stream with the cards kept", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const chat = holdChat();
+      await renderComposer();
+      askInField("hooks about meal prep for busy students");
+      await waitFor(() => expect(requests("/api/tools/chat")).toHaveLength(1));
+      await chat.push("dispatch", { skill: "hooks" });
+      await chat.push("stage", { name: "Generating", status: "done" });
+      for (const block of MEAL_PREP_HOOKS) await chat.push("block", { block });
+      await waitFor(() => expect(liveRows()).toHaveLength(3));
+      expect(stopButton()).toBeNull();
+      expect(send()).toBeDisabled();
+
+      await act(async () => {
+        vi.advanceTimersByTime(7_000);
+      });
+      expect(stopButton()).toBeNull(); // the usual close: a few seconds
+      await act(async () => {
+        vi.advanceTimersByTime(1_100);
+      });
+      expect(stopButton()).toBeEnabled();
+
+      fireEvent.click(stopButton()!);
+      await waitFor(() => expect(stopButton()).toBeNull());
+      expect(liveRows()).toHaveLength(3);
+      fireEvent.change(text(), { target: { value: "and one more thing" } });
+      expect(send()).not.toBeDisabled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("a run a chip started, with Script picked while it runs: once its cards are in, the arrow is off until the stream closes", async () => {
+    // A chip's run holds no send of the field's own, and Script's own stream is idle, so only the
+    // run finishing keeps this send off.
+    const chat = holdChat();
+    threadFixture = mealPrepThread("@nia.tests");
+    await renderComposer();
+    fireEvent.click((await screen.findAllByRole("button", { name: /^Follow up: / }))[0]!);
+    await waitFor(() => expect(requests("/api/tools/chat")).toHaveLength(1));
+    await chat.push("dispatch", { skill: "hooks" });
+    await chat.push("stage", { name: "Generating", status: "done" });
+    fireEvent.click(pill("Script"));
+    expect(stopButton()).toBeEnabled();
+    for (const block of MEAL_PREP_HOOKS) await chat.push("block", { block });
+    await waitFor(() => expect(stopButton()).toBeNull());
+    expect(send()).toHaveAttribute("aria-label", "Generate script");
+    expect(send()).toBeDisabled();
+    fireEvent.click(send());
+    fireEvent.keyDown(text(), { key: "Enter" });
+    await waitMs(50);
+    expect(requests("/api/tools/script")).toHaveLength(0);
+
+    await chat.push("done", {});
+    await chat.end();
+    await waitFor(() => expect(send()).not.toBeDisabled());
+    expect(send()).toHaveAttribute("aria-label", "Generate script");
+  });
+
+  it("a chat turn that dispatches a second run: Stop again from its dispatch, though the first run's cards stay", async () => {
+    const chat = holdChat();
+    await renderComposer();
+    askInField("hooks about meal prep, then a script for the best one");
+    await waitFor(() => expect(requests("/api/tools/chat")).toHaveLength(1));
+    await chat.push("dispatch", { skill: "hooks" });
+    await chat.push("stage", { name: "Generating", status: "done" });
+    for (const block of MEAL_PREP_HOOKS) await chat.push("block", { block });
+    await waitFor(() => expect(stopButton()).toBeNull());
+
+    // The second run clears the stages (a fresh dispatch); the turn waits for it, so Stop is back.
+    await chat.push("dispatch", { skill: "script" });
+    expect(stopButton()).toBeEnabled();
+    await chat.push("stage", { name: "Generating", status: "active" });
+    expect(stopButton()).toBeEnabled();
+    await chat.end();
+  });
+
+  it("a skill's own run (Hooks): Stop until its cards are in, then the arrow, off, until the run says done", async () => {
+    const run = holdStream("/api/tools/hooks");
+    await renderComposer();
+    fireEvent.click(pill("Hooks"));
+    askInField("gym myths");
+    await waitFor(() => expect(requests("/api/tools/hooks")).toHaveLength(1));
+    await run.push("stage", { name: "Generating", status: "active" });
+    expect(stopButton()).toBeEnabled();
+    await run.push("stage", { name: "Generating", status: "done" });
+    await run.push("stage", { name: "Ranking", status: "active" });
+    expect(stopButton()).toBeEnabled();
+    await run.push("stage", { name: "Ranking", status: "done" });
+
+    const hookBlock = (rank: number) => ({ props: { hookLine: `Gym myth number ${rank}`, rank, scrollQuote: "ok that is me" } });
+    await run.push("content", { blocks: [hookBlock(1), hookBlock(2), hookBlock(3)] });
+    await waitFor(() => expect(liveRows()).toHaveLength(3));
+    // The route stores the cards, writes the title and bills before `done`: nothing to stop.
+    expect(stopButton()).toBeNull();
+    expect(send()).toBeDisabled();
+    fireEvent.change(text(), { target: { value: "and one more thing" } });
+    fireEvent.keyDown(text(), { key: "Enter" });
+    await waitMs(50);
+    expect(requests("/api/tools/chat")).toHaveLength(0);
+
+    await run.push("done", {});
+    await waitFor(() => expect(send()).not.toBeDisabled());
+    expect(stopButton()).toBeNull();
+  });
+});
+
+describe("thread feel (Task 4): a chat with no title is named in its header at once (spec §5.1)", () => {
+  beforeEach(() => useShellStore.setState({ threadTitleHint: null }));
+  afterEach(() => useShellStore.setState({ threadTitleHint: null }));
+  const untitled = () =>
+    answer("/api/threads/list", { threads: [{ id: "t1", title: null, updated_at: "", created_at: "", pinned_at: null }] });
+  const headerNamed = (name: string) => screen.findByRole("heading", { level: 1, name });
+  /** The list answers with what the server has stored for "t1": `title`, changed by the test. */
+  const listAnswersStored = () => {
+    const stored: { title: string | null } = { title: null };
+    const base = global.fetch;
+    global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes("/api/threads/list")) {
+        calls.push({ url: String(input), init });
+        return json({ threads: [{ id: "t1", title: stored.title, updated_at: "", created_at: "", pinned_at: null }] });
+      }
+      return base(input, init);
+    }) as typeof fetch;
+    return stored;
+  };
+
+  it("a new chat's first send: its ask, cleaned by the server's rule, in the header while the answer is still on its way", async () => {
+    document.cookie = `${ACTIVE_THREAD_COOKIE}=${NEW_THREAD_SENTINEL}; path=/`;
+    try {
+      holdChat();
+      threadFixture = { messages: [] }; // a blank new chat, as the server answers the sentinel
+      await renderHome();
+      askInField("  “meal prep   for busy students”  ");
+      await waitFor(() => expect(requests("/api/threads/new")).toHaveLength(1));
+      expect(await headerNamed("meal prep for busy students")).toBeInTheDocument();
+      expect(useShellStore.getState().threadTitleHint).toEqual({ id: "t-new", title: "meal prep for busy students" });
+    } finally {
+      document.cookie = `${ACTIVE_THREAD_COOKIE}=; path=/; max-age=0`;
+    }
+  });
+
+  it("a new chat whose creation fails: no hint, and the header is not named from the ask", async () => {
+    document.cookie = `${ACTIVE_THREAD_COOKIE}=${NEW_THREAD_SENTINEL}; path=/`;
+    // An id left from an earlier chat: the hint must never land on it.
+    useBoardStore.setState({ activeThreadId: "t-old" });
+    const base = global.fetch;
+    global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).includes("/api/threads/new")) {
+        calls.push({ url: String(input), init });
+        return { ok: false, status: 500, json: async () => ({ error: "boom" }) } as unknown as Response;
+      }
+      return base(input, init);
+    }) as typeof fetch;
+    try {
+      holdChat();
+      threadFixture = { messages: [] }; // a blank new chat, as the server answers the sentinel
+      await renderHome();
+      askInField("meal prep for busy students");
+      await waitFor(() => expect(requests("/api/threads/new")).toHaveLength(1));
+      // The send still goes (the route makes its chat itself); its id is not known here.
+      await waitFor(() => expect(requests("/api/tools/chat")).toHaveLength(1));
+      expect(await headerNamed("New chat")).toBeInTheDocument();
+      await waitMs(30);
+      expect(useShellStore.getState().threadTitleHint).toBeNull();
+      expect(screen.queryByRole("heading", { level: 1, name: "meal prep for busy students" })).toBeNull();
+      expect(useBoardStore.getState().activeThreadId).toBeNull();
+    } finally {
+      document.cookie = `${ACTIVE_THREAD_COOKIE}=; path=/; max-age=0`;
+    }
+  });
+
+  it("a long first message is cut back to its last whole word at once, and reads the same once the list holds the stored title", async () => {
+    // The list answers with what the server has stored: nothing until the turn is in, then the
+    // title it cut to 48 characters ("…meal pr"), which the header shows cut back to "…meal…".
+    const stored = listAnswersStored();
+    const chat = holdChat();
+    threadFixture = emptyChat(); // a chat with nothing in it yet (Home): this is its first message
+    await renderHome();
+    const ask = "can you write me hooks for a video about meal prep for busy students";
+    askInField(ask);
+    expect(await headerNamed("can you write me hooks for a video about meal…")).toBeInTheDocument();
+
+    // The turn is stored with its title; the fold reads the list again.
+    stored.title = "can you write me hooks for a video about meal pr";
+    threadFixture = {
+      threadId: "t1",
+      messages: [
+        { id: "u2", thread_id: "t1", role: "user", blocks: [{ type: "markdown", props: { text: ask } }], created_at: "2026-11-25T00:00:00.000Z" },
+        { id: "m2", thread_id: "t1", role: "assistant", blocks: [{ type: "markdown", props: { text: "Here are three." } }], created_at: "2026-11-25T00:00:00.000Z" },
+      ],
+      simSeals: {},
+    };
+    const lists = requests("/api/threads/list").length;
+    await chat.push("token", { delta: "Here are three." });
+    await chat.push("done", {});
+    await chat.end();
+    await waitFor(() => expect(requests("/api/threads/list").length).toBeGreaterThan(lists));
+    await waitMs(30);
+    // The hint goes: what the header shows now is the list's stored title, and it reads the same.
+    act(() => useShellStore.setState({ threadTitleHint: null }));
+    expect(screen.getByRole("heading", { level: 1, name: "can you write me hooks for a video about meal…" })).toBeInTheDocument();
+  });
+
+  it("a skill's first message in an empty chat the list holds untitled names it", async () => {
+    holdStream("/api/tools/hooks");
+    untitled();
+    threadFixture = emptyChat();
+    await renderHome();
+    fireEvent.click(screen.getByRole("button", { name: "Hooks" })); // Home's skill card
+    askInField("gym myths for beginners");
+    expect(await headerNamed("gym myths for beginners")).toBeInTheDocument();
+    expect(useShellStore.getState().threadTitleHint).toEqual({ id: "t1", title: "gym myths for beginners" });
+  });
+
+  it("a send in a chat with history that the list holds untitled does not name it: its stored title comes with the list at the fold", async () => {
+    // The server writes a chat's title once, from its first message. This chat's first message is
+    // long stored (the list was not read since: a run stopped, a chat beyond the list's rows), so
+    // the later send's words would name it wrong until the fold put the stored title back.
+    const stored = listAnswersStored();
+    const run = holdStream("/api/tools/hooks");
+    await renderComposer();
+    expect(await headerNamed("New chat")).toBeInTheDocument();
+    fireEvent.click(pill("Hooks"));
+    askInField("gym myths for beginners");
+    await waitFor(() => expect(requests("/api/tools/hooks")).toHaveLength(1));
+    await waitMs(30);
+    expect(useShellStore.getState().threadTitleHint).toBeNull();
+    expect(screen.queryByRole("heading", { level: 1, name: "gym myths for beginners" })).toBeNull();
+
+    // The fold reads the list again: the title the server stored from the first message.
+    stored.title = "first ask";
+    const hookBlock = (rank: number) => ({ props: { hookLine: `Gym myth number ${rank}`, rank, scrollQuote: "ok that is me" } });
+    await run.push("stage", { name: "Generating", status: "done" });
+    await run.push("content", { blocks: [hookBlock(1), hookBlock(2), hookBlock(3)] });
+    await run.push("done", {});
+    threadFixture = {
+      ...historyThread(),
+      messages: [
+        ...historyThread().messages,
+        { id: "u2", thread_id: "t1", role: "user", blocks: [{ type: "markdown", props: { text: "gym myths for beginners" } }], created_at: "2026-11-25T00:00:00.000Z" },
+        { id: "m2", thread_id: "t1", role: "assistant", blocks: [{ type: "markdown", props: { text: "Gym myth number 1" } }], created_at: "2026-11-25T00:00:00.000Z" },
+      ],
+    };
+    await run.end();
+    expect(await headerNamed("first ask")).toBeInTheDocument();
+    expect(useShellStore.getState().threadTitleHint).toBeNull();
+  });
+
+  it("once per chat: after a Stop, the next message does not rename it (nothing was folded, the list still holds it untitled)", async () => {
+    untitled();
+    holdChat();
+    threadFixture = emptyChat();
+    await renderHome();
+    askInField("meal prep for busy students");
+    expect(await headerNamed("meal prep for busy students")).toBeInTheDocument();
+    // Stopped before its first word: nothing is folded, so the list is not read again.
+    await waitFor(() => expect(stopButton()).toBeEnabled());
+    fireEvent.click(stopButton()!);
+    await waitFor(() => expect(stopButton()).toBeNull());
+
+    askInField("gym myths for beginners");
+    await waitFor(() => expect(requests("/api/tools/chat")).toHaveLength(2));
+    await waitMs(30);
+    expect(useShellStore.getState().threadTitleHint).toEqual({ id: "t1", title: "meal prep for busy students" });
+    expect(screen.queryByRole("heading", { level: 1, name: "gym myths for beginners" })).toBeNull();
+  });
+
+  it("a bare link as the first message names nothing", async () => {
+    holdStream("/api/tools/remix");
+    untitled();
+    threadFixture = emptyChat();
+    await renderHome();
+    fireEvent.click(screen.getByRole("button", { name: "Remix" })); // Home's skill card
+    askInField("https://www.tiktok.com/@creator_one/video/7300000000000000001");
+    await waitFor(() => expect(requests("/api/tools/remix")).toHaveLength(1));
+    await waitMs(30);
+    expect(useShellStore.getState().threadTitleHint).toBeNull();
+    expect(await headerNamed("New chat")).toBeInTheDocument();
+  });
+
+  it("a chat that has a title is left alone", async () => {
+    holdStream("/api/tools/hooks");
+    answer("/api/threads/list", { threads: [{ id: "t1", title: "Meal prep for busy students", updated_at: "", created_at: "", pinned_at: null }] });
+    await renderComposer();
+    expect(await headerNamed("Meal prep for busy students")).toBeInTheDocument();
+    fireEvent.click(pill("Hooks"));
+    askInField("gym myths for beginners");
+    await waitFor(() => expect(requests("/api/tools/hooks")).toHaveLength(1));
+    await waitMs(30);
+    expect(useShellStore.getState().threadTitleHint).toBeNull();
+    expect(screen.getByRole("heading", { level: 1, name: "Meal prep for busy students" })).toBeInTheDocument();
+  });
+
+  it("a chip tapped in a chat the list holds untitled does not name it: a chip sits under a turn, so its message is never the chat's first", async () => {
+    holdChat();
+    untitled();
+    threadFixture = mealPrepThread("@nia.tests");
+    await renderComposer();
+    expect(await headerNamed("New chat")).toBeInTheDocument();
+    const chip = (await screen.findAllByRole("button", { name: /^Follow up: / }))[0]!;
+    fireEvent.click(chip);
+    await waitFor(() => expect(requests("/api/tools/chat")).toHaveLength(1));
+    const asked = String(bodyOf(requests("/api/tools/chat")[0]!).ask);
+    expect(asked.length).toBeGreaterThan(0);
+    await waitMs(30);
+    expect(useShellStore.getState().threadTitleHint).toBeNull();
+    expect(screen.queryByRole("heading", { level: 1, name: asked })).toBeNull();
+    expect(screen.getByRole("heading", { level: 1, name: "New chat" })).toBeInTheDocument();
+  });
+});
+
+describe("thread feel (Task 4): the list of chats is read again once a run is in history (spec §5.1)", () => {
+  /** The thread as the server holds it once the turn is stored. */
+  const withTurn = (ask: string, answerText: string) => ({
+    ...historyThread(),
+    messages: [
+      ...historyThread().messages,
+      { id: "u2", thread_id: "t1", role: "user", blocks: [{ type: "markdown", props: { text: ask } }], created_at: "2026-11-25T00:00:00.000Z" },
+      { id: "m2", thread_id: "t1", role: "assistant", blocks: [{ type: "markdown", props: { text: answerText } }], created_at: "2026-11-25T00:00:00.000Z" },
+    ],
+  });
+  const lists = () => requests("/api/threads/list").length;
+
+  it("a chat run: once it is folded, not while it streams", async () => {
+    const chat = holdChat();
+    await renderComposer();
+    await waitFor(() => expect(lists()).toBeGreaterThan(0));
+    await waitMs(30);
+    const before = lists();
+    askInField("what should I post next?");
+    await waitFor(() => expect(requests("/api/tools/chat")).toHaveLength(1));
+    await chat.push("token", { delta: "Post the gym myth one first." });
+    await waitMs(30);
+    expect(lists()).toBe(before);
+
+    threadFixture = withTurn("what should I post next?", "Post the gym myth one first.");
+    const opens = requests("/api/threads/open").length;
+    await chat.push("done", {});
+    await chat.end();
+    await waitFor(() => expect(requests("/api/threads/open").length).toBeGreaterThan(opens));
+    await waitFor(() => expect(lists()).toBe(before + 1));
+  });
+
+  it("a skill's run (Hooks): once it is folded", async () => {
+    const run = holdStream("/api/tools/hooks");
+    await renderComposer();
+    await waitFor(() => expect(lists()).toBeGreaterThan(0));
+    await waitMs(30);
+    const before = lists();
+    fireEvent.click(pill("Hooks"));
+    askInField("gym myths");
+    await waitFor(() => expect(requests("/api/tools/hooks")).toHaveLength(1));
+    await run.push("stage", { name: "Generating", status: "done" });
+    const hookBlock = (rank: number) => ({ props: { hookLine: `Gym myth number ${rank}`, rank, scrollQuote: "ok that is me" } });
+    await run.push("content", { blocks: [hookBlock(1), hookBlock(2), hookBlock(3)] });
+    await run.push("done", {});
+    await waitMs(30);
+    expect(lists()).toBe(before); // done, the stream still open: not folded yet
+
+    threadFixture = withTurn("gym myths", "Gym myth number 1");
+    await run.end();
+    await waitFor(() => expect(lists()).toBe(before + 1));
+  });
+
+  it("a fold whose reload brings nothing reads nothing again", async () => {
+    const chat = holdChat();
+    await renderComposer();
+    await waitFor(() => expect(lists()).toBeGreaterThan(0));
+    await waitMs(30);
+    const before = lists();
+    askInField("what should I post next?");
+    await waitFor(() => expect(requests("/api/tools/chat")).toHaveLength(1));
+    threadFixture = { threadId: "t1", messages: [] }; // the reload finds nothing: no fold
+    const opens = requests("/api/threads/open").length;
+    await chat.push("token", { delta: "Post the gym myth one first." });
+    await chat.push("done", {});
+    await chat.end();
+    await waitFor(() => expect(requests("/api/threads/open").length).toBeGreaterThan(opens));
+    await waitMs(50);
+    expect(lists()).toBe(before);
+  });
+});
+
+describe("thread feel (Task 4): a card's script button names its row (spec §4.7)", () => {
+  it("Script hook 2 sends 'Write the script for hook 2.' with that hook as the anchor", async () => {
+    const [h1, h2, h3] = MEAL_PREP_HOOKS.map((b) => b.props.hookLine);
+    const seal = (n: number) => ({ fraction: `${n / 10}/10 stop`, scrollQuote: "", personas: [], population: population(n), at: "2026-11-21T00:00:00.000Z" });
+    // Hook 2 leads by 5: no clear best, so the button names the row.
+    threadFixture = mealPrepThread("@nia.tests", { [h1!.trim()]: seal(30), [h2!.trim()]: seal(35), [h3!.trim()]: seal(28) });
+    holdChat(); // the run stays the live turn, its question in its bubble
+    await renderComposer();
+    fireEvent.click(await screen.findByRole("button", { name: "Script hook 2, 2 credits" }));
+    await waitFor(() => expect(requests("/api/tools/chat")).toHaveLength(1));
+    expect(bodyOf(requests("/api/tools/chat")[0]!)).toMatchObject({
+      ask: "Write the script for hook 2.",
+      skill: "script",
+      anchor: h2,
+    });
+    expect(await screen.findByText("Write the script for hook 2.", { selector: "p" })).toBeInTheDocument();
+  });
+
+  it("Script the best names the best row too", async () => {
+    const [h1, h2, h3] = MEAL_PREP_HOOKS.map((b) => b.props.hookLine);
+    const seal = (n: number) => ({ fraction: `${n / 10}/10 stop`, scrollQuote: "", personas: [], population: population(n), at: "2026-11-21T00:00:00.000Z" });
+    threadFixture = mealPrepThread("@nia.tests", { [h1!.trim()]: seal(20), [h2!.trim()]: seal(25), [h3!.trim()]: seal(60) });
+    await renderComposer();
+    fireEvent.click(await screen.findByRole("button", { name: "Script the best, 2 credits" }));
+    await waitFor(() => expect(requests("/api/tools/chat")).toHaveLength(1));
+    expect(bodyOf(requests("/api/tools/chat")[0]!)).toMatchObject({ ask: "Write the script for hook 3.", anchor: h3 });
   });
 });

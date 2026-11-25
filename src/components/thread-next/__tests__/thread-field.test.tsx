@@ -422,6 +422,45 @@ describe("ThreadField: send and Stop", () => {
     expect(onSubmit).not.toHaveBeenCalled();
     expect(button("Send message")).toHaveAttribute("type", "submit");
   });
+
+  // Thread feel §4.6: once the answer is in while its stream is still open (billing, a closing line
+  // this look does not draw), there is nothing left to stop that the creator can see coming.
+  it("finishing: the send arrow, named by sendLabel, off even when it could send; no Stop", () => {
+    const p = props({ canSend: true, value: "and one more thing", finishing: true });
+    render(<ThreadField {...p} />);
+    expect(screen.queryByRole("button", { name: "Stop the run" })).toBeNull();
+    const send = button("Send message");
+    expect(send).toHaveAttribute("type", "submit");
+    expect(send).toBeDisabled();
+    expect(send).not.toHaveAttribute("aria-busy");
+    expect(send.querySelector("svg")).not.toBeNull(); // the arrow, not an empty or spinning disc
+    fireEvent.click(send);
+    expect(p.onSubmit).not.toHaveBeenCalled();
+  });
+
+  it("finishing while busy still shows the arrow, not the spinner", () => {
+    render(<ThreadField {...props({ canSend: true, busy: true, finishing: true })} />);
+    const send = button("Send message");
+    expect(send).toBeDisabled();
+    expect(send).not.toHaveAttribute("aria-busy");
+    expect(send.querySelector('[role="progressbar"]')).toBeNull();
+  });
+
+  it("streaming wins over finishing: Stop, enabled", () => {
+    const p = props({ canSend: true, streaming: true, finishing: true });
+    render(<ThreadField {...p} />);
+    const stop = button("Stop the run");
+    expect(stop).toHaveAttribute("type", "button");
+    expect(stop).toBeEnabled();
+    fireEvent.click(stop);
+    expect(p.onStop).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("button", { name: "Send message" })).toBeNull();
+  });
+
+  it("not finishing: the send is as before, enabled when it can send", () => {
+    render(<ThreadField {...props({ canSend: true, finishing: false })} />);
+    expect(button("Send message")).toBeEnabled();
+  });
 });
 
 describe("ThreadField: the text", () => {

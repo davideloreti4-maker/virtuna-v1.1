@@ -22,7 +22,7 @@ import { ChevronIcon, CloseIcon, DocIcon, SendIcon, StopIcon } from "./field-ico
  *
  * In a thread (no `home`) it is a glass bar docked at the bottom:
  *
- *   row 1   +  ·  the text  ·  send (Stop while a run streams)
+ *   row 1   +  ·  the text  ·  send (Stop while a run streams, until its answer is in)
  *   row 2   Simulate · Hooks · Script · Remix · More
  *
  * Geometry as drawn: radius 32, padding 8 / 8 / 10, 10 between the rows, 96 tall at rest and
@@ -62,6 +62,9 @@ export interface ThreadFieldProps {
   priceOf(tool: ToolId): number | null;                                 // null = free (chat)
   canSend: boolean; busy: boolean; online: boolean;
   streaming: boolean; onStop(e: React.MouseEvent<HTMLButtonElement>): void;
+  /** Thread feel §4.6: the answer is in while its stream is still open (billing, a closing line
+   *  this look does not draw). The send arrow again, off until the stream closes. `streaming` wins. */
+  finishing?: boolean;
   video: File | null; onVideoChange(file: File | null): void;          // + and a dropped video; remove = onVideoChange(null)
   evidence: File | null; onRemoveEvidence(): void;                     // the profile read's staged file, shown as a chip
   onDropFile(file: File): void;                                         // a dropped non-video file (the composer routes it to evidence)
@@ -200,6 +203,7 @@ export function ThreadField({
   online,
   streaming,
   onStop,
+  finishing = false,
   video,
   onVideoChange,
   evidence,
@@ -292,7 +296,9 @@ export function ThreadField({
     focusText();
   };
 
-  const sendEnabled = canSend && online && !busy;
+  const sendEnabled = canSend && online && !busy && !finishing;
+  // While a run finishes the arrow shows, off: never the spinner a busy send shows in its place.
+  const sendBusy = busy && !finishing;
   const shown = (list: Array<string | null>) => list.filter((m): m is string => Boolean(m));
   const shownErrors = shown([pickError, ...errors]);
   const shownNotes = shown(notes);
@@ -412,7 +418,7 @@ export function ThreadField({
       // Home: the picked skill and its price ("Hooks · 1 credit"), tied to no other control.
       aria-describedby={!streaming && home?.picked ? pickedId : undefined}
       disabled={!streaming && !sendEnabled}
-      loading={!streaming && busy}
+      loading={!streaming && sendBusy}
       onClick={
         streaming
           ? (e) => {
@@ -430,7 +436,7 @@ export function ThreadField({
         "next:disabled:opacity-100 next:disabled:shadow-none",
       )}
     >
-      {streaming ? <StopIcon aria-hidden /> : busy ? null : <SendIcon size={17} strokeWidth={2.3} aria-hidden />}
+      {streaming ? <StopIcon aria-hidden /> : sendBusy ? null : <SendIcon size={17} strokeWidth={2.3} aria-hidden />}
     </Button>
   );
 

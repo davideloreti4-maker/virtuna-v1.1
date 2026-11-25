@@ -5,12 +5,15 @@ import { useEffect, useState } from "react";
 import { TextResultView, type TextResultState } from "@/components/result/text-result";
 import { NextAssistantTurn } from "@/components/thread-next/assistant-label";
 import type { GaugeState } from "@/components/thread-next/answer-gauge";
+import { AnswerOutline } from "@/components/thread-next/answer-outline";
 import { AnswerSheet } from "@/components/thread-next/answer-sheet";
 import { PackSentence } from "@/components/thread-next/answer-sentence";
 import { FallbackAnswer } from "@/components/thread-next/fallback-answer";
 import { FollowupChips } from "@/components/thread-next/followup-chips";
-import { PackAnswer, type PackQueue, type PackRow } from "@/components/thread-next/pack-answer";
+import { LandingGroup } from "@/components/thread-next/landing-group";
+import { PackAnswer, packLastLand, type PackQueue, type PackRow } from "@/components/thread-next/pack-answer";
 import { RemixAnswer } from "@/components/thread-next/remix-answer";
+import { RunStatus } from "@/components/thread-next/run-status";
 import { ScriptAnswer } from "@/components/thread-next/script-answer";
 import { CopyButton, SaveButton } from "@/components/thread-next/sheet-actions";
 import { HookSheetBody, IdeaSheetBody, type SheetGauge } from "@/components/thread-next/sheet-body";
@@ -37,8 +40,11 @@ import { textResultOf } from "@/lib/result/text-result";
 import type { ResultRow, ResultState } from "@/lib/result/types";
 import { videoStateOf } from "@/lib/result/video-model";
 import type { ChatTurnKind } from "@/lib/tools/chat-followups";
+import type { RunEvidence } from "@/lib/tools/evidence";
 import { fallbackOf } from "@/lib/thread-next/fallback-lines";
+import { landStyle } from "@/lib/thread-next/landing";
 import { nextFollowups } from "@/lib/thread-next/next-followups";
+import { outlineOf, statusWords, usualNote } from "@/lib/thread-next/run-status";
 import { stopNumberOf } from "@/lib/thread-next/stop-number";
 import { paintTheme, readThemeChoice } from "@/lib/theme/theme";
 
@@ -49,6 +55,11 @@ import { paintTheme, readThemeChoice } from "@/lib/theme/theme";
  * video's numbers come from the recorded run `middle` through the real `videoStateOf`, the model
  * `/simulation/[id]` renders. Every handler does nothing, so the
  * controls look as they do in a thread; nothing is sent.
+ *
+ * The wait (thread feel §4.2, §4.3): the line and the outlines are the real `RunStatus` and
+ * `AnswerOutline`, their words from the real `statusWords` and `usualNote` (the note as it reads at
+ * the start of a run). `wl` plays a landing: w3's outline, then the p3 pack in its place inside the
+ * real `LandingGroup`, its rows one after another (the page's key replays it on a reload).
  */
 
 export type DevAnswersState =
@@ -70,7 +81,14 @@ export type DevAnswersState =
   | "p7n"
   | "p6"
   | "p6b"
-  | "p6i";
+  | "p6i"
+  | "w1"
+  | "w2"
+  | "w3"
+  | "w4"
+  | "w5"
+  | "w6"
+  | "wl";
 export type DevAnswersSkin = "light" | "dark";
 
 const empty: GaugeState = { kind: "empty" };
@@ -139,6 +157,33 @@ function packTurn(ask: string, kind: "hook" | "idea", rows: PackRow[], queue: Pa
     chips,
   };
 }
+
+const done = (name: string) => ({ name, status: "done" });
+const active = (name: string) => ({ name, status: "active" });
+
+/** A grounded run's evidence: three videos without pictures (their covers are plain tiles) and the
+ *  topical headline, as `evidenceHeadline` writes it. */
+const GROUNDED: RunEvidence = {
+  headline: "Reading 3 real videos matched to this subject",
+  items: [1, 2, 3].map((n) => ({ kind: "video" as const, label: `creator_${n}`, metric: `${n * 7}K views` })),
+};
+
+/** The post a remix run fetched (made up). */
+const FETCHED_POST: RunEvidence = {
+  headline: "Reworking this video",
+  items: [{ kind: "video", image: "/covers/c9.jpg", label: "creator_one", metric: "154K views" }],
+};
+
+/** The wait of a run, as the turn draws it: its outline with the line as its header, or the line alone. */
+function waitOf(skill: string, stages: { name: string; status: string }[], evidence: RunEvidence | null): React.ReactNode {
+  const words = statusWords(skill, stages);
+  const note = usualNote(skill, 0);
+  const outline = outlineOf(skill);
+  return outline ? <AnswerOutline kind={outline} words={words} note={note} evidence={evidence} /> : <RunStatus words={words} note={note} />;
+}
+
+/** How long `wl` waits before its pack lands. */
+const LANDING_AFTER_MS = 2_500;
 
 function turnOf(state: DevAnswersState, ctx: { frames: string | null; startedAt: number }): DevTurn | null {
   const row = recordedRow(ctx.frames);
@@ -211,11 +256,55 @@ function turnOf(state: DevAnswersState, ctx: { frames: string | null; startedAt:
       const { title, lines } = fallbackOf(accountRead());
       return { ask: "Read my account", answer: <FallbackAnswer title={title} lines={lines} />, chips: null };
     }
+    case "w1":
+      return { ask: "What should I post this week?", answer: waitOf("chat", [], null), chips: null };
+    case "w2":
+      return { ask: HOOKS_ASK, answer: waitOf("hooks", [], null), chips: null };
+    case "w3":
+    case "wl":
+      return { ask: HOOKS_ASK, answer: waitOf("hooks", [done("Finding proven outliers")], GROUNDED), chips: null };
+    case "w4":
+      return { ask: "Write the script for hook 2.", answer: waitOf("script", [active("Generating")], null), chips: null };
+    case "w5":
+      return { ask: "Remix this video", answer: waitOf("remix", [done("Resolving"), active("Decoding")], FETCHED_POST), chips: null };
+    case "w6":
+      return { ask: "Find outliers in my niche", answer: waitOf("explore", [], null), chips: null };
     case "p7":
     case "p7l":
     case "p7n":
       return null;
   }
+}
+
+/**
+ * wl: w3's wait, then after `LANDING_AFTER_MS` the p3 pack in its place, landing as a live turn's
+ * does: inside `LandingGroup` from 0 ms, the rows one after another, the button, the chips 3 after.
+ */
+function DevLanding({ wait }: { wait: DevTurn }) {
+  const [landed, setLanded] = useState(false);
+  useEffect(() => {
+    const timer = setTimeout(() => setLanded(true), LANDING_AFTER_MS);
+    return () => clearTimeout(timer);
+  }, []);
+  const pack = packTurn(HOOKS_ASK, "hook", hookRows(() => empty), null, "hooks");
+  return (
+    <>
+      <NextUserTurn text={wait.ask} />
+      <NextAssistantTurn>
+        {landed ? (
+          <LandingGroup sinceMs={0}>
+            {pack.answer}
+            {pack.sentence}
+            <div className="land -mt-0.5" style={landStyle(packLastLand(MEAL_PREP_HOOKS.length) + 3)}>
+              <FollowupChips followups={nextFollowups("hooks")} onPick={noop} />
+            </div>
+          </LandingGroup>
+        ) : (
+          wait.answer
+        )}
+      </NextAssistantTurn>
+    </>
+  );
 }
 
 /** The sheet, open when the page opens; it holds its own state, so Escape, the scrim and the handle close it. */
@@ -293,12 +382,18 @@ export function DevAnswers({ state, skin, frames }: { state: DevAnswersState; sk
       {/* The drawing's thread starts 110 from the top on a phone (under the 46 band <main> keeps)
           and 90 on a desk; the column is the drawing's (16 gutters on a phone, 720 on a desk). */}
       <div className="mx-auto flex w-full max-w-[720px] flex-col gap-5 px-4 pb-16 pt-16 md:px-0 md:pt-[90px]">
-        <NextUserTurn text={s.ask} video={s.video} />
-        <NextAssistantTurn>
-          {s.answer}
-          {s.sentence}
-          {s.chips && <FollowupChips followups={nextFollowups(s.chips)} onPick={noop} className="-mt-0.5" />}
-        </NextAssistantTurn>
+        {state === "wl" ? (
+          <DevLanding wait={s} />
+        ) : (
+          <>
+            <NextUserTurn text={s.ask} video={s.video} />
+            <NextAssistantTurn>
+              {s.answer}
+              {s.sentence}
+              {s.chips && <FollowupChips followups={nextFollowups(s.chips)} onPick={noop} className="-mt-0.5" />}
+            </NextAssistantTurn>
+          </>
+        )}
       </div>
       {sheetOf(state)}
     </div>

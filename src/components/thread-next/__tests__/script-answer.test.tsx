@@ -137,3 +137,16 @@ describe("ScriptAnswer", () => {
     expect(screen.getByRole("link", { name: /^Open the result: / })).toHaveAttribute("href", "/simulation/hook/t/k?as=opening");
   });
 });
+
+// Thread feel §4.3: inside a landing the beats come in one after another, the button after the last.
+describe("ScriptAnswer — its places in a landing", () => {
+  const iOf = (el: Element | null) => (el as HTMLElement | null)?.style.getPropertyValue("--i") ?? null;
+
+  it("each beat is `land` at its index, the button the next", () => {
+    const { container } = render(<ScriptAnswer block={SCRIPT_AI} opener={{ state: empty }} onAddTake={() => {}} />);
+    expect(container.querySelector('[data-answer="card"]')).not.toHaveClass("land");
+    for (const beat of beats()) expect(beat).toHaveClass("land");
+    expect(beats().map(iOf)).toEqual(["0", "1", "2", "3", "4"]);
+    expect(iOf(screen.getByRole("button", { name: "Add your take" }).closest(".land"))).toBe("5");
+  });
+});

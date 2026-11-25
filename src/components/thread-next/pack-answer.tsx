@@ -3,6 +3,7 @@
 import { useId } from "react";
 
 import { creditCost } from "@/lib/pricing";
+import { afterRows, landStyle, rowLand } from "@/lib/thread-next/landing";
 import { leadOf } from "@/lib/thread-next/pack-lead";
 import { cn } from "@/lib/utils";
 
@@ -15,8 +16,11 @@ import { ChevronIcon, DocIcon } from "./field-icons";
  * `.scratch/next-look/part3/answers/answers.html`, `axHooks` and `axIdeas`, `.tq-hook`, `.ax-gc`,
  * `.ax-best`, `.tq-prog`, `.tq-f`, `.ax-id`): one card, a gauge on every row.
  *
- * - Header "Would stop to watch", with "1 credit each" while any row is not simulated (empty) and
- *   "out of 100" once every row is: the numbers' scale, said once instead of a "%" in each ring.
+ * - Header: the rows counted ("3 hooks", "4 ideas", "1 hook") while every row is empty and none has
+ *   failed, then "Would stop to watch" as soon as one waits, runs, has its number or has failed
+ *   (thread feel §4.7). At the right
+ *   "1 credit each" while any row is not simulated (empty) and "out of 100" once every row is: the
+ *   numbers' scale, said once instead of a "%" in each ring.
  * - Rows: the gauge, then the text (a hook's line; an idea's title and its one grey line). A waiting
  *   row's text is in the secondary ink. With `onOpen` (step 2) the row is ONE button ("Open: <text>",
  *   a dialog's opener) holding its text and a 14 chevron, described by the lines its name leaves out
@@ -34,6 +38,11 @@ import { ChevronIcon, DocIcon } from "./field-icons";
  *   highest, the first on a tie), "2 credits". A row that is running or waiting outside a queue
  *   leaves the card without a primary until it lands.
  * - A failed row says "Couldn't simulate" under its text and keeps its empty gauge.
+ *
+ * - In a landing (thread feel §4.3, `[data-thread-landing] .land`): the rows come in one after another
+ *   (`--i` the row's index, the rest with the tenth), then the button's row. That row is one element
+ *   whatever it holds, so the progress line or "Script the best" taking its place later is not
+ *   landed again. The card itself takes its height at once. Outside a landing `land` does nothing.
  *
  * Geometry as drawn: rows 10 / 2 with a hairline above each, the gauge column 5 between gauge and
  * pill, 13 to the text; hook text 15 / 20 at 520, an idea's title 15 / 20 at 620 and its line
@@ -54,6 +63,11 @@ export interface PackRow {
   failed?: boolean;
   /** Its result page, once simulated and its key is known (step 2): the gauge links there. */
   href?: string | null;
+}
+
+/** The place of a pack's last part in a landing: its button's row, after the last staggered row. */
+export function packLastLand(rowCount: number): number {
+  return afterRows(rowCount);
 }
 
 /** A queue in flight: `done` runs finished of `total`. The label counts the run in flight. */
@@ -150,6 +164,8 @@ export function PackAnswer({
   const ids = useId();
   const lead = leadOf(rows.map((r) => (r.state.kind === "done" ? r.state.value : null)));
   const emptyRows = rows.filter((r) => r.state.kind === "empty").length;
+  // Not one row tried yet: a failed row is empty again, but the header must not swap back to the count.
+  const untried = emptyRows === rows.length && !rows.some((r) => r.failed);
   const simulatePrice = creditCost("react");
   const scriptRow = lead.allDone ? (lead.best ?? lead.top) : null;
   // The row the sentence and the primary name ("Hook 1 is ahead", "Script hook 1") is marked, since
@@ -186,7 +202,7 @@ export function PackAnswer({
   return (
     <AnswerCard>
       <CardHeader
-        left="Would stop to watch"
+        left={untried ? `${rows.length} ${kind}${rows.length === 1 ? "" : "s"}` : "Would stop to watch"}
         right={emptyRows > 0 ? `${creditsLabel(simulatePrice)} each` : lead.allDone && rows.length > 0 ? "out of 100" : undefined}
       />
       <ul className="m-0 list-none p-0">
@@ -200,9 +216,13 @@ export function PackAnswer({
             <li
               key={`${i}:${row.key}`}
               data-row={i}
-              className={cn("flex items-center gap-[13px] border-t border-border px-0.5 py-2.5", onOpen && "relative")}
+              className={cn("land flex items-center gap-[13px] border-t border-border px-0.5 py-2.5", onOpen && "relative")}
+              style={landStyle(rowLand(i))}
             >
-              <span className={cn("flex shrink-0 flex-col items-center gap-[5px]", onOpen && "pointer-events-none relative z-[1]")}>
+              {/* As wide as the gauge (46), whatever sits under it: "Ahead" is wider than the gauge and
+                  used to widen the column, so that one row's text started further in than the others
+                  (seen on a real pack, 2026-11-25). The tag is centred and may reach past the column. */}
+              <span className={cn("flex w-[46px] shrink-0 flex-col items-center gap-[5px]", onOpen && "pointer-events-none relative z-[1]")}>
                 <SmallGauge
                   state={row.state}
                   label={row.text}
@@ -242,7 +262,10 @@ export function PackAnswer({
           );
         })}
       </ul>
-      {footer}
+      {/* A plain block: the footer's own top margin still sits between the rows and the button. */}
+      <div className="land" style={landStyle(packLastLand(rows.length))}>
+        {footer}
+      </div>
     </AnswerCard>
   );
 }

@@ -37,10 +37,12 @@ const primary = (name: RegExp) => screen.getByRole("button", { name });
 const lineOf = (row: HTMLElement, text: string) => [...row.querySelectorAll<HTMLElement>("p, span")].find((el) => el.textContent === text)!;
 
 describe("PackAnswer — hooks", () => {
-  it("not simulated: empty gauges, '1 credit each', primary 'Simulate all 3' with '3 credits'", () => {
+  it("not simulated: '3 hooks' and '1 credit each', empty gauges, primary 'Simulate all 3' with '3 credits'", () => {
     const onSimulateAll = vi.fn();
     render(<PackAnswer kind="hook" rows={hookRows([empty, empty, empty])} queue={null} onSimulate={() => {}} onSimulateAll={onSimulateAll} />);
-    expect(screen.getByText("Would stop to watch")).toBeInTheDocument();
+    // Before any row is simulated the header counts the rows (thread feel §4.7).
+    expect(screen.getByText("3 hooks")).toBeInTheDocument();
+    expect(screen.queryByText("Would stop to watch")).toBeNull();
     expect(screen.getByText("1 credit each")).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: /^Simulate: / })).toHaveLength(3);
     const button = primary(/Simulate all 3/);
@@ -56,6 +58,29 @@ describe("PackAnswer — hooks", () => {
     render(<PackAnswer kind="hook" rows={hookRows([empty, empty, empty])} queue={null} onSimulate={onSimulate} />);
     fireEvent.click(within(rows()[1]!).getByRole("button", { name: /^Simulate: Stop eating sad desk lunch/ }));
     expect(onSimulate).toHaveBeenCalledWith(HOOKS[1]);
+  });
+
+  it("every row empty again after a failed simulation: still 'Would stop to watch', not the count", () => {
+    render(<PackAnswer kind="hook" rows={hookRows([empty, empty, empty], [1])} queue={null} onSimulate={() => {}} />);
+    expect(screen.getByText("Would stop to watch")).toBeInTheDocument();
+    expect(screen.queryByText("3 hooks")).toBeNull();
+    expect(screen.getByText("1 credit each")).toBeInTheDocument();
+  });
+
+  it("one hook, not simulated: '1 hook', singular", () => {
+    render(<PackAnswer kind="hook" rows={hookRows([empty]).slice(0, 1)} queue={null} />);
+    expect(screen.getByText("1 hook")).toBeInTheDocument();
+    expect(screen.getByText("1 credit each")).toBeInTheDocument();
+  });
+
+  it.each([
+    ["running", [{ kind: "running" }, empty, empty]],
+    ["waiting", [{ kind: "waiting" }, empty, empty]],
+    ["done", [done(30), empty, empty]],
+  ] as [string, GaugeState[]][])("one row %s: 'Would stop to watch', the count gone", (_, states) => {
+    render(<PackAnswer kind="hook" rows={hookRows(states)} queue={null} />);
+    expect(screen.getByText("Would stop to watch")).toBeInTheDocument();
+    expect(screen.queryByText("3 hooks")).toBeNull();
   });
 
   it("counts only the rows not simulated: one done, two to go ('Simulate the rest')", () => {
@@ -170,6 +195,14 @@ describe("PackAnswer — ideas", () => {
   const ideaRows = (states: GaugeState[]): PackRow[] =>
     IDEAS_4.map((b, i) => ({ key: b.props.title, text: b.props.title, sub: b.props.angle || null, state: states[i]! }));
 
+  it("one idea, not simulated: '1 idea', singular; simulated: 'Would stop to watch'", () => {
+    const { rerender } = render(<PackAnswer kind="idea" rows={ideaRows([empty]).slice(0, 1)} queue={null} />);
+    expect(screen.getByText("1 idea")).toBeInTheDocument();
+    rerender(<PackAnswer kind="idea" rows={ideaRows([done(40)]).slice(0, 1)} queue={null} />);
+    expect(screen.getByText("Would stop to watch")).toBeInTheDocument();
+    expect(screen.queryByText("1 idea")).toBeNull();
+  });
+
   it("idea rows show the title and the grey line, primary 'Script idea 1' when idea 1 leads without a 10-point lead", () => {
     const onScript = vi.fn();
     render(<PackAnswer kind="idea" rows={ideaRows([done(40), done(35), done(33), done(31)])} queue={null} onScript={onScript} />);
@@ -182,8 +215,10 @@ describe("PackAnswer — ideas", () => {
     expect(onScript).toHaveBeenCalledWith(0);
   });
 
-  it("four not simulated: 'Simulate all 4' with '4 credits'", () => {
+  it("four not simulated: '4 ideas' and '1 credit each', 'Simulate all 4' with '4 credits'", () => {
     render(<PackAnswer kind="idea" rows={ideaRows([empty, empty, empty, empty])} queue={null} onSimulateAll={() => {}} />);
+    expect(screen.getByText("4 ideas")).toBeInTheDocument();
+    expect(screen.getByText("1 credit each")).toBeInTheDocument();
     expect(primary(/Simulate all 4/)).toHaveTextContent("4 credits");
     expect(screen.getAllByRole("button", { name: /^Simulate: / })).toHaveLength(4);
     expect(screen.getByRole("button", { name: "Simulate: Your To-Do List Is a Mood Board" })).toBeInTheDocument();
@@ -280,5 +315,36 @@ describe("PackAnswer — a row opens its details (step 2)", () => {
     );
     // @ts-expect-error -- vitest-axe matcher type augmentation not picked up
     expect(await axe(container)).toHaveNoViolations();
+  });
+});
+
+// Thread feel §4.3: inside a landing (`[data-thread-landing] .land`) the rows come in one after another, the
+// button after the last; the card itself takes its height at once. Outside a landing `land` is inert.
+describe("PackAnswer — its places in a landing", () => {
+  const iOf = (el: Element | null) => (el as HTMLElement | null)?.style.getPropertyValue("--i") ?? null;
+
+  it("each row is `land` at its index, the button's row the next", () => {
+    const { container } = render(<PackAnswer kind="hook" rows={hookRows([empty, empty, empty])} queue={null} onSimulateAll={() => {}} />);
+    expect(container.querySelector('[data-answer="card"]')).not.toHaveClass("land");
+    for (const row of rows()) expect(row).toHaveClass("land");
+    expect(rows().map(iOf)).toEqual(["0", "1", "2"]);
+    expect(iOf(primary(/Simulate all 3/).closest(".land"))).toBe("3");
+  });
+
+  it("past ten rows the rest come in with the tenth, and the button after it", () => {
+    const many: PackRow[] = Array.from({ length: 12 }, (_, i) => ({ key: `Hook number ${i}`, text: `Hook number ${i}`, state: empty }));
+    render(<PackAnswer kind="hook" rows={many} queue={null} onSimulateAll={() => {}} />);
+    expect(rows().map(iOf)).toEqual(["0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "9", "9"]);
+    expect(iOf(primary(/Simulate all 12/).closest(".land"))).toBe("10");
+  });
+
+  it("the button's place is one element whatever it holds, so a later change is not landed again", () => {
+    const { rerender } = render(<PackAnswer kind="hook" rows={hookRows([empty, empty, empty])} queue={null} onSimulateAll={() => {}} />);
+    const place = primary(/Simulate all 3/).closest(".land");
+    expect(place).not.toBeNull();
+    rerender(<PackAnswer kind="hook" rows={hookRows([{ kind: "running" }, { kind: "waiting" }, { kind: "waiting" }])} queue={{ done: 0, total: 3 }} />);
+    expect(screen.getByRole("progressbar").closest(".land")).toBe(place);
+    rerender(<PackAnswer kind="hook" rows={hookRows(sealed)} queue={null} onScript={() => {}} />);
+    expect(primary(/Script the best/).closest(".land")).toBe(place);
   });
 });

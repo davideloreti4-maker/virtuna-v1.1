@@ -12,7 +12,8 @@ import { ChevronIcon } from "./field-icons";
  * The fallback card (spec §4.6; drawing `.scratch/next-look/part3/answers/answers.html`, `axChat`,
  * `.card.ax-fb`): every block type the new renderer has no card of its own for, as a title and its
  * lines (`fallbackOf`). Three lines show; when there are more, "Show all" (a button that says
- * whether it is open) lists every line in place, and "Show less" folds them again.
+ * whether it is open) lists every line in place, and "Show less" folds them again. In a landing
+ * (thread feel §4.3, `[data-thread-landing] .land`) the card comes in as one part, first (`--i` 0).
  *
  * Geometry as drawn: padding 16 / 18 / 4 (16 at the foot when there is no "Show all"); the title
  * 16 / 21 at 640 (drawn 15.5), each line 15 / 21 six under the last; "Show all" a 46 row 10 under
@@ -31,7 +32,7 @@ export function FallbackAnswer({ title, lines }: { title: string; lines: string[
   const shown = open ? lines : folded;
 
   return (
-    <AnswerCard className={cn("px-[18px] pt-4 md:px-[18px] md:pt-4", more ? "pb-1 md:pb-1" : "pb-4 md:pb-4")}>
+    <AnswerCard className={cn("land px-[18px] pt-4 md:px-[18px] md:pt-4", more ? "pb-1 md:pb-1" : "pb-4 md:pb-4")}>
       <p className={cn("text-title font-[640] leading-[21px] tracking-[-0.012em] text-foreground", PROSE)}>{title}</p>
       {shown.length > 0 && (
         <ul id={listId} className={cn("m-0 list-none p-0", PROSE)}>

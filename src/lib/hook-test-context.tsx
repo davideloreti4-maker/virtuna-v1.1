@@ -33,8 +33,11 @@ export function useOnTestHook(): OnTestHookFn | null {
  * on the chosen hookLine (CHAIN_HANDOFFS hooks→script — /api/tools/script { anchor }).
  *
  * Default: null (CTA renders as a stub — no handler wired).
+ *
+ * `label` (optional): the row the script is written from, as the sent message names it ("hook 2",
+ * "idea 3"). Without it the message stays "Write the script from this hook.".
  */
-export type OnWriteScriptFn = (hookLine: string, audienceArchetype: string) => void;
+export type OnWriteScriptFn = (hookLine: string, audienceArchetype: string, label?: string) => void;
 
 export const HookWriteScriptContext = createContext<OnWriteScriptFn | null>(null);
 
