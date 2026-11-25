@@ -336,6 +336,11 @@ export const HookCardBlockSchema = z.object({
     hookLine: z.string(),              // the verbatim/executable hook text
     audienceArchetype: z.string(),     // D-03 tag from deriveAudienceArchetype (audience persona, NOT craft)
     mechanism: z.string(),             // named attention mechanism — prose, NEVER a craft slug (D-04)
+    // MAVEN'S PICK (spec 2026-11-25-maven-pick-design.md §2): the writer's one plain sentence on why a
+    // viewer stops on this hook, for the creator (the new look's line under the pack and the hook's
+    // sheet). `mechanism` stays the writer's own reasoning. OPTIONAL and unbounded: a pack written
+    // before this has none, and a long or odd one never costs a card (the screen decides what it shows).
+    why: z.string().optional(),
     seedHook: z.string(),              // the one-line hook the SIM reacted to (may equal hookLine)
     rank: z.number().int().positive(), // #1..N rank position (D-01)
     // Embedded Flash signal (D-02/D-04/D-10)

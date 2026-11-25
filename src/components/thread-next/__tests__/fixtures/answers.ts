@@ -444,16 +444,21 @@ const HOOK_1 = "I spent $40 on meal prep and it tasted like regret. Here is the 
 const HOOK_2 = "Stop eating sad desk lunch: my 3-step fix for brain fog during exams.";
 const HOOK_3 = "I tried the viral 5-hour meal prep challenge so you don’t have to. Spoiler: I failed, but here is what actually worked.";
 
-/** `AXH`: the three hooks of the meal-prep thread; hook 1 carries its sheet details. */
+/**
+ * `AXH`: the three hooks of the meal-prep thread; hook 1 carries its sheet details. Each has the
+ * writer's plain reason (`why`, Maven's pick), written the way the rule asks: one everyday sentence
+ * that does not repeat the hook. A pack without reasons is these with `why` taken off.
+ */
 export const MEAL_PREP_HOOKS: readonly HookCardBlock[] = [
   hook(HOOK_1, {
     rank: 1,
     mechanism: "It breaks the idea that meal prep means expensive wellness culture.",
+    why: "Everyone has wasted money on food, so you want the cheap fix.",
     visualHook: { technique: "Cold open", onScreen: "Sad grey food next to textbooks" },
     proof: proof({ handle: "dij.arc", coverUrl: "/covers/c8.jpg", videoUrl: "/clips/dij-arc", multiplier: 50.2, baselineLabel: "their followers", views: 21000 }),
   }),
-  hook(HOOK_2, { rank: 2 }),
-  hook(HOOK_3, { rank: 3 }),
+  hook(HOOK_2, { rank: 2, why: "Every student knows the exam slump, so a quick fix is hard to skip." }),
+  hook(HOOK_3, { rank: 3, why: "Watching someone else fail is fun, and you still get the answer." }),
 ];
 
 /** `AXID`: four ideas, title and one grey line. */

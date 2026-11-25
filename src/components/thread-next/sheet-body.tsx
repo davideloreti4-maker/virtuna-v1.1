@@ -6,6 +6,7 @@ import { useId } from "react";
 import { creditCost } from "@/lib/pricing";
 import type { HookCardBlock, HookProof, IdeaCardBlock } from "@/lib/tools/blocks";
 import { foldLead } from "@/lib/thread-next/first-sentence";
+import { usableWhy } from "@/lib/thread-next/pick-line";
 import { cn } from "@/lib/utils";
 
 import { AnswerPrimary, PROSE, creditsLabel, keepHyphens } from "./answer-card";
@@ -24,7 +25,8 @@ import { ProofCover, proofStats } from "./remix-answer";
  *   thread's queue); waiting or running: "Simulating"; failed: "Couldn't simulate" and Simulate. Copy and
  *   Save at the right (`actions`).
  * - A hook: "Proven" (the proof row; a link to its video in a new tab when it has one), "Visual"
- *   (`onScreen`), "Why it works" (its lead, `foldLead`: the first sentence, or the words that fit
+ *   (`onScreen`), "Why it works": the writer's plain reason whole when it has a usable one (`usableWhy`,
+ *   Maven's pick), else its `mechanism`'s lead (`foldLead`: the first sentence, or the words that fit
  *   about two lines; "More" opens the rest in place).
  * - An idea: "The take" (whole), "Why it fits" (folded), "Format".
  * - The one primary "Script this one" · "2 credits".
@@ -216,23 +218,25 @@ export function HookSheetBody({
   onScript?: () => void;
 }) {
   const mechanism = hook.mechanism.trim();
+  // Maven's pick (spec 2026-11-25-maven-pick-design.md §3.2): the writer's plain reason, short by rule,
+  // so it is shown whole; a pack written before it has none and keeps its folded mechanism.
+  const why = usableWhy(hook.why, hook.hookLine);
   const visual = hook.visualHook?.onScreen?.trim();
   return (
     <>
       <SheetGaugeRow gauge={gauge} actions={actions} />
       {/* Trust, then use, then theory (review 2026-11-23, on real hooks): the proof is a real video
-          with its numbers; the visual says what to shoot; "why it works" is the model's reasoning,
-          often one long sentence, so it comes last and folded. Drawn: why, visual, proven. */}
+          with its numbers; the visual says what to shoot; "why it works" comes last: the writer's
+          plain reason, whole, or for an older pack its own long reasoning, folded. Drawn: why,
+          visual, proven. */}
       {hook.proof && (
         <SheetSection label="Proven" plain>
           <ProofRow proof={hook.proof} />
         </SheetSection>
       )}
       {visual && <SheetSection label="Visual">{keepHyphens(visual)}</SheetSection>}
-      {mechanism && (
-        <SheetSection label="Why it works">
-          <FoldedText text={mechanism} />
-        </SheetSection>
+      {(why || mechanism) && (
+        <SheetSection label="Why it works">{why ? keepHyphens(why) : <FoldedText text={mechanism} />}</SheetSection>
       )}
       <SheetPrimary onScript={onScript} />
     </>

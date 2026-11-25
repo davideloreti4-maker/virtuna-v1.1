@@ -256,6 +256,8 @@ export async function POST(request: Request): Promise<Response> {
                     hookLine: hb.props.hookLine,
                     audienceArchetype: hb.props.audienceArchetype,
                     mechanism: hb.props.mechanism,
+                    // Maven's pick: the plain reason the new look's sheet reads, live as after a reload.
+                    why: hb.props.why,
                     seedHook: hb.props.seedHook,
                     rank: hb.props.rank,
                     scrollQuote: hb.props.scrollQuote,

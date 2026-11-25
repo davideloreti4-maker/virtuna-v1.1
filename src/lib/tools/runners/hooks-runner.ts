@@ -163,6 +163,15 @@ const PROJECTION_FIELD = `, "personaStops": number, "stopQuote": string`;
 const PROJECTION_RULE = ` "personaStops" is YOUR honest estimate, as the writer, of how many out of 10 typical target viewers would STOP scrolling on this hook in the first 2 seconds — an integer 0–10. Be discriminating, never generous: a generic hook with no real mechanism stops 0–2; a genuinely strong, niche-true hook stops 7–8; reserve 9–10 for the rare undeniable one. "stopQuote" is ONE short first-person line of what a viewer who stops thinks in that instant (e.g. "Okay that opening line got me"). Both are a PROJECTION you are making — the creator sees them as your estimate and can then measure the hook against their real audience; never phrase them as a finished measurement.`;
 
 /**
+ * MAVEN'S PICK (spec 2026-11-25-maven-pick-design.md §2) — one plain reason per hook, for the creator:
+ * the new look shows the first-ranked hook's under the pack ("Maven would post hook 1. …") and each
+ * hook's in its sheet. `mechanism` stays the writer's own reasoning. Asked in the same call, in all
+ * three contracts; the parser tolerates its absence, so a model that ignores it still ships its hooks.
+ */
+const WHY_FIELD = `, "why": string`;
+const WHY_RULE = ` "why" is ONE plain sentence, at most 14 words, saying why a person scrolling stops on this hook. Write it from that person's seat: "you" is the viewer, never the creator, and never "I", "me", "they" or "them". Use short, everyday words a friend would use. It must be about THIS hook: name the thing in it that does the work. Never use theory terms (not "cognitive dissonance", "curiosity gap", "pattern interrupt", "prediction error", "mechanism", "archetype"), never name a kind of viewer (not "lurker", "loyalist", "scanner", "skeptic"), never mention the creator's brand or earlier videos, do not quote or repeat the hook, no dash. Shape: "<what this hook does>, so you <what you do>." One example of the shape, never reuse its words: "It dares a friend by name, so you wait to hear why."`;
+
+/**
  * COUNT IS A PARAMETER now (Stage A, N-4): "3 hooks for my video" used to get 5 — the
  * contract hardcoded HOOK_COUNT. `count` defaults to HOOK_COUNT, so an uncounted ask
  * keeps the byte-identical contract (warm-cache prefix + regression gate).
@@ -172,8 +181,8 @@ const hooksOutputContract = (count: number) => `
 ---
 
 OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
-Shape: { "hooks": [ { "hookLine": string, "mechanism": string, "seedHook": string, "channel": string | null, "needsTake": boolean${PROJECTION_FIELD}${VISUAL_HOOK_FIELD} } ] }
-Return a "hooks" array of exactly ${count} STRONG, DISTINCT-mechanism objects — each must earn its place (these are all shown to the creator, not filtered). Every field is required; "hookLine" and "seedHook" must be non-empty. "mechanism" is plain-prose reasoning — never a bracket-tag. "channel" is the delivery channel (spoken/visual/caption/edit/audio) or null.${PROJECTION_RULE}${VISUAL_HOOK_RULE}`;
+Shape: { "hooks": [ { "hookLine": string, "mechanism": string, "seedHook": string, "channel": string | null, "needsTake": boolean${PROJECTION_FIELD}${VISUAL_HOOK_FIELD}${WHY_FIELD} } ] }
+Return a "hooks" array of exactly ${count} STRONG, DISTINCT-mechanism objects — each must earn its place (these are all shown to the creator, not filtered). Every field is required; "hookLine" and "seedHook" must be non-empty. "mechanism" is plain-prose reasoning — never a bracket-tag. "channel" is the delivery channel (spoken/visual/caption/edit/audio) or null.${PROJECTION_RULE}${VISUAL_HOOK_RULE}${WHY_RULE}`;
 
 /**
  * Grounded output contract (§11f receipts-on-cards). Used ONLY when a corpus grounding block
@@ -188,8 +197,8 @@ const hooksOutputContractGrounded = (count: number) => `
 ---
 
 OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
-Shape: { "hooks": [ { "hookLine": string, "mechanism": string, "seedHook": string, "channel": string | null, "needsTake": boolean, "sourceIndex": number${PROJECTION_FIELD}${VISUAL_HOOK_FIELD} } ] }
-Return a "hooks" array of exactly ${count} STRONG, DISTINCT-mechanism objects — each must earn its place (these are all shown to the creator, not filtered). Every field is required; "hookLine" and "seedHook" must be non-empty. "mechanism" is plain-prose reasoning — never a bracket-tag. "channel" is the delivery channel (spoken/visual/caption/edit/audio) or null. "sourceIndex" is the 1-based number of the GROUNDING example (from the numbered GROUNDING list in the prompt) whose proven STRUCTURE this hook adapts, or 0 if the hook adapts no specific example — never cite a source you did not actually use (honesty).${PROJECTION_RULE}${VISUAL_HOOK_RULE}`;
+Shape: { "hooks": [ { "hookLine": string, "mechanism": string, "seedHook": string, "channel": string | null, "needsTake": boolean, "sourceIndex": number${PROJECTION_FIELD}${VISUAL_HOOK_FIELD}${WHY_FIELD} } ] }
+Return a "hooks" array of exactly ${count} STRONG, DISTINCT-mechanism objects — each must earn its place (these are all shown to the creator, not filtered). Every field is required; "hookLine" and "seedHook" must be non-empty. "mechanism" is plain-prose reasoning — never a bracket-tag. "channel" is the delivery channel (spoken/visual/caption/edit/audio) or null. "sourceIndex" is the 1-based number of the GROUNDING example (from the numbered GROUNDING list in the prompt) whose proven STRUCTURE this hook adapts, or 0 if the hook adapts no specific example — never cite a source you did not actually use (honesty).${PROJECTION_RULE}${VISUAL_HOOK_RULE}${WHY_RULE}`;
 
 /**
  * PER-PERSONA GENERATION — the craft half of the ASSIGNMENT block.
@@ -223,8 +232,8 @@ function targetedOutputContract(grounded: boolean, count: number): string {
 ---
 
 OUTPUT FORMAT: Respond with a single JSON object — no markdown, no code fences, no prose.
-Shape: { "hooks": [ { "hookLine": string, "mechanism": string, "seedHook": string, "channel": string | null, "needsTake": boolean, "targetArchetype": string${groundedField}${PROJECTION_FIELD}${VISUAL_HOOK_FIELD} } ] }
-Return a "hooks" array of exactly ${count} STRONG, DISTINCT-mechanism objects, in assignment order — hook N targets person N from the list above. Every field is required; "hookLine" and "seedHook" must be non-empty. "mechanism" is plain-prose reasoning — never a bracket-tag. "channel" is the delivery channel (spoken/visual/caption/edit/audio) or null. "targetArchetype" is the exact bracketed slug of the person this hook was written for. For "personaStops", estimate the stop-count specifically for THAT assigned person's segment.${groundedRule}${PROJECTION_RULE}${VISUAL_HOOK_RULE}`;
+Shape: { "hooks": [ { "hookLine": string, "mechanism": string, "seedHook": string, "channel": string | null, "needsTake": boolean, "targetArchetype": string${groundedField}${PROJECTION_FIELD}${VISUAL_HOOK_FIELD}${WHY_FIELD} } ] }
+Return a "hooks" array of exactly ${count} STRONG, DISTINCT-mechanism objects, in assignment order — hook N targets person N from the list above. Every field is required; "hookLine" and "seedHook" must be non-empty. "mechanism" is plain-prose reasoning — never a bracket-tag. "channel" is the delivery channel (spoken/visual/caption/edit/audio) or null. "targetArchetype" is the exact bracketed slug of the person this hook was written for. For "personaStops", estimate the stop-count specifically for THAT assigned person's segment.${groundedRule}${PROJECTION_RULE}${VISUAL_HOOK_RULE}${WHY_RULE}`;
 }
 
 /**
@@ -341,6 +350,8 @@ export interface HooksPipelineResult {
 interface StructuredHook {
   hookLine: string;
   mechanism: string;
+  /** MAVEN'S PICK: the writer's plain reason, trimmed; "" when it gave none (the card then has no key). */
+  why: string;
   seedHook: string;
   channel: string | null;
   needsTake: boolean;
@@ -501,6 +512,9 @@ async function generateHooksStructured(
     hooks.push({
       hookLine: r.hookLine,
       mechanism: typeof r.mechanism === "string" ? r.mechanism : "",
+      // Maven's pick: a missing or non-string reason is "" and no error, so a run whose model ignores
+      // the field still returns its hooks.
+      why: typeof r.why === "string" ? r.why.trim() : "",
       // N-2 (Stage A): the model has emitted the adjacent sourceIndex DIGITS here ("0",
       // "1", "3") and `typeof === "string" && truthy` shipped them as the SEED LINE. A
       // seed that is not plausibly a spoken line degrades to the hookLine — which IS the
@@ -841,6 +855,8 @@ export async function runHooksPipeline(input: HooksPipelineInput): Promise<Hooks
         // deriveAudienceArchetype(SIM personas); with no SIM it comes from the assignment binding.
         audienceArchetype: target?.archetype ?? "",
         mechanism: candidate.hook.mechanism,
+        // Maven's pick: only when the writer gave one, so a run without it keeps the card's old shape.
+        ...(candidate.hook.why ? { why: candidate.hook.why } : {}),
         seedHook: candidate.hook.seedHook,
         rank,
         band: candidate.band,
