@@ -139,13 +139,6 @@ const pill = (name: string) => {
   return found[0]!;
 };
 const send = () => field().querySelector('button[type="submit"]') as HTMLButtonElement;
-/** One of Home's skill cards: the button of that name outside the field, whose own skill buttons
- *  carry the same names on Home too (Home spec 2026-11-25 §2.4). */
-const homeCard = (name: string) => {
-  const found = screen.getAllByRole("button", { name }).filter((b) => !b.closest('[data-testid="thread-field"]'));
-  expect(found).toHaveLength(1);
-  return found[0]!;
-};
 /** The block the composer measures for the bottom reserve: around the field's outer element. */
 const fieldBlock = () => field().parentElement!.parentElement!;
 const evidenceInput = () => document.querySelector('input[type="file"][accept*=".txt"]') as HTMLInputElement;
@@ -2060,7 +2053,7 @@ describe("task 6: nothing opens the room any more", () => {
       });
       expect(screen.getByTestId("composer-shell")).toHaveAttribute("data-layout", "home");
       for (const name of ["Simulate", "Hooks", "Script", "Remix"]) {
-        expect(homeCard(name)).toBeInTheDocument();
+        expect(screen.getByRole("button", { name })).toBeInTheDocument();
       }
       expect(screen.queryByTestId("ambient-overview-sheet")).toBeNull();
     } finally {
@@ -3648,7 +3641,7 @@ describe("thread feel (Task 4): a chat with no title is named in its header at o
     untitled();
     threadFixture = emptyChat();
     await renderHome();
-    fireEvent.click(homeCard("Hooks"));
+    fireEvent.click(screen.getByRole("button", { name: "Hooks" })); // Home's skill card
     askInField("gym myths for beginners");
     expect(await headerNamed("gym myths for beginners")).toBeInTheDocument();
     expect(useShellStore.getState().threadTitleHint).toEqual({ id: "t1", title: "gym myths for beginners" });
@@ -3712,7 +3705,7 @@ describe("thread feel (Task 4): a chat with no title is named in its header at o
     untitled();
     threadFixture = emptyChat();
     await renderHome();
-    fireEvent.click(homeCard("Remix"));
+    fireEvent.click(screen.getByRole("button", { name: "Remix" })); // Home's skill card
     askInField("https://www.tiktok.com/@creator_one/video/7300000000000000001");
     await waitFor(() => expect(requests("/api/tools/remix")).toHaveLength(1));
     await waitMs(30);

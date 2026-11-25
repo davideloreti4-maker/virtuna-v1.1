@@ -3,8 +3,6 @@
  * Home under the new look (Home plan 2026-11-23, Task 4): what the real composer draws on /home
  * while no chat is open (NEW_LOOK_ENABLED, with AMBIENT_V2 and CONCEPT_V8 on, as the dev server
  * runs). The composer hands Home its own field block, so the field's requests are the thread's.
- * Since the Home spec of 2026-11-25 that field is the thread's in its layout too (its skill
- * buttons and More), and the audience is a line under the greeting.
  *
  * Everything here is the real composer, the real Home and the real field. Stand-ins only for what
  * cannot run in a test: the network (`fetch`), the router, the storage client, object URLs, and
@@ -95,8 +93,6 @@ let holdExploreOpen = false;
 let holdAnalyzeOpen = false;
 /** While set, `/api/threads/new` answers only once this settles (a send still making its chat). */
 let newGate: Promise<void> | null = null;
-/** While set, `/api/threads/list` (the sidebar's chat list, Home's "has chats") answers only once this settles. */
-let listGate: Promise<void> | null = null;
 
 /** A request the test settles by hand, so it can look at the screen while the request is out. */
 function deferred() {
@@ -146,10 +142,7 @@ function installFetch() {
       if (newGate) await newGate;
       return json({ threadId: "t-new" });
     }
-    if (url.includes("/api/threads/list")) {
-      if (listGate) await listGate;
-      return json({ threads: threadsFixture });
-    }
+    if (url.includes("/api/threads/list")) return json({ threads: threadsFixture });
     if (url.includes("/api/threads/library")) return json(libraryFixture ?? libraryOf(threadsFixture));
     if (url.includes("/api/audiences")) return json(audiencesFixture);
     if (url.includes("/api/subscription")) return json(subscriptionFixture);
@@ -172,40 +165,9 @@ const field = () => screen.getByTestId("thread-field");
 const inField = () => within(field());
 const text = () => inField().getByRole("textbox") as HTMLTextAreaElement;
 const shell = () => screen.getByTestId("composer-shell");
-/** The skill cards named so: the buttons of that name outside the field (its own skill buttons carry
- *  the same names) and outside an open list ("/" lists them too). */
-const cardsOf = (name: (typeof SKILLS)[number]) =>
-  screen.queryAllByRole("button", { name }).filter((b) => !b.closest('[data-testid="thread-field"], [role="dialog"]'));
 /** A skill card (named for its skill alone). */
-const card = (name: (typeof SKILLS)[number]) => {
-  const [one, ...more] = cardsOf(name);
-  if (!one || more.length > 0) throw new Error(`expected one card named ${name}`);
-  return one;
-};
-/** The field's own button of that name (row 2: the skills and More). */
-const pill = (name: string) => inField().getByRole("button", { name });
-/** What the field shows picked: its pressed button (a skill's, or More naming an armed skill). */
-const picked = () => field().querySelector<HTMLElement>('[aria-pressed="true"]');
-/** Home's audience line, under the greeting, by its words ("For @handle"): its name is those words
- *  and ", change audience". */
-const audienceLine = (words: string) => screen.getByRole("button", { name: `${words}, change audience` });
-/** The viewport as `matchMedia` reports it: 768 and wider (the sheets' popovers). The setup's shim
- *  matches nothing, so every other test here is the phone. */
-function desktop() {
-  vi.spyOn(window, "matchMedia").mockImplementation(
-    (query: string) =>
-      ({
-        matches: /min-width:\s*768px/.test(query),
-        media: query,
-        onchange: null,
-        addEventListener: () => {},
-        removeEventListener: () => {},
-        addListener: () => {},
-        removeListener: () => {},
-        dispatchEvent: () => false,
-      }) as MediaQueryList,
-  );
-}
+const card = (name: (typeof SKILLS)[number]) => screen.getByRole("button", { name });
+const picked = () => field().querySelector('[data-part="picked-skill"]');
 const settle = (ms = 30) => act(async () => { await new Promise((r) => setTimeout(r, ms)); });
 const clip = () => new File(["video-bytes"], "take.mp4", { type: "video/mp4" });
 
@@ -258,7 +220,6 @@ beforeEach(() => {
   holdExploreOpen = false;
   holdAnalyzeOpen = false;
   newGate = null;
-  listGate = null;
   sessionUser = { id: "u1" };
   // The shell store is module state: a bump left by one test must not reach the next.
   useShellStore.setState({ fieldFocusSignal: 0, threadBack: null, threadTitleHint: null, libraryScroll: null });
@@ -278,28 +239,19 @@ afterEach(() => {
 });
 
 describe("Home: /home with no chat open", () => {
-  it("shows the greeting, the audience line, the thread's field as Home's card and the four skills; nothing of the old arrival, no dock", async () => {
+  it("shows the greeting, the field as Home's card and the four skills; nothing of the old arrival, no dock", async () => {
     await renderHome();
     expect(shell()).toHaveAttribute("data-layout", "home");
-    const heading = screen.getByRole("heading", { level: 1 });
-    expect(heading.textContent).toMatch(/^Good (morning|afternoon|evening)/);
-    // No audience of the creator's own: the general one, on its line right under the greeting.
-    expect(heading.nextElementSibling).toBe(audienceLine("For a general audience"));
-    expect(audienceLine("For a general audience")).toHaveTextContent(/^For a general audience$/);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toMatch(/^Good (morning|afternoon|evening)/);
     for (const name of SKILLS) expect(card(name)).toBeInTheDocument();
-    expect(text().placeholder).toBe("Ask anything");
+    expect(text().placeholder).toBe("Ask anything, or pick a skill");
     for (const id of ["composer-chips-row", "arrival-room-line", "next-field-dock"]) {
       expect(screen.queryByTestId(id)).toBeNull();
     }
-    // The thread's field: its skill buttons and More, none pressed, one line of text. A solid card.
-    for (const name of [...SKILLS, "More"]) expect(pill(name)).toBeInTheDocument();
-    expect(picked()).toBeNull();
-    expect(text()).toHaveAttribute("rows", "1");
-    expect(field().style.backdropFilter).toBe("");
-    expect(field()).toHaveClass("bg-surface", "shadow-[var(--shadow-rest)]");
-    // Nothing of Home's old field: no audience in it, no pill above the text.
-    expect(inField().queryByRole("button", { name: /audience/i })).toBeNull();
-    expect(field().querySelector('[data-part="picked-skill"]')).toBeNull();
+    // The field has no pills and no More: the cards are the skills.
+    for (const name of SKILLS) expect(inField().queryByRole("button", { name })).toBeNull();
+    expect(field().querySelectorAll("[aria-pressed]")).toHaveLength(0);
+    expect(screen.queryByRole("button", { name: "More" })).toBeNull();
   });
 
   it("warms no drops", async () => {
@@ -308,45 +260,27 @@ describe("Home: /home with no chat open", () => {
     expect(requests("/api/surfaces/drops")).toHaveLength(0);
   });
 
-  it("a card picks its skill: the selected button in the field's row with its price, the cards stay, the text has focus; a second tap lets it go", async () => {
+  it("a card picks its skill: the field names it with its price, the cards go, the text has focus; its cross puts them back", async () => {
     await renderHome();
-    const before = SKILLS.map((name) => card(name));
     fireEvent.click(card("Hooks"));
-    expect(picked()).toBe(pill("Hooks"));
-    expect(picked()?.textContent).toBe("Hooks · 1");
-    expect(pill("Hooks")).toHaveAccessibleDescription("1 credit");
-    // The thread's own words for the skill.
-    expect(text().placeholder).toBe("A topic for your hooks");
-    // The cards stay, the same four (spec 2026-11-25 §2.5): nothing on the page moves on a pick.
-    expect(SKILLS.map((name) => card(name))).toEqual(before);
+    expect(picked()?.textContent).toBe("Hooks · 1 credit");
+    expect(text().placeholder).toBe("What's the video about?");
+    for (const name of SKILLS) expect(screen.queryByRole("button", { name })).toBeNull();
     expect(document.activeElement).toBe(text());
 
-    fireEvent.click(pill("Hooks"));
+    fireEvent.click(inField().getByRole("button", { name: "Remove Hooks" }));
     expect(picked()).toBeNull();
     for (const name of SKILLS) expect(card(name)).toBeInTheDocument();
-    expect(text().placeholder).toBe("Ask anything");
+    expect(text().placeholder).toBe("Ask anything, or pick a skill");
     // A pick spends nothing: no run, no chat made.
     await settle(100);
     expect(spending()).toEqual([]);
   });
 
-  it.each([
-    ["Script", "What the script is about"],
-    ["Remix", "Paste a TikTok link"],
-  ] as const)("%s picked from its card: its button is the selected one, and the text asks as in a thread (%s)", async (name, words) => {
-    await renderHome();
-    fireEvent.click(card(name));
-    expect(picked()).toBe(pill(name));
-    expect(text().placeholder).toBe(words);
-    expect(document.activeElement).toBe(text());
-  });
-
   it("Simulate: the field names it at 10 credits, asks for a video or a link, and focus is on +", async () => {
     await renderHome();
     fireEvent.click(card("Simulate"));
-    expect(picked()).toBe(pill("Simulate"));
-    expect(picked()?.textContent).toBe("Simulate · 10");
-    expect(pill("Simulate")).toHaveAccessibleDescription("10 credits");
+    expect(picked()?.textContent).toBe("Simulate · 10 credits");
     expect(text().placeholder).toBe("Add a video or paste a link");
     expect(document.activeElement).toBe(inField().getByRole("button", { name: "Add a video" }));
     await settle(100);
@@ -357,7 +291,7 @@ describe("Home: /home with no chat open", () => {
     await renderHome();
     fireEvent.change(inField().getByLabelText("Choose a video file"), { target: { files: [clip()] } });
     expect(screen.getByTestId("field-video")).toBeInTheDocument();
-    expect(picked()?.textContent).toBe("Simulate · 10");
+    expect(picked()?.textContent).toBe("Simulate · 10 credits");
     // A staged video is not a send: nothing uploads, nothing runs.
     await settle(100);
     expect(spending()).toEqual([]);
@@ -377,7 +311,7 @@ describe("Home: /home with no chat open", () => {
     expect(screen.getByTestId("home-next")).toBeInTheDocument();
     expect(within(field()).getByRole("alert")).toHaveTextContent("That upload didn't go through.");
     expect(screen.getByTestId("field-video")).toBeInTheDocument();
-    expect(picked()?.textContent).toBe("Simulate · 10");
+    expect(picked()?.textContent).toBe("Simulate · 10 credits");
     expect(await screen.findByRole("heading", { level: 1, name: /^Good (morning|afternoon|evening)/ })).toBeInTheDocument();
     expect(requests("/api/analyze")).toHaveLength(0);
   });
@@ -434,129 +368,24 @@ describe("Home: /home with no chat open", () => {
     expect(screen.getByRole("button", { name: /retry/i })).toBe(retry);
   });
 
-  it("the audience: named on the line under the greeting, its sheet opens, a tap on another persists it and renames the line", async () => {
+  it("the audience: named in the field, its sheet opens, a tap on another persists it and renames the control", async () => {
     const first = "3f2a7c1e-5b6d-4e8f-9a0b-1c2d3e4f5a6b";
     const second = "6a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d";
     audiencesFixture = { audiences: [ownAudience(first, "@nia.tests"), ownAudience(second, "@nia.cooks")], lastAudienceId: first };
     await renderHome();
-    const line = await waitFor(() => audienceLine("For @nia.tests"));
-    expect(line).toHaveTextContent(/^For @nia\.tests$/);
-    expect(inField().queryByRole("button", { name: /audience/i })).toBeNull();
-    fireEvent.click(line);
+    const control = await waitFor(() => inField().getByRole("button", { name: "Audience: @nia.tests" }));
+    fireEvent.click(control);
     const sheet = await screen.findByRole("dialog", { name: "Audience" });
-    expect(audienceLine("For @nia.tests")).toHaveAttribute("aria-expanded", "true");
     fireEvent.click(within(sheet).getByRole("button", { name: "@nia.cooks" }));
 
     await waitFor(() => expect(requests("/api/settings/last-audience")).toHaveLength(1));
     const put = requests("/api/settings/last-audience")[0]!;
     expect(put.init?.method).toBe("PUT");
     expect(bodyOf(put)).toEqual({ audienceId: second });
-    await waitFor(() => expect(audienceLine("For @nia.cooks")).toHaveTextContent(/^For @nia\.cooks$/));
+    await waitFor(() => expect(inField().getByRole("button", { name: "Audience: @nia.cooks" })).toBeInTheDocument());
     // An audience switch re-keys the drops' warm under v8; on Home it still warms nothing.
     await settle(100);
     expect(requests("/api/surfaces/drops")).toHaveLength(0);
-  });
-
-  it("the audience sheet's close hands the focus back to the line, even when the press did not focus it (Safari)", async () => {
-    await renderHome();
-    // A click here does not move focus: nothing had it when the sheet opened.
-    fireEvent.click(audienceLine("For a general audience"));
-    await screen.findByRole("dialog", { name: "Audience" });
-    await settle();
-    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
-    await settle();
-    expect(screen.queryByRole("dialog", { name: "Audience" })).toBeNull();
-    expect(document.activeElement).toBe(audienceLine("For a general audience"));
-    expect(document.activeElement).not.toBe(text());
-  });
-
-  it("on desktop the audience sheet is a popover centred below the line, standing on it, and its close hands the focus back to it", async () => {
-    desktop();
-    await renderHome();
-    const line = audienceLine("For a general audience");
-    line.focus();
-    fireEvent.click(line);
-    const sheet = await screen.findByRole("dialog", { name: "Audience" });
-    await settle();
-    expect(sheet).toHaveAttribute("data-side", "bottom");
-    expect(sheet).toHaveAttribute("data-align", "center");
-    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
-    await settle();
-    expect(screen.queryByRole("dialog", { name: "Audience" })).toBeNull();
-    expect(document.activeElement).toBe(audienceLine("For a general audience"));
-
-    // Which element it stands on: with the field held still, the popover follows the line when the
-    // line moves. (Centring is `data-align` above: this page lays nothing out, so the popover's own
-    // width is not the browser's and its centre cannot be read from here.)
-    vi.spyOn(field().parentElement!, "getBoundingClientRect").mockReturnValue(new DOMRect(200, 400, 720, 96));
-    const placedWith = async (x: number) => {
-      vi.spyOn(line, "getBoundingClientRect").mockReturnValue(new DOMRect(x, 120, 180, 22));
-      fireEvent.click(line);
-      const opened = await screen.findByRole("dialog", { name: "Audience" });
-      await settle();
-      const across = Number(/^translate\((-?[\d.]+)px/.exec(opened.closest<HTMLElement>("[data-radix-popper-content-wrapper]")!.style.transform)![1]);
-      fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
-      await settle();
-      return across;
-    };
-    expect((await placedWith(500)) - (await placedWith(300))).toBe(200);
-  });
-
-  it("More opens from the field on Home; a skill picked there is named on More with its price, the text asks as in a thread", async () => {
-    await renderHome();
-    fireEvent.click(pill("More"));
-    const more = await screen.findByRole("dialog", { name: "More" });
-    fireEvent.click(within(more).getByRole("button", { name: /^Ideas/ }));
-    expect(screen.queryByRole("dialog", { name: "More" })).toBeNull();
-    expect(picked()).toBe(pill("Ideas"));
-    expect(picked()?.textContent).toBe("Ideas · 1");
-    expect(text().placeholder).toBe("A topic for ideas");
-    expect(document.activeElement).toBe(text());
-    await settle(100);
-    expect(spending()).toEqual([]);
-  });
-
-  // Review minor 3. More hands focus back to what opened it once its layer has gone (Radix, on a
-  // timer); the field has put the cursor in the text by then, and More leaves it there. More offers
-  // no Simulate, so "+" is never the next step from here (a card's pick covers that).
-  it.each([
-    ["the phone, More in the field", false, () => pill("More")],
-    ["the desktop, More in the field", true, () => pill("More")],
-  ] as const)("on %s: a skill chosen in More leaves the cursor in the field's text once More has closed and handed back its focus", async (_where, wide, opener) => {
-    if (wide) desktop();
-    await renderHome();
-    // Focused first, as a keyboard user's tap leaves it: More has something to hand focus back to.
-    opener().focus();
-    fireEvent.click(opener());
-    const more = await screen.findByRole("dialog", { name: "More" });
-    await settle();
-    fireEvent.click(within(more).getByRole("button", { name: /^Ideas/ }));
-    await settle(60);
-    expect(screen.queryByRole("dialog", { name: "More" })).toBeNull();
-    expect(picked()?.textContent).toBe("Ideas · 1");
-    expect(document.activeElement).toBe(text());
-  });
-
-  it("on desktop More opens downward from the field on Home (in a thread it opens upward)", async () => {
-    desktop();
-    await renderHome();
-    fireEvent.click(pill("More"));
-    const more = await screen.findByRole("dialog", { name: "More" });
-    await settle();
-    expect(more).toHaveAttribute("data-side", "bottom");
-  });
-
-  it("More's Audience row on Home opens the audience sheet, whose close puts the focus on the line", async () => {
-    await renderHome();
-    fireEvent.click(pill("More"));
-    const more = await screen.findByRole("dialog", { name: "More" });
-    fireEvent.click(within(more).getByRole("button", { name: "Audience: General" }));
-    await screen.findByRole("dialog", { name: "Audience" });
-    await settle();
-    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
-    await settle();
-    expect(screen.queryByRole("dialog")).toBeNull();
-    expect(document.activeElement).toBe(audienceLine("For a general audience"));
   });
 
   it("a send from Home: one new chat, then one chat request, and the screen becomes the thread", async () => {
@@ -585,7 +414,7 @@ describe("Home: /home with no chat open", () => {
     await renderHome();
     expect(shell()).toHaveAttribute("data-layout", "home");
     fireEvent.click(card("Hooks"));
-    expect(picked()?.textContent).toBe("Hooks · 1");
+    expect(picked()?.textContent).toBe("Hooks · 1 credit");
     fireEvent.change(text(), { target: { value: "meal prep" } });
     fireEvent.keyDown(text(), { key: "Enter" });
 
@@ -628,8 +457,7 @@ describe("Home: /home with no chat open", () => {
     const menu = await screen.findByRole("dialog", { name: "Skills" });
     expect(within(menu).getByRole("button", { name: "Hooks" })).toHaveAttribute("data-enter", "true");
     fireEvent.keyDown(text(), { key: "Enter" });
-    expect(picked()).toBe(pill("Hooks"));
-    expect(picked()?.textContent).toBe("Hooks · 1");
+    expect(picked()?.textContent).toBe("Hooks · 1 credit");
     expect(text().value).toBe("");
     expect(screen.queryByRole("dialog", { name: "Skills" })).toBeNull();
     await settle();
@@ -643,7 +471,7 @@ describe("Home: /home with no chat open", () => {
     expect(await screen.findByText("No skill by that name")).toBeInTheDocument();
     fireEvent.keyDown(text(), { key: "Enter" });
     await settle();
-    expect(picked()).toBeNull();
+    expect(field().querySelector('[data-part="picked-skill"]')).toBeNull();
     expect(text()).toHaveValue("/zz");
     expect(spending()).toEqual([]);
   });
@@ -653,7 +481,7 @@ describe("Home: /home with no chat open", () => {
     fireEvent.change(text(), { target: { value: "/idea" } });
     await screen.findByRole("dialog", { name: "Skills" });
     fireEvent.keyDown(text(), { key: "Enter" });
-    expect(picked()?.textContent).toBe("Ideas · 1");
+    expect(picked()?.textContent).toBe("Ideas · 1 credit");
     expect(text().value).toBe("");
   });
 
@@ -697,78 +525,16 @@ describe("Home: /home with no chat open", () => {
   });
 });
 
-// ── Under the field (spec 2026-11-25 §2.5) ───────────────────────────────────
-describe("Home: under the field, the chats first", () => {
-  /** Whether any of the four cards was in the page at any moment since this was called: each change
-   *  of the page is looked at as it happens, so a card drawn and taken away in between is caught. */
-  function watchForCards() {
-    let seen = false;
-    const look = () => {
-      if (SKILLS.some((name) => cardsOf(name).length > 0)) seen = true;
-    };
-    const observer = new MutationObserver(look);
-    observer.observe(document.body, { childList: true, subtree: true });
-    look();
-    return { seen: () => (look(), seen), stop: () => observer.disconnect() };
-  }
-
-  it("a returning creator never sees the cards, not for a moment: nothing while the list is out, then Recent", async () => {
-    const at = new Date(Date.now() - 2 * 3_600_000).toISOString();
-    threadsFixture = [{ id: "c1", title: "Meal prep for busy students", updated_at: at, created_at: at, pinned_at: null }];
-    const list = deferred();
-    listGate = list.promise;
-    const cards = watchForCards();
-    try {
-      await renderHome();
-      await settle(50);
-      // The list is out: under the field, nothing at all.
-      expect(screen.queryByRole("heading", { name: "Recent" })).toBeNull();
-      const column = screen.getByRole("heading", { level: 1 }).parentElement!;
-      const fieldBlock = [...column.children].find((part) => part.contains(field()))!;
-      expect(fieldBlock.nextElementSibling).toBeNull();
-      await act(async () => {
-        list.resolve();
-      });
-      expect(await screen.findByRole("heading", { name: "Recent" })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Meal prep for busy students" })).toBeInTheDocument();
-      await settle(50);
-      expect(cards.seen()).toBe(false);
-    } finally {
-      cards.stop();
-    }
-  });
-
-  it("a new creator (the list answers with no titled chat): the four cards, and a pick keeps them", async () => {
-    threadsFixture = [{ id: "c0", title: null, updated_at: new Date().toISOString(), created_at: new Date().toISOString(), pinned_at: null }];
-    // Library's summary leaves an empty untitled chat out, as its endpoint does.
-    libraryFixture = { chats: [], next: null };
-    await renderHome();
-    await waitFor(() => expect(card("Simulate")).toBeInTheDocument());
-    expect(screen.queryByRole("heading", { name: "Recent" })).toBeNull();
-    fireEvent.click(card("Script"));
-    expect(picked()).toBe(pill("Script"));
-    for (const name of SKILLS) expect(card(name)).toBeInTheDocument();
-  });
-
-  it("Money made is not on Home at $0, and nothing holds a place for it", async () => {
-    await renderHome();
-    await settle(50);
-    expect(screen.queryByText("Money made")).toBeNull();
-    expect(document.querySelector('[data-part="money"]')).toBeNull();
-  });
-});
-
 // ── The final fix round (brief 2026-11-23) ───────────────────────────────────
 describe("Home: the final fix round", () => {
-  it("A1: More is the field's own: there is no More skills under the cards, and Ideas picked in More spends nothing", async () => {
+  it("A1: More skills opens the More sheet; Ideas picked there is the field's pill, nothing sent", async () => {
     await renderHome();
-    expect(screen.queryByRole("button", { name: "More skills" })).toBeNull();
-    fireEvent.click(pill("More"));
+    fireEvent.click(screen.getByRole("button", { name: "More skills" }));
     const more = await screen.findByRole("dialog", { name: "More" });
     fireEvent.click(within(more).getByRole("button", { name: /^Ideas/ }));
-    expect(picked()?.textContent).toBe("Ideas · 1");
-    // The cards stay with a skill from More picked too.
-    for (const name of SKILLS) expect(card(name)).toBeInTheDocument();
+    expect(picked()?.textContent).toBe("Ideas · 1 credit");
+    expect(screen.queryByRole("dialog", { name: "More" })).toBeNull();
+    expect(text().placeholder).toBe("What do you want ideas about?");
     await settle(100);
     expect(spending()).toEqual([]);
   });
@@ -809,16 +575,19 @@ describe("Home: the final fix round", () => {
     expect(within(field()).getByRole("alert")).toHaveTextContent(/Your session expired\..* No credits used\.$/);
   });
 
-  it("A7: the cards stay while the / list is open (it opens downward over them), and after", async () => {
+  it("A7: while the / list is open the cards (and More skills) are not shown; clearing it brings them back", async () => {
     await renderHome();
-    const before = SKILLS.map((name) => card(name));
     text().focus();
     fireEvent.change(text(), { target: { value: "/" } });
     await screen.findByRole("dialog", { name: "Skills" });
-    // The list's own rows and the field's buttons carry the same names: a card is outside both.
-    expect(SKILLS.map((name) => card(name))).toEqual(before);
+    // The list's own rows carry the same names: a card is one outside the dialog.
+    const cardsShown = () =>
+      SKILLS.filter((name) => screen.queryAllByRole("button", { name }).some((b) => !b.closest('[role="dialog"]')));
+    expect(cardsShown()).toEqual([]);
+    expect(screen.queryByRole("button", { name: "More skills" })).toBeNull();
     fireEvent.change(text(), { target: { value: "" } });
-    expect(SKILLS.map((name) => card(name))).toEqual(before);
+    expect(cardsShown()).toEqual([...SKILLS]);
+    expect(screen.getByRole("button", { name: "More skills" })).toBeInTheDocument();
   });
 
   it("B2: a reload into a chat names it at once: while the load is out the board points at the cookie's chat", async () => {
@@ -1193,10 +962,10 @@ describe("leaving Home: the cursor stays where the creator types", () => {
     await renderHome();
     // A clip staged (it picks Simulate), then Hooks picked instead: the clip is still staged, unseen.
     fireEvent.change(inField().getByLabelText("Choose a video file"), { target: { files: [clip()] } });
-    fireEvent.click(pill("Simulate")); // a second tap lets it go
+    fireEvent.click(inField().getByRole("button", { name: "Remove Simulate" }));
     fireEvent.click(card("Hooks"));
     fireEvent.change(text(), { target: { value: "meal prep" } });
-    expect(picked()?.textContent).toBe("Hooks · 1");
+    expect(picked()?.textContent).toBe("Hooks · 1 credit");
     const before = requests("/api/threads/open").length;
 
     act(() => useShellStore.getState().focusField());
@@ -1244,7 +1013,7 @@ describe("leaving Home: the cursor stays where the creator types", () => {
     act(() => useShellStore.getState().focusField());
 
     expect(screen.getByTestId("field-video")).toBeInTheDocument();
-    expect(picked()?.textContent).toBe("Simulate · 10");
+    expect(picked()?.textContent).toBe("Simulate · 10 credits");
     await act(async () => {
       made.resolve();
     });
@@ -1305,30 +1074,6 @@ describe("Home's other side: a chat with content", () => {
     for (const name of [...SKILLS, "More"]) expect(inField().getByRole("button", { name })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { level: 1, name: /^Good (morning|afternoon|evening)/ })).toBeNull();
     expect(screen.queryByTestId("home-next")).toBeNull();
-    // Glass, and no audience line: More's Audience row is the way to it here.
-    expect(field().style.backdropFilter).not.toBe("");
-    expect(screen.queryByRole("button", { name: /audience/i })).toBeNull();
-  });
-
-  it("on desktop More opens upward over the docked field, and the audience sheet stands on the field", async () => {
-    desktop();
-    document.cookie = `${ACTIVE_THREAD_COOKIE}=t1; path=/`;
-    threadFixture = chatThread();
-    renderWithClient(<Composer />);
-    await screen.findByText("Start with the mirror shot.");
-    fireEvent.click(pill("More"));
-    const more = await screen.findByRole("dialog", { name: "More" });
-    await settle();
-    expect(more).toHaveAttribute("data-side", "top");
-    fireEvent.click(within(more).getByRole("button", { name: "Audience: General" }));
-    const sheet = await screen.findByRole("dialog", { name: "Audience" });
-    await settle();
-    expect(sheet).toHaveAttribute("data-side", "top");
-    expect(sheet).toHaveAttribute("data-align", "start");
-    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
-    await settle();
-    // What opened it (More's row) has left: the field's text, as before.
-    expect(document.activeElement).toBe(text());
   });
 });
 

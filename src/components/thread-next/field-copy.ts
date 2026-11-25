@@ -1,4 +1,4 @@
-import type { ToolId } from "@/components/app/home/composer-controls";
+import { getSkill, type ToolId } from "@/components/app/home/composer-controls";
 
 /**
  * The field's placeholders under the new look, in one place: the composer and /dev/field both
@@ -36,6 +36,18 @@ export function videoPlaceholder(tool: "test" | "edit", staged: boolean): string
   return staged ? words.video : words.empty;
 }
 
-/** The field on Home with no skill picked (Home spec 2026-11-25 §2.4). With a skill picked, Home
- *  shows the thread's own words for it, above (Edit's included). */
-export const HOME_PLACEHOLDER = "Ask anything";
+/** The field on Home (spec 2026-11-23): its placeholder at rest, and once a skill that takes
+ *  words is picked. A tool missing here keeps the thread's placeholder. */
+export const HOME_PLACEHOLDER_BY_TOOL: Partial<Record<ToolId, string>> = {
+  chat: "Ask anything, or pick a skill",
+  hooks: "What's the video about?",
+  script: "What's the video about?",
+  idea: "What do you want ideas about?",
+};
+
+/** A skill's name in the field: the pills' names, "Account" for the account read, else the skill's label. */
+export function fieldSkillLabel(tool: ToolId): string {
+  if (tool === "test") return "Simulate";
+  if (tool === "account") return "Account";
+  return getSkill(tool).label;
+}

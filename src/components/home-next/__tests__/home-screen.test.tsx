@@ -1,8 +1,8 @@
 /** @vitest-environment happy-dom */
 
 /**
- * HomeScreen — Home as drawn (spec 2026-11-23 §3, changed by 2026-11-25 §2), rendered for real. Every
- * value comes in as a prop, so nothing is stubbed; the field is a plain slot.
+ * HomeScreen — Home as drawn (spec 2026-11-23 §3), rendered for real. Every value comes in as a
+ * prop, so nothing is stubbed; the field is a plain slot.
  */
 
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -11,17 +11,11 @@ import { axe } from "vitest-axe";
 
 import { MenuButton } from "@/components/shell/menu-button";
 
-import {
-  HOME_SKILLS,
-  HomeScreen,
-  type HomeAudience,
-  type HomeMoney,
-  type HomeRecentRow,
-  type HomeScreenProps,
-} from "../home-screen";
+import { HOME_SKILLS, HomeScreen, PICK_SETTLE_MS, pickClock, type HomeMoney, type HomeRecentRow, type HomeScreenProps } from "../home-screen";
 
 afterEach(() => {
   cleanup();
+  pickClock.now = () => performance.now();
 });
 
 const RECENT = [
@@ -30,27 +24,19 @@ const RECENT = [
   { id: "t3", title: "Morning routine, no cuts", when: null },
 ];
 
-/** The audience line's values as the composer hands them in: the creator's own audience, closed. */
-const audience = (over: Partial<HomeAudience> = {}): HomeAudience => ({
-  name: "@creator_one",
-  general: false,
-  open: false,
-  onOpen: vi.fn(),
-  ...over,
-});
-
 function props(over: Partial<HomeScreenProps> = {}): HomeScreenProps {
   return {
     greeting: "Good morning, Nia.",
-    audience: audience(),
     // The drawer's opener as a container passes it; given a face, since a screen test has no shell.
     opener: <MenuButton variant="picture" face={{ picture: null, initials: "NL" }} />,
     credits: 30,
     field: <div data-testid="slot" />,
-    under: "recent",
+    picked: false,
     onPickSkill: vi.fn(),
     recent: RECENT,
     onOpenThread: vi.fn(),
+    recentOnDesktop: false,
+    onMore: vi.fn(),
     ...over,
   };
 }
@@ -63,15 +49,6 @@ const renderHome = (over: Partial<HomeScreenProps> = {}) => {
 
 const CARDS = ["Simulate", "Hooks", "Script", "Remix"];
 const recentSection = () => screen.getByRole("heading", { name: "Recent" }).closest("section");
-/** The four cards' list (the grid). */
-const cardGrid = () => screen.getByRole("button", { name: "Simulate" }).closest("ul")!;
-/** The page's column: the greeting's parent, holding every part in order. */
-const column = () => screen.getByRole("heading", { level: 1 }).parentElement!;
-const fieldBlock = () => screen.getByTestId("slot").parentElement!;
-const moneyPart = () => document.querySelector<HTMLElement>('[data-part="money"]');
-const follows = (a: Node, b: Node) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
-/** Money above zero, as `moneyOf` hands it in. */
-const EARNED: HomeMoney = { amount: "$58.80", hint: "Earn 50%" };
 
 describe("HomeScreen — greeting and field", () => {
   it("the greeting is the page's only h1", () => {
@@ -82,7 +59,7 @@ describe("HomeScreen — greeting and field", () => {
   });
 
   it("renders the field once, before the cards", () => {
-    renderHome({ under: "cards" });
+    renderHome();
     expect(screen.getAllByTestId("slot")).toHaveLength(1);
     const slot = screen.getByTestId("slot");
     const firstCard = screen.getByRole("button", { name: "Simulate" });
@@ -90,182 +67,9 @@ describe("HomeScreen — greeting and field", () => {
   });
 });
 
-describe("HomeScreen — the audience line (spec 2026-11-25 §2.3)", () => {
-  const line = () => screen.getByRole("button", { name: /, change audience$/ });
-
-  it("says who the next run is for, For @creator_one, with a chevron pointing down", () => {
-    renderHome();
-    expect(line()).toHaveTextContent(/^For @creator_one$/);
-    const chevron = line().querySelector("svg")!;
-    expect(chevron).toHaveAttribute("aria-hidden");
-    // The chevron is drawn pointing right: turned a quarter, it points down.
-    expect(chevron).toHaveClass("rotate-90");
-    expect(chevron).toHaveAttribute("width", "14");
-    // After the words.
-    expect(within(line()).getByText("@creator_one").compareDocumentPosition(chevron) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-  });
-
-  it("its name for a screen reader is its words, then what it does: For @creator_one, change audience", () => {
-    renderHome();
-    expect(line()).toHaveAccessibleName("For @creator_one, change audience");
-    // The name holds what is on screen (WCAG 2.5.3): "click For @creator_one" finds it.
-    expect(line().getAttribute("aria-label")!.startsWith(line().textContent!)).toBe(true);
-  });
-
-  it("the general audience reads For a general audience, and is named For a general audience, change audience", () => {
-    renderHome({ audience: audience({ name: "General", general: true }) });
-    expect(line()).toHaveTextContent(/^For a general audience$/);
-    expect(line()).toHaveAccessibleName("For a general audience, change audience");
-  });
-
-  it("which audience is the general one is the composer's to say, not the word: one of the creator's own named General is named", () => {
-    renderHome({ audience: audience({ name: "General", general: false }) });
-    expect(line()).toHaveTextContent(/^For General$/);
-    expect(line()).toHaveAccessibleName("For General, change audience");
-  });
-
-  it("sets no focus style of its own, as the cards and the Library link do: the app's ring is the one drawn", () => {
-    const own = (el: HTMLElement) => el.className.split(/\s+/).filter((c) => /outline|focus|ring/.test(c));
-    renderHome();
-    expect(own(line())).toEqual([]);
-    expect(own(screen.getByRole("link", { name: "Library" }))).toEqual([]);
-    cleanup();
-    renderHome({ under: "cards" });
-    expect(own(screen.getByRole("button", { name: "Hooks" }))).toEqual([]);
-  });
-
-  it("is drawn 15 / 22 in the secondary ink, the name at 560 in the ink, 5 between the words and the chevron", () => {
-    renderHome();
-    expect(line()).toHaveClass("text-ui", "leading-[22px]", "text-foreground-secondary", "gap-[5px]");
-    expect(within(line()).getByText("@creator_one")).toHaveClass("font-[560]", "text-foreground");
-    renderHome({ audience: audience({ name: "General", general: true }) });
-    expect(screen.getAllByText("a general audience")[0]).toHaveClass("font-[560]", "text-foreground");
-  });
-
-  it("sits right after the greeting and before the field: 5 under it on a phone, 8 on desktop; left, then centred as the greeting is", () => {
-    renderHome();
-    const heading = screen.getByRole("heading", { level: 1 });
-    expect(heading.nextElementSibling).toBe(line());
-    expect(line().compareDocumentPosition(screen.getByTestId("slot")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(line()).toHaveClass("mt-[5px]", "md:mt-2", "self-start", "md:self-center");
-    // In line with the greeting's text (its own 4 in).
-    expect(heading).toHaveClass("px-1");
-    expect(line()).toHaveClass("px-1");
-  });
-
-  it("is at least 44 to tap, and a long name gives way at the edge instead of widening the page", () => {
-    renderHome({ audience: audience({ name: "@a_creator_with_a_very_long_handle_indeed" }) });
-    expect(line()).toHaveClass("tap-44", "max-w-full");
-    expect(within(line()).getByText("@a_creator_with_a_very_long_handle_indeed").parentElement).toHaveClass("min-w-0", "truncate");
-  });
-
-  it("a press opens the audience sheet, and the line says it opens a dialog and whether it is open", () => {
-    const onOpen = vi.fn();
-    const { rerender } = render(<HomeScreen {...props({ audience: audience({ onOpen }) })} />);
-    expect(line()).toHaveAttribute("aria-haspopup", "dialog");
-    expect(line()).toHaveAttribute("aria-expanded", "false");
-    fireEvent.click(line());
-    expect(onOpen).toHaveBeenCalledTimes(1);
-    rerender(<HomeScreen {...props({ audience: audience({ onOpen, open: true }) })} />);
-    expect(line()).toHaveAttribute("aria-expanded", "true");
-  });
-
-  it("a pointer tap while its popover is open only closes it (the popover closes on that press); a keyboard press opens", () => {
-    const onOpen = vi.fn();
-    renderHome({ audience: audience({ onOpen, open: true }) });
-    fireEvent.pointerDown(line());
-    fireEvent.click(line(), { detail: 1 }); // the pointer's click
-    expect(onOpen).not.toHaveBeenCalled();
-    fireEvent.click(line(), { detail: 0 }); // the keyboard's
-    expect(onOpen).toHaveBeenCalledTimes(1);
-  });
-
-  it("with its popover closed a pointer tap opens it", () => {
-    const onOpen = vi.fn();
-    renderHome({ audience: audience({ onOpen }) });
-    fireEvent.pointerDown(line());
-    fireEvent.click(line(), { detail: 1 });
-    expect(onOpen).toHaveBeenCalledTimes(1);
-  });
-
-  it("hands the composer the line to stand the popover on", () => {
-    const anchorRef = { current: null as HTMLButtonElement | null };
-    renderHome({ audienceRef: anchorRef });
-    expect(anchorRef.current).toBe(line());
-  });
-
-  it("the field sits 14 under the line on a phone, 22 on desktop", () => {
-    renderHome();
-    expect(line().nextElementSibling).toBe(screen.getByTestId("slot").parentElement);
-    expect(screen.getByTestId("slot").parentElement!.className).toBe("mx-auto mt-3.5 w-full max-w-[720px] md:mt-[22px]");
-  });
-
-  it("has no axe violations, named or general", async () => {
-    for (const a of [audience(), audience({ name: "General", general: true })]) {
-      const { container } = render(<HomeScreen {...props({ audience: a, under: "cards", recent: [] })} />);
-      // @ts-expect-error -- vitest-axe matcher type augmentation not picked up
-      expect(await axe(container)).toHaveNoViolations();
-      cleanup();
-    }
-  });
-});
-
-describe("HomeScreen — under the field, one of three (spec 2026-11-25 §2.5)", () => {
-  const nothingUnderTheField = () => {
-    for (const name of CARDS) expect(screen.queryByRole("button", { name })).toBeNull();
-    expect(screen.queryByRole("heading", { name: "Recent" })).toBeNull();
-    expect(screen.queryByRole("link", { name: "Library" })).toBeNull();
-  };
-
-  it("not known yet: nothing under the field, no cards, no Recent, no space held", () => {
-    renderHome({ under: "pending" });
-    nothingUnderTheField();
-    // The field is the column's last part: nothing after it, not even an empty block.
-    expect(fieldBlock().nextElementSibling).toBeNull();
-  });
-
-  it("not known yet, even with rows to hand: still nothing (the composer's list decides, not the rows)", () => {
-    renderHome({ under: "pending", recent: RECENT });
-    nothingUnderTheField();
-  });
-
-  it("chats: Recent right after the field, and no cards", () => {
-    renderHome({ under: "recent" });
-    expect(fieldBlock().nextElementSibling).toBe(recentSection());
-    for (const name of CARDS) expect(screen.queryByRole("button", { name })).toBeNull();
-  });
-
-  it("no chats: the four cards right after the field, and no Recent", () => {
-    renderHome({ under: "cards", recent: [] });
-    expect(fieldBlock().nextElementSibling).toBe(cardGrid());
-    for (const name of CARDS) expect(screen.getByRole("button", { name })).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Recent" })).toBeNull();
-  });
-
-  it("Recent draws every row it is handed (five at most come from Home's data)", () => {
-    const five = Array.from({ length: 5 }, (_, i) => ({ id: `t${i}`, title: `Chat number ${i + 1}`, when: "2h ago" }));
-    renderHome({ recent: five });
-    expect(within(recentSection()!).getAllByRole("listitem")).toHaveLength(5);
-  });
-
-  it("Recent shows on desktop too, whatever the sidebar does: nothing hides it from md up", () => {
-    renderHome();
-    expect(recentSection()!.className).not.toMatch(/(^|\s)md:hidden(\s|$)/);
-    expect(recentSection()).toHaveClass("md:mx-auto", "md:w-full", "md:max-w-[720px]");
-  });
-
-  it("there is no More skills button in any state (More is in the field)", () => {
-    for (const under of ["pending", "recent", "cards"] as const) {
-      renderHome({ under });
-      expect(screen.queryByRole("button", { name: "More skills" })).toBeNull();
-      cleanup();
-    }
-  });
-});
-
 describe("HomeScreen — the four skill cards", () => {
   it("lists Simulate, Hooks, Script, Remix in that order, each described by its line", () => {
-    renderHome({ under: "cards" });
+    renderHome();
     const cards = CARDS.map((name) => screen.getByRole("button", { name }));
     for (let i = 1; i < cards.length; i += 1) {
       expect(cards[i - 1]!.compareDocumentPosition(cards[i]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -286,34 +90,18 @@ describe("HomeScreen — the four skill cards", () => {
     ]);
   });
 
-  // That the cards stay on a pick is the composer's to keep (HomeScreen holds no state): pinned in
-  // `composer-home.flag-on.test.tsx`, "a card picks its skill: ... the cards stay ...".
-  it("a tap on a card calls the pick with that card's skill", () => {
-    const p = renderHome({ under: "cards" });
+  it("a tap on a card picks its skill", () => {
+    const p = renderHome();
     fireEvent.click(screen.getByRole("button", { name: "Remix" }));
     expect(p.onPickSkill).toHaveBeenCalledWith("remix");
     fireEvent.click(screen.getByRole("button", { name: "Simulate" }));
     expect(p.onPickSkill).toHaveBeenLastCalledWith("test");
   });
 
-  it("the row is as wide as the field: 720 at most, centred", () => {
-    renderHome({ under: "cards" });
-    expect(cardGrid()).toHaveClass("mx-auto", "w-full", "max-w-[720px]");
-    expect(fieldBlock()).toHaveClass("mx-auto", "w-full", "max-w-[720px]");
-  });
-
-  it("all four are the same height, two by two and four in a row: equal rows, each card filling its cell", () => {
-    renderHome({ under: "cards" });
-    // Every row of the grid as tall as the tallest (a wrapped caption makes all of them that tall).
-    expect(cardGrid()).toHaveClass("grid", "grid-cols-2", "auto-rows-fr", "@min-[760px]:grid-cols-4");
-    for (const name of CARDS) {
-      const card = screen.getByRole("button", { name });
-      // The cell stretches to its row and the card to its cell.
-      expect(card.parentElement).toHaveClass("flex");
-      expect(card).toHaveClass("w-full");
-      expect(card.parentElement!.className).not.toMatch(/items-(start|center|end)|self-/);
-      expect(card.className).not.toMatch(/(^|\s)(h-|self-)/);
-    }
+  it("with a skill picked the cards are gone and Recent stays", () => {
+    renderHome({ picked: true });
+    for (const name of CARDS) expect(screen.queryByRole("button", { name })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Recent", level: 2 })).toBeInTheDocument();
   });
 });
 
@@ -371,10 +159,20 @@ describe("HomeScreen — Recent", () => {
     expect(row).not.toHaveAttribute("aria-describedby");
   });
 
-  it("with no chats (the cards) there is no Recent and no Library link", () => {
-    renderHome({ under: "cards", recent: [] });
+  it("with no chats there is no Recent and no Library link", () => {
+    renderHome({ recent: [] });
     expect(screen.queryByRole("heading", { name: "Recent" })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Library" })).not.toBeInTheDocument();
+  });
+
+  it("is hidden from md up while the sidebar lists the same chats", () => {
+    renderHome({ recentOnDesktop: false });
+    expect(recentSection()).toHaveClass("md:hidden");
+  });
+
+  it("shows from md up while the sidebar is the rail", () => {
+    renderHome({ recentOnDesktop: true });
+    expect(recentSection()).not.toHaveClass("md:hidden");
   });
 });
 
@@ -472,6 +270,21 @@ describe("HomeScreen — Recent from Library's summary (Library plan, Task 7)", 
     expect(within(itemOf("Morning routine, no cuts")).queryByRole("link")).toBeNull();
   });
 
+  it("a tap on a gauge inside the window after a card pick is dropped too", () => {
+    let now = 10_000;
+    pickClock.now = () => now;
+    const p = props({ recent: SUMMED });
+    const { rerender } = render(<HomeScreen {...p} />);
+    fireEvent.click(screen.getByRole("button", { name: "Hooks" }));
+    rerender(<HomeScreen {...p} picked />);
+    now += PICK_SETTLE_MS - 1;
+    const link = screen.getByRole("link", { name: "Open the result: Meal prep for busy students" });
+    const reached = vi.fn();
+    link.addEventListener("click", reached);
+    expect(fireEvent.click(link)).toBe(false);
+    expect(reached).not.toHaveBeenCalled();
+  });
+
   it("has no axe violations", async () => {
     const { container } = render(<HomeScreen {...props({ recent: SUMMED })} />);
     // @ts-expect-error -- vitest-axe matcher type augmentation not picked up
@@ -533,83 +346,133 @@ describe("HomeScreen — the phone's top row", () => {
   });
 });
 
+describe("HomeScreen — More skills (final fix A1)", () => {
+  it("is one button under the cards, named More skills, that opens a dialog", () => {
+    const p = renderHome();
+    const more = screen.getByRole("button", { name: "More skills" });
+    expect(more).toHaveAttribute("aria-haspopup", "dialog");
+    expect(more).toHaveClass("tap-44", "text-ui", "text-foreground-secondary", "hover:text-foreground", "mt-2");
+    const lastCard = screen.getByRole("button", { name: "Remix" });
+    expect(lastCard.compareDocumentPosition(more) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(more);
+    expect(p.onMore).toHaveBeenCalledTimes(1);
+  });
+
+  it("is gone while a skill is picked, as the cards are", () => {
+    renderHome({ picked: true });
+    expect(screen.queryByRole("button", { name: "More skills" })).toBeNull();
+  });
+});
+
 describe("HomeScreen — Recent is not stretched across a wide page (A9)", () => {
   it("from md up it is capped at the field's width and centred", () => {
-    renderHome();
+    renderHome({ recentOnDesktop: true });
     expect(recentSection()).toHaveClass("md:mx-auto", "md:w-full", "md:max-w-[720px]");
   });
 });
 
-describe("HomeScreen — Money made, last (spec 2026-11-25 §2.6; Earn rulings 18 and 24)", () => {
+describe("HomeScreen — a double tap on a card does not open a chat (B6)", () => {
+  // The cards go on a pick and Recent slides up into their place: the second tap lands on a row.
+  function pickThenTap(gap: number, target: () => HTMLElement) {
+    let now = 10_000;
+    pickClock.now = () => now;
+    const p = props();
+    const { rerender } = render(<HomeScreen {...p} />);
+    fireEvent.click(screen.getByRole("button", { name: "Hooks" }));
+    expect(p.onPickSkill).toHaveBeenCalledWith("hooks");
+    rerender(<HomeScreen {...p} picked />);
+    now += gap;
+    const el = target();
+    const notCancelled = fireEvent.click(el);
+    return { p, notCancelled };
+  }
+  const row = () => screen.getByRole("button", { name: "Meal prep for busy students" });
+  const library = () => screen.getByRole("link", { name: "Library" });
+
+  it("a tap on a Recent row inside the window after a pick is dropped", () => {
+    const { p } = pickThenTap(PICK_SETTLE_MS - 1, row);
+    expect(p.onOpenThread).not.toHaveBeenCalled();
+  });
+
+  it("a tap on Library inside the window is dropped too (it never reaches the link, no navigation)", () => {
+    const reached = vi.fn();
+    const { notCancelled } = pickThenTap(PICK_SETTLE_MS - 1, () => {
+      const link = library();
+      link.addEventListener("click", reached);
+      return link;
+    });
+    expect(reached).not.toHaveBeenCalled();
+    expect(notCancelled).toBe(false);
+  });
+
+  it("once the window has passed the row opens its chat", () => {
+    const { p } = pickThenTap(PICK_SETTLE_MS, row);
+    expect(p.onOpenThread).toHaveBeenCalledWith("t1");
+  });
+
+  it("with no pick at all a row opens at once", () => {
+    pickClock.now = () => 0;
+    const p = renderHome();
+    fireEvent.click(row());
+    expect(p.onOpenThread).toHaveBeenCalledWith("t1");
+  });
+});
+
+describe("HomeScreen — Money made (Earn, step C; rulings 18 and 24)", () => {
+  const shown = (amount: string | null): HomeMoney => ({ state: "shown", amount, hint: "Earn 50%" });
+  const MONEY = shown("$0");
+  const LOADING: HomeMoney = { state: "loading" };
   /** Ruling 24a: the class that takes the rate away while Home (the container) is narrower than 360. */
   const DROPPED_UNDER_360 = "@max-[360px]:hidden";
-  /** The field's block, under the audience line: 14 on a phone, 22 from md up, with or without money. */
-  const FIELD_BLOCK = "mx-auto mt-3.5 w-full max-w-[720px] md:mt-[22px]";
-  const shown = (amount: string): HomeMoney => ({ amount, hint: "Earn 50%" });
-  const moneyLink = () => screen.getByRole("link", { name: "Money made: $58.80. Earn 50%" });
+  /** The field's block as it was before the row existed (HEAD `9478c611`): 12 under the greeting, 28 from md up. */
+  const FIELD_BEFORE_THE_ROW = "mx-auto mt-3 w-full max-w-[720px] md:mt-7";
+  const moneyLink = () => screen.getByRole("link", { name: "Money made: $0. Earn 50%" });
+  const moneyPart = (container: HTMLElement) => container.querySelector<HTMLElement>('[data-part="money"]');
+  const fieldBlock = () => screen.getByTestId("slot").parentElement!;
 
-  it("is one link to Earn, named Money made: $58.80. Earn 50%: the label, the amount, Earn 50% and a chevron", () => {
-    renderHome({ money: EARNED });
+  it("is one link to Earn, named Money made: $0. Earn 50%: the label, the amount, Earn 50% and a chevron", () => {
+    renderHome({ money: MONEY });
     const link = moneyLink();
     expect(link).toHaveAttribute("href", "/earn");
-    expect(link).toHaveTextContent(/^Money made\s*\$58\.80\s*Earn 50%$/);
+    expect(link).toHaveTextContent(/^Money made\s*\$0\s*Earn 50%$/);
+    expect(within(link).getByText("Money made")).toBeInTheDocument();
+    expect(within(link).getByText("$0")).toBeInTheDocument();
+    expect(within(link).getByText("Earn 50%")).toBeInTheDocument();
     const chevron = link.querySelector("svg");
     expect(chevron).toHaveAttribute("aria-hidden");
     // The last thing in the row, after the words.
-    expect(follows(within(link).getByText("Earn 50%"), chevron!)).toBe(true);
+    expect(within(link).getByText("Earn 50%").compareDocumentPosition(chevron!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // One link: nothing else in it to tap.
     expect(within(link).queryAllByRole("link")).toHaveLength(0);
     expect(within(link).queryAllByRole("button")).toHaveLength(0);
   });
 
-  it.each([
-    ["chats", "recent" as const, () => recentSection()!],
-    ["no chats", "cards" as const, () => cardGrid()],
-  ])("with %s it is the page's last part, after what is under the field, 12 above it, as wide as the field", (_name, under, before) => {
-    renderHome({ under, money: EARNED });
-    expect(column().lastElementChild).toBe(moneyPart());
-    expect(before().nextElementSibling).toBe(moneyPart());
-    expect(moneyPart()).toHaveClass("mx-auto", "mt-3", "w-full", "max-w-[720px]");
-    expect(moneyLink()).toHaveClass("w-full");
+  it("says the amount it is given", () => {
+    renderHome({ money: shown("$1,240.50") });
+    const link = screen.getByRole("link", { name: "Money made: $1,240.50. Earn 50%" });
+    expect(within(link).getByText("$1,240.50")).toBeInTheDocument();
   });
 
-  it("not known yet: it is the only thing under the field", () => {
-    renderHome({ under: "pending", money: EARNED });
-    expect(fieldBlock().nextElementSibling).toBe(moneyPart());
-    expect(column().lastElementChild).toBe(moneyPart());
-  });
-
-  it.each<[string, Partial<HomeScreenProps>]>([
-    ["nothing passed", {}],
-    ["undefined", { money: undefined }],
-    ["null (nothing earned, no amount, loading, refused)", { money: null }],
-  ])("%s: no row and no space kept", (_name, over) => {
-    renderHome({ ...over, under: "cards" });
-    expect(moneyPart()).toBeNull();
-    expect(screen.queryByText("Money made")).toBeNull();
-    expect(column().lastElementChild).toBe(cardGrid());
-  });
-
-  it("the field's place does not depend on it: the same block and gaps with and without the row, and the same element", () => {
-    const p = props({ money: null });
-    const { rerender } = render(<HomeScreen {...p} />);
-    const block = fieldBlock();
-    const field = screen.getByTestId("slot");
-    expect(block.className).toBe(FIELD_BLOCK);
-    expect(screen.getByRole("button", { name: "For @creator_one, change audience" }).nextElementSibling).toBe(block);
-    rerender(<HomeScreen {...p} money={EARNED} />);
-    expect(fieldBlock()).toBe(block);
-    expect(screen.getByTestId("slot")).toBe(field);
-    expect(block.className).toBe(FIELD_BLOCK);
+  it("sits between the greeting and the field, in the field's bounds", () => {
+    const { container } = render(<HomeScreen {...props({ money: MONEY })} />);
+    const link = moneyLink();
+    const heading = screen.getByRole("heading", { level: 1 });
+    expect(heading.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(link.compareDocumentPosition(screen.getByTestId("slot")) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // As wide as the field's card at every width: the same centred 720 column.
+    const part = moneyPart(container)!;
+    expect(part).toHaveClass("mx-auto", "w-full", "max-w-[720px]");
+    expect(fieldBlock()).toHaveClass("mx-auto", "w-full", "max-w-[720px]");
+    expect(link).toHaveClass("w-full");
   });
 
   it("is drawn as Home's cards: the surface, the skill card's radius, the resting shadow; the type of Home's rows; no colour", () => {
-    renderHome({ money: EARNED });
+    renderHome({ money: MONEY });
     const link = moneyLink();
     expect(link).toHaveClass("bg-surface", "rounded-2xl", "shadow-[var(--shadow-rest)]", "hover:shadow-[var(--shadow-lift)]");
     expect(within(link).getByText("Money made")).toHaveClass("text-ui", "text-foreground-secondary");
     // The amount in Home's emphasis (the skill names' and Recent's weight), its digits in columns.
-    expect(within(link).getByText("$58.80")).toHaveClass("text-ui", "font-[640]", "text-foreground", "tabular-nums");
+    expect(within(link).getByText("$0")).toHaveClass("text-ui", "font-[640]", "text-foreground", "tabular-nums");
     expect(within(link).getByText("Earn 50%")).toHaveClass("text-meta", "text-foreground-secondary");
     // Nothing coral or green: no accent, no tone colour, anywhere in the row.
     for (const el of [link, ...link.querySelectorAll("*")]) {
@@ -618,40 +481,133 @@ describe("HomeScreen — Money made, last (spec 2026-11-25 §2.6; Earn rulings 1
   });
 
   it("is a 48 tall target, one line: the words do not wrap, the label gives way first", () => {
-    renderHome({ money: EARNED });
+    renderHome({ money: MONEY });
     const link = moneyLink();
     expect(link).toHaveClass("h-12", "items-center");
     expect(within(link).getByText("Money made")).toHaveClass("min-w-0", "truncate");
-    expect(within(link).getByText("$58.80")).toHaveClass("shrink-0", "whitespace-nowrap");
+    expect(within(link).getByText("$0")).toHaveClass("shrink-0", "whitespace-nowrap");
     expect(within(link).getByText("Earn 50%")).toHaveClass("whitespace-nowrap");
   });
 
   // Ruling 24a. happy-dom lays nothing out: what is shown here is which rows carry the container rule.
-  it.each(["$1", "$24", "$240"])("under 360 wide Earn 50% stays beside an amount of four characters or fewer (%s)", (amount) => {
-    renderHome({ money: shown(amount) });
-    expect(screen.getByTestId("home-next")).toHaveClass("@container");
-    const rate = within(screen.getByRole("link", { name: `Money made: ${amount}. Earn 50%` })).getByText("Earn 50%");
-    expect(rate).not.toHaveClass(DROPPED_UNDER_360);
-    expect(rate.className).not.toMatch(/hidden|invisible|sr-only|opacity-0/);
-  });
+  it.each(["$0", "$24", "$240"])(
+    "under 360 wide Earn 50% stays beside an amount of four characters or fewer (%s)",
+    (amount) => {
+      renderHome({ money: shown(amount) });
+      // The width the rule reads is Home's own.
+      expect(screen.getByTestId("home-next")).toHaveClass("@container");
+      const link = screen.getByRole("link", { name: `Money made: ${amount}. Earn 50%` });
+      const rate = within(link).getByText("Earn 50%");
+      expect(rate).not.toHaveClass(DROPPED_UNDER_360);
+      // Nothing takes it away at any width.
+      expect(rate.className).not.toMatch(/hidden|invisible|sr-only|opacity-0/);
+    },
+  );
 
   it.each(["$0.05", "$24.50", "$1,240", "$1,240.50", "$1,234,567.89"])(
     "under 360 wide Earn 50% gives way to an amount longer than four characters (%s); from 360 it is drawn; the name always holds it",
     (amount) => {
       renderHome({ money: shown(amount) });
       expect(screen.getByTestId("home-next")).toHaveClass("@container");
+      // The name says the rate whether or not it is drawn.
       const link = screen.getByRole("link", { name: `Money made: ${amount}. Earn 50%` });
       const rate = within(link).getByText("Earn 50%");
       expect(rate).toHaveClass(DROPPED_UNDER_360);
+      // Under 360 only: nothing else takes it away, so from 360 it is always drawn.
       expect(rate.className.replace(DROPPED_UNDER_360, "")).not.toMatch(/hidden|invisible|sr-only|opacity-0/);
+      // The amount and the chevron stay at every width.
       expect(within(link).getByText(amount).className).not.toMatch(/hidden/);
       expect(link.querySelector("svg")).not.toHaveClass(DROPPED_UNDER_360);
     },
   );
 
-  it("has no axe violations, after Recent and after the cards", async () => {
-    for (const under of ["recent", "cards"] as const) {
-      const { container } = render(<HomeScreen {...props({ under, money: EARNED })} />);
+  // Ruling 24c: an enrolled creator whose number could not be read is not told "$0".
+  it("with no amount (it could not be read): Money made and Earn 50%, no amount; named Money made. Earn 50%", () => {
+    renderHome({ money: shown(null) });
+    const link = screen.getByRole("link", { name: "Money made. Earn 50%" });
+    expect(link).toHaveAttribute("href", "/earn");
+    expect(link).toHaveTextContent(/^Money made\s*Earn 50%$/);
+    expect(link.textContent).not.toContain("$");
+    // No place kept for an amount either: the label, then the rate and the chevron.
+    expect(link.querySelector(".tabular-nums")).toBeNull();
+    expect(link.children).toHaveLength(2);
+    expect(screen.queryByRole("link", { name: /^Money made:/ })).toBeNull();
+    // The same row otherwise: as tall, the rate drawn at every width (there is no amount to make room for).
+    expect(link).toHaveClass("h-12", "w-full", "bg-surface", "rounded-2xl");
+    const rate = within(link).getByText("Earn 50%");
+    expect(rate).not.toHaveClass(DROPPED_UNDER_360);
+    expect(rate.className).not.toMatch(/hidden|invisible|sr-only|opacity-0/);
+    expect(link.querySelector("svg")).toHaveAttribute("aria-hidden");
+  });
+
+  // Ruling 24b: the prop says what it means.
+  it("loading: its space is kept, empty and silent, as tall as the row; the answer lands in the same element", () => {
+    const { container, rerender } = render(<HomeScreen {...props({ money: LOADING })} />);
+    const holding = moneyPart(container)!;
+    expect(holding).not.toBeNull();
+    expect(holding).toHaveAttribute("aria-hidden", "true");
+    expect(holding.textContent).toBe("");
+    expect(screen.queryByRole("link", { name: /^Money made/ })).toBeNull();
+    const held = holding.firstElementChild!;
+    expect(held).toHaveClass("h-12");
+    const field = screen.getByTestId("slot");
+    const fieldClassWhileHeld = fieldBlock().className;
+
+    // The answer lands in the same place: the same element, the same margins, the same height.
+    rerender(<HomeScreen {...props({ money: MONEY })} />);
+    expect(moneyPart(container)).toBe(holding);
+    expect(holding).not.toHaveAttribute("aria-hidden");
+    expect(moneyLink()).toHaveClass("h-12");
+    expect(holding.contains(moneyLink())).toBe(true);
+    expect(fieldBlock().className).toBe(fieldClassWhileHeld);
+    // The field is the element it was (its text and its focus stay).
+    expect(screen.getByTestId("slot")).toBe(field);
+  });
+
+  it.each<[string, Partial<HomeScreenProps>]>([
+    ["nothing passed", {}],
+    ["undefined", { money: undefined }],
+    ["null", { money: null }],
+  ])("%s: no row and no kept space, Home as it was before the row", (_name, over) => {
+    const { container } = render(<HomeScreen {...props(over)} />);
+    expect(moneyPart(container)).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Money made/ })).toBeNull();
+    expect(screen.queryByText("Money made")).toBeNull();
+    // Nothing between the greeting and the field's block, and the block's gaps are the approved ones.
+    expect(screen.getByRole("heading", { level: 1 }).nextElementSibling).toBe(fieldBlock());
+    expect(fieldBlock().className).toBe(FIELD_BEFORE_THE_ROW);
+  });
+
+  it("loading, then nothing (a refusal): the space goes and the field stays the element it was", () => {
+    const { container, rerender } = render(<HomeScreen {...props({ money: LOADING })} />);
+    const field = screen.getByTestId("slot");
+    const block = fieldBlock();
+    rerender(<HomeScreen {...props({ money: null })} />);
+    expect(moneyPart(container)).toBeNull();
+    expect(screen.getByTestId("slot")).toBe(field);
+    expect(fieldBlock()).toBe(block);
+    expect(block.className).toBe(FIELD_BEFORE_THE_ROW);
+  });
+
+  it.each<[string, HomeMoney]>([
+    ["shown", MONEY],
+    ["shown with no amount", shown(null)],
+    ["loading", LOADING],
+  ])("%s, it takes the greeting's gap above it and the field sits closer below", (_name, money) => {
+    const { container } = render(<HomeScreen {...props({ money })} />);
+    expect(moneyPart(container)).toHaveClass("mt-3", "md:mt-7");
+    expect(fieldBlock()).toHaveClass("mt-3", "md:mt-4");
+    expect(fieldBlock()).not.toHaveClass("md:mt-7");
+  });
+
+  it("stays while a skill is picked (it is above the field, not among the cards)", () => {
+    renderHome({ money: MONEY, picked: true });
+    expect(moneyLink()).toBeInTheDocument();
+  });
+
+  it("has no axe violations: shown, with no amount, or loading", async () => {
+    for (const money of [MONEY, shown(null), LOADING]) {
+      const { container } = render(<HomeScreen {...props({ money, recent: [] })} />);
       // @ts-expect-error -- vitest-axe matcher type augmentation not picked up
       expect(await axe(container)).toHaveNoViolations();
       cleanup();
@@ -659,29 +615,33 @@ describe("HomeScreen — Money made, last (spec 2026-11-25 §2.6; Earn rulings 1
   });
 });
 
-describe("HomeScreen — order (spec 2026-11-25 §2)", () => {
-  const inOrder = (parts: Element[]) => {
-    for (let i = 1; i < parts.length; i += 1) expect(follows(parts[i - 1]!, parts[i]!)).toBe(true);
-  };
-  const top = () => [
-    screen.getByRole("button", { name: "Open menu" }),
-    screen.getByRole("heading", { level: 1 }),
-    screen.getByRole("button", { name: "For @creator_one, change audience" }),
-    screen.getByTestId("slot"),
-  ];
-
-  it("chats: top row, greeting, the audience, field, Recent, Money made", () => {
-    renderHome({ under: "recent", money: EARNED });
-    inOrder([...top(), screen.getByRole("heading", { name: "Recent" }), screen.getByRole("link", { name: /^Money made/ })]);
+describe("HomeScreen — order", () => {
+  it("reads top row, greeting, field, cards, Recent", () => {
+    renderHome();
+    const order = [
+      screen.getByRole("button", { name: "Open menu" }),
+      screen.getByRole("heading", { level: 1 }),
+      screen.getByTestId("slot"),
+      screen.getByRole("button", { name: "Simulate" }),
+      screen.getByRole("heading", { name: "Recent" }),
+    ];
+    for (let i = 1; i < order.length; i += 1) {
+      expect(order[i - 1]!.compareDocumentPosition(order[i]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
   });
 
-  it("no chats: top row, greeting, the audience, field, the cards, Money made", () => {
-    renderHome({ under: "cards", money: EARNED });
-    inOrder([...top(), screen.getByRole("button", { name: "Simulate" }), screen.getByRole("link", { name: /^Money made/ })]);
-  });
-
-  it("not known yet: top row, greeting, the audience, field, Money made", () => {
-    renderHome({ under: "pending", money: EARNED });
-    inOrder([...top(), screen.getByRole("link", { name: /^Money made/ })]);
+  it("with the row: top row, greeting, Money made, field, cards, Recent", () => {
+    renderHome({ money: { state: "shown", amount: "$0", hint: "Earn 50%" } });
+    const order = [
+      screen.getByRole("button", { name: "Open menu" }),
+      screen.getByRole("heading", { level: 1 }),
+      screen.getByRole("link", { name: "Money made: $0. Earn 50%" }),
+      screen.getByTestId("slot"),
+      screen.getByRole("button", { name: "Simulate" }),
+      screen.getByRole("heading", { name: "Recent" }),
+    ];
+    for (let i = 1; i < order.length; i += 1) {
+      expect(order[i - 1]!.compareDocumentPosition(order[i]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    }
   });
 });
