@@ -6,9 +6,11 @@ import { porcelainLegend, type PorcelainLook } from "@/components/audience-lens/
 import { Card } from "@/components/ui/card";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { predictedBold, type NetworkId } from "@/lib/brain/cortex-sim";
+import { FOCUS_LEVEL, SIGNAL_MEANING, focusSentence, momentLine, restWord } from "@/lib/result/brain-read";
 import { brainTrackOf, type BrainSignal } from "@/lib/result/brain-track";
 import { timecode } from "@/lib/result/format";
 import type { VideoModel } from "@/lib/result/types";
+import { cn } from "@/lib/utils";
 import { usePlayhead } from "./playhead";
 import { useContentWidth } from "./use-content-width";
 
@@ -16,13 +18,16 @@ import { useContentWidth } from "./use-content-width";
 const CortexCanvas = dynamic(() => import("@/components/audience-lens/CortexCanvas"), { ssr: false });
 
 /**
- * Brain (spec §5, plan Task 6; the mock's `lens` brain branch, `brainRows`, `sigLine`, `.stagec`,
- * `.en-*`). The existing 3D brain driven by the existing model at the playhead, in porcelain, and
- * under it four signals, each a curve over the clip against its resting level with its value at the
- * playhead. A model of attention, not a scan.
+ * Brain. The existing 3D brain driven by the existing model at the playhead, in porcelain,
+ * as built; and the signals card: one sentence about Focus, the moment the rows are read at, and four
+ * signals, each its name and what it stands for, its curve over the clip against its resting level,
+ * and a word for where it stands at that moment. Away from rest a coral line marks the video's moment
+ * on every curve: besides the named scene, the video's moment is the one thing coral marks. A model
+ * of attention, not a scan.
  *
- * Phone: the brain card (232 tall), 10 below it the signals card (rows 56 tall), the caption under
- * both. Desktop (md and up): the two cards side by side, 1 : 1.28, 16 apart, 216 tall.
+ * Phone: the brain card (232 tall), 10 below it the signals card, the caption under both. A panel 520
+ * wide and up: the two cards side by side, 1 : 1.28, 16 apart, as tall as the signals card's content;
+ * the brain at the phone's size, centred in its card's height.
  *
  * The brain is handed a new reading at most four times a second while the playhead moves: the
  * reading is taken on quarter seconds, and the canvas walks its surface between readings itself.
@@ -43,7 +48,7 @@ export function BrainPanel({ model }: { model: VideoModel }) {
 
   return (
     <div data-result="brain">
-      <div className="flex flex-col gap-2.5 @min-[520px]:grid @min-[520px]:h-[216px] @min-[520px]:grid-cols-[minmax(0,1fr)_minmax(0,1.28fr)] @min-[520px]:gap-4">
+      <div className="flex flex-col gap-2.5 @min-[520px]:grid @min-[520px]:grid-cols-[minmax(0,1fr)_minmax(0,1.28fr)] @min-[520px]:gap-4">
         <BrainStage
           seed={track.seed}
           bold={bold}
@@ -52,7 +57,7 @@ export function BrainPanel({ model }: { model: VideoModel }) {
           reducedMotion={reducedMotion}
           corner={moving ? `At ${timecode(t)}` : null}
         />
-        <Signals model={model} signals={track.signals} bold={bold} atEnd={atEnd} t={t} />
+        <Signals model={model} signals={track.signals} bold={bold} atEnd={atEnd} t={t} moving={moving} />
       </div>
       <p className="mt-2.5 px-1 text-label leading-4 text-foreground-secondary">A model of attention, not a scan.</p>
     </div>
@@ -100,11 +105,13 @@ const BrainStage = memo(function BrainStage({
       className="relative h-[232px] overflow-hidden p-0 @min-[520px]:h-auto"
       style={{ backgroundImage: STAGE[look] }}
     >
-      {/* The brain fills the stage's height as in the mock (232 on the phone, 76% on desktop),
-          set 14 / 30 below centre; the stage clips what falls past its edge. */}
+      {/* The brain fills the stage's height on the phone (232, set 7 below its top); on a wide panel
+          it is the same 232, centred in the card's height, however tall the signals card makes it
+          (at 164 it stood lost in a card that is about 390 tall). The stage clips what falls past
+          its edge. */}
       <div
         aria-hidden="true"
-        className={`absolute inset-x-0 top-[7px] h-[232px] @min-[520px]:top-[41px] @min-[520px]:h-[164px] motion-safe:transition-opacity motion-safe:duration-500 ${ready ? "opacity-100" : "opacity-0"}`}
+        className={`absolute inset-x-0 top-[7px] h-[232px] @min-[520px]:top-[calc(50%-116px)] motion-safe:transition-opacity motion-safe:duration-500 ${ready ? "opacity-100" : "opacity-0"}`}
         style={{ filter: CAST[look] }}
       >
         <CortexCanvas seed={seed} bold={bold} t={t} look={look} reducedMotion={reducedMotion} onReady={onReady} />
@@ -137,9 +144,13 @@ const BrainStage = memo(function BrainStage({
 const ROW_H = 34;
 /** The mock draws a level of 74 at the curve's top; a run that runs hotter widens the scale. */
 const SCALE_TOP = 74;
-const LABEL_W = 76;
-const VALUE_W = 30;
-const GAPS = 24;
+/** The name and what it stands for: 112 wide; 96 where the card's inside is under 300 (a 320 phone). */
+const LABEL_W = { wide: 112, narrow: 96 } as const;
+const NARROW_BELOW = 300;
+/** The word at the right ("above rest"), on one line. */
+const WORD_W = 74;
+/** The row's two gaps (`gap-2.5`). */
+const GAPS = 20;
 
 const Signals = memo(function Signals({
   model,
@@ -147,6 +158,7 @@ const Signals = memo(function Signals({
   bold,
   atEnd,
   t,
+  moving,
 }: {
   model: VideoModel;
   signals: BrainSignal[];
@@ -154,58 +166,70 @@ const Signals = memo(function Signals({
   /** The levels at the clip's end, where a clip that is not a whole number of seconds ends its line. */
   atEnd: Record<NetworkId, number>;
   t: number;
+  /** Away from rest: the coral line at the moment on every curve. */
+  moving: boolean;
 }) {
   const [cardRef, inner] = useContentWidth<HTMLDivElement>(325);
-  const width = Math.max(40, inner - LABEL_W - VALUE_W - GAPS);
+  // The columns and the curve are sized from the one measured inside, so they always add up to it.
+  const label = inner < NARROW_BELOW ? LABEL_W.narrow : LABEL_W.wide;
+  const width = Math.max(40, inner - label - WORD_W - GAPS);
   const top = useMemo(() => Math.max(SCALE_TOP, ...signals.flatMap((s) => s.perSecond)), [signals]);
+  const sentence = useMemo(() => {
+    const focus = signals.find((signal) => signal.id === "dorsal_attention");
+    return focus ? focusSentence(focus.perSecond, model.audience.scenes) : FOCUS_LEVEL;
+  }, [signals, model]);
 
   return (
-    <Card
-      ref={cardRef}
-      data-result="brain-signals"
-      className="flex flex-col px-[18px] pb-2.5 pt-1.5 @min-[520px]:min-h-0 @min-[520px]:px-[22px] @min-[520px]:pt-2"
-    >
-      <div className="flex items-center px-0.5 pb-[5px] pt-3 text-label font-[560] text-foreground-secondary">
-        <span className="inline-flex items-center gap-[7px]">
-          <svg aria-hidden="true" width={16} height={2} className="overflow-visible">
-            <path d="M0 1H16" stroke="var(--color-foreground-muted)" strokeWidth={1.5} strokeDasharray="3 2" />
-          </svg>
-          at rest
-        </span>
-      </div>
-      {signals.map((signal, i) => (
-        <div
-          key={signal.id}
-          data-signal={signal.id}
-          className={`flex h-14 items-center gap-3 @min-[520px]:h-auto @min-[520px]:min-h-0 @min-[520px]:flex-1 ${i > 0 ? "border-t border-border" : ""}`}
-        >
-          <span data-label className="w-[76px] shrink-0 text-ui font-[560] text-foreground">
-            {signal.label}
-          </span>
-          <SignalLine
-            signal={signal}
-            clipS={model.clipS}
-            t={t}
-            now={bold[signal.id] * 100}
-            end={atEnd[signal.id] * 100}
-            width={width}
-            top={top}
-          />
-          <span
-            data-value
-            className="ml-auto w-[30px] shrink-0 text-right text-title font-bold tracking-[-0.02em] text-foreground tabular-nums"
+    <Card ref={cardRef} data-result="brain-signals" className="flex flex-col px-[18px] pb-2.5 pt-4 @min-[520px]:px-[22px]">
+      <p data-part="focus-sentence" className="text-title font-[640] text-foreground tabular-nums">
+        {sentence}
+      </p>
+      <p data-part="moment-line" className="mt-1.5 text-meta font-[560] text-foreground-secondary tabular-nums">
+        {momentLine(t)}
+      </p>
+      <div className="mt-1">
+        {signals.map((signal, i) => (
+          <div
+            key={signal.id}
+            data-signal={signal.id}
+            className={cn("flex items-center gap-2.5 py-2.5", i > 0 && "border-t border-border")}
           >
-            {Math.round(bold[signal.id] * 100)}
-          </span>
-        </div>
-      ))}
+            <span className="shrink-0" style={{ width: label }}>
+              <span data-label className="block text-ui font-[560] text-foreground">
+                {signal.label}
+              </span>
+              <span data-meaning className="block text-label leading-4 text-foreground-secondary">
+                {SIGNAL_MEANING[signal.id]}
+              </span>
+            </span>
+            <SignalLine
+              signal={signal}
+              clipS={model.clipS}
+              t={t}
+              now={bold[signal.id] * 100}
+              end={atEnd[signal.id] * 100}
+              width={width}
+              top={top}
+              moving={moving}
+            />
+            <span
+              data-word
+              className="ml-auto shrink-0 whitespace-nowrap text-right text-meta font-[560] text-foreground-secondary"
+              style={{ width: WORD_W }}
+            >
+              {restWord(bold[signal.id] * 100, signal.rest)}
+            </span>
+          </div>
+        ))}
+      </div>
     </Card>
   );
 });
 
 /**
  * One signal over the clip (`sigLine`): the dashed resting level, the whole curve quiet, the part up
- * to the playhead in ink, and a dot at the playhead. At rest the playhead is the clip's end.
+ * to the playhead in ink, a dot at the playhead and, away from rest, a coral line there. At rest the
+ * playhead is the clip's end.
  */
 function SignalLine({
   signal,
@@ -215,6 +239,7 @@ function SignalLine({
   end,
   width: W,
   top,
+  moving,
 }: {
   signal: BrainSignal;
   clipS: number;
@@ -223,10 +248,10 @@ function SignalLine({
   end: number;
   width: number;
   top: number;
+  moving: boolean;
 }) {
   const clipId = useId();
   const H = ROW_H;
-  const x = (s: number) => xOf(s, clipS, W);
   const y = (v: number) => yOf(v, top);
 
   const d = useMemo(() => {
@@ -240,7 +265,7 @@ function SignalLine({
     return monotonePath(xs, ys);
   }, [signal, clipS, end, W, top]);
 
-  const px = x(t);
+  const px = xOf(t, clipS, W);
   return (
     <svg aria-hidden="true" width={W} height={H} viewBox={`0 0 ${W} ${H}`} className="shrink-0 overflow-visible">
       <defs>
@@ -263,6 +288,7 @@ function SignalLine({
         strokeLinecap="round"
         clipPath={`url(#${clipId})`}
       />
+      {moving && <path data-part="moment-mark" d={`M${f(px)} 0V${H}`} stroke="var(--color-below)" strokeWidth={2} />}
       <circle cx={px} cy={y(now)} r={4} fill="var(--color-foreground)" stroke="var(--color-surface)" strokeWidth={2} />
     </svg>
   );

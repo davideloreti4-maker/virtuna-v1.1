@@ -1,6 +1,6 @@
 /** @vitest-environment happy-dom */
 /**
- * The video tile (plan Task 3, spec §5 "Player"): the video when its file is stored, else the frame
+ * The video tile: the video when its file is stored, else the frame
  * of the scene under the playhead, else a quiet tile with the clip's length. Real components, the
  * real playhead and happy-dom's media element; only the network (the signing endpoint) is stood in.
  */
@@ -8,6 +8,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import early from "@/lib/result/__tests__/fixtures/early.json";
 import middle from "@/lib/result/__tests__/fixtures/middle.json";
+import { forgetRunVideos, rememberRunStill } from "@/lib/result/run-video";
 import { Player } from "../player";
 import { FRAME_BASE, modelOf, playhead, renderWithPlayhead } from "./hero-harness";
 
@@ -24,7 +25,10 @@ function stubSign(status: 200 | 404) {
   return fetchMock;
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  forgetRunVideos();
+});
 
 const tile = (container: HTMLElement) => container.querySelector<HTMLElement>('[data-result="video"]')!;
 
@@ -49,7 +53,7 @@ describe("no file", () => {
     expect(screen.queryByRole("button")).toBeNull();
   });
 
-  it("sizes: 104 wide in the phone hero, the column on desktop, 62 in the compact player", () => {
+  it("sizes: the hero and the desktop tile fill their box (the first block's layout sets it), 62 in the compact player", () => {
     const model = modelOf(middle);
     const { container } = renderWithPlayhead(
       model,
@@ -60,10 +64,73 @@ describe("no file", () => {
       </>,
     );
     const [hero, desk, compact] = [...container.querySelectorAll<HTMLElement>('[data-result="video"]')];
-    expect(hero!.className).toMatch(/w-\[104px\]/);
+    expect(hero!.className).toMatch(/\bw-full\b/);
+    expect(hero!.className).not.toMatch(/w-\[104px\]/);
     expect(hero!.className).toMatch(/aspect-\[9\/16\]/);
-    expect(desk!.className).toMatch(/w-full/);
+    expect(desk!.className).toMatch(/\bw-full\b/);
     expect(compact!.className).toMatch(/w-\[62px\]/);
+  });
+});
+
+describe("a result that took its running screen's place in this tab", () => {
+  const STILL = "https://f.test/wait-0.jpg";
+  const under = (container: HTMLElement) => container.querySelector<HTMLImageElement>('[data-part="under"]');
+
+  it("the tile stands on the picture the running screen showed: under the frame, in the frame's own crop", () => {
+    const model = modelOf(early, { frames: true });
+    rememberRunStill(model.id, STILL);
+    const { container } = renderWithPlayhead(model, <Player model={model} size="hero" />);
+    const [first, second] = [...container.querySelectorAll("img")];
+    expect(first).toBe(under(container));
+    expect(first!.getAttribute("src")).toBe(STILL);
+    expect(first!.getAttribute("alt")).toBe("");
+    expect(first!.className).toContain("object-[50%_10%]");
+    // The tile's own frame lies above it (a positioned box after it), so it covers it once loaded.
+    expect(second!.getAttribute("src")).toBe(`${FRAME_BASE}/0.jpg`);
+    expect(first!.className.split(/\s+/)).toContain("absolute");
+    expect(second!.className.split(/\s+/)).toContain("relative");
+  });
+
+  it("under the video too, which shows nothing until its first frame is there", async () => {
+    stubSign(200);
+    const model = modelOf(early, { frames: true, videoPath: "user-1/clip.mp4" });
+    rememberRunStill(model.id, STILL);
+    const { container } = renderWithPlayhead(model, <Player model={model} size="desktop" />);
+    // While the file's address is asked for, and after: the picture stays under whatever is drawn.
+    expect(under(container)!.getAttribute("src")).toBe(STILL);
+    await waitFor(() => expect(container.querySelector("video")).not.toBeNull());
+    expect(under(container)!.getAttribute("src")).toBe(STILL);
+    expect(under(container)!.compareDocumentPosition(container.querySelector("video")!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(container.querySelector("video")!.className.split(/\s+/)).toContain("relative");
+  });
+
+  it("with no frame and no file of its own, the picture is the tile: no clip length over it", () => {
+    const model = modelOf(middle);
+    rememberRunStill(model.id, STILL);
+    const { container } = renderWithPlayhead(model, <Player model={model} size="hero" />);
+    expect(under(container)!.getAttribute("src")).toBe(STILL);
+    expect(tile(container)).not.toHaveTextContent("0:29");
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it("a picture that cannot load is dropped: with nothing else, the quiet tile with the clip's length again", () => {
+    const model = modelOf(middle);
+    rememberRunStill(model.id, STILL);
+    const { container } = renderWithPlayhead(model, <Player model={model} size="hero" />);
+    fireEvent.error(under(container)!);
+    expect(under(container)).toBeNull();
+    expect(tile(container)).toHaveTextContent("0:29");
+  });
+
+  it("another run's picture is not used, and the compact player has none (the page has one tile to stand on it)", () => {
+    const model = modelOf(early, { frames: true });
+    rememberRunStill("another-run", STILL);
+    const other = renderWithPlayhead(model, <Player model={model} size="hero" />);
+    expect(under(other.container)).toBeNull();
+    other.unmount();
+    rememberRunStill(model.id, STILL);
+    const compact = renderWithPlayhead(model, <Player model={model} size="compact" />);
+    expect(under(compact.container)).toBeNull();
   });
 });
 

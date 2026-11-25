@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ResultPage } from "@/components/result/result-page";
 import type { RunningPreview } from "@/components/result/running";
 import { seedSignedVideo } from "@/components/result/use-signed-video";
+import { isPictureAddress } from "@/lib/result/run-progress";
 import type { ResultRow } from "@/lib/result/types";
 import { videoStateOf } from "@/lib/result/video-model";
 
@@ -40,10 +41,9 @@ function devRow(row: ResultRow, frames: string | null, video: string | null, pro
 
 /** The running screen's moment, from the dev page's parameters (see page.tsx). */
 export interface DevRun {
-  groups?: number;
-  arriving?: number;
   frames?: number;
   own: boolean;
+  cover?: string;
   elapsed?: number;
 }
 
@@ -52,14 +52,10 @@ function runningPreview(run: DevRun, frames: string | null, video: string | null
   const base = frames?.replace(/\/+$/, "") ?? null;
   const arrived = base ? Array.from({ length: run.frames ?? 0 }, (_, i) => `${base}/${i}.jpg`) : [];
   return {
-    progress: {
-      groups: run.groups ? Array.from({ length: run.groups }, (_, i) => `group-${i}`) : null,
-      frames: arrived,
-      done: false,
-    },
+    // As the stream's own reader takes it: an https address, or none.
+    progress: { groups: null, frames: arrived, cover: isPictureAddress(run.cover) ? run.cover : null, done: false },
     video: run.own ? video : null,
     elapsed: run.elapsed,
-    arriving: run.arriving,
   };
 }
 
@@ -71,6 +67,7 @@ export function DevResult({
   t,
   simulateAgain,
   run,
+  land,
 }: {
   row: ResultRow;
   frames: string | null;
@@ -79,6 +76,8 @@ export function DevResult({
   t: number | undefined;
   simulateAgain: boolean;
   run: DevRun;
+  /** Seconds after which the running moment turns into the result. */
+  land?: number;
 }) {
   const client = useQueryClient();
   // The address stands in for the signed one before the page first asks for it.
@@ -86,7 +85,18 @@ export function DevResult({
     if (video) seedSignedVideo(client, DEV_VIDEO_PATH, video);
     return null;
   });
-  const [state] = useState(() => videoStateOf(devRow(row, frames, video, processing, run.elapsed)));
+  const [running] = useState(() => videoStateOf(devRow(row, frames, video, processing, run.elapsed)));
+  // `land`: the same recorded run, finished, takes the running moment's place after that many seconds.
+  const [finished] = useState(() =>
+    processing && land !== undefined ? videoStateOf(devRow(row, frames, video, false)) : null,
+  );
+  const [landed, setLanded] = useState(false);
+  useEffect(() => {
+    if (!finished || land === undefined) return;
+    const timer = setTimeout(() => setLanded(true), land * 1000);
+    return () => clearTimeout(timer);
+  }, [finished, land]);
   const [preview] = useState(() => (processing ? runningPreview(run, frames, video) : undefined));
+  const state = landed && finished ? finished : running;
   return <ResultPage state={state} startAt={t} simulateAgain={simulateAgain} runningPreview={preview} />;
 }

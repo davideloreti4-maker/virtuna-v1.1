@@ -4,7 +4,6 @@ import {
   applyRunEvent,
   arrivedFrames,
   elapsedSeconds,
-  frameOnScreen,
   type RunProgress,
 } from "../run-progress";
 
@@ -15,7 +14,7 @@ const roster = (n: number) => ({
 
 describe("applyRunEvent", () => {
   it("starts knowing nothing", () => {
-    expect(NO_PROGRESS).toEqual({ groups: null, frames: [], done: false });
+    expect(NO_PROGRESS).toEqual({ groups: null, frames: [], cover: null, done: false });
   });
 
   it("learns the viewer groups from the roster, in the stream's order", () => {
@@ -82,6 +81,30 @@ describe("applyRunEvent", () => {
     expect(state.done).toBe(true);
     expect(state.groups).toHaveLength(10);
   });
+
+  it("learns the post's cover from the source event; the first one stands", () => {
+    const once = applyRunEvent(NO_PROGRESS, {
+      type: "source",
+      data: { cover_url: "https://p.test/cover.jpg", handle: "nia.tests", views: 1200, video_url: null },
+    });
+    expect(once.cover).toBe("https://p.test/cover.jpg");
+    expect(applyRunEvent(once, { type: "source", data: { cover_url: "https://p.test/other.jpg" } })).toBe(once);
+  });
+
+  it("takes only an https cover, and ignores a source without one", () => {
+    for (const cover_url of ["http://p.test/c.jpg", "javascript:alert(1)", "data:image/png;base64,AAAA", "blob:x", "/c.jpg", "", null, 7]) {
+      expect(applyRunEvent(NO_PROGRESS, { type: "source", data: { cover_url, handle: "nia.tests" } })).toBe(NO_PROGRESS);
+    }
+    expect(applyRunEvent(NO_PROGRESS, { type: "source", data: null })).toBe(NO_PROGRESS);
+  });
+
+  it("a cover changes nothing else it knows", () => {
+    const withGroups = applyRunEvent(NO_PROGRESS, roster(10));
+    const next = applyRunEvent(withGroups, { type: "source", data: { cover_url: "https://p.test/cover.jpg" } });
+    expect(next.groups).toBe(withGroups.groups);
+    expect(next.frames).toBe(withGroups.frames);
+    expect(next.done).toBe(false);
+  });
 });
 
 describe("elapsedSeconds", () => {
@@ -94,25 +117,5 @@ describe("elapsedSeconds", () => {
   it("is 0 before the start (a clock that runs ahead of the server) and without a start", () => {
     expect(elapsedSeconds(started, started - 5_000)).toBe(0);
     expect(elapsedSeconds(null, started)).toBe(0);
-  });
-});
-
-describe("frameOnScreen", () => {
-  const frames = ["a", "b", "c"];
-
-  it("shows no frame before one has arrived", () => {
-    expect(frameOnScreen([], 12)).toBeNull();
-  });
-
-  it("moves to the next frame every 3 seconds and starts over after the last", () => {
-    expect(frameOnScreen(frames, 0)).toBe("a");
-    expect(frameOnScreen(frames, 2)).toBe("a");
-    expect(frameOnScreen(frames, 3)).toBe("b");
-    expect(frameOnScreen(frames, 8)).toBe("c");
-    expect(frameOnScreen(frames, 9)).toBe("a");
-  });
-
-  it("stays on the first frame for a visitor who asked for less motion", () => {
-    expect(frameOnScreen(frames, 8, { still: true })).toBe("a");
   });
 });

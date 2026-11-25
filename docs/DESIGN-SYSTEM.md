@@ -322,31 +322,51 @@ is 50 tall, `xl` is 56), `IconButton`, `Chip`, `Badge` (the tag), `Sheet`. Shell
 (`src/components/shell`): `SideNav` (desktop), `Drawer` with its `MenuButton` (phone; no tab
 bar), `PlaceHeader`, `PushedHeader`, `NextShell`.
 
-Result page (`src/components/result`, logic in `src/lib/result`; spec
-`docs/superpowers/specs/2026-11-19-result-page-design.md`): `ResultPage` (loading, running,
-stalled, not found, no audience, result), `VideoResult` (phone column / desktop grid), `Hero`,
-`Player`, `Gauge`, `Curve` with `SceneStrip`, `Moment`, `CompactPlayer`, `PanelSwitch`,
+Result page (`src/components/result`, logic in `src/lib/result`; specs
+`docs/superpowers/specs/2026-11-19-result-page-design.md` and
+`docs/superpowers/specs/2026-11-25-result-video-focus-design.md`): `ResultPage` (loading, running,
+stalled, not found, no audience, result), `VideoResult` (phone column / desktop grid) drawn through
+the first block's layout parts (`FirstCard`, `WideFrame`, `LineFrame` in `first-block.tsx`), `Hero`,
+`Player`, `ViewerCount`, `Curve` with `SceneStrip`, `Moment`, `CompactPlayer`, `PanelSwitch`,
 `BrainPanel`, `EngagementPanel`, `AudiencePanel` with `AudienceRing`. One playhead for all of them:
 `PlayheadProvider` / `usePlayhead()`. Rules of that page:
 
-- Coral (`--color-below`, text `--color-below-text`, band `--color-below-soft`) marks one thing:
-  the scene the sentence names (its part of the line, its tile in the strip, its wedges and rows).
+- Coral (`--color-below`, text `--color-below-text`, band `--color-below-soft`) marks two things:
+  the scene the sentence names (its part of the line, its tile in the strip, its wedges and rows)
+  and, while the video is away from rest, the video's moment (the marker on Engagement's bar, the
+  line on each of the Brain's curves).
 - Tokens only; `result-guard.test.ts` enforces it. Glass exists in one place, the play mark on
   the video (`PlayMark` in `player.tsx`, blur as an inline style).
-- The number is `headlineOf()` and nothing else; the craft grader's score is never shown.
-- While the playhead moves, the readout shows a stored value (the end of the scene under it),
-  and its dot sits at that point.
+- The video is in focus: on a phone the first card holds the video, the count under it, then the
+  line with the strip; on a wide window the video stands large at the left with the count under it
+  and the sentence has the right column's first card to itself. The gauge is not on this page.
+- The numbers are counts of 1,000 viewers (`count.ts`: a stored share times ten, rounded): under
+  the video, in the pinned player and on Engagement. A count is never read off the headline's
+  rounded percent; the craft grader's score is never shown.
+- While the playhead moves, the line's readout shows a stored value (the end of the scene under
+  it), and its dot sits at that point; the count under the video shows the line's value at the
+  moment.
+- Engagement's four bars are drawn on tracks of one length (the row with the highest value carries
+  "Most likely", the other rows keep its room), so the bars compare.
 - The brain's porcelain look is `look="porcelain-light" | "porcelain-dark"` on `CortexCanvas`
-  (`cortex-porcelain.ts`); the default `"scan"` is the legacy look, unchanged.
+  (`cortex-porcelain.ts`); the default `"scan"` is the legacy look, unchanged. Its signals are said
+  in words (`brain-read.ts`): one sentence about Focus, and for each signal above, at or below rest.
 - To look at it: `/dev/result?fixture=<name>` and `node scripts/result-shots.cjs --out <dir>`.
 - Each panel lays itself out for the width it gets, not the window's (container queries and
-  `audienceLayoutFor`), so a tablet or a narrow window never cuts a part off.
-- The running screen (`Running` with `RunningRing`; what the run's stream has said so far is
-  `useRunStream` over `run-progress.ts`) holds three things: the pale ring of the viewer groups,
-  the picture in its centre (the creator's video, else the scene frames in turn, else none) and
-  the clock. No words but the header's "Simulating", nothing coral, no stage and no percent: the
-  page's stream carries none, so the screen names none. Its moments on the dev page:
-  `/dev/result?fixture=early&processing=1&elapsed=<s>&groups=<n>[&arriving=<k>][&runframes=<n>][&own=1]`.
+  `audienceLayoutFor`), so a tablet or a narrow window never cuts a part off. The line under the
+  video does the same (`UNDER_LINE`): in a box under 290 its second part stands under the first in
+  every state.
+- The running screen (`Running`; what the run's stream has said so far is `useRunStream` over
+  `run-progress.ts`) is the result's first block building itself, drawn by the same layout parts:
+  the tile (the creator's own clip when this tab started the run from a file, else the post's
+  cover, else the first scene frame that arrived, else an empty tile), "Building your 1,000
+  viewers" with the time since the start, a dotted base where the line will be, and the strip's
+  tiles filling as the frames arrive. No count, no line, no percent, nothing coral. A result that
+  arrives while it is open lands (`landing.tsx`): the tile keeps the picture the running screen
+  showed until the player's own is there (`run-video.ts`), the count rolls from 1,000, the line
+  draws itself, the rest comes in; opacity and the line's stroke only, `motion-safe:` only
+  (keyframes `result-*` in `globals.css`). Its moments on the dev page:
+  `/dev/result?fixture=early&processing=1&elapsed=<s>[&runframes=<n>][&own=1][&cover=<url>][&land=<s>]`.
 
 The message field and the thread frame (`src/components/thread-next`; spec
 `docs/superpowers/specs/2026-11-20-thread-field-design.md`): `ThreadField` (row 1 `+` · text · send,

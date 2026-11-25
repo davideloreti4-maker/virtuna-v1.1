@@ -108,6 +108,7 @@ import {
 import { CONCEPT_V8_ENABLED } from "@/lib/flags/concept-v8";
 // ── The new look (NEW_LOOK_ENABLED — plan 2026-11-20, the thread field) ──────
 import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
+import { rememberRunVideo } from "@/lib/result/run-video";
 import { ThreadField } from "@/components/thread-next/thread-field";
 import { MORE_SKILLS, MoreSheet } from "@/components/thread-next/more-sheet";
 import { AudienceSheet } from "@/components/thread-next/audience-sheet";
@@ -1035,6 +1036,16 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // set. A clip or brief staged during the run is the next run's and stays. A failed run clears
   // nothing: its Retry re-arms and re-reads both. Flag-off this is never written.
   const nextRunInputsRef = useRef<{ file: File | null; brief: typeof testBrief } | null>(null);
+
+  // New look: the clip a video run was started with is handed to the run's own page, which plays it
+  // while the run simulates (a link run has no file). Once per run, when the run has its id: the
+  // record above is written before the run starts.
+  useEffect(() => {
+    const id = stream.analysisId;
+    const file = nextRunInputsRef.current?.file ?? null;
+    if (!NEW_LOOK_ENABLED || !id || !file) return;
+    rememberRunVideo(id, URL.createObjectURL(file));
+  }, [stream.analysisId]);
 
   // True when the user has sent or the model has generated thread content.
   // Unlike hasThread, does NOT flip on tool selection alone (Explore/Chat idle views).

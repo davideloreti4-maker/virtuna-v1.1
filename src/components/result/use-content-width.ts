@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 /**
  * The content width of a padded box (its width less its side padding), followed as it resizes;
@@ -10,7 +10,9 @@ import { useEffect, useRef, useState } from "react";
 export function useContentWidth<T extends HTMLElement>(fallback: number): [React.RefObject<T | null>, number] {
   const ref = useRef<T>(null);
   const [width, setWidth] = useState(fallback);
-  useEffect(() => {
+  // Before the first paint: a line drawn at the fallback width for one frame shows when a result takes
+  // the running screen's place.
+  useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
     const measure = () => {

@@ -2,20 +2,22 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { MOBILE_NAV_BAND } from "@/components/sidebar/Sidebar";
-import { Card } from "@/components/ui/card";
 import { useIsMobileHydrated } from "@/hooks/useIsMobile";
 import type { VideoModel } from "@/lib/result/types";
+import { cn } from "@/lib/utils";
 import { AudiencePanel } from "./audience-panel";
 import { BrainPanel } from "./brain-panel";
 import { CompactPlayer } from "./compact-player";
 import { Curve } from "./curve";
 import { EngagementPanel } from "./engagement-panel";
-import { Gauge } from "./gauge";
+import { PHONE_COLUMN, PHONE_TOP_PX, PLOT_PX, ResultFrame, WIDE_LINE_FALLBACK, WideFrame, type Viewport } from "./first-block";
 import { Hero } from "./hero";
+import { LAND, useLanding } from "./landing";
 import { Moment } from "./moment";
 import { PanelSwitch, panelId, tabId, type PanelId } from "./panel-switch";
 import { Player } from "./player";
 import { useContentWidth } from "./use-content-width";
+import { ViewerCount } from "./viewer-count";
 
 const PANEL_VIEWS: Record<PanelId, (props: { model: VideoModel }) => React.ReactNode> = {
   brain: BrainPanel,
@@ -23,39 +25,8 @@ const PANEL_VIEWS: Record<PanelId, (props: { model: VideoModel }) => React.React
   audience: AudiencePanel,
 };
 
-/**
- * The phone's content starts 9px into <main>: <main> reserves the header band (MOBILE_NAV_BAND,
- * 46) and the 40px header sits centred in it (3px to spare), so the first card lands 12px under
- * the header, as in the mock (`.phone .nav` ends at 96, `.phone .page` starts at 108).
- */
-const PHONE_TOP = "pt-[9px]";
-const PHONE_GAP_PX = 9;
-/** The line the hero has scrolled past when it is gone under the header. */
-const PIN_LINE_PX = MOBILE_NAV_BAND + PHONE_GAP_PX;
-
-/**
- * The page's frame with empty cards and no text: shown while the row loads, and for the one frame
- * before the viewport is measured (so the video is mounted once, in the right layout).
- */
-export function ResultFrame() {
-  return (
-    <div aria-busy="true">
-      <div className={`px-4 ${PHONE_TOP} md:hidden`}>
-        <Card className="h-[426px]" />
-        <Card className="mt-5 h-[350px]" />
-      </div>
-      <div className="hidden px-8 pt-8 md:block">
-        <div className="mx-auto grid max-w-[980px] grid-cols-[minmax(0,372fr)_minmax(0,588fr)] items-start gap-5">
-          <div className="aspect-[9/16] w-full rounded-3xl bg-surface-sunken" />
-          <div className="flex min-w-0 flex-col gap-4">
-            <Card className="h-[224px]" />
-            <Card className="h-[227px]" />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
+/** The line the first card has scrolled past when it is gone under the header. */
+const PIN_LINE_PX = MOBILE_NAV_BAND + PHONE_TOP_PX;
 
 /** True once the element has scrolled up under the header (the scroll container is <main>). */
 function useScrolledPast(ref: React.RefObject<HTMLElement | null>): boolean {
@@ -84,31 +55,33 @@ interface Parts {
 }
 
 /**
- * Phone (the mock's `simP0`, RUN branch): one column, 16px sides. The hero card; the moment 18
- * below; the switch 20 below; the panel 10 below. Once the hero has scrolled under the header the
- * compact player is pinned there.
+ * Phone (the mock's `simP0`, RUN branch): one column, 16px sides. The first card (`Hero`); the moment
+ * 18 below; the switch 20 below; the panel 10 below. Once the first card has scrolled under the header
+ * the compact player is pinned there.
  */
 function PhoneResult({ model, tabs, panel, after }: Parts) {
   const heroRef = useRef<HTMLDivElement>(null);
   const scrolled = useScrolledPast(heroRef);
+  // Landing: what lies under the first card comes in after it (opacity only, see landing.tsx).
+  const rest = useLanding() ? LAND.rest : undefined;
   return (
-    <div className={`px-4 ${PHONE_TOP} pb-[calc(env(safe-area-inset-bottom)+40px)]`}>
+    <div className={PHONE_COLUMN}>
       <div ref={heroRef}>
         <Hero model={model} />
       </div>
-      {/* 12 under the hero; no room at all while it shows nothing (it renders nothing until read). */}
-      {after !== undefined && <div className="mt-3 empty:hidden">{after}</div>}
-      <div className="mt-[18px]">
+      {/* 12 under the first card; no room at all while it shows nothing (it renders nothing until read). */}
+      {after !== undefined && <div className={cn("mt-3 empty:hidden", rest)}>{after}</div>}
+      <div className={cn("mt-[18px]", rest)}>
         <Moment model={model} />
       </div>
-      <div className="mt-5">{tabs}</div>
-      <div className="mt-2.5">{panel}</div>
+      <div className={cn("mt-5", rest)}>{tabs}</div>
+      <div className={cn("mt-2.5", rest)}>{panel}</div>
       {scrolled && (
-        // Pinned right under the header band, 12px under the header like the hero was. The ground
+        // Pinned right under the header band, 12px under the header like the first card was. The ground
         // behind it (and the 9px above it) hides the content scrolling under it, as a header would.
         <div
           className="fixed inset-x-0 z-[var(--z-sticky)] bg-background px-4"
-          style={{ top: `calc(env(safe-area-inset-top) + ${MOBILE_NAV_BAND}px)`, paddingTop: PHONE_GAP_PX }}
+          style={{ top: `calc(env(safe-area-inset-top) + ${MOBILE_NAV_BAND}px)`, paddingTop: PHONE_TOP_PX }}
         >
           <CompactPlayer model={model} />
         </div>
@@ -118,46 +91,53 @@ function PhoneResult({ model, tabs, panel, after }: Parts) {
 }
 
 /**
- * Desktop (the mock's `simD` and `.desk` rules): a 980 grid centred in the content area, 32 under
- * the header row: the video (372, 9:16) and, 20 to its right, a 588 column with 16 between its
- * parts: the gauge (180) beside the moment in one card (padding 22/30/22/22, 26 apart); the line
- * as its own card (padding 32/24/14, plot 104 tall, as wide as the card's inside); the switch;
- * the panel.
+ * Wide window (`WideFrame`): the video large at the left with the count under it; at the
+ * right the sentence's card alone, "After posting", the line's card (plot 104, as wide as the card's
+ * inside), the switch and the panel.
  */
 function DesktopResult({ model, tabs, panel, after }: Parts) {
-  const [curveCard, curveWidth] = useContentWidth<HTMLDivElement>(540);
+  const [lineCard, lineWidth] = useContentWidth<HTMLDivElement>(WIDE_LINE_FALLBACK);
+  const landing = useLanding();
+  // Landing: the line's card was there while waiting; its line draws, the rest of the column comes in.
+  const rest = landing ? LAND.rest : undefined;
   return (
-    <div className="px-8 pb-12 pt-8">
-      <div className="mx-auto grid max-w-[980px] grid-cols-[minmax(0,372fr)_minmax(0,588fr)] items-start gap-5">
-        <Player model={model} size="desktop" />
-        <div className="@container flex min-w-0 flex-col gap-4">
-          {/* Beside each other where the moment keeps a readable line (a column of 460 and up);
-              in a narrower column (a tablet held upright) the gauge sits above the moment. */}
-          <Card className="flex flex-col items-center gap-4 p-[22px] @min-[460px]:flex-row @min-[460px]:gap-[26px] @min-[460px]:pr-[30px]">
-            <Gauge headline={model.headline} size={180} />
-            <div className="w-full min-w-0 @min-[460px]:w-auto @min-[460px]:flex-1">
-              <Moment model={model} />
-            </div>
-          </Card>
-          {/* The column's first block is the gauge's card: "After posting" stands under it. */}
-          {after}
-          <Card ref={curveCard} className="px-6 pb-3.5 pt-8">
-            <Curve model={model} width={curveWidth} height={104} strip />
-          </Card>
+    <WideFrame
+      tile={<Player model={model} size="desktop" />}
+      under={<ViewerCount audience={model.audience} />}
+      first={<Moment model={model} />}
+      firstClassName={rest}
+      after={after}
+      afterClassName={rest}
+      lineCardRef={lineCard}
+      line={<Curve model={model} width={lineWidth} height={PLOT_PX.wide} strip enter={landing} />}
+      restClassName={rest}
+      rest={
+        <>
           {tabs}
           {panel}
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    />
   );
 }
 
 /**
  * The video result: phone or desktop, the panel switch, and the chosen panel. `after` (the screen's
- * "After posting") stands under the first block: the hero on a phone, the gauge's card on a desk.
+ * "After posting") stands under the first block: the first card on a phone, the sentence's card on a
+ * wide window.
  */
-export function VideoResult({ model, after }: { model: VideoModel; after?: React.ReactNode }) {
-  const { isMobile, hydrated } = useIsMobileHydrated();
+export function VideoResult({
+  model,
+  after,
+  viewport,
+}: {
+  model: VideoModel;
+  after?: React.ReactNode;
+  /** The page's measurement of the window; measured here when it is drawn on its own. */
+  viewport?: Viewport;
+}) {
+  const measured = useIsMobileHydrated();
+  const { isMobile, hydrated } = viewport ?? measured;
   const [selected, setSelected] = useState<PanelId>("audience");
   const idBase = useId();
 
@@ -166,7 +146,7 @@ export function VideoResult({ model, after }: { model: VideoModel; after?: React
   const View = PANEL_VIEWS[selected];
   const tabs = <PanelSwitch value={selected} onChange={setSelected} idBase={idBase} />;
   const panel = (
-    // A Tab stop of its own: a panel without controls (Engagement) can still be reached and read.
+    // A Tab stop of its own: a panel without controls can still be reached and read.
     // A container too: a panel lays itself out for the width it gets, not for the window's.
     <div
       role="tabpanel"
