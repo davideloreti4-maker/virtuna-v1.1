@@ -114,13 +114,14 @@ import { AudienceSheet } from "@/components/thread-next/audience-sheet";
 import { estimateNote } from "@/lib/thread-next/audience-choices";
 import { SlashMenu, slashMatches } from "@/components/thread-next/slash-menu";
 import {
-  HOME_PLACEHOLDER,
+  HOME_PLACEHOLDER_BY_TOOL,
   NEXT_PLACEHOLDER_BY_TOOL,
+  fieldSkillLabel,
   videoPlaceholder,
 } from "@/components/thread-next/field-copy";
 import { HomeNext } from "@/components/home-next/home-next";
 // ── The editor's door (plan 2026-11-24-editor-screens-a, Task 16): new look only ──
-import { sendToEditor, stageableVideo, videoSkillOf } from "@/components/editor/start-edit";
+import { sendToEditor, simulates, stageableVideo, videoSkillOf } from "@/components/editor/start-edit";
 import { useEditOpen } from "@/components/editor/use-edit-open";
 import { validateVideoFile } from "@/lib/video-file";
 import { TextSimProvider } from "@/components/thread-next/text-sim";
@@ -636,9 +637,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   const [audienceSheetOpen, setAudienceSheetOpen] = useState(false);
   // New look: the field's More sheet (it replaces the skill pill + skills panel). Unused flag-off.
   const [moreOpen, setMoreOpen] = useState(false);
-  // The example chips' "More ▸": the skills panel. Under the new look the skills are the field's own
-  // buttons (and Home's cards, for a creator with no chats), and the field's More opens the More
-  // sheet, on Home as in a thread. The chips' other mounts are
+  // The example chips' "More ▸": the skills panel. Under the new look Home's cards are the skills and
+  // the field's own More (and Home's "More skills") opens the More sheet. The chips' other mounts are
   // Branch B's, which renders whenever the composer is not in thread mode: with a route id (never:
   // the composer is mounted on /home alone) or, with AMBIENT_V2 off, for the empty /home itself (not
   // run under the new look; HomePageLayout does not lay out Home then either).
@@ -646,8 +646,6 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   const skillPillRef = useRef<HTMLButtonElement | null>(null);
   // Anchors the v8 slash-menu portal to the field block (see the slash-menu mount).
   const slashAnchorRef = useRef<HTMLDivElement | null>(null);
-  // New look: Home's audience line, where the audience sheet stands on Home. Unused flag-off.
-  const homeAudienceRef = useRef<HTMLButtonElement | null>(null);
   const {
     lens: platformLens,
     setLens: setPlatformLens,
@@ -4636,9 +4634,10 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       activeTool === "test" || activeTool === "edit"
         ? videoPlaceholder(activeTool, file !== null)
         : NEXT_PLACEHOLDER_BY_TOOL[activeTool] ?? PLACEHOLDER_BY_TOOL[activeTool];
-    // Home (spec 2026-11-25 §2.4) has its own words only with no skill picked; a picked skill
-    // reads as it does in a thread (Simulate's and Edit's pairs included).
-    const shownPlaceholder = nextHomeShown && activeTool === DEFAULT_TOOL ? HOME_PLACEHOLDER : placeholder;
+    // Home (spec 2026-11-23) has its own words at rest and for the skills that take a topic;
+    // Simulate and Edit keep their pair, and a skill without Home words keeps the thread's.
+    const shownPlaceholder =
+      nextHomeShown && activeTool !== "test" && activeTool !== "edit" ? HOME_PLACEHOLDER_BY_TOOL[activeTool] ?? placeholder : placeholder;
     const ariaLabel =
       activeTool === "idea"
         ? "Idea topic or angle (leave empty for Auto)"
@@ -4787,16 +4786,29 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
                 />
               ) : null
             }
-            // The field's outer element: the slash menu, More (desktop popover) and, in a thread,
-            // the audience sheet stand on it.
+            // The field's outer element: the slash menu, More (desktop popover) and the audience
+            // sheet stand on it.
             anchorRef={slashAnchorRef}
             moreArmed={moreArmed}
             moreOpen={moreOpen}
             onOpenMore={() => setMoreOpen(true)}
-            // Home (spec 2026-11-25 §2.4): the thread's field as a solid card in the page; a skill
-            // picked on a card arrives as `tool` and moves the focus on. With the editor open a staged
-            // video is switched between Simulate and Edit by the row's own pills, as in a thread.
-            home={nextHomeShown}
+            // Home (spec 2026-11-23): the field as Home's card. The audience control opens the
+            // same audience sheet; the picked skill is the arm (`tool` and this pill both read
+            // `activeTool`, so they change in the same render), and its cross puts back chat.
+            home={
+              nextHomeShown
+                ? {
+                    audience: { label: effectiveAudience.name, open: audienceSheetOpen, onOpen: () => setAudienceSheetOpen(true) },
+                    picked: activeTool === DEFAULT_TOOL ? null : { label: fieldSkillLabel(activeTool), price: priceOfTool(activeTool) },
+                    onClearPicked: () => handleUserSelectTool(DEFAULT_TOOL),
+                    // A staged video with the editor open: Simulate or Edit, switched in the field.
+                    videoSkill:
+                      editOpen && file && (activeTool === "test" || activeTool === "edit")
+                        ? { picked: activeTool, simulate: simulates(file), onPick: handleUserSelectTool }
+                        : null,
+                  }
+                : null
+            }
           />
         </div>
         {/* The evidence input stays mounted: More's "Read a file", `handleUserSelectTool("profile")`
@@ -4830,8 +4842,6 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           lens={platformLens}
           onLensChange={setPlatformLens}
           anchorRef={slashAnchorRef}
-          // On Home the field sits near the top of the page: the desktop popover opens below it.
-          side={nextHomeShown ? "bottom" : "top"}
         />
         {buildChooser}
       </div>
@@ -5011,11 +5021,9 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           onLensChange={setPlatformLens}
           // The legacy note's facts in plain words (it reads "calibrated on X, extrapolating").
           note={estimateNote(audienceProvenance(effectiveAudience), platformLens)}
-          // On Home it stands on the audience line under the greeting (spec 2026-11-25 §2.3), centred
-          // below it, near the top of the page; in a thread on the field, above it, at its left edge.
-          anchorRef={nextHomeShown ? homeAudienceRef : slashAnchorRef}
+          anchorRef={slashAnchorRef}
+          // On Home the field sits near the top of the page: the desktop popover opens below it.
           side={nextHomeShown ? "bottom" : "top"}
-          align={nextHomeShown ? "center" : "start"}
         />
       ) : CONCEPT_V8_ENABLED ? (
         <>
@@ -5119,27 +5127,18 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       <div data-testid="composer-shell" data-layout="home" className={cn("relative flex w-full flex-col", className)}>
         <HomeNext
           field={composerDock}
-          // The audience line under the greeting (spec 2026-11-25 §2.3): it opens the audience sheet,
-          // which stands on it. General is known by its id, not by its name.
-          audience={{
-            name: effectiveAudience.name,
-            general: effectiveAudience.id === GENERAL_AUDIENCE.id,
-            open: audienceSheetOpen,
-            onOpen: () => setAudienceSheetOpen(true),
-          }}
-          audienceRef={homeAudienceRef}
           // A balance only where it means something: a paid plan or a trial pool with a countable
           // limit (`readingsBalanceLabel`'s rule). An account with no plan still runs its skills.
           credits={shownBalance(usage, billingTier, isTrial)}
-          // A card's tap: the skill is picked in the field, as a pill tap does; the cards stay. Edit's
-          // card also opens the video picker inside the tap (iOS drops a picker opened any later),
-          // unless a video is already staged: then the tap only picks Edit for it.
+          // The cards go while a skill is picked and while the "/" list is open over them.
+          picked={activeTool !== DEFAULT_TOOL || slashActive}
           onPickSkill={(id) => {
             handleUserSelectTool(id);
-            if (id === "edit" && !file) videoPickerRef.current?.click();
+            // Edit's card opens the video picker inside the tap: iOS drops a picker opened any later.
+            if (id === "edit") videoPickerRef.current?.click();
           }}
-          // The editor open: six cards, the sixth More, which opens the field's own More sheet.
           editOpen={editOpen}
+          // "More skills": the field's own More sheet; a pick there arms as a pill tap does.
           onMore={() => setMoreOpen(true)}
         />
       </div>
