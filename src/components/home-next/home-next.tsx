@@ -14,7 +14,7 @@ import { useEarn } from "@/hooks/queries/use-earn";
 import { libraryKeys, useLibraryRecent } from "@/hooks/queries/use-library";
 import { useProfile } from "@/hooks/queries/use-profile";
 import type { EarnPage } from "@/lib/earn/earn";
-import { headline, moneyWord } from "@/lib/earn/earn-words";
+import { MONEY_GOAL_CENTS, moneyWord, shortMoneyWord } from "@/lib/earn/earn-words";
 import type { LibraryChat, LibraryPage } from "@/lib/library/library-page";
 import { whenLabel } from "@/lib/time-ago";
 
@@ -119,8 +119,8 @@ export function summaryAgrees(shown: readonly LibraryChat[], threads: readonly T
  * - answered: `shown`. The amount is what Whop reported, in money words, and "$0" when there is none
  *   (not enrolled, or the payment side not read: nothing earned through us is true). One case has no
  *   amount: an enrolled creator (`whop.username` set) whose number could not be read (`earnedCents`
- *   null) may have earned, so the row does not say "$0" to them. The rate at the right is Earn's
- *   headline ("Earn 50%"), built from the rate's constant.
+ *   null) may have earned, so the row does not say "$0" to them. The goal it counts toward ("$65k",
+ *   owner 2026-11-26) is `MONEY_GOAL_CENTS` in short words.
  * An answer once in stays: a later failed read does not take the row away.
  */
 export function moneyOf(earn: { data: EarnPage | undefined; isError: boolean }): HomeMoney | null {
@@ -128,11 +128,13 @@ export function moneyOf(earn: { data: EarnPage | undefined; isError: boolean }):
   const whop = earn.data?.whop;
   const cents = typeof whop?.earnedCents === "number" ? whop.earnedCents : null;
   const unread = Boolean(whop?.username) && cents === null;
-  return { state: "shown", amount: unread ? null : moneyWord(cents ?? 0), hint: headline() };
+  return { state: "shown", amount: unread ? null : moneyWord(cents ?? 0), goal: shortMoneyWord(MONEY_GOAL_CENTS) };
 }
 
 export interface HomeNextProps {
   field: React.ReactNode;
+  /** The remix carousel, drawn by the composer (it owns the drops' warm and the Remix handoff). */
+  remixes?: React.ReactNode;
   credits: number | null;
   picked: boolean;
   onPickSkill(id: HomeSkillId): void;
@@ -141,7 +143,7 @@ export interface HomeNextProps {
   editOpen?: boolean;
 }
 
-export function HomeNext({ field, credits, picked, onPickSkill, onMore, editOpen = false }: HomeNextProps): React.JSX.Element {
+export function HomeNext({ field, remixes, credits, picked, onPickSkill, onMore, editOpen = false }: HomeNextProps): React.JSX.Element {
   // Until the profile has answered, the heading holds: "Good morning." growing a name a moment
   // later reads as a flicker on the first screen.
   // Only while the first attempt is out: the query stays pending through its retries, and a
@@ -190,6 +192,7 @@ export function HomeNext({ field, credits, picked, onPickSkill, onMore, editOpen
     <HomeScreen
       greeting={profilePending ? null : greetingFor(now, firstNameOf(profile?.name))}
       money={moneyOf(earn)}
+      remixes={remixes}
       opener={<MenuButton variant="picture" />}
       credits={credits}
       field={field}

@@ -1,4 +1,6 @@
 import { ImageResponse } from "next/og";
+import { nextOgImage } from "@/components/brand/next-og-card";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 
 export const runtime = "edge";
 export const alt = "Maven - AI Content Intelligence for TikTok Creators";
@@ -6,6 +8,7 @@ export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
 export default async function Image() {
+  if (NEW_LOOK_ENABLED) return nextOgImage("Know what will go viral before you post", size);
   return new ImageResponse(
     (
       <div

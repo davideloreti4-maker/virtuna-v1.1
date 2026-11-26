@@ -4,6 +4,8 @@ import { getCompetitorsData } from "@/lib/competitors/competitors-data";
 import { PageShell } from "@/components/surfaces/surface-header";
 import { DiscoverSubpageHeader } from "@/components/discover/discover-subpage-header";
 import { CompetitorsClient } from "./competitors-client";
+import { redirect } from "next/navigation";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 
 export const metadata: Metadata = {
   title: "Competitors | Maven",
@@ -24,6 +26,8 @@ export const metadata: Metadata = {
  * compare) the same way /feed/channels keeps the other half, and Watchlist links to both.
  */
 export default async function CompetitorsPage() {
+  // Under the new look the creators followed are Discover's Watchlist chip; old links land there.
+  if (NEW_LOOK_ENABLED) redirect("/feed?tab=watchlist");
   const supabase = await createClient();
   const {
     data: { user },

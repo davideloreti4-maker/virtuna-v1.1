@@ -12,7 +12,7 @@ export interface ChipProps extends React.ButtonHTMLAttributes<HTMLButtonElement>
 }
 
 /**
- * Chip (new look, spec §7): a pill, 14px at weight 560. On the ground it is a white pill with
+ * Chip (new look, spec §7): a small rounded rectangle (radius 8 since 2026-11-26, was a pill), 14px at weight 560. On the ground it is a white pill with
  * the hairline; selected it takes the action fill. Under a card it is a tint.
  * `.tap-44` grows the hit area to 44px on touch without growing the drawn pill; on touch it sets
  * `position: relative` from unlayered CSS, so a positioning utility passed by a caller would lose.
@@ -24,7 +24,7 @@ export const Chip = React.forwardRef<HTMLButtonElement, ChipProps>(
       type={type}
       aria-pressed={selected}
       className={cn(
-        "tap-44 inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full",
+        "tap-44 inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg",
         "text-reading font-[560] leading-none text-foreground",
         "duration-150 transition-[color,background-color,box-shadow,scale] motion-safe:active:scale-[0.98]",
         "disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none",

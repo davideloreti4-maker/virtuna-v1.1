@@ -166,7 +166,7 @@ export function AudienceSwitcher({ name, choices, open, onOpenChange, onPick, on
       // Safari does not focus a button on a tap: focused here, so the focus has a place to come back to.
       onClick={(e) => e.currentTarget.focus()}
       className={cn(
-        "tap-44 inline-flex h-[38px] min-w-0 items-center gap-1.5 rounded-full bg-surface-sunken pl-3.5 pr-3 text-ui font-[560] text-foreground",
+        "tap-44 inline-flex h-[38px] min-w-0 items-center gap-1.5 rounded-lg bg-surface-sunken pl-3.5 pr-3 text-ui font-[560] text-foreground",
         // Under 360 wide a little padding and gap go, so a ten-letter handle stays whole beside Audience and More.
         "max-[359px]:gap-1 max-[359px]:pl-3 max-[359px]:pr-2.5",
         "transition-colors duration-150 hover:bg-active aria-expanded:bg-active aria-busy:cursor-progress",

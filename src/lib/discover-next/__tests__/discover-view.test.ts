@@ -9,7 +9,12 @@ import {
   DEFAULT_DISCOVER_VIEW,
   DISCOVER_PATH,
   DISCOVER_Q_MAX,
+  WATCHLIST_HREF,
+  audienceFromHref,
   collectionHref,
+  creatorHandleOf,
+  creatorHref,
+  creatorPageHandle,
   discoverHref,
   discoverSearchText,
   discoverViewOf,
@@ -165,5 +170,46 @@ describe("other addresses", () => {
     expect(pullHref("@jay.makes")).toBe("/feed/discover?input=%40jay.makes");
     expect(paramsOf(pullHref("meal prep & more")).input).toBe("meal prep & more");
     expect(paramsOf(pullHref("https://www.tiktok.com/@nia.cooks?lang=en")).input).toBe("https://www.tiktok.com/@nia.cooks?lang=en");
+  });
+
+  it("a followed creator's page: the handle bare and lower case", () => {
+    expect(creatorHref(" @Jay.Makes ")).toBe("/competitors/jay.makes");
+    expect(creatorHref("nia.cooks")).toBe("/competitors/nia.cooks");
+  });
+
+  it("the creator an address names: decoded, trimmed, without @, lower case; a stray % read as written", () => {
+    expect(creatorHandleOf("%40Jay.Makes")).toBe("jay.makes");
+    expect(creatorHandleOf(" @nia.cooks ")).toBe("nia.cooks");
+    expect(creatorHandleOf("50%")).toBe("50%");
+    expect(creatorHandleOf(undefined)).toBe("");
+    expect(creatorHandleOf(null)).toBe("");
+  });
+
+  it("the page a profile handle names: bare and lower case; none for nothing left, or for compare", () => {
+    expect(creatorPageHandle("jay.makes")).toBe("jay.makes");
+    expect(creatorPageHandle(" @Jay.Makes ")).toBe("jay.makes");
+    expect(creatorPageHandle("%40nia.cooks")).toBe("nia.cooks");
+    // "@" or blanks: no handle, so no page.
+    for (const none of ["", " ", "@", " @ ", "@@", null, undefined]) expect(creatorPageHandle(none)).toBeNull();
+    // `/competitors/compare` is the old comparison's address, not a creator's page.
+    for (const compare of ["compare", "@Compare", " COMPARE ", "%63ompare"]) expect(creatorPageHandle(compare)).toBeNull();
+    // Only the whole handle: a handle that starts with it is a page.
+    expect(creatorPageHandle("compare.example")).toBe("compare.example");
+    expect(creatorPageHandle("compare_example")).toBe("compare_example");
+  });
+
+  it("a creator's page reads back the handle it was written with", () => {
+    const segment = creatorHref("@Jay.Makes").split("/").pop();
+    expect(creatorHandleOf(segment)).toBe("jay.makes");
+  });
+
+  it("the new-audience page with another creator's row chosen and its handle filled", () => {
+    expect(audienceFromHref("@jay.makes")).toBe("/audience/new?door=handle&handle=jay.makes");
+    expect(paramsOf(audienceFromHref(" @Nia.Cooks "))).toEqual({ door: "handle", handle: "nia.cooks" });
+  });
+
+  it("the Watchlist chip", () => {
+    expect(WATCHLIST_HREF).toBe("/feed?tab=watchlist");
+    expect(discoverViewOf(paramsOf(WATCHLIST_HREF)).tab).toBe("watchlist");
   });
 });

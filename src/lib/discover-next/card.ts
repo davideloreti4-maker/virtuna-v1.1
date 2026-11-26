@@ -46,9 +46,12 @@ export function handleOf(handle: string | null | undefined): string | null {
   return h || null;
 }
 
-/** The badge at the card's top left: only on a proven video; "100×+" past 100. */
-export function badgeOf(video: Pick<CardVideo, "proven" | "extreme" | "multiplier">): string | null {
-  if (!video.proven) return null;
+/**
+ * The badge at the card's top left: on a proven video ("100×+" past 100), and on a creator's own video that
+ * beat their usual (`beat`), which the card draws without the ▲.
+ */
+export function badgeOf(video: Pick<CardVideo, "proven" | "extreme" | "multiplier" | "beat">): string | null {
+  if (!video.proven && !video.beat) return null;
   if (video.extreme) return "100×+";
   return video.multiplier !== null && Number.isFinite(video.multiplier) ? timesLabel(video.multiplier) : null;
 }

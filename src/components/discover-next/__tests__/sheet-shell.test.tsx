@@ -95,6 +95,17 @@ describe("SheetShell", () => {
     expect(screen.getByRole("button", { name: "Close" })).toBeInTheDocument();
   });
 
+  it("the title stops at three lines on screen, and still names the dialog whole", async () => {
+    for (const view of ["phone", "desk"] as const) {
+      if (view === "desk") widthIs("desk");
+      const { unmount } = render(<Page startOpen />);
+      const heading = screen.getByRole("heading", { name: "What do you want to make from this?" });
+      expect(heading.className.split(/\s+/)).toEqual(expect.arrayContaining(["line-clamp-3", "break-words"]));
+      expect(screen.getByRole("dialog", { name: "What do you want to make from this?" })).toBeInTheDocument();
+      unmount();
+    }
+  });
+
   it("from 768: a centred dialog, from its first commit", () => {
     widthIs("desk");
     render(<Page startOpen />);

@@ -4,20 +4,21 @@ import * as React from "react";
 import { useId } from "react";
 
 import { getSkill, type ToolId } from "@/components/app/home/composer-controls";
-import { AudienceIcon, DiscoverIcon, type ShellIcon } from "@/components/shell/icons";
+import { DiscoverIcon, type ShellIcon } from "@/components/shell/icons";
 import { IconButton } from "@/components/ui/icon-button";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { cn } from "@/lib/utils";
 
-import { BulbIcon, ChevronIcon, CloseIcon, DocIcon, PersonIcon } from "./field-icons";
+import { BulbIcon, CloseIcon, DocIcon, LoopIcon, PenIcon, PersonIcon, PulseIcon, ScissorsIcon } from "./field-icons";
 import { creditsLabel } from "./thread-field";
 import { useReturnFocus } from "./use-return-focus";
 
 /**
- * More (spec 2026-11-20 §4.3; reference `.f1-sheet`): the skills without a pill, each with its
- * price and one line, the profile read, then the audience for the next run and the platform lens.
+ * The skill menu (was More, spec 2026-11-20 §4.3; since 2026-11-26 the field has no skill pills, so
+ * this lists every skill): each with its price and one line, then the profile read. The audience
+ * and the platform lens live in the audience sheet, opened from the field's own audience control.
  *
  * On the phone it is a bottom sheet (the `Sheet` part). From 768 up it is a popover standing on
  * the field's top edge, left-aligned with it, at the sheet's own phone width, so the drawn
@@ -32,12 +33,12 @@ export type Lens = "tiktok" | "instagram" | "youtube";
 
 export interface MoreSheetProps {
   open: boolean; onOpenChange(open: boolean): void;
-  skills: Array<{ id: ToolId; label: string; line: string; price: number | null }>;   // Ideas, Explore, Read my account
+  skills: Array<{ id: ToolId; label: string; line: string; price: number | null }>;   // SKILL_MENU, priced
+  /** The skill the next send uses (its row is marked); "chat" or absent: none. */
+  selected?: ToolId;
   onSelectSkill(id: ToolId): void;                                      // closes the sheet
   onReadFile(): void;                                                   // the profile read: must click the evidence input synchronously
   readFilePrice: number;                                                // creditCost("profile")
-  audienceLabel: string; onOpenAudience(): void;                        // opens the audience sheet
-  lens: Lens; onLensChange(lens: Lens): void;
   /** The field's outer element (the same ref the field takes as `anchorRef`): on desktop the
    *  popover stands on it. Added to the planned props; absent, More is the bottom sheet. */
   anchorRef?: React.RefObject<HTMLElement | null>;
@@ -53,7 +54,23 @@ export const MORE_SKILLS: ReadonlyArray<{ id: ToolId; label: string; line: strin
   { id: "account", label: "Read my account", line: "What works on your account" },
 ];
 
+/** Every skill the menu lists, in order: the four Home leads with (Edit where the editor is open,
+ *  the caller filters it), then the rest. Lines as Home's cards and the menu draw them. */
+export const SKILL_MENU: ReadonlyArray<{ id: ToolId; label: string; line: string }> = [
+  { id: "test", label: "Simulate", line: "See who keeps watching" },
+  { id: "edit", label: "Edit", line: "A raw take to a finished video" },
+  { id: "hooks", label: "Hooks", line: "Openings for an idea" },
+  { id: "script", label: "Script", line: "A full script, timed" },
+  { id: "remix", label: "Remix", line: "Rebuild a proven video" },
+  ...MORE_SKILLS,
+];
+
 const ICON_BY_SKILL: Partial<Record<ToolId, ShellIcon>> = {
+  test: PulseIcon,
+  edit: ScissorsIcon,
+  hooks: PenIcon,
+  script: DocIcon,
+  remix: LoopIcon,
   idea: BulbIcon,
   explore: DiscoverIcon,
   account: PersonIcon,
@@ -69,7 +86,7 @@ const LENSES: ReadonlyArray<readonly [Lens, string]> = [
 /** The platform for the next run, as a segmented control. More and the audience sheet both show it. */
 export function LensControl({ lens, onLensChange }: { lens: Lens; onLensChange(lens: Lens): void }): React.JSX.Element {
   return (
-    <div role="group" aria-label="Platform" className="mt-1 grid h-10 grid-cols-3 gap-0.5 rounded-full bg-surface-sunken p-[3px]">
+    <div role="group" aria-label="Platform" className="mt-1 grid h-10 grid-cols-3 gap-0.5 rounded-lg bg-surface-sunken p-[3px]">
       {LENSES.map(([id, label]) => (
         <button
           key={id}
@@ -77,7 +94,7 @@ export function LensControl({ lens, onLensChange }: { lens: Lens; onLensChange(l
           aria-pressed={lens === id}
           onClick={() => onLensChange(id)}
           className={cn(
-            "tap-44 flex items-center justify-center rounded-full text-reading font-[560] leading-none transition-colors duration-150",
+            "tap-44 flex items-center justify-center rounded-md text-reading font-[560] leading-none transition-colors duration-150",
             lens === id
               ? "bg-surface text-foreground shadow-[var(--shadow-control)]"
               : "text-foreground-secondary hover:text-foreground",
@@ -104,12 +121,14 @@ function Row({
   label,
   line,
   price,
+  selected = false,
   onClick,
 }: {
   icon: ShellIcon;
   label: string;
   line: string;
   price: number | null;
+  selected?: boolean;
   onClick: () => void;
 }) {
   // Named for the skill alone, so "tap Ideas" finds it; its line and its price are the
@@ -121,7 +140,11 @@ function Row({
       onClick={onClick}
       aria-labelledby={`${id}-name`}
       aria-describedby={price != null ? `${id}-line ${id}-price` : `${id}-line`}
-      className="flex min-h-[60px] w-full items-center gap-3 px-1 py-2 text-left"
+      aria-current={selected || undefined}
+      className={cn(
+        "-mx-1 flex min-h-[60px] w-[calc(100%+8px)] items-center gap-3 rounded-xl px-2 py-2 text-left transition-colors duration-150 hover:bg-hover",
+        selected && "bg-active hover:bg-active",
+      )}
     >
       <IconDisc icon={icon} />
       <span className="min-w-0 flex-1">
@@ -143,13 +166,9 @@ function MoreBody({
   onSelectSkill,
   onReadFile,
   readFilePrice,
-  audienceLabel,
-  onOpenAudience,
-  lens,
-  onLensChange,
+  selected,
   onOpenChange,
-  onAudienceRow,
-}: MoreSheetProps & { title: React.ReactNode; onAudienceRow: () => void }) {
+}: MoreSheetProps & { title: React.ReactNode }) {
   const close = () => onOpenChange(false);
   return (
     <>
@@ -160,7 +179,7 @@ function MoreBody({
         </IconButton>
       </div>
 
-      <div className="divide-y divide-border">
+      <div className="flex flex-col">
         {skills.map((skill) => (
           <Row
             key={skill.id}
@@ -168,6 +187,7 @@ function MoreBody({
             label={skill.label}
             line={skill.line}
             price={skill.price}
+            selected={skill.id === selected}
             onClick={() => {
               onSelectSkill(skill.id);
               close();
@@ -188,26 +208,6 @@ function MoreBody({
         />
       </div>
 
-      {/* A heading one level under the sheet's title (the sheet's and the popover's are h2). */}
-      <h3 className="mx-1 mb-0.5 mt-3.5 text-meta font-[560] text-foreground-secondary">Audience</h3>
-      <button
-        type="button"
-        aria-label={`Audience: ${audienceLabel}`}
-        onClick={() => {
-          // The audience sheet takes the focus from here, so More does not hand it back to its
-          // button behind that sheet (final review 5).
-          onAudienceRow();
-          close();
-          onOpenAudience();
-        }}
-        className="flex min-h-[52px] w-full items-center gap-3 px-1 py-2 text-left"
-      >
-        <IconDisc icon={AudienceIcon} />
-        <span className="min-w-0 flex-1 truncate text-ui font-[560] text-foreground">{audienceLabel}</span>
-        <ChevronIcon size={16} strokeWidth={2.1} aria-hidden className="shrink-0 text-foreground-secondary" />
-      </button>
-
-      <LensControl lens={lens} onLensChange={onLensChange} />
     </>
   );
 }
@@ -217,11 +217,9 @@ export function MoreSheet(props: MoreSheetProps): React.JSX.Element {
   const wide = useMediaQuery("(min-width: 768px)");
   const titleId = useId();
 
-  // More opens from the field's button, not from a Radix trigger, so on close focus goes back to
+  // The menu opens from the field's button, not from a Radix trigger, so on close focus goes back to
   // what had it (`useReturnFocus`), unless something already took focus (the text, after a pick).
-  // The audience row is the exception (final review 5): it opens the audience sheet, which takes
-  // focus itself; focus handed back to More would sit behind that sheet.
-  const { sheetFocus, popoverFocus, handOn: onAudienceRow } = useReturnFocus();
+  const { sheetFocus, popoverFocus } = useReturnFocus();
 
   if (wide && anchorRef) {
     return (
@@ -234,14 +232,13 @@ export function MoreSheet(props: MoreSheetProps): React.JSX.Element {
           collisionPadding={12}
           aria-labelledby={titleId}
           {...popoverFocus}
-          className="z-[var(--z-modal)] max-h-[var(--radix-popover-content-available-height)] w-[393px] max-w-[calc(100vw-24px)] overflow-y-auto rounded-4xl border-0 bg-surface p-0 px-4 pb-4 pt-1 text-foreground shadow-[var(--shadow-float)]"
+          className="z-[var(--z-modal)] max-h-[var(--radix-popover-content-available-height)] w-[393px] max-w-[calc(100vw-24px)] overflow-y-auto rounded-2xl border-0 bg-surface p-0 px-4 pb-4 pt-1 text-foreground shadow-[var(--shadow-float)]"
         >
           <MoreBody
             {...props}
-            onAudienceRow={onAudienceRow}
             title={
               <h2 id={titleId} className="text-title font-[640] text-foreground">
-                More
+                Skills
               </h2>
             }
           />
@@ -259,7 +256,7 @@ export function MoreSheet(props: MoreSheetProps): React.JSX.Element {
         {...sheetFocus}
         className="gap-0 px-4 pb-[max(34px,env(safe-area-inset-bottom))]"
       >
-        <MoreBody {...props} onAudienceRow={onAudienceRow} title={<SheetTitle className="text-title font-[640]">More</SheetTitle>} />
+        <MoreBody {...props} title={<SheetTitle className="text-title font-[640]">Skills</SheetTitle>} />
       </SheetContent>
     </Sheet>
   );

@@ -8,6 +8,8 @@ import {
   computeAverageViews,
 } from "@/lib/competitors-utils";
 import { ComparisonClient } from "./comparison-client";
+import { redirect } from "next/navigation";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 
 export const metadata: Metadata = {
   title: "Compare | Competitors | Maven",
@@ -123,6 +125,8 @@ async function fetchCompetitorData(
  * ComparisonData to the client shell.
  */
 export default async function ComparePage({ searchParams }: ComparePageProps) {
+  // Under the new look the creators followed are Discover's Watchlist chip; old links land there.
+  if (NEW_LOOK_ENABLED) redirect("/feed?tab=watchlist");
   const { a, b } = await searchParams;
   const supabase = await createClient();
   const {

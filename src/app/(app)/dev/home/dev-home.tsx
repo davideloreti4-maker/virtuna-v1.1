@@ -15,7 +15,8 @@ import {
 import type { Lens } from "@/components/thread-next/more-sheet";
 import { ThreadField } from "@/components/thread-next/thread-field";
 import type { Audience } from "@/lib/audience/audience-types";
-import { headline, moneyWord } from "@/lib/earn/earn-words";
+import { MONEY_GOAL_CENTS, moneyWord, shortMoneyWord } from "@/lib/earn/earn-words";
+import { RemixCarousel, type RemixDrop } from "@/components/home-next/remix-carousel";
 import { creditCost } from "@/lib/pricing";
 
 /**
@@ -47,7 +48,7 @@ const STATES: Record<
 const moneyRow = (earnedCents: number | null): HomeMoney => ({
   state: "shown",
   amount: earnedCents === null ? null : moneyWord(earnedCents),
-  hint: headline(),
+  goal: shortMoneyWord(MONEY_GOAL_CENTS),
 });
 
 /** A video frame, drawn: a figure at a desk with a camera, 9:16. */
@@ -152,16 +153,29 @@ const priceOf = (tool: ToolId): number | null => {
   return action ? creditCost(action) : null;
 };
 
+/** The remix carousel's fixtures: four drops on the drawn frame, one without a multiplier and one
+ *  without a link, as cached rows can be. */
+const DROPS: RemixDrop[] = [
+  { contentId: "d1", hook: "I ate like a millionaire for $5 a day — here's the trick", coverUrl: FRAME, videoUrl: "https://www.tiktok.com/", views: "2.4M", multiplier: 12.4 },
+  { contentId: "d2", hook: "Stop meal prepping on Sundays", coverUrl: FRAME, videoUrl: "https://www.tiktok.com/", views: "880K", multiplier: 4.2 },
+  { contentId: "d3", hook: "The one grocery list that fed me for a week", coverUrl: FRAME, videoUrl: null, views: "1.1M" },
+  { contentId: "d4", hook: "Three dinners, one pan, ten minutes", coverUrl: FRAME, videoUrl: "https://www.tiktok.com/", views: "312K", multiplier: 3.6 },
+];
+
 export function DevHome({
   state,
   recentOnDesktop,
   earnedCents,
+  remixes = null,
 }: {
   state: DevHomeState;
   recentOnDesktop: boolean;
   /** The state `money` only: what the row says, in whole cents; null for no amount. */
   earnedCents: number | null;
+  /** The remix carousel: its fixtures ("ready"), its ghosts ("warming"), or none (null). */
+  remixes?: "ready" | "warming" | null;
 }) {
+  const [remixingId, setRemixingId] = useState<string | null>(null);
   const start = STATES[state];
   const anchorRef = useRef<HTMLDivElement>(null);
   const [value, setValue] = useState("");
@@ -192,6 +206,20 @@ export function DevHome({
         greeting={start.noName ? "Good morning." : "Good morning, Nia."}
         // Only the state `money` has the row; every other state is Home without it (no space kept).
         money={start.money ? moneyRow(earnedCents) : null}
+        // Remix shows its wait on the card a moment; nothing is seeded here.
+        remixes={
+          remixes ? (
+            <RemixCarousel
+              drops={DROPS}
+              status={remixes}
+              remixingId={remixingId}
+              onRemix={(drop) => {
+                setRemixingId(drop.contentId);
+                setTimeout(() => setRemixingId(null), 1200);
+              }}
+            />
+          ) : null
+        }
         // The drawer's opener with a face of its own: the preview has no account to publish one.
         opener={<MenuButton variant="picture" face={{ picture: null, initials: start.noName ? "?" : "NL" }} />}
         credits={start.unlimited ? null : 30}

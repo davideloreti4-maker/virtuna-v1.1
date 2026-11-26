@@ -418,39 +418,42 @@ describe("HomeScreen — a double tap on a card does not open a chat (B6)", () =
   });
 });
 
-describe("HomeScreen — Money made (Earn, step C; rulings 18 and 24)", () => {
-  const shown = (amount: string | null): HomeMoney => ({ state: "shown", amount, hint: "Earn 50%" });
+describe("HomeScreen — Money made (Earn, step C; rulings 18 and 24; the goal, 2026-11-26)", () => {
+  const shown = (amount: string | null): HomeMoney => ({ state: "shown", amount, goal: "$65k" });
   const MONEY = shown("$0");
   const LOADING: HomeMoney = { state: "loading" };
-  /** Ruling 24a: the class that takes the rate away while Home (the container) is narrower than 360. */
-  const DROPPED_UNDER_360 = "@max-[360px]:hidden";
   /** The field's block as it was before the row existed (HEAD `9478c611`): 12 under the greeting, 28 from md up. */
   const FIELD_BEFORE_THE_ROW = "mx-auto mt-3 w-full max-w-[720px] md:mt-7";
-  const moneyLink = () => screen.getByRole("link", { name: "Money made: $0. Earn 50%" });
+  const moneyLink = () => screen.getByRole("link", { name: "Money made: $0 of $65k" });
   const moneyPart = (container: HTMLElement) => container.querySelector<HTMLElement>('[data-part="money"]');
+  const figures = (link: HTMLElement) => link.querySelector<HTMLElement>('[data-part="money-figures"]')!;
   const fieldBlock = () => screen.getByTestId("slot").parentElement!;
 
-  it("is one link to Earn, named Money made: $0. Earn 50%: the label, the amount, Earn 50% and a chevron", () => {
+  it("is one link to Earn, named Money made: $0 of $65k: the label, then at the right $0 / $65k and a chevron; no rate", () => {
     renderHome({ money: MONEY });
     const link = moneyLink();
     expect(link).toHaveAttribute("href", "/earn");
-    expect(link).toHaveTextContent(/^Money made\s*\$0\s*Earn 50%$/);
+    expect(link).toHaveTextContent(/^Money made\s*\$0 \/ \$65k$/);
+    expect(link.textContent).not.toMatch(/Earn|%/);
     expect(within(link).getByText("Money made")).toBeInTheDocument();
     expect(within(link).getByText("$0")).toBeInTheDocument();
-    expect(within(link).getByText("Earn 50%")).toBeInTheDocument();
+    // The amount and the goal sit together at the right, where the rate was; the chevron last.
+    expect(figures(link)).toHaveTextContent(/^\$0 \/ \$65k$/);
+    expect(figures(link)).toHaveClass("ml-auto");
     const chevron = link.querySelector("svg");
     expect(chevron).toHaveAttribute("aria-hidden");
-    // The last thing in the row, after the words.
-    expect(within(link).getByText("Earn 50%").compareDocumentPosition(chevron!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(figures(link).contains(chevron)).toBe(true);
+    expect(within(link).getByText("$0").compareDocumentPosition(chevron!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     // One link: nothing else in it to tap.
     expect(within(link).queryAllByRole("link")).toHaveLength(0);
     expect(within(link).queryAllByRole("button")).toHaveLength(0);
   });
 
-  it("says the amount it is given", () => {
+  it("says the amount it is given, against the goal", () => {
     renderHome({ money: shown("$1,240.50") });
-    const link = screen.getByRole("link", { name: "Money made: $1,240.50. Earn 50%" });
+    const link = screen.getByRole("link", { name: "Money made: $1,240.50 of $65k" });
     expect(within(link).getByText("$1,240.50")).toBeInTheDocument();
+    expect(figures(link)).toHaveTextContent(/^\$1,240\.50 \/ \$65k$/);
   });
 
   it("sits between the greeting and the field, in the field's bounds", () => {
@@ -466,77 +469,48 @@ describe("HomeScreen — Money made (Earn, step C; rulings 18 and 24)", () => {
     expect(link).toHaveClass("w-full");
   });
 
-  it("is drawn as Home's cards: the surface, the skill card's radius, the resting shadow; the type of Home's rows; no colour", () => {
+  it("is drawn as Home's cards: the surface, the card radius, the resting shadow; the type of Home's rows; no colour", () => {
     renderHome({ money: MONEY });
     const link = moneyLink();
     expect(link).toHaveClass("bg-surface", "rounded-2xl", "shadow-[var(--shadow-rest)]", "hover:shadow-[var(--shadow-lift)]");
     expect(within(link).getByText("Money made")).toHaveClass("text-ui", "text-foreground-secondary");
-    // The amount in Home's emphasis (the skill names' and Recent's weight), its digits in columns.
-    expect(within(link).getByText("$0")).toHaveClass("text-ui", "font-[640]", "text-foreground", "tabular-nums");
-    expect(within(link).getByText("Earn 50%")).toHaveClass("text-meta", "text-foreground-secondary");
+    // The amount in Home's emphasis; the goal in the secondary ink; the digits in columns.
+    expect(within(link).getByText("$0")).toHaveClass("font-[640]", "text-foreground");
+    expect(within(link).getByText("/ $65k", { exact: false })).toHaveClass("text-foreground-secondary");
+    expect(within(link).getByText("$0").parentElement).toHaveClass("text-ui", "tabular-nums");
     // Nothing coral or green: no accent, no tone colour, anywhere in the row.
     for (const el of [link, ...link.querySelectorAll("*")]) {
       expect(el.getAttribute("class") ?? "").not.toMatch(/accent|coral|green|emerald|above|below|success/);
     }
   });
 
-  it("is a 48 tall target, one line: the words do not wrap, the label gives way first", () => {
-    renderHome({ money: MONEY });
-    const link = moneyLink();
-    expect(link).toHaveClass("h-12", "items-center");
-    expect(within(link).getByText("Money made")).toHaveClass("min-w-0", "truncate");
-    expect(within(link).getByText("$0")).toHaveClass("shrink-0", "whitespace-nowrap");
-    expect(within(link).getByText("Earn 50%")).toHaveClass("whitespace-nowrap");
-  });
-
-  // Ruling 24a. happy-dom lays nothing out: what is shown here is which rows carry the container rule.
-  it.each(["$0", "$24", "$240"])(
-    "under 360 wide Earn 50% stays beside an amount of four characters or fewer (%s)",
+  it.each(["$0", "$24.50", "$1,240.50", "$1,234,567.89"])(
+    "is a 48 tall target, one line, at every width: the label gives way, the figures (%s / $65k) never do",
     (amount) => {
       renderHome({ money: shown(amount) });
-      // The width the rule reads is Home's own.
-      expect(screen.getByTestId("home-next")).toHaveClass("@container");
-      const link = screen.getByRole("link", { name: `Money made: ${amount}. Earn 50%` });
-      const rate = within(link).getByText("Earn 50%");
-      expect(rate).not.toHaveClass(DROPPED_UNDER_360);
-      // Nothing takes it away at any width.
-      expect(rate.className).not.toMatch(/hidden|invisible|sr-only|opacity-0/);
-    },
-  );
-
-  it.each(["$0.05", "$24.50", "$1,240", "$1,240.50", "$1,234,567.89"])(
-    "under 360 wide Earn 50% gives way to an amount longer than four characters (%s); from 360 it is drawn; the name always holds it",
-    (amount) => {
-      renderHome({ money: shown(amount) });
-      expect(screen.getByTestId("home-next")).toHaveClass("@container");
-      // The name says the rate whether or not it is drawn.
-      const link = screen.getByRole("link", { name: `Money made: ${amount}. Earn 50%` });
-      const rate = within(link).getByText("Earn 50%");
-      expect(rate).toHaveClass(DROPPED_UNDER_360);
-      // Under 360 only: nothing else takes it away, so from 360 it is always drawn.
-      expect(rate.className.replace(DROPPED_UNDER_360, "")).not.toMatch(/hidden|invisible|sr-only|opacity-0/);
-      // The amount and the chevron stay at every width.
-      expect(within(link).getByText(amount).className).not.toMatch(/hidden/);
-      expect(link.querySelector("svg")).not.toHaveClass(DROPPED_UNDER_360);
+      const link = screen.getByRole("link", { name: `Money made: ${amount} of $65k` });
+      expect(link).toHaveClass("h-12", "items-center");
+      expect(within(link).getByText("Money made")).toHaveClass("min-w-0", "truncate");
+      expect(figures(link)).toHaveClass("shrink-0");
+      expect(within(link).getByText(amount).parentElement).toHaveClass("whitespace-nowrap");
+      // Nothing takes the figures away at any width.
+      for (const el of [figures(link), ...figures(link).querySelectorAll("*")]) {
+        expect(el.getAttribute("class") ?? "").not.toMatch(/hidden|invisible|sr-only|opacity-0/);
+      }
     },
   );
 
   // Ruling 24c: an enrolled creator whose number could not be read is not told "$0".
-  it("with no amount (it could not be read): Money made and Earn 50%, no amount; named Money made. Earn 50%", () => {
+  it("with no amount (it could not be read): Money made and the goal alone; named Money made. Goal $65k", () => {
     renderHome({ money: shown(null) });
-    const link = screen.getByRole("link", { name: "Money made. Earn 50%" });
+    const link = screen.getByRole("link", { name: "Money made. Goal $65k" });
     expect(link).toHaveAttribute("href", "/earn");
-    expect(link).toHaveTextContent(/^Money made\s*Earn 50%$/);
-    expect(link.textContent).not.toContain("$");
-    // No place kept for an amount either: the label, then the rate and the chevron.
-    expect(link.querySelector(".tabular-nums")).toBeNull();
-    expect(link.children).toHaveLength(2);
+    expect(link).toHaveTextContent(/^Money made\s*Goal \$65k$/);
+    expect(link.textContent).not.toContain("$0");
     expect(screen.queryByRole("link", { name: /^Money made:/ })).toBeNull();
-    // The same row otherwise: as tall, the rate drawn at every width (there is no amount to make room for).
+    // The same row otherwise: as tall, the figures at the right with the chevron.
     expect(link).toHaveClass("h-12", "w-full", "bg-surface", "rounded-2xl");
-    const rate = within(link).getByText("Earn 50%");
-    expect(rate).not.toHaveClass(DROPPED_UNDER_360);
-    expect(rate.className).not.toMatch(/hidden|invisible|sr-only|opacity-0/);
+    expect(figures(link)).toHaveTextContent(/^Goal \$65k$/);
     expect(link.querySelector("svg")).toHaveAttribute("aria-hidden");
   });
 
@@ -631,11 +605,11 @@ describe("HomeScreen — order", () => {
   });
 
   it("with the row: top row, greeting, Money made, field, cards, Recent", () => {
-    renderHome({ money: { state: "shown", amount: "$0", hint: "Earn 50%" } });
+    renderHome({ money: { state: "shown", amount: "$0", goal: "$65k" } });
     const order = [
       screen.getByRole("button", { name: "Open menu" }),
       screen.getByRole("heading", { level: 1 }),
-      screen.getByRole("link", { name: "Money made: $0. Earn 50%" }),
+      screen.getByRole("link", { name: "Money made: $0 of $65k" }),
       screen.getByTestId("slot"),
       screen.getByRole("button", { name: "Simulate" }),
       screen.getByRole("heading", { name: "Recent" }),

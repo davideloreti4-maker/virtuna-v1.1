@@ -126,7 +126,7 @@ describe("Home's door to the editor", () => {
     fireEvent.click(edit);
     expect(click).toHaveBeenCalledTimes(1);
     // Edit is the picked skill: the field says what it waits for, and its send stays off until there is a video.
-    expect(field().querySelector('[data-part="picked-skill"]')?.textContent).toBe("Edit");
+    expect(field().querySelector('[data-part="picked-skill"] [hidden]')?.textContent).toBe("Edit");
     expect(text().placeholder).toBe("Add a video to edit");
     expect(within(field()).getByRole("button", { name: "Add a video" })).toHaveTextContent("Add video");
     expect(within(field()).getByRole("button", { name: "Send to edit" })).toBeDisabled();
@@ -272,7 +272,7 @@ describe("Home's door to the editor", () => {
     expect(within(field()).getByRole("alert").textContent).toMatch(/^File too large/);
     expect(screen.queryByTestId("field-video")).toBeNull();
     pick(clip());
-    expect(field().querySelector('[data-part="picked-skill"]')?.textContent).toBe("Simulate · 10 credits");
+    expect(field().querySelector('[data-part="picked-skill"] [hidden]')?.textContent).toBe("Simulate · 10 credits");
     expect(screen.queryByRole("group", { name: "What to do with this video" })).toBeNull();
   });
 });
@@ -326,7 +326,24 @@ describe("a sentence under the field when the video changes", () => {
   });
 });
 
-describe("the editor's pill in a chat", () => {
+describe("the editor in a chat's skill menu", () => {
+  /** Opens the field's skill menu and returns it. */
+  const skillMenu = async () => {
+    fireEvent.click(within(field()).getByRole("button", { name: "Skills" }));
+    return screen.findByRole("dialog", { name: "Skills" });
+  };
+  /** Picks a skill from the menu; waits for its row (Edit's appears once the editor is known open). */
+  const pickSkill = async (name: string) => {
+    const menu = await skillMenu();
+    fireEvent.click(await within(menu).findByRole("button", { name }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Skills" })).toBeNull());
+  };
+  /** The staged video's choice, Simulate or Edit, by name. */
+  const chosen = async (name: "Simulate" | "Edit") => within(await choice()).getByRole("button", { name });
+  const editKnown = async () => {
+    await waitFor(() => expect(asked.some((one) => one.url.includes("/api/edit/open"))).toBe(true));
+    await settle();
+  };
   const chat = () => {
     const at = "2026-11-21T00:00:00.000Z";
     return {
@@ -339,17 +356,16 @@ describe("the editor's pill in a chat", () => {
     };
   };
 
-  it("is beside Simulate where the editor is open, and a video sent with it leaves the chat for the editor", async () => {
+  it("is listed beside Simulate where the editor is open, and a video sent with it leaves the chat for the editor", async () => {
     setActiveThreadCookie("t1");
     threadFixture = chat();
     renderWithClient(<Composer />);
     await waitFor(() => expect(shell()).toHaveAttribute("data-layout", "thread"));
-    const edit = await within(field()).findByRole("button", { name: "Edit" });
-    fireEvent.click(edit);
-    expect(edit).toHaveAttribute("aria-pressed", "true");
+    await pickSkill("Edit");
+    expect(within(field().querySelector('[data-part="picked-skill"]') as HTMLElement).getByRole("button", { name: "Edit" })).toBeInTheDocument();
     pick(clip());
     expect(await screen.findByTestId("field-video")).toBeInTheDocument();
-    expect(edit).toHaveAttribute("aria-pressed", "true");
+    expect(await chosen("Edit")).toHaveAttribute("aria-pressed", "true");
     fireEvent.click(within(field()).getByRole("button", { name: "Send to edit" }));
     await waitFor(() => expect(push).toHaveBeenCalledWith(`/edit/${EDIT}`));
     expect(threadSends()).toEqual([]);
@@ -360,11 +376,14 @@ describe("the editor's pill in a chat", () => {
     threadFixture = chat();
     renderWithClient(<Composer />);
     await waitFor(() => expect(shell()).toHaveAttribute("data-layout", "thread"));
-    await within(field()).findByRole("button", { name: "Edit" });
+    await editKnown();
     pick(take());
     expect(await screen.findByTestId("field-video")).toBeInTheDocument();
-    expect(within(field()).getByRole("button", { name: "Edit" })).toHaveAttribute("aria-pressed", "true");
-    fireEvent.click(within(field()).getByRole("button", { name: "Simulate" }));
+    expect(await chosen("Edit")).toHaveAttribute("aria-pressed", "true");
+    // The choice cannot take Simulate for this file; the menu still can, and the send holds it.
+    expect(await chosen("Simulate")).toBeDisabled();
+    await pickSkill("Simulate");
+    expect(await chosen("Simulate")).toHaveAttribute("aria-pressed", "true");
     fireEvent.click(within(field()).getByRole("button", { name: "Send to simulate" }));
     expect(await within(field()).findByRole("alert")).toHaveTextContent("File too large (300.0 MB). Maximum size is 200MB.");
     expect(screen.getByTestId("field-video")).toBeInTheDocument();
@@ -391,7 +410,7 @@ describe("the editor's pill in a chat", () => {
     editAnswer = () => new Promise<Response>((resolve) => { answer = resolve; });
     renderWithClient(<Composer />);
     await waitFor(() => expect(shell()).toHaveAttribute("data-layout", "thread"));
-    fireEvent.click(await within(field()).findByRole("button", { name: "Edit" }));
+    await pickSkill("Edit");
     pick(clip());
     await screen.findByTestId("field-video");
     fireEvent.click(within(field()).getByRole("button", { name: "Send to edit" }));
@@ -413,9 +432,9 @@ describe("the editor's pill in a chat", () => {
     threadFixture = chat();
     renderWithClient(<Composer />);
     await waitFor(() => expect(shell()).toHaveAttribute("data-layout", "thread"));
-    await waitFor(() => expect(asked.some((one) => one.url.includes("/api/edit/open"))).toBe(true));
-    await settle();
-    expect(within(field()).getByRole("button", { name: "Simulate" })).toBeInTheDocument();
-    expect(within(field()).queryByRole("button", { name: "Edit" })).toBeNull();
+    await editKnown();
+    const menu = await skillMenu();
+    expect(within(menu).getByRole("button", { name: "Simulate" })).toBeInTheDocument();
+    expect(within(menu).queryByRole("button", { name: "Edit" })).toBeNull();
   });
 });

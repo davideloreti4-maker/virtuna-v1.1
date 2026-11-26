@@ -152,7 +152,7 @@ export function AudienceMenu({ name, removal, onRename, onRemove, onReadAgain, d
             autoComplete="off"
             spellCheck={false}
             // 16 on the phone: iOS zooms the page into a field set smaller. 15 on a desk.
-            className="h-11 w-full min-w-0 rounded-full bg-surface-sunken px-4 text-title text-foreground placeholder:text-foreground-muted md:h-10 md:text-ui"
+            className="h-11 w-full min-w-0 rounded-lg bg-surface-sunken px-4 text-title text-foreground placeholder:text-foreground-muted md:h-10 md:text-ui"
           />
         </MenuRow>
         <MenuRow>

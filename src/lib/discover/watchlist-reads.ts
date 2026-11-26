@@ -63,7 +63,11 @@ export interface WatchlistSource {
   competitorId?: string | null;
   /** Up to three covers Maven stores (public Storage), newest first, each once. */
   covers?: string[];
-  /** Measured videos at 3× or more (`MIN_OUTLIER_MULTIPLIER`); `outlierCount` counts every one. */
+  /**
+   * Measured videos at 3× or more (`MIN_OUTLIER_MULTIPLIER`) of the creator's last read only, as the
+   * creator's page shows them (`lastReadOf`): one read writes one `ingested_at` on all its rows, and an
+   * older read was measured against an older median. `outlierCount` counts every measured video.
+   */
   provenCount?: number;
 }
 
@@ -139,29 +143,30 @@ export async function getWatchlistData(supabase: ServerClient): Promise<Watchlis
   const competitorIds = (competitorsRes.data ?? []).map((r) => r.competitor_id as string);
   const trackedHandles = tracked.map((t) => t.handle);
 
-  // Enrichment: profiles the user owns by either door, and nothing else.
+  // Enrichment: profiles the user owns by either door, and nothing else. One read per door, each
+  // handed its values as values (`.in`); a handle that could never be a creator's (it holds a quote, a
+  // comma, a bracket or a backslash) is not asked for.
   const service = createServiceClient();
-  const profileFilters = [
-    trackedHandles.length > 0
-      ? `tiktok_handle.in.(${trackedHandles.map((h) => `"${h}"`).join(",")})`
-      : null,
-    competitorIds.length > 0 ? `id.in.(${competitorIds.join(",")})` : null,
-  ].filter(Boolean);
+  const profileHandles = trackedHandles.filter((h) => h.length > 0 && !/[",()\\]/.test(h));
 
   // A creator tracked as `chrisbumstead` whose profile is stored as `cbum` still resolves:
-  // that profile arrives through the competitor-id half of this filter, and the merge below
-  // matches it on the normalized display_name. Only the two ownership keys are queried —
-  // there is no name search across profiles the user does not own.
-  let profiles: ProfileRow[] = [];
-  let profilesError: unknown = null;
-  if (profileFilters.length > 0) {
-    const { data, error } = await service
-      .from("competitor_profiles")
-      .select("id, tiktok_handle, display_name, avatar_url, follower_count, scrape_status")
-      .or(profileFilters.join(","));
-    profiles = (data ?? []) as ProfileRow[];
-    profilesError = error;
-  }
+  // that profile arrives through the competitor-id read, and the merge below matches it on the
+  // normalized display_name. Only the two ownership keys are queried — there is no name search
+  // across profiles the user does not own.
+  const PROFILE_COLUMNS = "id, tiktok_handle, display_name, avatar_url, follower_count, scrape_status";
+  const none = { data: [] as ProfileRow[], error: null };
+  const [byHandle, byId] = await Promise.all([
+    profileHandles.length > 0
+      ? service.from("competitor_profiles").select(PROFILE_COLUMNS).in("tiktok_handle", profileHandles)
+      : none,
+    competitorIds.length > 0 ? service.from("competitor_profiles").select(PROFILE_COLUMNS).in("id", competitorIds) : none,
+  ]);
+  // A profile both doors reach is listed once.
+  const seenProfiles = new Set<string>();
+  const profiles = [...((byHandle.data ?? []) as ProfileRow[]), ...((byId.data ?? []) as ProfileRow[])].filter(
+    (p) => !seenProfiles.has(p.id) && Boolean(seenProfiles.add(p.id)),
+  );
+  const profilesError: unknown = byHandle.error ?? byId.error ?? null;
 
   // As before, a failed read lists what the others reach; the failure is said, not swallowed. The
   // profiles count with the two ownership reads: without them a linked creator drops off the list.
@@ -180,16 +185,31 @@ export async function getWatchlistData(supabase: ServerClient): Promise<Watchlis
   if (trackedHandles.length > 0) {
     const { data: outlierRows } = await supabase
       .from("scraped_videos")
-      .select("creator_handle, outlier_multiplier, posted_at, cover_url:metadata->>cover_url")
+      .select(
+        "creator_handle, platform, outlier_multiplier, baseline_label, posted_at, cover_url:metadata->>cover_url, ingested_at:metadata->>ingested_at",
+      )
       .in("creator_handle", trackedHandles)
       .not("outlier_multiplier", "is", null);
-    for (const row of outlierRows ?? []) {
+    const rows = outlierRows ?? [];
+    // The newest TikTok read per creator: its rows alone count as proven, as the creator's page reads and
+    // shows that read (TikTok rows, a basis that is not blank).
+    const readAt = (row: { ingested_at: string | null }) => Date.parse(row.ingested_at ?? "");
+    const onPage = (row: { platform: string | null; baseline_label: string | null }) =>
+      row.platform === "tiktok" && Boolean(row.baseline_label?.trim());
+    const lastRead = new Map<string, number>();
+    for (const row of rows) {
+      if (row.platform !== "tiktok") continue;
+      const key = normalize(row.creator_handle);
+      const at = readAt(row);
+      if (Number.isFinite(at) && at > (lastRead.get(key) ?? -Infinity)) lastRead.set(key, at);
+    }
+    for (const row of rows) {
       const key = normalize(row.creator_handle);
       const m = Number(row.outlier_multiplier) || 0;
       const agg = outlierAgg.get(key) ?? { n: 0, best: 0, proven: 0, covers: [] };
       agg.n += 1;
       if (m > agg.best) agg.best = m;
-      if (m >= MIN_OUTLIER_MULTIPLIER) agg.proven += 1;
+      if (m >= MIN_OUTLIER_MULTIPLIER && onPage(row) && readAt(row) === lastRead.get(key)) agg.proven += 1;
       if (isStoredCover(row.cover_url)) agg.covers.push({ url: row.cover_url, postedAt: row.posted_at });
       outlierAgg.set(key, agg);
     }

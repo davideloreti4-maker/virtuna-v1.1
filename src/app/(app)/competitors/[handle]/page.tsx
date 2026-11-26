@@ -19,6 +19,10 @@ import { ContentAnalysisSection } from "@/components/competitors/detail/content-
 import { IntelligenceSection } from "@/components/competitors/intelligence/intelligence-section";
 import { getAllIntelligence } from "@/lib/ai/intelligence-service";
 import type { VideoCardData } from "@/components/competitors/detail/video-card";
+import { creatorHandleOf } from "@/lib/discover-next/discover-view";
+import { DISCOVER_STRINGS } from "@/lib/discover-next/discover-words";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
+import { creatorPage } from "./creator-page";
 
 interface DetailPageProps {
   params: Promise<{ handle: string }>;
@@ -27,6 +31,11 @@ interface DetailPageProps {
 export async function generateMetadata({
   params,
 }: DetailPageProps): Promise<Metadata> {
+  // Under the new look: the handle the address names; an address with none ("@") is titled as the page is.
+  if (NEW_LOOK_ENABLED) {
+    const bare = creatorHandleOf((await params).handle);
+    return { title: `${bare ? `@${bare}` : DISCOVER_STRINGS.creator.title} | Maven` };
+  }
   const { handle } = await params;
   return {
     title: `@${handle} | Competitors | Maven`,
@@ -44,6 +53,8 @@ export async function generateMetadata({
 export default async function CompetitorDetailPage({
   params,
 }: DetailPageProps) {
+  // Under the new look this address is a followed creator's page.
+  if (NEW_LOOK_ENABLED) return creatorPage(params);
   const { handle } = await params;
   const supabase = await createClient();
   const {

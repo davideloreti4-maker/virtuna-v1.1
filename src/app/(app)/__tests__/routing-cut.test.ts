@@ -58,15 +58,25 @@ describe('Discover subtree — reactivated 2026-07-29, every entry point resolve
     expect(src).toMatch(/export default (async )?function/);
   });
 
-  it('/competitors RENDERS the board again — the tab it redirected to no longer exists', () => {
-    // Until 2026-08-02 this deep-linked `/feed?tab=competitors`. The rework merged Channels
-    // and Competitors into one Watchlist tab, so that target is gone; a redirect left pointing
-    // at it would drop the visitor on Outliers, a different surface — the same dead-hop defect
-    // this file was written for. The board is where you ADD a competitor and reach /compare,
-    // so it has to resolve to something real.
+  it('/competitors: under the new look it opens the Watchlist; without it the board renders', () => {
+    // The new look has one list of the creators followed: Discover's Watchlist chip. The board stays for
+    // the old look. Its one redirect is the flag's, the default export's first statement, so the board
+    // under it still resolves to something real.
     const src = read('competitors/page.tsx');
-    expect(src).not.toMatch(/redirect\(/);
-    expect(src).toMatch(/export default (async )?function/);
+    expect(src.match(/redirect\(/g) ?? []).toHaveLength(1);
+    expect(src).toMatch(
+      /export default async function \w+\([^)]*\)\s*\{\s*if \(NEW_LOOK_ENABLED\) redirect\(\s*['"]\/feed\?tab=watchlist['"]\s*\);/,
+    );
+    expect(src).toMatch(/<CompetitorsClient\b/);
+  });
+
+  it('/competitors/compare: under the new look it opens the Watchlist; without it the comparison renders', () => {
+    const src = read('competitors/compare/page.tsx');
+    expect(src.match(/redirect\(/g) ?? []).toHaveLength(1);
+    expect(src).toMatch(
+      /export default async function \w+\([^)]*\)\s*\{\s*if \(NEW_LOOK_ENABLED\) redirect\(\s*['"]\/feed\?tab=watchlist['"]\s*\);/,
+    );
+    expect(src).toMatch(/<ComparisonClient\b/);
   });
 
   it('/saved and /discover redirect to their live targets in ONE hop', () => {

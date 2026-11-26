@@ -31,8 +31,15 @@ export const PULL_INPUT_MAX = 200;
 const WORDS_MIN = 3;
 
 /** A multiple from which a pulled video is proof, and the one past which it is shaky. */
-const PROVEN_FROM = 3;
-const EXTREME_FROM = 100;
+export const PROVEN_FROM = 3;
+export const EXTREME_FROM = 100;
+/** The multiple from which a creator's own video shows it, as having beat their usual (without the ▲). */
+export const BEAT_FROM = 1.5;
+
+/** Baselined and at `BEAT_FROM` or more, yet not proven: the card and the sheet show the multiple, no ▲. */
+export function beatOf(baselineLabel: string | null, raw: number | null): boolean {
+  return baselineLabel !== null && raw !== null && raw >= BEAT_FROM && raw < PROVEN_FROM;
+}
 
 /** What a pull reads: a creator ("@jay.makes") or words. `input` is what the server is sent. */
 export type PullSubject =
@@ -142,13 +149,15 @@ export interface PulledVideo extends CardVideo {
   likes: number | null;
   comments: number | null;
   videoUrl: string | null;
+  /** A creator's page only, worded on the server from its clock: "Posted 12 Jul" ("Posted 12 Jul 2025"). */
+  posted?: string | null;
 }
 
 /** A hashtag: "#" and a word holding at least one letter ("#1" is a number, and stays). */
 const HASHTAG = /#(?=[\p{L}\p{N}_]*\p{L})[\p{L}\p{N}_]+/gu;
 
 /** The caption as a card's line: without its hashtags, spaces collapsed; null when nothing is left. */
-function captionLine(caption: unknown): string | null {
+export function captionLine(caption: unknown): string | null {
   if (typeof caption !== "string") return null;
   const line = caption.replace(HASHTAG, " ").replace(/\s+/g, " ").trim();
   return line || null;
@@ -178,12 +187,15 @@ export function pulledCardOf(tile: PullTile, subject: PullSubject): PulledVideo 
     multiplier: raw === null ? null : Math.min(raw, EXTREME_FROM),
     baselineLabel,
     proven,
+    beat: beatOf(baselineLabel, raw),
     extreme: raw !== null && raw >= EXTREME_FROM,
     formats: [],
     captioned: true,
     likes: count(tile.likes),
     comments: count(tile.comments),
     videoUrl: webAddress(tile.videoUrl),
+    // A pull's answer is read now: its sheet says the numbers, not the day (a creator's page dates its read).
+    posted: null,
   };
 }
 
