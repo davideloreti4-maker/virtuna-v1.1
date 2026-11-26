@@ -23,7 +23,7 @@ const SCRIM = cn(
 /** On the page's ground, flush left, full height, the safe areas kept free. No shadow: the scrim separates it.
  *  While it slides out it takes no taps (Radix sets its pointer events inline: hence the `!`). */
 const PANEL = cn(
-  "fixed inset-y-0 left-0 z-[var(--z-modal)] flex w-[min(86vw,320px)] flex-col bg-background text-foreground outline-none md:hidden",
+  "fixed inset-y-0 left-0 z-[var(--z-modal)] flex w-[min(86vw,320px)] flex-col bg-[var(--color-sidebar)] text-foreground outline-none md:hidden",
   "data-[state=closed]:pointer-events-none!",
   "pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)]",
   "motion-safe:duration-300 motion-safe:ease-[var(--ease-out-quart)]",

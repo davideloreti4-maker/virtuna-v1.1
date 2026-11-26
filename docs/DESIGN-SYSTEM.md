@@ -247,19 +247,20 @@ landmarks, chrome screenshots) and `scripts/next-look-compare.cjs` compares two 
 
 | Token | Role | Light | Dark |
 |---|---|---|---|
-| `--color-background` | ground | `#f4f3f0` | `#08080a` |
-| `--color-surface` | card | `#ffffff` | `#131315` |
-| `--color-surface-elevated` | raised control on a card, tooltip | `#efeeea` | `#232326` |
-| `--color-surface-sunken` | tint fill: secondary button, chip, search field | `rgba(18, 18, 17, 0.06)` | `rgba(255, 255, 255, 0.07)` |
-| `--color-border` | hairline | `rgba(17, 17, 16, 0.06)` | `rgba(255, 255, 255, 0.075)` |
-| `--color-border-hover` | hairline, hovered | `rgba(17, 17, 16, 0.12)` | `rgba(255, 255, 255, 0.14)` |
-| `--color-foreground` | text, icons | `#121211` | `#f7f6f3` |
-| `--color-foreground-secondary` | secondary text | `rgba(18, 18, 17, 0.6)` | `rgba(247, 246, 243, 0.62)` |
-| `--color-foreground-muted` | placeholder, unit, disabled | `rgba(18, 18, 17, 0.46)` | `rgba(247, 246, 243, 0.38)` |
-| `--color-action` | primary button | `#121211` | `#f7f6f3` |
-| `--color-action-foreground` | text on the primary button | `#ffffff` | `#0b0b0c` |
-| `--color-hover` | overlay tint on hover | `rgba(18, 18, 17, 0.04)` | `rgba(255, 255, 255, 0.05)` |
-| `--color-active` | overlay tint, pressed or selected | `rgba(18, 18, 17, 0.08)` | `rgba(255, 255, 255, 0.1)` |
+| `--color-background` | ground | `#f9f9f7` | `#191918` |
+| `--color-sidebar` | the desktop sidebar's panel, edged by a hairline | `#f2f1ee` | `#1f1f1e` |
+| `--color-surface` | card | `#ffffff` | `#232322` |
+| `--color-surface-elevated` | raised control on a card, tooltip | `#f0efec` | `#2c2c2a` |
+| `--color-surface-sunken` | tint fill: secondary button, chip, search field | `rgba(25, 25, 24, 0.05)` | `rgba(255, 255, 255, 0.06)` |
+| `--color-border` | hairline | `rgba(25, 25, 24, 0.08)` | `rgba(255, 255, 255, 0.09)` |
+| `--color-border-hover` | hairline, hovered | `rgba(25, 25, 24, 0.14)` | `rgba(255, 255, 255, 0.15)` |
+| `--color-foreground` | text, icons | `#191918` | `#ededeb` |
+| `--color-foreground-secondary` | secondary text | `rgba(25, 25, 24, 0.64)` | `rgba(237, 237, 235, 0.6)` |
+| `--color-foreground-muted` | placeholder, unit, disabled | `rgba(25, 25, 24, 0.48)` | `rgba(237, 237, 235, 0.4)` |
+| `--color-action` | primary button | `#191918` | `#ededeb` |
+| `--color-action-foreground` | text on the primary button | `#ffffff` | `#191918` |
+| `--color-hover` | overlay tint on hover | `rgba(25, 25, 24, 0.045)` | `rgba(255, 255, 255, 0.06)` |
+| `--color-active` | overlay tint, pressed or selected | `rgba(25, 25, 24, 0.075)` | `rgba(255, 255, 255, 0.11)` |
 | `--color-track` | empty part of a gauge or progress line | `rgba(18, 18, 17, 0.07)` | `rgba(255, 255, 255, 0.09)` |
 | `--color-gauge-track` | empty part of a thread gauge, the pack's progress line and the mini curve | `rgba(18, 18, 17, 0.12)` | `rgba(255, 255, 255, 0.17)` |
 | `--color-above` | 6+ above usual, graphic and text | `#17783b` | `#62d892` |
@@ -267,7 +268,7 @@ landmarks, chrome screenshots) and `scripts/next-look-compare.cjs` compares two 
 | `--color-below` | 6+ below usual, graphic | `#ec4a35` | `#ff5f4c` |
 | `--color-below-text` | 6+ below usual, text | `#c5371f` | `#ff8778` |
 | `--color-below-soft` | its pill background | `#fde9e4` | `rgba(255, 98, 80, 0.16)` |
-| `--color-glass` | floating chrome fill | `rgba(255, 255, 255, 0.78)` | `rgba(30, 30, 33, 0.78)` |
+| `--color-glass` | floating chrome fill | `rgba(255, 255, 255, 0.78)` | `rgba(35, 35, 34, 0.8)` |
 | `--color-scrim` | behind a sheet | `rgba(0, 0, 0, 0.42)` | `rgba(0, 0, 0, 0.6)` |
 
 `--color-accent` stays `#FF6363` and is the brand mark only. `--color-success` aliases
@@ -282,11 +283,11 @@ coral.
 
 | Token | Use | Light | Dark |
 |---|---|---|---|
-| `--shadow-rest` | card | `0 0 0 1px var(--color-border), 0 1px 1px rgba(0, 0, 0, 0.03), 0 10px 26px -12px rgba(0, 0, 0, 0.1), 0 34px 60px -34px rgba(0, 0, 0, 0.14)` | `0 0 0 1px var(--color-border), inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 24px 50px -24px rgba(0, 0, 0, 0.9)` |
-| `--shadow-lift` | card hovered (desktop) | `0 0 0 1px var(--color-border-hover), 0 14px 30px -12px rgba(0, 0, 0, 0.16), 0 40px 70px -34px rgba(0, 0, 0, 0.18)` | `0 0 0 1px var(--color-border-hover), inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 24px 50px -24px rgba(0, 0, 0, 0.9)` |
+| `--shadow-rest` | card | `0 0 0 1px var(--color-border), 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 16px -6px rgba(0, 0, 0, 0.08)` | `0 0 0 1px var(--color-border), 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 24px -8px rgba(0, 0, 0, 0.4)` |
+| `--shadow-lift` | card hovered (desktop) | `0 0 0 1px var(--color-border-hover), 0 2px 4px rgba(0, 0, 0, 0.05), 0 12px 28px -10px rgba(0, 0, 0, 0.14)` | `0 0 0 1px var(--color-border-hover), 0 1px 2px rgba(0, 0, 0, 0.2), 0 12px 32px -8px rgba(0, 0, 0, 0.5)` |
 | `--shadow-press` | pressed | `0 0 0 1px var(--color-border), 0 1px 2px rgba(0, 0, 0, 0.06)` | `0 0 0 1px var(--color-border)` |
-| `--shadow-control` | control resting on the ground: icon button, chip, New chat | `0 0 0 1px var(--color-border), 0 2px 6px -2px rgba(0, 0, 0, 0.12)` | `0 0 0 1px var(--color-border), 0 2px 6px -2px rgba(0, 0, 0, 0.12)` |
-| `--shadow-float` | message field, popover and menu, desktop dialog, toast | `0 0 0 1px var(--color-border), 0 14px 34px -12px rgba(0, 0, 0, 0.3)` | `0 0 0 1px var(--color-border), 0 14px 34px -12px rgba(0, 0, 0, 0.7)` |
+| `--shadow-control` | control resting on the ground: icon button, chip, New chat | `0 0 0 1px var(--color-border), 0 1px 2px rgba(0, 0, 0, 0.06)` | `0 0 0 1px var(--color-border), 0 1px 2px rgba(0, 0, 0, 0.24)` |
+| `--shadow-float` | message field, popover and menu, desktop dialog, toast | `0 0 0 1px var(--color-border), 0 2px 4px rgba(0, 0, 0, 0.06), 0 10px 28px -6px rgba(0, 0, 0, 0.16)` | `0 0 0 1px var(--color-border), 0 2px 4px rgba(0, 0, 0, 0.2), 0 12px 32px -8px rgba(0, 0, 0, 0.6)` |
 | `--shadow-button` | primary button | `inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 10px 20px -10px rgba(0, 0, 0, 0.45)` | `0 0 0 0 transparent` |
 | `--shadow-sheet` | sheet | `0 -20px 50px rgba(0, 0, 0, 0.3)` | `0 -20px 50px rgba(0, 0, 0, 0.6)` |
 
@@ -300,6 +301,15 @@ phone has no bottom tab bar: the left drawer, an opaque panel, is its one way ar
 
 Inter only. Four weights: `font-[430]` text, `font-[560]` label, `font-[640]` title, `font-bold`
 numbers and screen titles. Every number is tabular.
+In dark, running text (the body's inherited weight) drops to 400: light on dark reads heavier
+(claude.ai does the same, 400 to 360). Explicit weights do not change.
+
+Sidebar (desktop, redesign 2026-11-26, measured against claude.ai): a panel in `--color-sidebar`
+with a `border-border` hairline on its right edge; rows 34 tall, 14px (`text-reading`) at 480, text
+at full strength whether current or not, the current row lit by `bg-active`; the section label is
+the only quiet text (`text-label`, secondary); the account sits under a divider. New chat is the
+first row, marked by an ink dot (`bg-action`), never coral. The brand is `MavenLogo` (the new-look
+lockup: the heavier mark set against its ink, then "Maven" at 680, -0.04em).
 
 | Role | Utility | Size / line |
 |---|---|---|

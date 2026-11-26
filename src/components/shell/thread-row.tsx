@@ -113,11 +113,10 @@ export function ThreadRow({
         onClick={onOpen}
         aria-current={isActive ? "page" : undefined}
         className={cn(
-          "flex h-full min-w-0 flex-1 items-center gap-2 rounded-lg px-3 text-left text-reading",
+          // Full-strength text, current or not, as in Claude's sidebar: the lit row says which is open.
+          "flex h-full min-w-0 flex-1 items-center gap-2 rounded-lg px-2.5 text-left text-reading text-foreground",
           SHELL_FOCUS,
-          isActive
-            ? "font-[560] text-foreground"
-            : "text-foreground-secondary group-hover/row:text-foreground",
+          isActive && "font-[560]",
         )}
       >
         {isPinned && <PushPin size={12} weight="fill" className="shrink-0" aria-hidden />}

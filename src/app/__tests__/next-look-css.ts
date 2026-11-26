@@ -16,7 +16,7 @@ export const DARK = ':root[data-look="next"][data-theme="dark"]';
  * (design-token-drift.test.ts). One list, so a token cannot be guarded by one test and not the other.
  */
 export const NEXT_LOOK_THEMED = [
-  '--color-background', '--color-surface', '--color-surface-elevated', '--color-surface-sunken',
+  '--color-background', '--color-sidebar', '--color-surface', '--color-surface-elevated', '--color-surface-sunken',
   '--color-border', '--color-border-hover',
   '--color-foreground', '--color-foreground-secondary', '--color-foreground-muted',
   '--color-action', '--color-action-foreground', '--color-hover', '--color-active',
