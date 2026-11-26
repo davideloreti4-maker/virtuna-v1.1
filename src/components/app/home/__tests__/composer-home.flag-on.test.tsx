@@ -61,6 +61,8 @@ let threadsFixture: unknown[] = [];
 let libraryFixture: unknown = null;
 /** What the drops' warm answers with (the remix carousel's cards). */
 let dropsFixture: unknown[] = [];
+/** What the daily picks route answers with (the remix carousel's cards, from the collection). */
+let picksFixture: unknown[] = [];
 /** The chat list's chats as Library's endpoint lists them: plain chats, nothing in them yet. */
 function libraryOf(threads: unknown[]) {
   const chats = (threads as Array<{ id: string; title: string | null; updated_at: string; pinned_at: string | null }>).map((t) => ({
@@ -152,6 +154,7 @@ function installFetch() {
     if (url.includes("/api/saved")) return json({ items: [] });
     if (url.includes("/api/surfaces/drops/remix")) return json({ threadId: "t-remix" });
     if (url.includes("/api/surfaces/drops")) return json({ drops: dropsFixture });
+    if (url.includes("/api/surfaces/outlier-picks")) return json({ picks: picksFixture });
     return json({});
   }) as typeof fetch;
 }
@@ -216,6 +219,7 @@ beforeEach(() => {
   threadFixture = { messages: [] };
   audiencesFixture = { audiences: [] };
   dropsFixture = [];
+  picksFixture = [];
   threadsFixture = [];
   libraryFixture = null;
   subscriptionFixture = {};
@@ -260,27 +264,28 @@ describe("Home: /home with no chat open", () => {
     expect(screen.queryByRole("button", { name: "More" })).toBeNull();
   });
 
-  // Owner 2026-11-26: the old Home's shelf is back as a carousel above the field, so Home warms the
-  // day's drops (one POST; the server answers from its cache when warm). Nothing else is spent.
-  it("warms the drops once, for the remix carousel, and spends nothing else", async () => {
+  // Owner 2026-11-26: the old Home's shelf is back as a carousel above the field, from the collection:
+  // one read of the daily picks; the paid drops warm never runs on the new look.
+  it("reads the day's picks once, for the remix carousel; warms no drops and spends nothing", async () => {
     await renderHome();
     await settle(100);
-    expect(requests("/api/surfaces/drops")).toHaveLength(1);
-    expect(requests("/api/surfaces/drops")[0]!.init?.method).toBe("POST");
+    expect(requests("/api/surfaces/outlier-picks")).toHaveLength(1);
+    expect(requests("/api/surfaces/outlier-picks")[0]!.init?.method ?? "GET").toBe("GET");
+    expect(requests("/api/surfaces/drops")).toHaveLength(0);
     expect(spending()).toHaveLength(0);
   });
 
-  it("with no drops the carousel is not there (and leaves no space)", async () => {
+  it("with no picks the carousel is not there (and leaves no space)", async () => {
     await renderHome();
     await settle(100);
     expect(document.querySelector('[data-part="remix-carousel"]')).toBeNull();
   });
 
-  it("draws the drops above the field; Remix seeds a chat from the cached card (no model call) and opens it", async () => {
-    dropsFixture = [
+  it("draws the picks above the field; Remix arms the Remix skill with the video's link and runs nothing", async () => {
+    picksFixture = [
       {
         contentId: "c-1", hook: "Stop meal prepping on Sundays", coverUrl: "", videoUrl: "https://www.tiktok.com/@a/video/1",
-        views: "880K", viewsRaw: 880000, handle: "a", archetype: null, hookTemplate: null, multiplier: 4.2, concepts: [],
+        views: "880K", multiplier: 4.2, handle: "a",
       },
     ];
     await renderHome();
@@ -291,11 +296,14 @@ describe("Home: /home with no chat open", () => {
     });
     // Above the field.
     expect(carousel.compareDocumentPosition(field()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(carousel).getByRole("heading", { name: "Proven videos to remix" })).toBeInTheDocument();
     expect(within(carousel).getByText("Stop meal prepping on Sundays")).toBeInTheDocument();
     expect(within(carousel).getByText("4.2×")).toBeInTheDocument();
     fireEvent.click(within(carousel).getByRole("button", { name: "Remix: Stop meal prepping on Sundays" }));
-    await waitFor(() => expect(requests("/api/surfaces/drops/remix")).toHaveLength(1));
-    expect(bodyOf(requests("/api/surfaces/drops/remix")[0]!)).toEqual({ contentId: "c-1" });
+    await waitFor(() => expect(pickedName()).toBe("Remix · 10 credits"));
+    expect(text().value).toBe("https://www.tiktok.com/@a/video/1");
+    await settle(100);
+    expect(requests("/api/surfaces/drops")).toHaveLength(0);
     expect(spending()).toHaveLength(0);
   });
 
@@ -426,9 +434,10 @@ describe("Home: /home with no chat open", () => {
     expect(put.init?.method).toBe("PUT");
     expect(bodyOf(put)).toEqual({ audienceId: second });
     await waitFor(() => expect(inField().getByRole("button", { name: "Audience: @nia.cooks" })).toBeInTheDocument());
-    // An audience switch re-keys the drops' warm: once the persist settles, the carousel asks again,
-    // for the new audience.
-    await waitFor(() => expect(requests("/api/surfaces/drops").filter((c) => !c.url.includes("/remix"))).toHaveLength(2));
+    // The carousel's picks are the same for every audience: a switch asks for nothing new, and no drops warm.
+    await settle(100);
+    expect(requests("/api/surfaces/outlier-picks")).toHaveLength(1);
+    expect(requests("/api/surfaces/drops")).toHaveLength(0);
   });
 
   it("a send from Home: one new chat, then one chat request, and the screen becomes the thread", async () => {
