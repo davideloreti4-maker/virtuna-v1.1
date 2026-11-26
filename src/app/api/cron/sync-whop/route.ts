@@ -3,37 +3,9 @@ import { verifyCronAuth } from "@/lib/cron-auth";
 import { mapWhopProductToTier } from "@/lib/whop/config";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createLogger } from "@/lib/logger";
+import { fetchWhopMembershipRecord, periodEndOf } from "@/lib/whop/membership";
 
 const log = createLogger({ module: "cron/sync-whop" });
-
-/**
- * Whop's v1 membership resource.
- *
- * ⚠️ This shape CHANGED and the old one no longer exists. The previous version of this
- * cron read `valid: boolean`, `expires_at: number` and a flat `product_id` from
- * `/api/v5/memberships/…` — an endpoint Whop has removed (it answers 404). v1 returns a
- * `status` enum, a `renewal_period_end`, and nests the ids under `plan`/`product`.
- * Reading the old fields off the new payload would yield `valid === undefined` and mark
- * every paying customer `cancelled`, so the mapping below is explicit about the enum.
- */
-interface WhopMembership {
-  id: string;
-  status:
-    | "active"
-    | "trialing"
-    | "past_due"
-    | "canceled"
-    | "expired"
-    | "completed"
-    | (string & {});
-  renewal_period_end: number | string | null;
-  cancel_at_period_end?: boolean;
-  plan?: { id?: string };
-  product?: { id?: string };
-  /** Legacy flat spellings, still tolerated if an older API version is in play. */
-  plan_id?: string;
-  product_id?: string;
-}
 
 /** Whop statuses that still entitle the customer to their tier. */
 const ENTITLED_STATUSES = new Set(["active", "trialing"]);
@@ -74,21 +46,11 @@ export async function GET(request: Request) {
     // Process each subscription sequentially
     for (const subscription of subscriptions || []) {
       try {
-        // Fetch membership from Whop
-        const whopResponse = await fetch(
-          `https://api.whop.com/api/v1/memberships/${subscription.whop_membership_id}`,
-          {
-            headers: {
-              Authorization: `Bearer ${process.env.WHOP_API_KEY}`,
-            },
-          }
-        );
-
-        if (!whopResponse.ok) {
-          throw new Error(`Whop API returned ${whopResponse.status}`);
+        // Fetch membership from Whop (the shared request; see `WhopMembership` there for the shape).
+        const membership = await fetchWhopMembershipRecord(subscription.whop_membership_id!);
+        if (!membership) {
+          throw new Error("Whop API returned 404");
         }
-
-        const membership: WhopMembership = await whopResponse.json();
 
         // The SKU decides the tier. The checkout sends `plan_id`, so the PLAN id is the
         // identity our env vars hold — prefer it, fall back through the older spellings.
@@ -121,16 +83,7 @@ export async function GET(request: Request) {
         const status = entitled ? "active" : pastDue ? "past_due" : "cancelled";
 
         // Whop sends the period end as a Unix timestamp (seconds) or an ISO string.
-        const rawEnd = membership.renewal_period_end;
-        let currentPeriodEnd: string | null = null;
-        if (typeof rawEnd === "number") {
-          currentPeriodEnd = new Date(rawEnd * 1000).toISOString();
-        } else if (typeof rawEnd === "string") {
-          const parsed = new Date(rawEnd);
-          currentPeriodEnd = Number.isNaN(parsed.getTime())
-            ? null
-            : parsed.toISOString();
-        }
+        const currentPeriodEnd = periodEndOf(membership.renewal_period_end);
 
         // Update subscription
         const { error: updateError } = await supabase
