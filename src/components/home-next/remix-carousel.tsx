@@ -4,6 +4,7 @@ import * as React from "react";
 import { useId } from "react";
 
 import { CoverFill } from "@/components/primitives/CoverFill";
+import { ChevronIcon } from "@/components/thread-next/field-icons";
 
 /**
  * Remix carousel (owner 2026-11-26: "a remix video carousel above the composer on home as it used to
@@ -14,7 +15,7 @@ import { CoverFill } from "@/components/primitives/CoverFill";
  * Presentational: the composer owns the warm (`useLazyWarm` over `/api/surfaces/drops`) and the
  * Remix handoff (it seeds a chat from the cached card, no model call, and opens it).
  *
- *   Proven videos, rebuilt for your niche
+ *   Proven videos, rebuilt for your niche  ‹ ›   the steps: md up, only when the row overflows
  *   [still · ▶ 1.2M] [still] [still] …       a 4:5 still, its views on it; a tap opens the original
  *    the adapted hook, two lines
  *    4.2× usual ·········· Remix              one foot line, so the row stays short over the field
@@ -54,19 +55,67 @@ export function multiplierWord(m: number): string {
 const CARD = "flex w-[128px] shrink-0 snap-start flex-col md:w-[152px]";
 const STILL = "relative block aspect-[4/5] w-full overflow-hidden rounded-lg bg-surface-sunken";
 
+/** Which ways the row can still scroll. Measured off the list, again on scroll and on resize. */
+function useScrollEnds(list: React.RefObject<HTMLUListElement | null>, count: number) {
+  const [ends, setEnds] = React.useState({ back: false, on: false });
+  React.useEffect(() => {
+    const el = list.current;
+    if (!el) return;
+    const measure = () => {
+      const back = el.scrollLeft > 1;
+      const on = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+      setEnds((was) => (was.back === back && was.on === on ? was : { back, on }));
+    };
+    measure();
+    el.addEventListener("scroll", measure, { passive: true });
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(measure);
+    observer?.observe(el);
+    return () => {
+      el.removeEventListener("scroll", measure);
+      observer?.disconnect();
+    };
+  }, [list, count]);
+  return ends;
+}
+
+const STEP = "inline-flex h-7 w-7 items-center justify-center rounded-md text-foreground-secondary transition-colors duration-150 hover:bg-hover hover:text-foreground disabled:pointer-events-none disabled:opacity-30";
+
 export function RemixCarousel<T extends RemixDrop>({ drops, status, onRemix, remixingId = null }: RemixCarouselProps<T>): React.JSX.Element | null {
   const labelId = useId();
-  if (status === "ready" && drops.length === 0) return null;
+  const listRef = React.useRef<HTMLUListElement>(null);
   const warming = status === "warming";
+  const ends = useScrollEnds(listRef, warming ? 0 : drops.length);
+  if (status === "ready" && drops.length === 0) return null;
+
+  // A mouse has no sideways wheel: from md up, two steps page the row (a phone swipes it).
+  const step = (dir: 1 | -1) => {
+    const el = listRef.current;
+    if (!el) return;
+    const still = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    el.scrollBy({ left: dir * el.clientWidth * 0.8, behavior: still ? "auto" : "smooth" });
+  };
+  const paged = !warming && (ends.back || ends.on);
 
   return (
     <section data-part="remix-carousel" aria-labelledby={labelId} aria-busy={warming || undefined}>
-      <h2 id={labelId} className="px-1 pb-2 text-meta font-[560] text-foreground-secondary">
-        Proven videos, rebuilt for your niche
-      </h2>
+      <div className="flex items-center justify-between gap-2 pb-2">
+        <h2 id={labelId} className="px-1 text-meta font-[560] text-foreground-secondary">
+          Proven videos, rebuilt for your niche
+        </h2>
+        {paged && (
+          <div data-part="remix-steps" className="-my-1 flex shrink-0 gap-0.5 max-md:hidden">
+            <button type="button" aria-label="Earlier videos" disabled={!ends.back} onClick={() => step(-1)} className={STEP}>
+              <ChevronIcon size={16} aria-hidden className="-scale-x-100" />
+            </button>
+            <button type="button" aria-label="More videos" disabled={!ends.on} onClick={() => step(1)} className={STEP}>
+              <ChevronIcon size={16} aria-hidden />
+            </button>
+          </div>
+        )}
+      </div>
       {/* Edge to edge on a phone (the page's 16 taken back), so a card cut at the edge says "more
           this way"; inside the 720 column from md up. The 4 above and below keep the focus ring. */}
-      <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 py-1 [scrollbar-width:none] md:mx-0 md:scroll-px-0 md:px-0">
+      <ul ref={listRef} className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-px-4 px-4 py-1 [scrollbar-width:none] md:mx-0 md:scroll-px-0 md:px-0">
         {warming
           ? Array.from({ length: 4 }, (_, i) => (
               <li key={i} data-part="remix-ghost" aria-hidden className={CARD}>
