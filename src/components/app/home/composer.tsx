@@ -142,7 +142,7 @@ import { answerIsIn } from "@/lib/thread-next/answer-in";
 import { subscribeLetGoRunsEnded } from "@/lib/thread-next/let-go-runs";
 import { noteRunEndedHere, runEndedHere } from "@/lib/thread-next/runs-ended-here";
 import { anySheetOpen, subscribeOpenSheets } from "@/lib/thread-next/open-sheets";
-import { cleanThreadTitle } from "@/lib/threads/title";
+import { cleanThreadTitle, isSimulationTurn } from "@/lib/threads/title";
 import { shownThreadTitle } from "@/components/shell/use-thread-title";
 import type { ThreadSummary } from "@/hooks/queries/use-threads";
 import { SkillPill, SkillsPanel } from "./v8/skills-panel";
@@ -363,6 +363,9 @@ const HELD_FOLLOWUP_MAX_MS = 8_000;
 // question was stored the run may still be going, so the chat shows the run's wait and is read
 // again every `REOPENED_POLL_MS` until the answer is stored; past it, the question alone, as before.
 const REOPENED_WAIT_MS = 2 * 60_000;
+// A simulation's turn (a dropped video's name, or a video link: `isSimulationTurn`) waits longer: a
+// simulation runs 1 to 4 min, and its route's limit is 300 s. This is that limit plus a margin.
+const REOPENED_SIM_WAIT_MS = 5 * 60_000;
 const REOPENED_POLL_MS = 3_000;
 // The new look's short placeholders: `@/components/thread-next/field-copy` (shared with /dev/field).
 
@@ -1656,17 +1659,18 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         const askedAt = Math.min(storedAt, Date.now());
         const lastTurn = turns[turns.length - 1];
         const chatId = data.threadId ?? null;
+        const waitWindow = isSimulationTurn(lastTurn?.userTurn) ? REOPENED_SIM_WAIT_MS : REOPENED_WAIT_MS;
         if (
           chatId &&
           lastTurn?.userTurn &&
           lastTurn.blocks.length === 0 &&
           Number.isFinite(askedAt) &&
-          Date.now() - askedAt < REOPENED_WAIT_MS &&
+          Date.now() - askedAt < waitWindow &&
           !runEndedHere(chatId, lastTurn.userTurn)
         ) {
           setPersistedChatTurns(turns.slice(0, -1));
           setLastUserTurn(lastTurn.userTurn);
-          setReopenedWait({ threadId: chatId, turn: lastTurn, until: askedAt + REOPENED_WAIT_MS });
+          setReopenedWait({ threadId: chatId, turn: lastTurn, until: askedAt + waitWindow });
         } else {
           setPersistedChatTurns(turns);
           setReopenedWait(null);

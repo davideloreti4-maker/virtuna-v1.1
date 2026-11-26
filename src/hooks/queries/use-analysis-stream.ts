@@ -183,6 +183,12 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
   // the abort surfaces as. A ref of its own because the run's `finally` clears abortRef before
   // onError reads it, and an abort is not always an AbortError.
   const userAbortedRef = useRef(false);
+  // The caller's wait on `start` belongs to the screen the run is on. When the run is let go (a
+  // thread switch, an unmount) the wait ends at once, while the run reads on in the background: a
+  // caller that holds a flag across it (the composer's `submitting`, the field's busy) frees the
+  // next chat's field. Production check 2026-11-26: the field stayed busy in chat B until the
+  // simulation left in chat A ended.
+  const releaseWaitRef = useRef<(() => void) | null>(null);
 
   const panelReady = useMemo(() => {
     if (stages.length === 0 && phase === "complete") {
@@ -551,6 +557,8 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
     const letGo = letGoRef.current;
     return () => {
       isMountedRef.current = false;
+      releaseWaitRef.current?.();
+      releaseWaitRef.current = null;
       eventSourceRef.current?.close();
       // `long: true`: a paid run, kept out of the let-go FIFO (never ended to make room for another).
       if (abortRef.current) letGo.set(genRef.current, holdLetGo(abortRef.current, { long: true }));
@@ -671,6 +679,8 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
   // is drawn in the next chat, and this instance is idle for it. Live check 2026-11-26: New chat 10 s
   // into a simulation aborted the POST here (`wipeToIdle`).
   const detachToIdle = useCallback(() => {
+    releaseWaitRef.current?.();
+    releaseWaitRef.current = null;
     if (abortRef.current) letGoRef.current.set(genRef.current, holdLetGo(abortRef.current, { long: true }));
     genRef.current += 1;
     abortRef.current = null;
@@ -725,7 +735,14 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
 
   const start = useCallback(
     async (input: AnalysisStreamInput) => {
-      await mutation.mutateAsync(input);
+      let release: () => void = () => {};
+      const letGo = new Promise<void>((resolve) => (release = resolve));
+      releaseWaitRef.current = release;
+      try {
+        await Promise.race([mutation.mutateAsync(input), letGo]);
+      } finally {
+        if (releaseWaitRef.current === release) releaseWaitRef.current = null;
+      }
     },
     [mutation],
   );

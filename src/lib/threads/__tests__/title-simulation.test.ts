@@ -8,7 +8,7 @@
  * the post's author. Typed text still wins; a bare id or link never becomes a name.
  */
 import { describe, expect, it } from "vitest";
-import { simulationChatTitle, videoNameTitle } from "@/lib/threads/title";
+import { isSimulationTurn, simulationChatTitle, videoNameTitle } from "@/lib/threads/title";
 
 describe("videoNameTitle", () => {
   it.each([
@@ -44,4 +44,19 @@ describe("simulationChatTitle", () => {
     expect(simulationChatTitle({ userTurn: "https://www.tiktok.com/@chef/video/1", handle: null })).toBeNull();
     expect(simulationChatTitle({ userTurn: null, handle: null })).toBeNull();
   });
+});
+
+describe("isSimulationTurn", () => {
+  it.each([["take.mp4"], ["My Clip (1).MOV"], ["https://www.tiktok.com/@c/video/1"], ["https://vm.tiktok.com/ZMabc/"]])(
+    "%s: a simulation's turn",
+    (t) => {
+      expect(isSimulationTurn(t)).toBe(true);
+    },
+  );
+  it.each([["hooks about meal prep"], ["what about https://www.tiktok.com/@c/video/1 ?"], ["notes.pdf"], [""], [null]])(
+    "%s: not one",
+    (t) => {
+      expect(isSimulationTurn(t)).toBe(false);
+    },
+  );
 });
