@@ -55,6 +55,9 @@ type Pair = [string, string, string[]];
 
 const TEXT: Pair[] = [
   ['text on the ground', '--color-foreground', ['--color-background']],
+  ['text on the sidebar', '--color-foreground', ['--color-sidebar']],
+  ['secondary text on the sidebar', '--color-foreground-secondary', ['--color-sidebar']],
+  ['secondary text on a lit sidebar row', '--color-foreground-secondary', ['--color-active', '--color-sidebar']],
   ['text on a card', '--color-foreground', ['--color-surface']],
   ['secondary text on the ground', '--color-foreground-secondary', ['--color-background']],
   ['secondary text on a card', '--color-foreground-secondary', ['--color-surface']],
@@ -73,6 +76,7 @@ const GRAPHIC: Pair[] = [
   ['"above" as a graphic on a card', '--color-above', ['--color-surface']],
   ['muted on a card', '--color-foreground-muted', ['--color-surface']],
   ['muted on the ground', '--color-foreground-muted', ['--color-background']],
+  ['muted on the sidebar', '--color-foreground-muted', ['--color-sidebar']],
 ];
 
 /** Names @theme must know, so Tailwind generates their utilities. */

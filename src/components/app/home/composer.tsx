@@ -110,7 +110,7 @@ import { CONCEPT_V8_ENABLED } from "@/lib/flags/concept-v8";
 import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 import { rememberRunVideo } from "@/lib/result/run-video";
 import { ThreadField } from "@/components/thread-next/thread-field";
-import { MORE_SKILLS, MoreSheet } from "@/components/thread-next/more-sheet";
+import { MoreSheet, SKILL_MENU } from "@/components/thread-next/more-sheet";
 import { AudienceSheet } from "@/components/thread-next/audience-sheet";
 import { estimateNote } from "@/lib/thread-next/audience-choices";
 import { SlashMenu, slashMatches } from "@/components/thread-next/slash-menu";
@@ -150,6 +150,7 @@ import { ChipsRow } from "./v8/chips-row";
 import { ArrivalV8 } from "./v8/arrival";
 // ── Composer v8 Phase 2 (the shelf) ──────────────────────────────────────────
 import { DropShelf } from "./v8/drop-shelf";
+import { RemixCarousel } from "@/components/home-next/remix-carousel";
 import { useLazyWarm } from "@/lib/surfaces/use-lazy-warm";
 import type { LiveDropCard } from "@/lib/surfaces/live-cards";
 import { usePlatformLens, LENS_LABEL, audienceProvenance } from "./v8/platform-lens";
@@ -1249,12 +1250,13 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // cache (spec: the lens changes generation prompts only). The warm key advances
   // only AFTER an audience switch's persist settles (use-lazy-warm contract) —
   // see handleSelectAudience. Flag-off: enabled=false → the hook is inert.
-  // New look (Home, spec 2026-11-23): no drops on Home, so nothing warms them.
+  // New look: the drops are back on Home as the remix carousel (owner 2026-11-26), so they warm there
+  // too: the same daily, cached warm (≤6 adapt calls + one batched Flash on a miss, once a day per
+  // audience). The route itself 404s without CONCEPT_V8, so it stays the gate in both looks.
   const [warmAudienceKey, setWarmAudienceKey] = useState<string>("general");
   const dropsEnabled =
-    !NEW_LOOK_ENABLED &&
     CONCEPT_V8_ENABLED &&
-    AMBIENT_V2_ENABLED &&
+    (NEW_LOOK_ENABLED || AMBIENT_V2_ENABLED) &&
     !hasConversationContent &&
     !startEngaged &&
     !rehydrating;
@@ -4672,13 +4674,23 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
                   : "Paste a TikTok link";
     // "Stop the run" is the field's own name for the disc while a run streams.
     const sendLabel = evidenceFile ? "Read this evidence" : activeTool === "test" ? "Send to simulate" : activeTool === "edit" ? "Send to edit" : activeTool === "idea" ? "Generate ideas" : activeTool === "hooks" ? "Generate hooks" : activeTool === "chat" ? "Send message" : activeTool === "script" ? "Generate script" : activeTool === "remix" ? "Remix video" : activeTool === "explore" ? "Run Explore" : activeTool === "account" ? "Read my account" : "Simulate";
-    // A skill picked in More (Ideas, Explore, Read my account) has no pill: the More button names
-    // it, with its price, while it is selected — so the field always says what the next send spends.
-    // The account read is "Account" there (review ruling, fix round 2: its full name with the price
-    // overflows row 2 on a 393 phone); More's own row keeps the full name.
-    const moreArmed = MORE_SKILLS.some((s) => s.id === activeTool)
-      ? { label: activeTool === "account" ? "Account" : getSkill(activeTool).label, price: priceOfTool(activeTool) }
-      : null;
+    // The field's toolbar (rebuild 2026-11-26): the audience the next run reads for, and the picked
+    // skill with its price, so the field always says what the next send spends. The same in a
+    // thread and on Home. The audience control opens the same audience sheet; the tag's cross puts
+    // back chat. The account read is "Account" on the tag (its full name crowds a 393 phone).
+    const fieldBar = {
+      audience: { label: effectiveAudience.name, open: audienceSheetOpen, onOpen: () => setAudienceSheetOpen(true) },
+      picked:
+        activeTool === DEFAULT_TOOL
+          ? null
+          : { label: activeTool === "account" ? "Account" : fieldSkillLabel(activeTool), price: priceOfTool(activeTool) },
+      onClearPicked: () => handleUserSelectTool(DEFAULT_TOOL),
+      // A staged video with the editor open: Simulate or Edit, switched in the field.
+      videoSkill:
+        editOpen && file && (activeTool === "test" || activeTool === "edit")
+          ? { picked: activeTool, simulate: simulates(file), onPick: handleUserSelectTool }
+          : null,
+    };
     // With a video staged the text is not the link to read (the file wins, `handleSubmit`), so a
     // non-TikTok text is no error there.
     const urlError = showUrlError && !file;
@@ -4800,26 +4812,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             // The field's outer element: the slash menu, More (desktop popover) and the audience
             // sheet stand on it.
             anchorRef={slashAnchorRef}
-            moreArmed={moreArmed}
             moreOpen={moreOpen}
+            bar={fieldBar}
             onOpenMore={() => setMoreOpen(true)}
-            // Home (spec 2026-11-23): the field as Home's card. The audience control opens the
-            // same audience sheet; the picked skill is the arm (`tool` and this pill both read
-            // `activeTool`, so they change in the same render), and its cross puts back chat.
-            home={
-              nextHomeShown
-                ? {
-                    audience: { label: effectiveAudience.name, open: audienceSheetOpen, onOpen: () => setAudienceSheetOpen(true) },
-                    picked: activeTool === DEFAULT_TOOL ? null : { label: fieldSkillLabel(activeTool), price: priceOfTool(activeTool) },
-                    onClearPicked: () => handleUserSelectTool(DEFAULT_TOOL),
-                    // A staged video with the editor open: Simulate or Edit, switched in the field.
-                    videoSkill:
-                      editOpen && file && (activeTool === "test" || activeTool === "edit")
-                        ? { picked: activeTool, simulate: simulates(file), onPick: handleUserSelectTool }
-                        : null,
-                  }
-                : null
-            }
+            // Home (spec 2026-11-23): the field as Home's card, the same toolbar, two lines of text.
+            home={nextHomeShown ? fieldBar : null}
           />
         </div>
         {/* The evidence input stays mounted: More's "Read a file", `handleUserSelectTool("profile")`
@@ -4838,20 +4835,13 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         <MoreSheet
           open={moreOpen}
           onOpenChange={setMoreOpen}
-          skills={MORE_SKILLS.map((s) => ({ ...s, price: priceOfTool(s.id) }))}
+          skills={SKILL_MENU.filter((s) => s.id !== "edit" || editOpen).map((s) => ({ ...s, price: priceOfTool(s.id) }))}
+          selected={activeTool}
           onSelectSkill={handleUserSelectTool}
           // The profile read: the evidence picker, clicked synchronously in the tap — never
           // `handleUserSelectTool("profile")` (the General verb).
           onReadFile={() => evidenceInputRef.current?.click()}
           readFilePrice={creditCost("profile")}
-          // `audienceToMeta(a).name` is `a.name`: the chip's name.
-          audienceLabel={effectiveAudience.name}
-          // Final review (5): the audience sheet takes the focus itself; More does not take it back.
-          onOpenAudience={() => setAudienceSheetOpen(true)}
-          // The lens sets the next run's platform only with CONCEPT_V8 on (`platform`, above);
-          // with it off (not run under the new look) the control shows but changes nothing.
-          lens={platformLens}
-          onLensChange={setPlatformLens}
           anchorRef={slashAnchorRef}
         />
         {buildChooser}
@@ -5138,6 +5128,18 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       <div data-testid="composer-shell" data-layout="home" className={cn("relative flex w-full flex-col", className)}>
         <HomeNext
           field={composerDock}
+          // The old Home's shelf, as a row above the field (owner 2026-11-26). Remix seeds a chat
+          // from the cached card (no model call) and opens it.
+          remixes={
+            dropsEnabled ? (
+              <RemixCarousel
+                drops={dropCards}
+                status={dropsStatus}
+                onRemix={(card) => void handleRemixDrop(card)}
+                remixingId={remixingDropId}
+              />
+            ) : null
+          }
           // A balance only where it means something: a paid plan or a trial pool with a countable
           // limit (`readingsBalanceLabel`'s rule). An account with no plan still runs its skills.
           credits={shownBalance(usage, billingTier, isTrial)}

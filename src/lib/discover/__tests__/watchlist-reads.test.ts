@@ -221,13 +221,34 @@ describe("getWatchlistData: today's fields keep their values", () => {
     ]);
   });
 
-  it("asks for profiles by the caller's own handles and links only", async () => {
+  it("asks for profiles by the caller's own handles and links only, each handed as values", async () => {
     const { serviceCalls } = await read(USER, SERVICE);
 
-    const or = serviceCalls.find((c) => c.table === "competitor_profiles" && c.method === "or");
-    expect(or?.args).toEqual([
-      'tiktok_handle.in.("jay.makes","jaymakes","niacooks","made.up.creator"),id.in.(p-jay,p-nia,p-dev)',
+    const asked = serviceCalls.filter((c) => c.table === "competitor_profiles" && c.method === "in").map((c) => c.args);
+    expect(asked).toEqual([
+      ["tiktok_handle", ["jay.makes", "jaymakes", "niacooks", "made.up.creator"]],
+      ["id", ["p-jay", "p-nia", "p-dev"]],
     ]);
+    expect(serviceCalls.some((c) => c.method === "or")).toBe(false);
+  });
+
+  it("does not ask for a handle that could never be a creator's; the others are still asked", async () => {
+    const odd = ['a"b', "x,y", "(z)", "back\\slash"];
+    const { serviceCalls } = await read(
+      { tracked_accounts: [...odd, "jay.makes"].map((handle, i) => ({ id: `t-${i}`, handle, platform: "tiktok" })) },
+      {},
+    );
+
+    const asked = serviceCalls.filter((c) => c.table === "competitor_profiles" && c.method === "in").map((c) => c.args);
+    expect(asked).toEqual([["tiktok_handle", ["jay.makes"]]]);
+  });
+
+  it("a profile both doors reach is listed once", async () => {
+    const { data } = await read(USER, SERVICE);
+
+    const keys = data.sources.map((s) => s.key);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(keys.filter((k) => k === "p-jay")).toHaveLength(1);
   });
 
   it("reads an empty account as an empty list, with no service read", async () => {

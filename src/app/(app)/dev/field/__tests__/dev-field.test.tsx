@@ -15,13 +15,16 @@ afterEach(cleanup);
 
 const field = () => within(screen.getByTestId("thread-field"));
 const text = () => field().getByRole("textbox") as HTMLTextAreaElement;
-const pill = (name: string) =>
-  field()
-    .getAllByRole("button", { name })
-    .find((b) => b.getAttribute("type") !== "submit")!;
+/** Picks a skill as a creator does: Skills (or the picked tag), then its row in the menu. */
+const pick = (name: string) => {
+  const opener = field().queryByRole("button", { name: "Skills" }) ?? field().getAllByRole("button").find((b) => b.getAttribute("aria-haspopup") === "dialog" && !b.getAttribute("aria-label")?.startsWith("Audience"))!;
+  fireEvent.click(opener);
+  fireEvent.click(within(screen.getByRole("dialog", { name: "Skills" })).getByRole("button", { name }));
+};
+const unpick = (name: string) => fireEvent.click(field().getByRole("button", { name: `Remove ${name}` }));
 
 describe("/dev/field placeholders", () => {
-  it("are the composer's, for every pill and at rest", () => {
+  it("are the composer's, for every skill and at rest", () => {
     render(<DevField state="rest" withBrief={false} />);
     expect(text().placeholder).toBe(NEXT_PLACEHOLDER_BY_TOOL.chat);
     for (const [name, tool] of [
@@ -29,17 +32,17 @@ describe("/dev/field placeholders", () => {
       ["Script", "script"],
       ["Remix", "remix"],
     ] as const) {
-      fireEvent.click(pill(name));
+      pick(name);
       expect(text().placeholder).toBe(NEXT_PLACEHOLDER_BY_TOOL[tool]);
-      fireEvent.click(pill(name)); // back to chat
+      unpick(name); // back to chat
     }
-    fireEvent.click(pill("Simulate"));
+    pick("Simulate");
     expect(text().placeholder).toBe(NEXT_SIMULATE_PLACEHOLDER.empty);
   });
 
   it("the Script placeholder is the shipped one", () => {
     render(<DevField state="rest" withBrief={false} />);
-    fireEvent.click(pill("Script"));
+    pick("Script");
     expect(text().placeholder).toBe("What the script is about");
   });
 });

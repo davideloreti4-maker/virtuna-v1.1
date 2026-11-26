@@ -89,6 +89,8 @@ afterEach(() => {
 
 const field = () => screen.getByTestId("thread-field");
 const picked = () => field().querySelector('[data-part="picked-skill"]');
+/** The picked skill as the field states it (its tag's description, also send's): "Hooks · 1 credit". The tag itself draws "Hooks · 1". */
+const pickedName = () => picked()?.querySelector("[hidden]")?.textContent;
 const settle = (ms = 50) => act(async () => { await new Promise((r) => setTimeout(r, ms)); });
 
 /** Home, once its open-chat load has answered (the load that, answered, resets an unpicked skill). */
@@ -108,7 +110,7 @@ describe("a launch to /home?v=Test on a blank new chat", () => {
   ] as const)("%s: Simulate is picked as its card would pick it, and the address is consumed", async (_where, strict, layout) => {
     const home = layout ? <HomePageLayout /> : <Composer />;
     await land(strict ? <StrictMode>{home}</StrictMode> : home);
-    expect(picked()?.textContent).toBe("Simulate · 10 credits");
+    expect(pickedName()).toBe("Simulate · 10 credits");
     expect((within(field()).getByRole("textbox") as HTMLTextAreaElement).placeholder).toBe("Add a video or paste a link");
     expect(replace).toHaveBeenCalledWith("/home", { scroll: false });
     // A pick spends nothing: no run, no chat made.

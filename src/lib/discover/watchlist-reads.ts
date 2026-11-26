@@ -143,29 +143,30 @@ export async function getWatchlistData(supabase: ServerClient): Promise<Watchlis
   const competitorIds = (competitorsRes.data ?? []).map((r) => r.competitor_id as string);
   const trackedHandles = tracked.map((t) => t.handle);
 
-  // Enrichment: profiles the user owns by either door, and nothing else.
+  // Enrichment: profiles the user owns by either door, and nothing else. One read per door, each
+  // handed its values as values (`.in`); a handle that could never be a creator's (it holds a quote, a
+  // comma, a bracket or a backslash) is not asked for.
   const service = createServiceClient();
-  const profileFilters = [
-    trackedHandles.length > 0
-      ? `tiktok_handle.in.(${trackedHandles.map((h) => `"${h}"`).join(",")})`
-      : null,
-    competitorIds.length > 0 ? `id.in.(${competitorIds.join(",")})` : null,
-  ].filter(Boolean);
+  const profileHandles = trackedHandles.filter((h) => h.length > 0 && !/[",()\\]/.test(h));
 
   // A creator tracked as `chrisbumstead` whose profile is stored as `cbum` still resolves:
-  // that profile arrives through the competitor-id half of this filter, and the merge below
-  // matches it on the normalized display_name. Only the two ownership keys are queried —
-  // there is no name search across profiles the user does not own.
-  let profiles: ProfileRow[] = [];
-  let profilesError: unknown = null;
-  if (profileFilters.length > 0) {
-    const { data, error } = await service
-      .from("competitor_profiles")
-      .select("id, tiktok_handle, display_name, avatar_url, follower_count, scrape_status")
-      .or(profileFilters.join(","));
-    profiles = (data ?? []) as ProfileRow[];
-    profilesError = error;
-  }
+  // that profile arrives through the competitor-id read, and the merge below matches it on the
+  // normalized display_name. Only the two ownership keys are queried — there is no name search
+  // across profiles the user does not own.
+  const PROFILE_COLUMNS = "id, tiktok_handle, display_name, avatar_url, follower_count, scrape_status";
+  const none = { data: [] as ProfileRow[], error: null };
+  const [byHandle, byId] = await Promise.all([
+    profileHandles.length > 0
+      ? service.from("competitor_profiles").select(PROFILE_COLUMNS).in("tiktok_handle", profileHandles)
+      : none,
+    competitorIds.length > 0 ? service.from("competitor_profiles").select(PROFILE_COLUMNS).in("id", competitorIds) : none,
+  ]);
+  // A profile both doors reach is listed once.
+  const seenProfiles = new Set<string>();
+  const profiles = [...((byHandle.data ?? []) as ProfileRow[]), ...((byId.data ?? []) as ProfileRow[])].filter(
+    (p) => !seenProfiles.has(p.id) && Boolean(seenProfiles.add(p.id)),
+  );
+  const profilesError: unknown = byHandle.error ?? byId.error ?? null;
 
   // As before, a failed read lists what the others reach; the failure is said, not swallowed. The
   // profiles count with the two ownership reads: without them a linked creator drops off the list.

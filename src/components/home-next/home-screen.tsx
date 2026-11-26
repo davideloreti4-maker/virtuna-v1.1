@@ -28,7 +28,8 @@ import { cn } from "@/lib/utils";
  *   phone                            desktop (beside the sidebar)
  *   opener ··········· 30 credits    (no top row: the sidebar has both)
  *   Good morning, Nia.               Good morning, Nia.   (centred, a fifth down)
- *   Money made $0 ····· Earn 50% ›   Money made, as wide as the field (Earn, step C)
+ *   Money made ······· $0 / $65k ›   Money made, as wide as the field (Earn, step C; 2026-11-26)
+ *   Proven videos … (a row of drops) the same row, inside the field's 720 (the remix carousel)
  *   the field                        the field, 720 wide
  *   the four skills, two by two      the four skills in one row (two by two under 760)
  *   More skills                      More skills (the More sheet: Ideas, Explore, Read my account)
@@ -98,19 +99,18 @@ export const MONEY_MADE = "Money made";
  * before the row.
  * - `loading`: not known yet; the row's space is kept, empty and silent.
  * - `shown`: the row. `amount` in money words ("$0"), or null when it could not be read (an enrolled
- *   creator is not told "$0" for that: the row then says the label and the rate only); `hint` is the
- *   rate at the right ("Earn 50%").
+ *   creator is not told "$0" for that: the row then says the goal alone); `goal` is what it counts
+ *   toward ("$65k"). Owner 2026-11-26: the amount and the goal sit at the right, "$0 / $65k", where
+ *   the rate ("Earn 50%") was; the rate is Earn's to say.
  */
-export type HomeMoney = { state: "loading" } | { state: "shown"; amount: string | null; hint: string };
-
-/** Under 360 wide the rate stays beside an amount of at most this many characters ("$240"); a longer
- *  one ("$24.50") takes its room (ruling 24a). From 360 the rate is always drawn. */
-const MONEY_RATE_FITS_CHARS = 4;
+export type HomeMoney = { state: "loading" } | { state: "shown"; amount: string | null; goal: string };
 
 export interface HomeScreenProps {
   greeting: string | null;                   // null: not known yet (the profile is loading); the line holds its place
   /** "Money made" (see `HomeMoney`): not passed or null, no row and no space. */
   money?: HomeMoney | null;
+  /** The remix carousel (`RemixCarousel`), drawn by the composer: above the field. Not given: nothing. */
+  remixes?: React.ReactNode;
   /** The phone's way into the drawer (the creator's picture), first in the top row. Not given: none. */
   opener?: React.ReactNode;
   credits: number | null;                    // null: unlimited or not loaded, no pill
@@ -205,28 +205,24 @@ function RecentRow({ row, onOpen }: { row: HomeRecentRow; onOpen(id: string): vo
 }
 
 /**
- * "Money made": one link to Earn, 48 tall, one line (ruling 18). The label, the amount in Home's
- * emphasis, then at the right the rate and a chevron. Drawn as Home's cards (the surface, the skill
- * card's radius, the resting shadow), in ink: nothing coral, nothing green.
- * The rate is drawn at every width when it fits (ruling 24a): under 360 wide (Home's own width, the
- * container) it gives way only to an amount longer than `MONEY_RATE_FITS_CHARS`. The link's name
- * always holds it. With no amount (it could not be read, ruling 24c) the row is the label and the rate.
+ * "Money made": one link to Earn, 48 tall, one line (ruling 18). The label at the left; at the right
+ * the amount in Home's emphasis over the goal it counts toward ("$0 / $65k", owner 2026-11-26), then
+ * a chevron. Drawn as Home's cards (the surface, the card radius, the resting shadow), in ink: nothing
+ * coral, nothing green. The label gives way (truncates) before the figures do. With no amount (it
+ * could not be read, ruling 24c) the right says the goal alone.
  */
-function MoneyRow({ amount, hint }: { amount: string | null; hint: string }) {
-  const rateGivesWay = amount !== null && amount.length > MONEY_RATE_FITS_CHARS;
+function MoneyRow({ amount, goal }: { amount: string | null; goal: string }) {
   return (
     <Link
       href={EARN.href}
-      aria-label={amount === null ? `${MONEY_MADE}. ${hint}` : `${MONEY_MADE}: ${amount}. ${hint}`}
+      aria-label={amount === null ? `${MONEY_MADE}. Goal ${goal}` : `${MONEY_MADE}: ${amount} of ${goal}`}
       className="flex h-12 w-full items-center gap-2 rounded-2xl bg-surface px-4 shadow-[var(--shadow-rest)] transition-shadow duration-150 hover:shadow-[var(--shadow-lift)] md:px-5"
     >
       <span className="min-w-0 truncate text-ui text-foreground-secondary">{MONEY_MADE}</span>
-      {amount !== null && (
-        <span className="shrink-0 whitespace-nowrap text-ui font-[640] tabular-nums text-foreground">{amount}</span>
-      )}
-      <span className="ml-auto flex shrink-0 items-center gap-1 pl-2">
-        <span className={cn("whitespace-nowrap text-meta font-[560] text-foreground-secondary", rateGivesWay && "@max-[360px]:hidden")}>
-          {hint}
+      <span data-part="money-figures" className="ml-auto flex shrink-0 items-center gap-1 pl-2">
+        <span className="whitespace-nowrap text-ui tabular-nums">
+          {amount !== null && <span className="font-[640] text-foreground">{amount}</span>}
+          <span className="text-foreground-secondary">{amount !== null ? ` / ${goal}` : `Goal ${goal}`}</span>
         </span>
         <ChevronIcon size={18} aria-hidden className="shrink-0 text-foreground-muted" />
       </span>
@@ -237,6 +233,7 @@ function MoneyRow({ amount, hint }: { amount: string | null; hint: string }) {
 export function HomeScreen({
   greeting,
   money,
+  remixes,
   opener,
   credits,
   field,
@@ -301,13 +298,16 @@ export function HomeScreen({
             aria-hidden={money.state === "loading" || undefined}
             className="mx-auto mt-3 w-full max-w-[720px] md:mt-7"
           >
-            {money.state === "shown" ? <MoneyRow amount={money.amount} hint={money.hint} /> : <div className="h-12" />}
+            {money.state === "shown" ? <MoneyRow amount={money.amount} goal={money.goal} /> : <div className="h-12" />}
           </div>
         )}
 
-        {/* Under the row (held or shown), the field sits closer to it (16 from md up) than to the
-            greeting; with no row it is where it always was (28). */}
-        <div className={cn("mx-auto mt-3 w-full max-w-[720px]", money ? "md:mt-4" : "md:mt-7")}>{field}</div>
+        {/* The remix carousel, above the field (owner 2026-11-26), in the field's column. */}
+        {remixes && <div className={cn("mx-auto mt-4 w-full max-w-[720px]", money ? "md:mt-5" : "md:mt-7")}>{remixes}</div>}
+
+        {/* Under the row (held or shown) or the carousel, the field sits closer to it (16 from md up)
+            than to the greeting; with neither it is where it always was (28). */}
+        <div className={cn("mx-auto mt-3 w-full max-w-[720px]", money || remixes ? "md:mt-4" : "md:mt-7")}>{field}</div>
 
         {!picked && (
           <>

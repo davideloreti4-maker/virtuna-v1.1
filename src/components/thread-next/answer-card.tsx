@@ -136,7 +136,7 @@ export function AnswerPrimary({
 }) {
   const end =
     price != null ? (
-      <em className="flex h-[30px] shrink-0 items-center rounded-full bg-[color-mix(in_srgb,var(--color-action-foreground)_14%,transparent)] px-[11px] text-meta font-semibold not-italic leading-none tabular-nums">
+      <em className="flex h-[30px] shrink-0 items-center rounded-md bg-[color-mix(in_srgb,var(--color-action-foreground)_14%,transparent)] px-[11px] text-meta font-semibold not-italic leading-none tabular-nums">
         {creditsLabel(price)}
       </em>
     ) : trailingArrow ? (

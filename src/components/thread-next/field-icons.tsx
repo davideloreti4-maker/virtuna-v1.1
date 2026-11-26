@@ -110,6 +110,15 @@ export const ScissorsIcon: ShellIcon = (props) => (
   </Glyph>
 );
 
+/** Skills (the field's skill menu): two sliders, the Claude app's tools mark. */
+export const SkillsIcon: ShellIcon = (props) => (
+  <Glyph {...props}>
+    <path d="M4 8h9M17 8h3M4 16h3M11 16h9" />
+    <circle cx="15" cy="8" r="2" />
+    <circle cx="9" cy="16" r="2" />
+  </Glyph>
+);
+
 /** More (Home's sixth card): three dots, the drawing's `I.more`. */
 export const MoreIcon: ShellIcon = (props) => (
   <Glyph {...props}>

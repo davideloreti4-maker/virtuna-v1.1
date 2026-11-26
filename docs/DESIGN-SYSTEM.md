@@ -247,19 +247,20 @@ landmarks, chrome screenshots) and `scripts/next-look-compare.cjs` compares two 
 
 | Token | Role | Light | Dark |
 |---|---|---|---|
-| `--color-background` | ground | `#f4f3f0` | `#08080a` |
-| `--color-surface` | card | `#ffffff` | `#131315` |
-| `--color-surface-elevated` | raised control on a card, tooltip | `#efeeea` | `#232326` |
-| `--color-surface-sunken` | tint fill: secondary button, chip, search field | `rgba(18, 18, 17, 0.06)` | `rgba(255, 255, 255, 0.07)` |
-| `--color-border` | hairline | `rgba(17, 17, 16, 0.06)` | `rgba(255, 255, 255, 0.075)` |
-| `--color-border-hover` | hairline, hovered | `rgba(17, 17, 16, 0.12)` | `rgba(255, 255, 255, 0.14)` |
-| `--color-foreground` | text, icons | `#121211` | `#f7f6f3` |
-| `--color-foreground-secondary` | secondary text | `rgba(18, 18, 17, 0.6)` | `rgba(247, 246, 243, 0.62)` |
-| `--color-foreground-muted` | placeholder, unit, disabled | `rgba(18, 18, 17, 0.46)` | `rgba(247, 246, 243, 0.38)` |
-| `--color-action` | primary button | `#121211` | `#f7f6f3` |
-| `--color-action-foreground` | text on the primary button | `#ffffff` | `#0b0b0c` |
-| `--color-hover` | overlay tint on hover | `rgba(18, 18, 17, 0.04)` | `rgba(255, 255, 255, 0.05)` |
-| `--color-active` | overlay tint, pressed or selected | `rgba(18, 18, 17, 0.08)` | `rgba(255, 255, 255, 0.1)` |
+| `--color-background` | ground | `#f9f9f7` | `#191918` |
+| `--color-sidebar` | the desktop sidebar's panel, edged by a hairline | `#f2f1ee` | `#1f1f1e` |
+| `--color-surface` | card | `#ffffff` | `#232322` |
+| `--color-surface-elevated` | raised control on a card, tooltip | `#f0efec` | `#2c2c2a` |
+| `--color-surface-sunken` | tint fill: secondary button, chip, search field | `rgba(25, 25, 24, 0.05)` | `rgba(255, 255, 255, 0.06)` |
+| `--color-border` | hairline | `rgba(25, 25, 24, 0.08)` | `rgba(255, 255, 255, 0.09)` |
+| `--color-border-hover` | hairline, hovered | `rgba(25, 25, 24, 0.14)` | `rgba(255, 255, 255, 0.15)` |
+| `--color-foreground` | text, icons | `#191918` | `#ededeb` |
+| `--color-foreground-secondary` | secondary text | `rgba(25, 25, 24, 0.64)` | `rgba(237, 237, 235, 0.6)` |
+| `--color-foreground-muted` | placeholder, unit, disabled | `rgba(25, 25, 24, 0.48)` | `rgba(237, 237, 235, 0.4)` |
+| `--color-action` | primary button | `#191918` | `#ededeb` |
+| `--color-action-foreground` | text on the primary button | `#ffffff` | `#191918` |
+| `--color-hover` | overlay tint on hover | `rgba(25, 25, 24, 0.045)` | `rgba(255, 255, 255, 0.06)` |
+| `--color-active` | overlay tint, pressed or selected | `rgba(25, 25, 24, 0.075)` | `rgba(255, 255, 255, 0.11)` |
 | `--color-track` | empty part of a gauge or progress line | `rgba(18, 18, 17, 0.07)` | `rgba(255, 255, 255, 0.09)` |
 | `--color-gauge-track` | empty part of a thread gauge, the pack's progress line and the mini curve | `rgba(18, 18, 17, 0.12)` | `rgba(255, 255, 255, 0.17)` |
 | `--color-above` | 6+ above usual, graphic and text | `#17783b` | `#62d892` |
@@ -267,7 +268,7 @@ landmarks, chrome screenshots) and `scripts/next-look-compare.cjs` compares two 
 | `--color-below` | 6+ below usual, graphic | `#ec4a35` | `#ff5f4c` |
 | `--color-below-text` | 6+ below usual, text | `#c5371f` | `#ff8778` |
 | `--color-below-soft` | its pill background | `#fde9e4` | `rgba(255, 98, 80, 0.16)` |
-| `--color-glass` | floating chrome fill | `rgba(255, 255, 255, 0.78)` | `rgba(30, 30, 33, 0.78)` |
+| `--color-glass` | floating chrome fill | `rgba(255, 255, 255, 0.78)` | `rgba(35, 35, 34, 0.8)` |
 | `--color-scrim` | behind a sheet | `rgba(0, 0, 0, 0.42)` | `rgba(0, 0, 0, 0.6)` |
 
 `--color-accent` stays `#FF6363` and is the brand mark only. `--color-success` aliases
@@ -282,11 +283,11 @@ coral.
 
 | Token | Use | Light | Dark |
 |---|---|---|---|
-| `--shadow-rest` | card | `0 0 0 1px var(--color-border), 0 1px 1px rgba(0, 0, 0, 0.03), 0 10px 26px -12px rgba(0, 0, 0, 0.1), 0 34px 60px -34px rgba(0, 0, 0, 0.14)` | `0 0 0 1px var(--color-border), inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 24px 50px -24px rgba(0, 0, 0, 0.9)` |
-| `--shadow-lift` | card hovered (desktop) | `0 0 0 1px var(--color-border-hover), 0 14px 30px -12px rgba(0, 0, 0, 0.16), 0 40px 70px -34px rgba(0, 0, 0, 0.18)` | `0 0 0 1px var(--color-border-hover), inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 24px 50px -24px rgba(0, 0, 0, 0.9)` |
+| `--shadow-rest` | card | `0 0 0 1px var(--color-border), 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 16px -6px rgba(0, 0, 0, 0.08)` | `0 0 0 1px var(--color-border), 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 24px -8px rgba(0, 0, 0, 0.4)` |
+| `--shadow-lift` | card hovered (desktop) | `0 0 0 1px var(--color-border-hover), 0 2px 4px rgba(0, 0, 0, 0.05), 0 12px 28px -10px rgba(0, 0, 0, 0.14)` | `0 0 0 1px var(--color-border-hover), 0 1px 2px rgba(0, 0, 0, 0.2), 0 12px 32px -8px rgba(0, 0, 0, 0.5)` |
 | `--shadow-press` | pressed | `0 0 0 1px var(--color-border), 0 1px 2px rgba(0, 0, 0, 0.06)` | `0 0 0 1px var(--color-border)` |
-| `--shadow-control` | control resting on the ground: icon button, chip, New chat | `0 0 0 1px var(--color-border), 0 2px 6px -2px rgba(0, 0, 0, 0.12)` | `0 0 0 1px var(--color-border), 0 2px 6px -2px rgba(0, 0, 0, 0.12)` |
-| `--shadow-float` | message field, popover and menu, desktop dialog, toast | `0 0 0 1px var(--color-border), 0 14px 34px -12px rgba(0, 0, 0, 0.3)` | `0 0 0 1px var(--color-border), 0 14px 34px -12px rgba(0, 0, 0, 0.7)` |
+| `--shadow-control` | control resting on the ground: icon button, chip, New chat | `0 0 0 1px var(--color-border), 0 1px 2px rgba(0, 0, 0, 0.06)` | `0 0 0 1px var(--color-border), 0 1px 2px rgba(0, 0, 0, 0.24)` |
+| `--shadow-float` | message field, popover and menu, desktop dialog, toast | `0 0 0 1px var(--color-border), 0 2px 4px rgba(0, 0, 0, 0.06), 0 10px 28px -6px rgba(0, 0, 0, 0.16)` | `0 0 0 1px var(--color-border), 0 2px 4px rgba(0, 0, 0, 0.2), 0 12px 32px -8px rgba(0, 0, 0, 0.6)` |
 | `--shadow-button` | primary button | `inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 10px 20px -10px rgba(0, 0, 0, 0.45)` | `0 0 0 0 transparent` |
 | `--shadow-sheet` | sheet | `0 -20px 50px rgba(0, 0, 0, 0.3)` | `0 -20px 50px rgba(0, 0, 0, 0.6)` |
 
@@ -300,6 +301,15 @@ phone has no bottom tab bar: the left drawer, an opaque panel, is its one way ar
 
 Inter only. Four weights: `font-[430]` text, `font-[560]` label, `font-[640]` title, `font-bold`
 numbers and screen titles. Every number is tabular.
+In dark, running text (the body's inherited weight) drops to 400: light on dark reads heavier
+(claude.ai does the same, 400 to 360). Explicit weights do not change.
+
+Sidebar (desktop, redesign 2026-11-26, measured against claude.ai): a panel in `--color-sidebar`
+with a `border-border` hairline on its right edge; rows 34 tall, 14px (`text-reading`) at 480, text
+at full strength whether current or not, the current row lit by `bg-active`; the section label is
+the only quiet text (`text-label`, secondary); the account sits under a divider. New chat is the
+first row, marked by an ink dot (`bg-action`), never coral. The brand is `MavenLogo` (the new-look
+lockup: the heavier mark set against its ink, then "Maven" at 680, -0.04em).
 
 | Role | Utility | Size / line |
 |---|---|---|
@@ -313,9 +323,11 @@ numbers and screen titles. Every number is tabular.
 | Figure | `text-figure font-bold` | 62 / 58 |
 | Large figure | `text-figure-lg font-bold` | 76 / 72 |
 
-Radius: thumbnail `rounded-lg` 12 · button `rounded-xl` 16 · tile `rounded-2xl` 20 · card
-`rounded-3xl` 24 · sheet top, message field `rounded-4xl` 32 · chip, tag, icon button
-`rounded-full`.
+Radius (tightened 2026-11-26 toward the Claude app; re-valued in `:root[data-look="next"]`, the
+`@theme` scale is untouched): thumbnail, chip, icon button `rounded-lg` 8 · button `rounded-xl` 10 ·
+tile `rounded-2xl` 12 · card, bubble, toast `rounded-3xl` 16 · sheet top, message field `rounded-4xl` 20.
+`rounded-full` is for avatars, dots, the sheet handle and a few round controls (the jump button, a
+thumbnail's remove cross), not for chips or icon buttons.
 
 Parts (`src/components/ui`): `Card` and `Tile`, `Button` (`primary`, `secondary`, `quiet`; `lg`
 is 50 tall, `xl` is 56), `IconButton`, `Chip`, `Badge` (the tag), `Sheet`. Shell
@@ -370,16 +382,21 @@ the first block's layout parts (`FirstCard`, `WideFrame`, `LineFrame` in `first-
   `/dev/result?fixture=early&processing=1&elapsed=<s>[&runframes=<n>][&own=1][&cover=<url>][&land=<s>]`.
 
 The message field and the thread frame (`src/components/thread-next`; spec
-`docs/superpowers/specs/2026-11-20-thread-field-design.md`): `ThreadField` (row 1 `+` · text · send,
-row 2 the pills Simulate · Hooks · Script · Remix · More), `MoreSheet` (the other skills with prices,
-the audience and the platform lens), `NextUserTurn` (the bubble, with a video tile), the "Maven" label
+`docs/superpowers/specs/2026-11-20-thread-field-design.md`; rebuilt 2026-11-26 on the Claude app's
+composer): `ThreadField` (a solid card, radius 20, padding 12; row 1 the text at full width, row 2 one
+toolbar, the same on Home and in a thread: `+` outlined · Skills (once a skill is picked, a soft tag
+"Hooks · 1" with a cross) · the audience ("Audience: @handle", opens the audience sheet) · send, a 32
+ink square, faded while off; no skill pills since 2026-11-26), `MoreSheet` (titled "Skills": every
+skill with its line and price, the picked one marked, then the profile read; the audience and the
+platform lens are in the audience sheet), `NextUserTurn` (the bubble, with a video tile), the "Maven" label
 and `FollowupChips`. Rules of these parts:
 
-- The field is the only glass in a thread (it floats over it); blur as an inline style only, and the
+- The field is solid, not glass (since 2026-11-26): the thread passes behind it and is hidden. The
   folder's guard (`thread-next-guard.test.ts`) refuses colour literals, palette names and backdrop
   utilities.
-- A pill's accessible name is the skill's name and never changes; its price is drawn when selected
-  and read as a description ("1 credit"). A skill picked from More shows on More the same way.
+- The picked skill's tag is named for the skill and never changes; its price is drawn short ("· 1")
+  and read as a description ("1 credit"), also on send. Its label reopens the menu; its cross (or
+  Backspace in an empty text) puts back chat.
 - The field holds one attachment at a time and always says what the send does: a video selects
   Simulate, a file for a profile read returns the field to chat, picking a skill clears a staged file.
 - Next-step chips sit under the last answer only.
