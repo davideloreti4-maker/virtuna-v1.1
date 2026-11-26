@@ -28,6 +28,8 @@ const take = (megabytes: number) => {
 };
 const choice = () => screen.getByRole("group", { name: "What to do with this video" });
 const pickedPill = () => document.querySelector('[data-part="picked-skill"]');
+/** The picked tag's label: the skill and its drawn price. */
+const pickedLabel = () => within(pickedPill() as HTMLElement).getAllByRole("button")[0]!;
 
 beforeEach(() => {
   vi.spyOn(URL, "createObjectURL").mockImplementation(() => "blob:test/1");
@@ -67,14 +69,14 @@ describe("the field on Home with the editor open: a staged video", () => {
     expect(onPick).toHaveBeenLastCalledWith("test");
   });
 
-  it("is the picked skill's pill, as before, where the editor is not open or no video is staged", () => {
+  it("is the picked skill's tag, as before, where the editor is not open or no video is staged", () => {
     const { unmount } = render(<ThreadField {...props({ tool: "test", video: take(20), home: home({ picked: { label: "Simulate", price: 10 } }) })} />);
     expect(screen.queryByRole("group", { name: "What to do with this video" })).toBeNull();
-    expect(pickedPill()).toHaveTextContent(/^Simulate · 10 credits$/);
+    expect(pickedLabel()).toHaveTextContent(/^Simulate · 10$/);
     unmount();
     render(<ThreadField {...props({ tool: "edit", home: home({ picked: { label: "Edit", price: null }, videoSkill: null }) })} />);
     expect(screen.queryByRole("group", { name: "What to do with this video" })).toBeNull();
-    expect(pickedPill()).toHaveTextContent(/^Edit$/);
+    expect(pickedLabel()).toHaveTextContent(/^Edit$/);
   });
 
   it("with Edit picked and no video yet, + says the next step, and takes the focus", () => {
@@ -111,31 +113,40 @@ describe("the field with the editor open: what it stages", () => {
 });
 
 describe("the field in a thread with the editor open", () => {
-  const pills = () => screen.getAllByRole("button").map((one) => one.getAttribute("aria-label")).filter((name) => ["Simulate", "Edit", "Hooks", "Script", "Remix", "More"].includes(name ?? ""));
-
-  it("shows the Edit pill beside Simulate only where the editor is open, and gives its picker to the caller", () => {
+  it("draws no Edit pill (the skill menu lists Edit), and gives its picker to the caller", () => {
     const picker = createRef<HTMLInputElement>();
-    const { unmount } = render(<ThreadField {...props({ editOpen: true, pickerRef: picker })} />);
-    expect(pills()).toEqual(["Simulate", "Edit", "Hooks", "Script", "Remix", "More"]);
-    expect(picker.current).toBe(screen.getByLabelText("Choose a video file"));
-    unmount();
-    render(<ThreadField {...props()} />);
-    expect(pills()).toEqual(["Simulate", "Hooks", "Script", "Remix", "More"]);
+    render(<ThreadField {...props({ editOpen: true, pickerRef: picker })} />);
     expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Skills" })).toBeInTheDocument();
+    expect(picker.current).toBe(screen.getByLabelText("Choose a video file"));
   });
 
-  it("a tap on Edit selects it and, with no video yet, keeps the focus on the pill (the next step is +)", () => {
-    const shown = props({ editOpen: true });
+  it("a staged video offers Simulate or Edit there too, and the toolbar's tag steps back to Skills", () => {
+    const onPick = vi.fn();
+    render(
+      <ThreadField
+        {...props({
+          tool: "test",
+          editOpen: true,
+          video: take(20),
+          bar: home({ picked: { label: "Simulate", price: 10 }, videoSkill: { picked: "test", simulate: true, onPick } }),
+        })}
+      />,
+    );
+    expect(within(choice()).getByRole("button", { name: "Simulate" })).toHaveAttribute("aria-pressed", "true");
+    expect(pickedPill()).toBeNull();
+    expect(screen.getByRole("button", { name: "Skills" })).toBeInTheDocument();
+    fireEvent.click(within(choice()).getByRole("button", { name: "Edit" }));
+    expect(onPick).toHaveBeenLastCalledWith("edit");
+  });
+
+  it("Edit picked with no video yet: + says the next step and takes the focus", () => {
+    const shown = props({ editOpen: true, bar: home() });
     const { rerender } = render(<ThreadField {...shown} />);
-    const edit = screen.getByRole("button", { name: "Edit" });
-    fireEvent.click(edit);
-    expect(shown.onSelectTool).toHaveBeenCalledWith("edit");
-    expect(document.activeElement).toBe(edit);
-    // Selected: pressed, with no price to say (an edit spends no credits); a second tap puts chat back.
-    rerender(<ThreadField {...shown} tool="edit" />);
-    expect(edit).toHaveAttribute("aria-pressed", "true");
-    expect(edit).toHaveTextContent(/^Edit$/);
-    fireEvent.click(edit);
-    expect(shown.onSelectTool).toHaveBeenLastCalledWith("chat");
+    rerender(<ThreadField {...shown} tool="edit" bar={home({ picked: { label: "Edit", price: null } })} />);
+    const plus = screen.getByRole("button", { name: "Add a video" });
+    expect(plus).toHaveTextContent(/^Add video$/);
+    expect(document.activeElement).toBe(plus);
+    expect(pickedLabel()).toHaveTextContent(/^Edit$/);
   });
 });

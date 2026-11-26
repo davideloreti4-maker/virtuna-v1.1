@@ -4,12 +4,12 @@ import { useRef, useState } from "react";
 
 import { BILLABLE_BY_TOOL, type ToolId } from "@/components/app/home/composer-controls";
 import { NEXT_PLACEHOLDER_BY_TOOL, NEXT_SIMULATE_PLACEHOLDER } from "@/components/thread-next/field-copy";
-import { MORE_SKILLS, MoreSheet, type MoreSheetProps } from "@/components/thread-next/more-sheet";
+import { MoreSheet, SKILL_MENU } from "@/components/thread-next/more-sheet";
 import { ThreadField } from "@/components/thread-next/thread-field";
 import { creditCost } from "@/lib/pricing";
 
 /**
- * The field and More on local state, for /dev/field (`page.tsx`). The placeholders are the
+ * The field and its skill menu on local state, for /dev/field (`page.tsx`). The placeholders are the
  * composer's own (`field-copy.ts`); the names and send rules below stand in for the composer's;
  * the field's own behaviour is real. Nothing here sends anything.
  */
@@ -62,12 +62,12 @@ export function DevField({ state, withBrief }: { state: DevFieldState; withBrief
   const [evidence, setEvidence] = useState<File | null>(null);
   const [streaming, setStreaming] = useState(Boolean(start.streaming));
   const [moreOpen, setMoreOpen] = useState(Boolean(start.more));
-  const [lens, setLens] = useState<MoreSheetProps["lens"]>("tiktok");
+  const [audienceOpen, setAudienceOpen] = useState(false);
   const [brief, setBrief] = useState<{ hookLine: string } | null>(
     withBrief ? { hookLine: "This is $5 of food. It fed me for three days." } : null,
   );
 
-  const picked = MORE_SKILLS.find((s) => s.id === tool);
+  const picked = SKILL_MENU.find((s) => s.id === tool);
   const canSend = evidence
     ? true
     : tool === "chat"
@@ -126,8 +126,13 @@ export function DevField({ state, withBrief }: { state: DevFieldState; withBrief
           brief={brief}
           onDismissBrief={() => setBrief(null)}
           anchorRef={anchorRef}
-          moreArmed={picked ? { label: picked.label, price: priceOf(picked.id) } : null}
           moreOpen={moreOpen}
+          // The audience control toggles only its own pressed look here: the dev page has no audience sheet.
+          bar={{
+            audience: { label: "Your TikTok audience", open: audienceOpen, onOpen: () => setAudienceOpen((o) => !o) },
+            picked: picked ? { label: picked.label, price: priceOf(picked.id) } : null,
+            onClearPicked: () => setTool("chat"),
+          }}
           onOpenMore={() => setMoreOpen(true)}
         />
         <input
@@ -147,14 +152,11 @@ export function DevField({ state, withBrief }: { state: DevFieldState; withBrief
       <MoreSheet
         open={moreOpen}
         onOpenChange={setMoreOpen}
-        skills={MORE_SKILLS.map((s) => ({ ...s, price: priceOf(s.id) }))}
+        skills={SKILL_MENU.filter((s) => s.id !== "edit").map((s) => ({ ...s, price: priceOf(s.id) }))}
+        selected={tool}
         onSelectSkill={setTool}
         onReadFile={() => evidenceRef.current?.click()}
         readFilePrice={creditCost("profile")}
-        audienceLabel="Your TikTok audience"
-        onOpenAudience={() => {}}
-        lens={lens}
-        onLensChange={setLens}
         anchorRef={anchorRef}
       />
     </div>

@@ -4,7 +4,7 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { EARN_STRINGS, headline, howItWorks, joinedLine, ratePct, rateLine } from "../earn-words";
+import { EARN_STRINGS, MONEY_GOAL_CENTS, headline, howItWorks, joinedLine, ratePct, rateLine, shortMoneyWord } from "../earn-words";
 
 describe("the words at the top of the page", () => {
   it("are Earn 50%, the rate line, and the joined line", () => {
@@ -67,5 +67,26 @@ describe("the fixed words", () => {
       qrName: "QR code of your link",
       fileName: "maven-earn.png",
     });
+  });
+});
+
+describe("the goal Home's Money made row counts toward (owner 2026-11-26)", () => {
+  it("is $65k", () => {
+    expect(MONEY_GOAL_CENTS).toBe(6_500_000);
+    expect(shortMoneyWord(MONEY_GOAL_CENTS)).toBe("$65k");
+  });
+
+  it.each([
+    [0, "$0"],
+    [80_000, "$800"],
+    [150_000, "$1.5k"],
+    [100_000, "$1k"],
+    [6_500_000, "$65k"],
+    [99_990_000, "$999.9k"],
+    [200_000_000, "$2M"],
+    [125_000_000, "$1.3M"],
+    [Number.NaN, "$0"],
+  ])("%i cents in short words: %s", (cents, words) => {
+    expect(shortMoneyWord(cents)).toBe(words);
   });
 });

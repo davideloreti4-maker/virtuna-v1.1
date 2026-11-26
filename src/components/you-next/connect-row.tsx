@@ -9,7 +9,7 @@ import { Chip } from "@/components/ui/chip";
 import type { Platform } from "@/lib/connected-accounts/connected-accounts-repo";
 import { cn } from "@/lib/utils";
 
-import { ErrorLine, PILL, cancelOnEscape } from "./row-parts";
+import { ErrorLine, ROW_BUTTON, cancelOnEscape } from "./row-parts";
 import { HANDLE_LABELS, HANDLE_PLACEHOLDERS, PLATFORMS, PLATFORM_NAMES } from "./you-words";
 
 /** The longest handle `POST /api/connected-accounts/connect` takes (an "@" in front is dropped first). */
@@ -100,7 +100,7 @@ function ConnectEditor({ platform, handle, busy, error, onPlatform, onHandle, on
           if (!holds) onConnect();
         }}
         // 16 on the phone: iOS zooms the page into a field set smaller. 15 from 768.
-        className="mt-1.5 h-12 w-full rounded-full bg-surface-sunken px-4 text-title text-foreground placeholder:text-foreground-muted md:h-11 md:text-ui"
+        className="mt-1.5 h-12 w-full rounded-lg bg-surface-sunken px-4 text-title text-foreground placeholder:text-foreground-muted md:h-11 md:text-ui"
       />
       {error && <ErrorLine id={`${id}-error`}>{error}</ErrorLine>}
       <div className="mt-3 flex items-center justify-end gap-2">
@@ -111,7 +111,7 @@ function ConnectEditor({ platform, handle, busy, error, onPlatform, onHandle, on
           onClick={() => {
             if (!busy) onCancel();
           }}
-          className={PILL}
+          className={ROW_BUTTON}
         >
           Cancel
         </Button>
@@ -124,7 +124,7 @@ function ConnectEditor({ platform, handle, busy, error, onPlatform, onHandle, on
           onClick={() => {
             if (!holds) onConnect();
           }}
-          className={cn(PILL, "aria-disabled:opacity-40")}
+          className={cn(ROW_BUTTON, "aria-disabled:opacity-40")}
         >
           {busy ? `Reading @${clean}…` : "Connect"}
         </Button>

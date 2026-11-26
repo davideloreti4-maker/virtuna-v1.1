@@ -44,7 +44,7 @@ export const settleClock = { now: (): number => performance.now() };
  * pill at the sheet's top corner.
  */
 const CLOSE =
-  "sr-only focus-visible:not-sr-only focus-visible:absolute focus-visible:right-4 focus-visible:top-4 focus-visible:z-[1] focus-visible:rounded-full focus-visible:bg-surface-sunken focus-visible:px-3 focus-visible:py-1.5 focus-visible:text-meta focus-visible:font-[560] focus-visible:text-foreground";
+  "sr-only focus-visible:not-sr-only focus-visible:absolute focus-visible:right-4 focus-visible:top-4 focus-visible:z-[1] focus-visible:rounded-lg focus-visible:bg-surface-sunken focus-visible:px-3 focus-visible:py-1.5 focus-visible:text-meta focus-visible:font-[560] focus-visible:text-foreground";
 
 /**
  * The width is read from the store `matchMedia` keeps, so the first client render already knows it:

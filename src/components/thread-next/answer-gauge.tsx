@@ -458,12 +458,12 @@ export function GaugeSlot({
       aria-describedby={priceId}
       disabled={!onSimulate}
       onClick={onSimulate}
-      // A pill with the next-step chips' outline (the ink at 16%, inside): the control that spends a
-      // credit read as a caption when it was a ring and a line of text (critic 2026-11-23). The gauge
-      // sits 5 in, concentric with the pill's cap; the pill is as wide as its words.
+      // An outlined button with the next-step chips' outline (the ink at 16%, inside): the control that
+      // spends a credit read as a caption when it was a ring and a line of text (critic 2026-11-23).
+      // The gauge sits 5 in; radius 8 since 2026-11-26 (was a pill); as wide as its words.
       className={cn(
         row,
-        "tap-44 group w-fit cursor-pointer rounded-full pl-[5px] pr-3.5 text-left inset-ring inset-ring-foreground/16 transition-colors duration-150 hover:bg-surface-sunken disabled:cursor-default disabled:hover:bg-transparent",
+        "tap-44 group w-fit cursor-pointer rounded-lg pl-[5px] pr-3.5 text-left inset-ring inset-ring-foreground/16 transition-colors duration-150 hover:bg-surface-sunken disabled:cursor-default disabled:hover:bg-transparent",
         className,
       )}
     >

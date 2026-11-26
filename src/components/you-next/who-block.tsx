@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
-import { EditorActions, ErrorLine, PILL, cancelOnEscape } from "./row-parts";
+import { EditorActions, ErrorLine, ROW_BUTTON, cancelOnEscape } from "./row-parts";
 import { CHANGE_PHOTO, NAME_LABEL, SAVE_FAILED, WHO_EDIT } from "./you-words";
 
 /** The longest name `PATCH /api/profile` takes. */
@@ -99,7 +99,7 @@ function WhoEditor({ initials, avatar, draft, placeholder, busy, failed, photoBu
           onClick={() => {
             if (!photoBusy) fileRef.current?.click();
           }}
-          className={PILL}
+          className={ROW_BUTTON}
         >
           {CHANGE_PHOTO}
         </Button>
@@ -141,7 +141,7 @@ function WhoEditor({ initials, avatar, draft, placeholder, busy, failed, photoBu
           if (!busy && !empty) onSave();
         }}
         // 16 on the phone: iOS zooms the page into a field set smaller. 15 from 768.
-        className="mt-2 h-12 w-full rounded-full bg-surface-sunken px-4 text-title text-foreground placeholder:text-foreground-muted md:h-11 md:text-ui"
+        className="mt-2 h-12 w-full rounded-lg bg-surface-sunken px-4 text-title text-foreground placeholder:text-foreground-muted md:h-11 md:text-ui"
       />
       {failed && <ErrorLine id={`${id}-error`}>{SAVE_FAILED}</ErrorLine>}
       <EditorActions busy={busy} saveDisabled={empty} onCancel={onCancel} onSave={onSave} />

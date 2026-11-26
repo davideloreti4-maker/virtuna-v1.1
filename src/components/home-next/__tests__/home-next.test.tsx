@@ -16,8 +16,8 @@ import { ToastProvider } from "@/components/ui/toast";
 import type { ThreadSummary } from "@/hooks/queries";
 import { earnKeys, useEarn } from "@/hooks/queries/use-earn";
 import { useArchiveThread } from "@/hooks/queries/use-threads";
-import { EARN_RATE_PCT, type EarnPage } from "@/lib/earn/earn";
-import { headline } from "@/lib/earn/earn-words";
+import type { EarnPage } from "@/lib/earn/earn";
+import { MONEY_GOAL_CENTS, shortMoneyWord } from "@/lib/earn/earn-words";
 import type { LibraryChat, LibraryPage, LibrarySummary } from "@/lib/library/library-page";
 import { queryKeys } from "@/lib/queries/query-keys";
 import { clearActiveThreadCookie, getActiveThreadCookie } from "@/lib/threads/active-thread-cookie";
@@ -385,7 +385,7 @@ describe("HomeNext — Money made (Earn, step C; rulings 18 and 24)", () => {
   const earnRequests = () => requested().filter((url) => url.startsWith("/api/earn"));
   const settle = (ms = 50) => act(async () => { await new Promise((resolve) => setTimeout(resolve, ms)); });
 
-  it("holds the row's space while Earn has not answered, then the row lands in it: Money made, $0, Earn 50%, a link to Earn", async () => {
+  it("holds the row's space while Earn has not answered, then the row lands in it: Money made, $0 / $65k, a link to Earn", async () => {
     let answer!: (page: EarnPage) => void;
     earnAnswers = [new Promise<EarnPage>((resolve) => (answer = resolve))];
     renderHomeNext();
@@ -396,19 +396,20 @@ describe("HomeNext — Money made (Earn, step C; rulings 18 and 24)", () => {
     expect(moneyLink()).toBeNull();
 
     await act(async () => answer(PAGE));
-    const link = await screen.findByRole("link", { name: "Money made: $0. Earn 50%" });
+    const link = await screen.findByRole("link", { name: "Money made: $0 of $65k" });
     expect(link).toHaveAttribute("href", "/earn");
-    expect(link).toHaveTextContent(/^Money made\s*\$0\s*Earn 50%$/);
+    expect(link).toHaveTextContent(/^Money made\s*\$0 \/ \$65k$/);
     // In the place that was held: the same element, no jump.
     expect(moneyPart()).toBe(holding);
     expect(holding).not.toHaveAttribute("aria-hidden");
     expect(link).toHaveClass("h-12");
   });
 
-  it("Earn 50% is built from the rate's constant", async () => {
+  it("the goal is built from its constant: $65k (owner 2026-11-26), where the rate was", async () => {
     renderHomeNext();
-    expect(await screen.findByRole("link", { name: `Money made: $0. ${headline()}` })).toBeInTheDocument();
-    expect(headline()).toBe(`Earn ${EARN_RATE_PCT}%`);
+    const link = await screen.findByRole("link", { name: `Money made: $0 of ${shortMoneyWord(MONEY_GOAL_CENTS)}` });
+    expect(shortMoneyWord(MONEY_GOAL_CENTS)).toBe("$65k");
+    expect(link.textContent).not.toMatch(/Earn|%/);
   });
 
   it.each([
@@ -419,18 +420,18 @@ describe("HomeNext — Money made (Earn, step C; rulings 18 and 24)", () => {
   ])("with Whop's number (%i cents) the amount is %s", async (cents, words) => {
     earnAnswers = [withWhop(cents)];
     renderHomeNext();
-    const link = await screen.findByRole("link", { name: `Money made: ${words}. Earn 50%` });
+    const link = await screen.findByRole("link", { name: `Money made: ${words} of $65k` });
     expect(within(link).getByText(words)).toBeInTheDocument();
   });
 
   // Ruling 24c: "could not be read" is not "nothing earned".
-  it("an enrolled creator whose number could not be read is not told $0: Money made and Earn 50%, no amount", async () => {
+  it("an enrolled creator whose number could not be read is not told $0: Money made and the goal, no amount", async () => {
     earnAnswers = [withWhop(null)];
     renderHomeNext();
-    const link = await screen.findByRole("link", { name: "Money made. Earn 50%" });
+    const link = await screen.findByRole("link", { name: "Money made. Goal $65k" });
     expect(link).toHaveAttribute("href", "/earn");
-    expect(link).toHaveTextContent(/^Money made\s*Earn 50%$/);
-    expect(link.textContent).not.toContain("$");
+    expect(link).toHaveTextContent(/^Money made\s*Goal \$65k$/);
+    expect(link.textContent).not.toContain("$0");
     expect(screen.queryByRole("link", { name: /^Money made:/ })).toBeNull();
     // In the row's own place, as tall as any other.
     expect(moneyPart()!.contains(link)).toBe(true);
@@ -446,20 +447,20 @@ describe("HomeNext — Money made (Earn, step C; rulings 18 and 24)", () => {
   ])("%s: the amount is zero dollars, which is true", async (_name, whop) => {
     earnAnswers = [{ ...PAGE, whop }];
     renderHomeNext();
-    const link = await screen.findByRole("link", { name: "Money made: $0. Earn 50%" });
+    const link = await screen.findByRole("link", { name: "Money made: $0 of $65k" });
     expect(within(link).getByText("$0")).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Money made. Earn 50%" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Money made. Goal $65k" })).toBeNull();
   });
 
   it("the number read later (the next read answers it) takes its place in the same row", async () => {
     earnAnswers = [withWhop(null), withWhop(2450)];
     const { qc } = renderHomeNext();
-    await screen.findByRole("link", { name: "Money made. Earn 50%" });
+    await screen.findByRole("link", { name: "Money made. Goal $65k" });
     const part = moneyPart();
     await act(async () => {
       await qc.invalidateQueries({ queryKey: earnKeys.page });
     });
-    const link = await screen.findByRole("link", { name: "Money made: $24.50. Earn 50%" });
+    const link = await screen.findByRole("link", { name: "Money made: $24.50 of $65k" });
     expect(moneyPart()).toBe(part);
     expect(part!.contains(link)).toBe(true);
   });
@@ -518,7 +519,7 @@ describe("HomeNext — Money made (Earn, step C; rulings 18 and 24)", () => {
 
   it("starts one GET /api/earn and nothing else of Earn's", async () => {
     renderHomeNext();
-    await screen.findByRole("link", { name: "Money made: $0. Earn 50%" });
+    await screen.findByRole("link", { name: "Money made: $0 of $65k" });
     await settle(100);
     expect(earnRequests()).toEqual(["/api/earn"]);
     const init = vi.mocked(fetch).mock.calls.find(([input]) => String(input) === "/api/earn")![1];
@@ -539,7 +540,7 @@ describe("HomeNext — Money made (Earn, step C; rulings 18 and 24)", () => {
       </QueryClientProvider>,
     );
     renderHomeNext({}, qc);
-    await screen.findByRole("link", { name: "Money made: $0. Earn 50%" });
+    await screen.findByRole("link", { name: "Money made: $0 of $65k" });
     await screen.findByText("other reader has it");
     await settle();
     expect(earnRequests()).toHaveLength(1);
@@ -549,7 +550,7 @@ describe("HomeNext — Money made (Earn, step C; rulings 18 and 24)", () => {
     const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     qc.setQueryData(earnKeys.page, withWhop(5880));
     renderHomeNext({}, qc);
-    expect(screen.getByRole("link", { name: "Money made: $58.80. Earn 50%" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Money made: $58.80 of $65k" })).toBeInTheDocument();
     await settle(100);
     expect(earnRequests()).toEqual([]);
   });
@@ -557,13 +558,13 @@ describe("HomeNext — Money made (Earn, step C; rulings 18 and 24)", () => {
   it("once it has answered, a later failed read keeps the row as it was (Home never shows an error for it)", async () => {
     earnAnswers = [withWhop(2450), 500];
     const { qc } = renderHomeNext();
-    await screen.findByRole("link", { name: "Money made: $24.50. Earn 50%" });
+    await screen.findByRole("link", { name: "Money made: $24.50 of $65k" });
     await act(async () => {
       await qc.invalidateQueries({ queryKey: earnKeys.page });
     });
     await waitFor(() => expect(earnRequests()).toHaveLength(2));
     await settle();
-    expect(screen.getByRole("link", { name: "Money made: $24.50. Earn 50%" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Money made: $24.50 of $65k" })).toBeInTheDocument();
     expect(screen.queryByRole("alert")).toBeNull();
   });
 });

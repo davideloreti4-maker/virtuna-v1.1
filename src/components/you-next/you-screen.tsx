@@ -17,7 +17,7 @@ import { ConnectRow } from "./connect-row";
 import { FactRow } from "./fact-row";
 import { GoalRow } from "./goal-row";
 import { NicheRow } from "./niche-row";
-import { PILL, SettingsRow } from "./row-parts";
+import { ROW_BUTTON, SettingsRow } from "./row-parts";
 import { WhoBlock } from "./who-block";
 import {
   ACCOUNTS_FAILED,
@@ -466,7 +466,7 @@ function Ready(props: YouScreenProps & { retried: boolean }) {
             From your account
           </h2>
           <LineCard line={notReadLine(unread)}>
-            <Button asChild variant="primary" className={PILL}>
+            <Button asChild variant="primary" className={ROW_BUTTON}>
               <Link href="/audience/new">{SET_UP_AUDIENCE}</Link>
             </Button>
           </LineCard>
@@ -479,7 +479,7 @@ function Ready(props: YouScreenProps & { retried: boolean }) {
           <Card className={LIST_CARD}>{connectForm}</Card>
         ) : (
           <LineCard line={CONNECT_LINE}>
-            <Button ref={refFor("connect")} type="button" variant="primary" onClick={() => openRow("connect")} className={PILL}>
+            <Button ref={refFor("connect")} type="button" variant="primary" onClick={() => openRow("connect")} className={ROW_BUTTON}>
               Connect
             </Button>
           </LineCard>
