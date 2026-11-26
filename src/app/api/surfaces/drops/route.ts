@@ -6,14 +6,14 @@
  * ≤6 adapt calls + ONE batched Flash sim), persists to surface_reactions
  * (kind 'drop'), and returns the real cards. No request body (CR-01).
  *
- * ⚠️ 404 unless CONCEPT_V8_ENABLED: flag-off must stay byte-identical INCLUDING
- * no new spend surface (drop economics = owner call #3 — this route must not be
- * reachable in an environment that hasn't opted into v8).
+ * ⚠️ 404 unless REMIX_DROPS_ENABLED (v8 or the new look): flag-off must stay byte-identical
+ * INCLUDING no new spend surface (drop economics = owner call #3 — this route must not be
+ * reachable in an environment that hasn't opted into either).
  */
 
 import { createClient } from "@/lib/supabase/server";
 import { csrfGuard } from "@/lib/http/csrf-guard";
-import { CONCEPT_V8_ENABLED } from "@/lib/flags/concept-v8";
+import { REMIX_DROPS_ENABLED } from "@/lib/flags/remix-drops";
 import { buildLiveDrops } from "@/lib/surfaces/drop-reactions";
 
 export const runtime = "nodejs";
@@ -21,7 +21,7 @@ export const runtime = "nodejs";
 export const maxDuration = 300;
 
 export async function POST(request: Request): Promise<Response> {
-  if (!CONCEPT_V8_ENABLED) {
+  if (!REMIX_DROPS_ENABLED) {
     return Response.json({ error: "not_found" }, { status: 404 });
   }
 
