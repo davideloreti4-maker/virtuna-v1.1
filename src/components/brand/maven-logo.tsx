@@ -11,8 +11,9 @@ import { cn } from "@/lib/utils";
  *
  * New look (`NEXT_PUBLIC_NEW_LOOK`): the mark is redrawn (owner pick 2026-11-19): a deep V with
  * the wings swept out and up, still one tapered brush stroke, symmetric, closing in a single
- * point at the bottom. Same 2.5:1 box, so no call site changes. The standalone assets
- * (`public/brand/*.svg`, `src/app/icon.svg`, `apple-icon.svg`) switch at cut-over.
+ * point at the bottom. Same 2.5:1 box, so no call site changes. Its standalone assets are
+ * `public/brand/next-icon.svg`, `next-apple-icon.svg`, `maven-mark-next.svg` and `next-og-card.tsx`,
+ * picked by the flag; regenerate them with this path (brand-assets.test.ts checks).
  *
  * Wordmark is Inter (the platform typeface), sentence-case, tight tracking. New look: `MavenLogo`
  * draws the lockup (`NextLockup`), a heavier wordmark set against the mark's ink.
