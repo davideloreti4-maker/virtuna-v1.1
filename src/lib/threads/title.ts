@@ -155,3 +155,14 @@ export function simulationChatTitle(input: { userTurn: string | null; handle: st
   const handle = input.handle?.trim().replace(/^@/, "");
   return handle ? `Video by @${handle}` : null;
 }
+
+/**
+ * A stored user turn that started a simulation: a dropped video's file name, or a video link (the
+ * Test field takes a TikTok link). A reopened chat whose unanswered last turn is one waits longer
+ * for its card (composer `REOPENED_SIM_WAIT_MS`): a simulation runs 1 to 4 min.
+ */
+export function isSimulationTurn(raw: unknown): boolean {
+  if (typeof raw !== "string") return false;
+  const text = raw.trim();
+  return videoNameTitle(text) !== null || /^https?:\/\/(www\.|vm\.|m\.)?tiktok\.com\/\S+$/i.test(text);
+}

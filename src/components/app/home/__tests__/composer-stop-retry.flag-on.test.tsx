@@ -879,6 +879,48 @@ describe("a chat reopened while its run still goes on, on the server", () => {
     expect(inField().queryByRole("button", { name: "Stop the run" })).toBeNull();
   });
 
+  // A simulation takes 1 to 4 min (its route's limit is 300 s), so a simulation turn waits longer.
+  const askedWith = (textAsked: string, ago: number) => ({ ...asked(ago), blocks: [{ type: "markdown", props: { text: textAsked } }] });
+
+  it.each([
+    ["a dropped video", "take.mp4"],
+    ["a video link", "https://www.tiktok.com/@creator/video/7300000000000000000"],
+  ])("a simulation turn (%s) 3 min old still shows the wait, and fills in when the card is stored", async (_kind, turn) => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      threadFixture = { ...historyThread(), messages: [...historyThread().messages, askedWith(turn, 3 * 60_000)] };
+      await renderComposer();
+      await waitFor(() => expect(waiting()).toBe(true));
+
+      // The server stores the card; the next read brings it in.
+      threadFixture = {
+        ...historyThread(),
+        messages: [...historyThread().messages, askedWith(turn, 3 * 60_000 + 3_000), msg("m2", "assistant", "Your video holds people to the end.")],
+      };
+      await act(async () => {
+        vi.advanceTimersByTime(3_100);
+      });
+      await waitFor(() => expect(threadText()).toContain("Your video holds people to the end."));
+      expect(waiting()).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("a simulation turn past 5 min: the question alone", async () => {
+    threadFixture = { ...historyThread(), messages: [...historyThread().messages, askedWith("take.mp4", 5 * 60_000 + 5_000)] };
+    await renderComposer();
+    await settle();
+    expect(waiting()).toBe(false);
+  });
+
+  it("a chat turn 3 min old does not wait (its window stays 2 min)", async () => {
+    threadFixture = { ...historyThread(), messages: [...historyThread().messages, asked(3 * 60_000)] };
+    await renderComposer();
+    await settle();
+    expect(waiting()).toBe(false);
+  });
+
   it("a wait whose answer never comes ends at its limit: the question alone", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {

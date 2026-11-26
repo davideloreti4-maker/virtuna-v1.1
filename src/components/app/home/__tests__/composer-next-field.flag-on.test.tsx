@@ -4057,3 +4057,58 @@ describe("thread feel (Task 4): a card's script button names its row (spec §4.7
     expect(bodyOf(requests("/api/tools/chat")[0]!)).toMatchObject({ ask: "Write the script for hook 3.", anchor: h3 });
   });
 });
+
+// ── Production check 2026-11-26: leaving a simulation mid-run left the next chat's field busy ──
+// The run is let go on a thread switch (use-analysis-stream `detachToIdle`), so its request stays
+// open; the Test branch of handleSubmit awaited `stream.start`, which stayed pending with it, and
+// held `submitting` (the field's `busy`) in the next chat until the simulation ended.
+describe("a simulation left mid-run: the next chat's field is free", () => {
+  it("Test run in flight, switch chats: the field is not busy and sends; the run is not aborted", async () => {
+    let controller: ReadableStreamDefaultController<Uint8Array> | null = null;
+    const enc = new TextEncoder();
+    const base = global.fetch;
+    global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/api/analyze")) {
+        calls.push({ url, init });
+        const body = new ReadableStream<Uint8Array>({ start: (c) => void (controller = c) });
+        return { ok: true, status: 200, body, json: async () => ({}) } as unknown as Response;
+      }
+      return base(input, init);
+    }) as typeof fetch;
+
+    threadFixture = historyThread();
+    await renderComposer();
+    await pickSkill("Simulate");
+    fireEvent.change(text(), { target: { value: "https://www.tiktok.com/@creator/video/7300000000000000001" } });
+    fireEvent.click(send());
+    await waitFor(() => expect(requests("/api/analyze")).toHaveLength(1));
+    act(() => controller!.enqueue(enc.encode(`event: started\ndata: ${JSON.stringify({ id: "a1" })}\n\n`)));
+    await waitFor(() => expect(send().getAttribute("aria-busy")).toBe("true"));
+
+    // Leave for another chat while the simulation runs.
+    threadFixture = { ...historyThread(), threadId: "t2" };
+    act(() => useBoardStore.getState().switchThread());
+    await waitFor(() => expect(send().getAttribute("aria-busy")).not.toBe("true"));
+
+    // The run goes on (its card is the server's, in the chat it started in)…
+    const analyzeInit = requests("/api/analyze")[0]!.init;
+    expect(analyzeInit?.signal?.aborted).toBe(false);
+
+    // …and the new chat's field takes a message.
+    await ensurePicked("Chat").catch(() => {});
+    fireEvent.change(text(), { target: { value: "What should I post next?" } });
+    await waitFor(() => expect(send()).not.toBeDisabled());
+    fireEvent.click(send());
+    await waitFor(() => expect(requests("/api/tools/chat").length).toBeGreaterThan(0));
+
+    // The left run ends in the background: nothing of it is drawn here.
+    await act(async () => {
+      controller!.enqueue(enc.encode(`event: complete\ndata: ${JSON.stringify({ overall_score: 50 })}\n\n`));
+      controller!.close();
+      await new Promise((r) => setTimeout(r, 20));
+    });
+    expect(requests("/api/tools/test/card")).toHaveLength(0);
+    expect(analyzeInit?.signal?.aborted).toBe(false);
+  });
+});

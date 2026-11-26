@@ -142,6 +142,31 @@ describe("useAnalysisStream: the creator leaves the chat mid-run (New chat, or a
     stopHearing();
   });
 
+  it("the caller's wait on start() ends at the switch (the next chat's field is free), the run reads on", async () => {
+    const req = analyzeRequest();
+    const { result } = renderHook(() => useAnalysisStream(), { wrapper });
+    let settled = false;
+    act(() => {
+      void result.current.start(INPUT).then(() => (settled = true));
+    });
+    await waitFor(() => expect(calls).toHaveLength(1));
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10));
+    });
+    expect(settled).toBe(false); // on screen: the wait is the run's
+
+    act(() => useBoardStore.getState().switchThread());
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10));
+    });
+    expect(settled).toBe(true);
+    expect(calls[0]!.init?.signal?.aborted).toBe(false);
+    await act(async () => {
+      req.end();
+      await new Promise((r) => setTimeout(r, 10));
+    });
+  });
+
   it("an explicit New analysis (the board's own reset) still cancels", async () => {
     analyzeRequest();
     const { result } = renderHook(() => useAnalysisStream(), { wrapper });
