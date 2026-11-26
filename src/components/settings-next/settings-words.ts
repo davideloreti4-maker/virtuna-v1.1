@@ -20,6 +20,8 @@ export const ACCOUNT_LABEL = "Account";
 export const CANCEL = "Cancel";
 export const CLOSE = "Close";
 export const TRY_AGAIN = "Try again";
+/** Whop's page of the visitor's memberships: where a plan is managed, paid and cancelled. */
+export const MANAGE_HREF = "https://whop.com/hub/memberships";
 
 /* ── 2.1 Plan ─────────────────────────────────────────────────────────────── */
 
