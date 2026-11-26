@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 import { ResetPasswordForm } from "./reset-password-form";
+import { ResetPasswordNext } from "@/components/auth-next/password-reset-next";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 
 export const metadata: Metadata = {
   title: "New Password | Maven",
@@ -25,5 +27,5 @@ export default async function ResetPasswordPage() {
     );
   }
 
-  return <ResetPasswordForm />;
+  return NEW_LOOK_ENABLED ? <ResetPasswordNext /> : <ResetPasswordForm />;
 }

@@ -12,16 +12,11 @@
  * So: two states on one surface, no route change, no app switch.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { InputField } from "@/components/ui/input";
 import { Text } from "@/components/ui/typography";
-import {
-  sendOtp,
-  verifyOtp,
-  OTP_LENGTH,
-  RESEND_COOLDOWN_SECONDS,
-} from "@/lib/auth/otp";
+import { OTP_LENGTH } from "@/lib/auth/otp";
+import { useEmailOtp } from "@/lib/auth/use-email-otp";
 
 export interface EmailOtpFormProps {
   /** Fired once the session is open. The host decides where to go next. */
@@ -31,78 +26,25 @@ export interface EmailOtpFormProps {
   className?: string;
 }
 
-type Stage = "email" | "code";
-
 export function EmailOtpForm({
   onAuthenticated,
   submitLabel = "Continue",
   className,
 }: EmailOtpFormProps) {
-  const [stage, setStage] = useState<Stage>("email");
-  const [email, setEmail] = useState("");
-  const [code, setCode] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
-  const [cooldown, setCooldown] = useState(0);
-  const codeInputRef = useRef<HTMLInputElement>(null);
-
-  // Resend countdown. Cleared on unmount so a fast navigation can't leave an
-  // interval writing into a dead component.
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const id = setInterval(() => setCooldown((c) => (c <= 1 ? 0 : c - 1)), 1000);
-    return () => clearInterval(id);
-  }, [cooldown]);
-
-  // Move the caret to the code field the moment it appears — one less tap on a
-  // phone, at the step where attention is thinnest.
-  useEffect(() => {
-    if (stage === "code") codeInputRef.current?.focus();
-  }, [stage]);
-
-  const handleSendCode = useCallback(async () => {
-    setPending(true);
-    setError(null);
-    const result = await sendOtp(email);
-    setPending(false);
-
-    if (!result.ok) {
-      setError(result.error ?? "Something went wrong. Try again.");
-      return;
-    }
-    setStage("code");
-    setCooldown(RESEND_COOLDOWN_SECONDS);
-  }, [email]);
-
-  const handleVerify = useCallback(
-    async (submittedCode: string) => {
-      setPending(true);
-      setError(null);
-      const result = await verifyOtp(email, submittedCode);
-      setPending(false);
-
-      if (!result.ok) {
-        setError(result.error ?? "Something went wrong. Try again.");
-        setCode("");
-        codeInputRef.current?.focus();
-        return;
-      }
-      onAuthenticated();
-    },
-    [email, onAuthenticated]
-  );
-
-  /**
-   * Auto-submit on the sixth digit. The code is not a decision — there is
-   * nothing to review before pressing a button, so asking for the extra tap
-   * only adds a place to stall.
-   */
-  const handleCodeChange = (raw: string) => {
-    const digits = raw.replace(/\D/g, "").slice(0, OTP_LENGTH);
-    setCode(digits);
-    setError(null);
-    if (digits.length === OTP_LENGTH) void handleVerify(digits);
-  };
+  const {
+    stage,
+    email,
+    setEmail,
+    code,
+    changeCode: handleCodeChange,
+    error,
+    pending,
+    cooldown,
+    codeInputRef,
+    sendCode: handleSendCode,
+    verify: handleVerify,
+    changeEmail,
+  } = useEmailOtp(onAuthenticated);
 
   if (stage === "email") {
     return (
@@ -122,10 +64,7 @@ export function EmailOtpForm({
             autoComplete="email"
             placeholder="you@email.com"
             value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              setError(null);
-            }}
+            onChange={(e) => setEmail(e.target.value)}
             error={error ?? undefined}
           />
           <Button
@@ -197,11 +136,7 @@ export function EmailOtpForm({
           </button>
           <button
             type="button"
-            onClick={() => {
-              setStage("email");
-              setCode("");
-              setError(null);
-            }}
+            onClick={changeEmail}
             className="text-sm text-foreground-secondary transition-colors hover:text-foreground"
           >
             Change email
