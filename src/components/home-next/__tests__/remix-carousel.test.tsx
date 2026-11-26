@@ -86,6 +86,62 @@ describe("RemixCarousel", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  describe("the steps (a mouse has no sideways wheel)", () => {
+    /** Gives every element a 720 box with `scrollWidth` of content and a live scrollLeft: no layout here. */
+    const layout = (scrollWidth: number) => {
+      const props = {
+        clientWidth: { configurable: true, get: () => 720 },
+        scrollWidth: { configurable: true, get: () => scrollWidth },
+      };
+      Object.defineProperties(HTMLElement.prototype, props);
+      return () => {
+        delete (HTMLElement.prototype as unknown as Record<string, unknown>).clientWidth;
+        delete (HTMLElement.prototype as unknown as Record<string, unknown>).scrollWidth;
+      };
+    };
+
+    it("a row that overflows gets Earlier and More, desktop only; Earlier waits at the start; More pages the row", () => {
+      const restore = layout(972);
+      try {
+        render(<RemixCarousel drops={DROPS} status="ready" onRemix={vi.fn()} />);
+        const steps = carousel()!.querySelector<HTMLElement>('[data-part="remix-steps"]')!;
+        expect(steps).toHaveClass("max-md:hidden");
+        const earlier = within(steps).getByRole("button", { name: "Earlier videos" });
+        const more = within(steps).getByRole("button", { name: "More videos" });
+        expect(earlier).toBeDisabled();
+        expect(more).toBeEnabled();
+
+        const list = within(carousel()!).getByRole("list");
+        const scrollBy = vi.fn();
+        list.scrollBy = scrollBy as unknown as typeof list.scrollBy;
+        fireEvent.click(more);
+        expect(scrollBy).toHaveBeenCalledWith(expect.objectContaining({ left: 720 * 0.8 }));
+
+        // At the far end: More waits, Earlier goes back.
+        list.scrollLeft = 252;
+        fireEvent.scroll(list);
+        expect(more).toBeDisabled();
+        expect(earlier).toBeEnabled();
+        fireEvent.click(earlier);
+        expect(scrollBy).toHaveBeenLastCalledWith(expect.objectContaining({ left: -720 * 0.8 }));
+      } finally {
+        restore();
+      }
+    });
+
+    it("a row that fits, or one still warming, has no steps", () => {
+      const restore = layout(720);
+      try {
+        const { rerender } = render(<RemixCarousel drops={DROPS} status="ready" onRemix={vi.fn()} />);
+        expect(carousel()!.querySelector('[data-part="remix-steps"]')).toBeNull();
+        rerender(<RemixCarousel drops={[]} status="warming" onRemix={vi.fn()} />);
+        expect(carousel()!.querySelector('[data-part="remix-steps"]')).toBeNull();
+      } finally {
+        restore();
+      }
+    });
+  });
+
   it("has no accessibility violations", async () => {
     const { container } = render(<RemixCarousel drops={DROPS} status="ready" onRemix={vi.fn()} />);
     const results = await axe(container);
