@@ -2213,7 +2213,7 @@ describe("the run's page plays the creator's own clip", () => {
   it("a link run hands nothing over", async () => {
     holdAnalyzeStarted("run-8");
     await renderComposer();
-    fireEvent.click(pill("Simulate"));
+    await pickSkill("Simulate");
     fireEvent.change(text(), { target: { value: LINK } });
     await waitFor(() => expect(send()).not.toBeDisabled());
     fireEvent.click(send());
