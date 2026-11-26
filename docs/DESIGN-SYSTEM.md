@@ -349,16 +349,21 @@ stalled, not found, no audience, result), `VideoResult` (phone column / desktop 
   `/dev/result?fixture=early&processing=1&elapsed=<s>&groups=<n>[&arriving=<k>][&runframes=<n>][&own=1]`.
 
 The message field and the thread frame (`src/components/thread-next`; spec
-`docs/superpowers/specs/2026-11-20-thread-field-design.md`): `ThreadField` (row 1 `+` · text · send,
-row 2 the pills Simulate · Hooks · Script · Remix · More), `MoreSheet` (the other skills with prices,
-the audience and the platform lens), `NextUserTurn` (the bubble, with a video tile), the "Maven" label
+`docs/superpowers/specs/2026-11-20-thread-field-design.md`; rebuilt 2026-11-26 on the Claude app's
+composer): `ThreadField` (a solid card, radius 20, padding 12; row 1 the text at full width, row 2 one
+toolbar, the same on Home and in a thread: `+` outlined · Skills (once a skill is picked, a soft tag
+"Hooks · 1" with a cross) · the audience ("Audience: @handle", opens the audience sheet) · send, a 32
+ink square, faded while off; no skill pills since 2026-11-26), `MoreSheet` (titled "Skills": every
+skill with its line and price, the picked one marked, then the profile read; the audience and the
+platform lens are in the audience sheet), `NextUserTurn` (the bubble, with a video tile), the "Maven" label
 and `FollowupChips`. Rules of these parts:
 
-- The field is the only glass in a thread (it floats over it); blur as an inline style only, and the
+- The field is solid, not glass (since 2026-11-26): the thread passes behind it and is hidden. The
   folder's guard (`thread-next-guard.test.ts`) refuses colour literals, palette names and backdrop
   utilities.
-- A pill's accessible name is the skill's name and never changes; its price is drawn when selected
-  and read as a description ("1 credit"). A skill picked from More shows on More the same way.
+- The picked skill's tag is named for the skill and never changes; its price is drawn short ("· 1")
+  and read as a description ("1 credit"), also on send. Its label reopens the menu; its cross (or
+  Backspace in an empty text) puts back chat.
 - The field holds one attachment at a time and always says what the send does: a video selects
   Simulate, a file for a profile read returns the field to chat, picking a skill clears a staged file.
 - Next-step chips sit under the last answer only.

@@ -11,7 +11,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 
 vi.mock("@/lib/flags/new-look", () => ({ NEW_LOOK_ENABLED: true }));
 
@@ -73,6 +73,8 @@ const clip = (name = "take.mp4", type = "video/mp4") => new File(["x"], name, { 
 const text = () => screen.getByRole("textbox") as HTMLTextAreaElement;
 const button = (name: string | RegExp) => screen.getByRole("button", { name });
 const picked = () => document.querySelector('[data-part="picked-skill"]');
+/** The picked tag's label: the skill and its drawn price ("Hooks · 1"). */
+const pickedLabel = () => (picked() ? within(picked() as HTMLElement).getAllByRole("button")[0]! : null);
 
 beforeEach(() => {
   vi.spyOn(URL, "createObjectURL").mockImplementation(() => "blob:test/1");
@@ -84,19 +86,20 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("ThreadField on Home: the skills are not in the field", () => {
+describe("ThreadField on Home: no skill pills, here or in a thread (2026-11-26)", () => {
   const PILLS = ["Simulate", "Hooks", "Script", "Remix", "More"];
 
-  it("with `home`, no pills and no More", () => {
-    renderField();
+  it("with `home`, no pills and no More: Skills opens the menu", () => {
+    const { p } = renderField();
     for (const name of PILLS) expect(screen.queryByRole("button", { name })).toBeNull();
+    fireEvent.click(button("Skills"));
+    expect(p.onOpenMore).toHaveBeenCalledTimes(1);
   });
 
-  it("without `home`, the pills and More are there (the thread's field is unchanged)", () => {
+  it("without `home`, the same: no pills, Skills instead", () => {
     renderField({ home: null });
-    for (const name of PILLS) expect(button(name)).toBeInTheDocument();
-    renderField({ home: undefined });
-    expect(screen.getAllByRole("button", { name: "More" })).toHaveLength(2);
+    for (const name of PILLS) expect(screen.queryByRole("button", { name })).toBeNull();
+    expect(button("Skills")).toBeInTheDocument();
   });
 });
 
@@ -116,13 +119,17 @@ describe("ThreadField on Home: the audience", () => {
 });
 
 describe("ThreadField on Home: the picked skill", () => {
-  it("shows as a pill above the text with its price in words", () => {
+  it("shows on the toolbar, under the text, in Skills' place: the price drawn short and said in words", () => {
     const { p, rerender } = renderField({ tool: "hooks", home: home({ picked: { label: "Hooks", price: 1 } }) });
-    expect(picked()).toHaveTextContent(/^Hooks · 1 credit$/);
+    expect(text().compareDocumentPosition(picked()!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Skills" })).toBeNull();
+    expect(pickedLabel()).toHaveTextContent(/^Hooks · 1$/);
+    expect(pickedLabel()).toHaveAccessibleDescription("1 credit");
     rerender(<ThreadField {...p} tool="test" home={home({ picked: { label: "Simulate", price: 10 } })} />);
-    expect(picked()).toHaveTextContent(/^Simulate · 10 credits$/);
+    expect(pickedLabel()).toHaveTextContent(/^Simulate · 10$/);
+    expect(pickedLabel()).toHaveAccessibleDescription("10 credits");
     rerender(<ThreadField {...p} tool="chat" home={home({ picked: { label: "Chat", price: null } })} />);
-    expect(picked()).toHaveTextContent(/^Chat$/);
+    expect(pickedLabel()).toHaveTextContent(/^Chat$/);
   });
 
   it("is not there when nothing is picked", () => {
@@ -218,12 +225,14 @@ describe("ThreadField on Home: the card", () => {
     expect(text()).toHaveAttribute("rows", "1");
   });
 
-  it("is not glass (the thread's field is)", () => {
+  it("is a solid card in both places, never glass (rebuild 2026-11-26)", () => {
     const { unmount } = renderField();
     expect(screen.getByTestId("thread-field").style.backdropFilter).toBe("");
+    expect(screen.getByTestId("thread-field")).toHaveClass("bg-surface", "rounded-2xl");
     unmount();
     renderField({ home: null });
-    expect(screen.getByTestId("thread-field").style.backdropFilter).not.toBe("");
+    expect(screen.getByTestId("thread-field").style.backdropFilter).toBe("");
+    expect(screen.getByTestId("thread-field")).toHaveClass("bg-surface", "rounded-2xl");
   });
 });
 
@@ -287,7 +296,7 @@ describe("ThreadField on Home: Simulate with no video says what to do (A2)", () 
     rerender(<ThreadField {...p} tool="test" home={simulatePicked()} />);
     const add = button("Add a video");
     expect(add).toHaveTextContent(/^Add video$/);
-    expect(add).toHaveClass("bg-action", "text-action-foreground", "rounded-full", "h-9", "tap-44");
+    expect(add).toHaveClass("bg-action", "text-action-foreground", "rounded-md", "h-8", "tap-44");
     expect(document.activeElement).toBe(add);
     const input = screen.getByLabelText("Choose a video file") as HTMLInputElement;
     const click = vi.spyOn(input, "click").mockImplementation(() => {});
@@ -318,43 +327,44 @@ describe("ThreadField on Home: Simulate with no video says what to do (A2)", () 
     expect(button("Add a video")).not.toHaveClass("bg-action");
   });
 
-  it("the thread's field is untouched: Simulate with no video is the round + there", () => {
+  it("the thread's field says the same: Simulate with no video makes + read Add video there too", () => {
     renderField({ tool: "test", home: null });
-    expect(screen.queryByText("Add video")).toBeNull();
+    expect(button("Add a video")).toHaveTextContent(/^Add video$/);
   });
 });
 
 describe("ThreadField on Home: the audience control keeps the handle whole (A3)", () => {
-  it("the prefix is its own span, hidden under 360 px; the name is unchanged", () => {
+  it("the prefix is its own span, shown from 768 up only (the toolbar shares a phone's row); the name is unchanged", () => {
     renderField();
-    expect(audiencePrefix()).toHaveClass("max-[359px]:hidden");
-    expect(audiencePrefix()).not.toHaveClass("max-md:hidden");
+    expect(audiencePrefix()).toHaveClass("max-md:hidden");
     expect(button("Audience: @nia.tests")).toHaveAccessibleName("Audience: @nia.tests");
   });
 
-  it("while the Add video pill shows it is hidden under 768 px too", () => {
+  it("the handle truncates rather than wrapping when the row is crowded (Add video and a picked skill)", () => {
     renderField({ tool: "test", home: simulatePicked() });
-    expect(audiencePrefix()).toHaveClass("max-[359px]:hidden", "max-md:hidden");
+    expect(audiencePrefix().parentElement).toHaveClass("min-w-0", "truncate");
+    expect(button("Audience: @nia.tests")).toHaveClass("min-w-0");
     expect(button("Audience: @nia.tests")).toHaveAccessibleName("Audience: @nia.tests");
   });
 });
 
 describe("ThreadField on Home: the picked pill's cross answers the pointer (A10)", () => {
-  it("has a hover and a pressed tint, from the pill's own ink", () => {
+  it("has a hover tint and darkens its ink on the soft tag", () => {
     renderField({ tool: "hooks", home: home({ picked: { label: "Hooks", price: 1 } }) });
-    expect(button("Remove Hooks")).toHaveClass("hover:bg-action-foreground/15", "active:bg-action-foreground/25");
+    expect(button("Remove Hooks")).toHaveClass("hover:bg-active", "hover:text-foreground");
   });
 });
 
 describe("ThreadField on Home: the messages line up with the text (A5)", () => {
   const messages = () => screen.getByRole("alert").parentElement;
-  it("on Home the block takes the text's left padding; the thread's is unchanged", () => {
+  it("the block takes the text's left padding (px-1.5) in both layouts", () => {
     const { unmount } = renderField({ errors: ["That upload didn't go through."] });
-    expect(messages()).toHaveClass("px-1");
-    expect(messages()).not.toHaveClass("px-2");
+    expect(messages()).toHaveClass("px-1.5");
+    expect(text()).toHaveClass("px-1.5");
     unmount();
     renderField({ home: null, errors: ["That upload didn't go through."] });
-    expect(messages()).toHaveClass("px-2");
+    expect(messages()).toHaveClass("px-1.5");
+    expect(text()).toHaveClass("px-1.5");
   });
 });
 

@@ -1,8 +1,8 @@
 /** @vitest-environment happy-dom */
 
 /**
- * MoreSheet — the other skills, the profile read and the audience, rendered for real (Radix
- * underneath). The one stand-in is `matchMedia`, which decides phone sheet or desktop popover.
+ * MoreSheet — the field's skill menu ("Skills" since 2026-11-26): every skill and the profile read,
+ * rendered for real (Radix underneath). The audience and the lens live in the audience sheet now. The one stand-in is `matchMedia`, which decides phone sheet or desktop popover.
  * The last block wires the sheet to the real ThreadField the way the composer will.
  */
 
@@ -13,7 +13,7 @@ import { act, cleanup, fireEvent, render, screen, within } from "@testing-librar
 vi.mock("@/lib/flags/new-look", () => ({ NEW_LOOK_ENABLED: true }));
 
 import type { ToolId } from "@/components/app/home/composer-controls";
-import { MORE_SKILLS, MoreSheet, type MoreSheetProps } from "../more-sheet";
+import { MORE_SKILLS, MoreSheet, SKILL_MENU, type MoreSheetProps } from "../more-sheet";
 import { ThreadField } from "../thread-field";
 
 /** The viewport, as `matchMedia` reports it: desktop is 768 and wider. */
@@ -47,15 +47,11 @@ function props(over: Partial<MoreSheetProps> = {}): MoreSheetProps {
     onSelectSkill: vi.fn(),
     onReadFile: vi.fn(),
     readFilePrice: 2,
-    audienceLabel: "Your TikTok audience",
-    onOpenAudience: vi.fn(),
-    lens: "tiktok",
-    onLensChange: vi.fn(),
     ...over,
   };
 }
 
-const dialog = () => screen.getByRole("dialog", { name: "More" });
+const dialog = () => screen.getByRole("dialog", { name: "Skills" });
 const row = (name: RegExp) => within(dialog()).getByRole("button", { name });
 
 beforeEach(() => viewport(false));
@@ -65,7 +61,7 @@ afterEach(() => {
 });
 
 describe("MoreSheet on the phone", () => {
-  it("is a bottom sheet named More, with each skill's line and price", () => {
+  it("is a bottom sheet named Skills, with each skill's line and price", () => {
     render(<MoreSheet {...props()} />);
     expect(dialog()).toBeInTheDocument();
     expect(document.querySelector('[data-slot="sheet-handle"]')).not.toBeNull();
@@ -111,24 +107,18 @@ describe("MoreSheet on the phone", () => {
     expect(p.onSelectSkill).not.toHaveBeenCalled();
   });
 
-  it("the audience row names today's audience and opens its sheet", () => {
-    const p = props();
-    render(<MoreSheet {...p} />);
-    fireEvent.click(row(/^Audience: Your TikTok audience/));
-    expect(p.onOpenAudience).toHaveBeenCalledTimes(1);
-    expect(p.onOpenChange).toHaveBeenCalledWith(false);
-  });
-
   // Final review (6): the names a screen reader reads.
-  it("Audience is a heading one level under the sheet's title", () => {
+  it("its title is Skills; it holds no audience row and no platform lens (the field's audience control has them)", () => {
     render(<MoreSheet {...props()} />);
-    expect(within(dialog()).getByRole("heading", { level: 2, name: "More" })).toBeInTheDocument();
-    expect(within(dialog()).getByRole("heading", { level: 3, name: "Audience" })).toBeInTheDocument();
+    expect(within(dialog()).getByRole("heading", { level: 2, name: "Skills" })).toBeInTheDocument();
+    expect(within(dialog()).queryByRole("button", { name: /^Audience/ })).toBeNull();
+    expect(within(dialog()).queryByRole("group", { name: "Platform" })).toBeNull();
   });
 
-  it('the audience row is named "Audience: <the audience>"', () => {
-    render(<MoreSheet {...props({ audienceLabel: "General" })} />);
-    expect(within(dialog()).getByRole("button", { name: "Audience: General" })).toBeInTheDocument();
+  it("marks the skill the next send uses, and no other", () => {
+    render(<MoreSheet {...props({ selected: "explore" })} />);
+    expect(row(/^Explore/)).toHaveAttribute("aria-current", "true");
+    expect(row(/^Ideas/)).not.toHaveAttribute("aria-current");
   });
 
   it.each([
@@ -146,18 +136,6 @@ describe("MoreSheet on the phone", () => {
   it("a row without a price is described by its line alone", () => {
     render(<MoreSheet {...props({ skills: [{ id: "chat", label: "Chat", line: "Ask anything", price: null }] })} />);
     expect(within(dialog()).getByRole("button", { name: "Chat" })).toHaveAccessibleDescription("Ask anything");
-  });
-
-  it("the lens shows the current platform and changes it", () => {
-    const p = props({ lens: "tiktok" });
-    render(<MoreSheet {...p} />);
-    const lens = within(dialog()).getByRole("group", { name: "Platform" });
-    expect(within(lens).getByRole("button", { name: "TikTok" })).toHaveAttribute("aria-pressed", "true");
-    expect(within(lens).getByRole("button", { name: "Instagram" })).toHaveAttribute("aria-pressed", "false");
-    fireEvent.click(within(lens).getByRole("button", { name: "Instagram" }));
-    expect(p.onLensChange).toHaveBeenCalledWith("instagram");
-    fireEvent.click(within(lens).getByRole("button", { name: "YouTube" }));
-    expect(p.onLensChange).toHaveBeenCalledWith("youtube");
   });
 
   it("Escape closes it", () => {
@@ -210,7 +188,7 @@ describe("MoreSheet on desktop", () => {
   });
 });
 
-describe("More with the field, wired as the composer wires it", () => {
+describe("Skills with the field, wired as the composer wires it", () => {
   const PRICES: Partial<Record<ToolId, number>> = { idea: 1, explore: 1, account: 5, hooks: 1, test: 10, script: 2, remix: 10 };
 
   function Composer() {
@@ -243,9 +221,13 @@ describe("More with the field, wired as the composer wires it", () => {
           ariaLabel="Ask anything about your content"
           sendLabel="Send message"
           anchorRef={anchorRef}
-          moreArmed={picked ? { label: picked.label, price: picked.price } : null}
           moreOpen={open}
           onOpenMore={() => setOpen(true)}
+          bar={{
+            audience: { label: "Your TikTok audience", open: false, onOpen: () => {} },
+            picked: picked ? { label: picked.label, price: picked.price } : null,
+            onClearPicked: () => setTool("chat"),
+          }}
         />
         <MoreSheet {...props({ open, onOpenChange: setOpen, onSelectSkill: setTool })} anchorRef={anchorRef} />
       </>
@@ -255,29 +237,31 @@ describe("More with the field, wired as the composer wires it", () => {
   it.each([
     ["phone", false],
     ["desktop", true],
-  ] as const)("on the %s: a pick shows on the More button and the text has focus again", async (_view, wide) => {
+  ] as const)("on the %s: a pick shows as the toolbar's tag, priced, and the text has focus again", async (_view, wide) => {
     viewport(wide);
     render(<Composer />);
-    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    fireEvent.click(screen.getByRole("button", { name: "Skills" }));
     fireEvent.click(row(/^Explore/));
     // Radix hands focus back on a timer once the layer is gone.
     await act(async () => {
       await new Promise((r) => setTimeout(r, 20));
     });
     expect(screen.queryByRole("dialog")).toBeNull();
-    const armed = screen.getByRole("button", { name: "Explore" });
-    expect(armed).toHaveAttribute("aria-pressed", "true");
+    const tag = document.querySelector('[data-part="picked-skill"]') as HTMLElement;
+    const armed = within(tag).getByRole("button", { name: "Explore" });
     expect(armed).toHaveAccessibleDescription("1 credit");
+    expect(screen.queryByRole("button", { name: "Skills" })).toBeNull();
+    expect(within(tag).getByRole("button", { name: "Remove Explore" })).toBeInTheDocument();
     expect(document.activeElement).toBe(screen.getByRole("textbox"));
   });
 
   it.each([
     ["phone", false],
     ["desktop", true],
-  ] as const)("on the %s: closed without a pick, focus goes back to More, not to the page", async (_view, wide) => {
+  ] as const)("on the %s: closed without a pick, focus goes back to Skills, not to the page", async (_view, wide) => {
     viewport(wide);
     render(<Composer />);
-    const more = screen.getByRole("button", { name: "More" });
+    const more = screen.getByRole("button", { name: "Skills" });
     more.focus();
     fireEvent.click(more);
     expect(dialog()).toBeInTheDocument();
@@ -286,7 +270,7 @@ describe("More with the field, wired as the composer wires it", () => {
       await new Promise((r) => setTimeout(r, 20));
     });
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(document.activeElement).toBe(screen.getByRole("button", { name: "More" }));
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Skills" }));
   });
 
   /** Radix listens for an outside pointerdown from the next tick after it opens. */
@@ -295,10 +279,10 @@ describe("More with the field, wired as the composer wires it", () => {
       await new Promise((r) => setTimeout(r, 20));
     });
 
-  it("on the desktop: a second tap on More closes it, and More says so", async () => {
+  it("on the desktop: a second tap on Skills closes it, and Skills says so", async () => {
     viewport(true);
     render(<Composer />);
-    const more = () => screen.getByRole("button", { name: "More" });
+    const more = () => screen.getByRole("button", { name: "Skills" });
     fireEvent.pointerDown(more());
     fireEvent.click(more(), { detail: 1 }); // a pointer click
     expect(dialog()).toBeInTheDocument();
@@ -311,27 +295,10 @@ describe("More with the field, wired as the composer wires it", () => {
     expect(more()).toHaveAttribute("aria-expanded", "false");
   });
 
-  // Final review (5): the audience row opens today's audience sheet, which takes focus itself
-  // (the composer moves it there); More must not pull it back behind that sheet.
-  it.each([
-    ["phone", false],
-    ["desktop", true],
-  ] as const)("on the %s: after the audience row, focus is not handed back to More", async (_view, wide) => {
-    viewport(wide);
-    render(<Composer />);
-    const more = screen.getByRole("button", { name: "More" });
-    more.focus();
-    fireEvent.click(more);
-    fireEvent.click(within(dialog()).getByRole("button", { name: /^Audience: / }));
-    await settle();
-    expect(screen.queryByRole("dialog")).toBeNull();
-    expect(document.activeElement).not.toBe(screen.getByRole("button", { name: "More" }));
-  });
-
-  it("on the desktop: a tap outside closes it without pulling focus to More", async () => {
+  it("on the desktop: a tap outside closes it without pulling focus to Skills", async () => {
     viewport(true);
     render(<Composer />);
-    const more = screen.getByRole("button", { name: "More" });
+    const more = screen.getByRole("button", { name: "Skills" });
     more.focus();
     fireEvent.click(more);
     expect(dialog()).toBeInTheDocument();
@@ -339,7 +306,24 @@ describe("More with the field, wired as the composer wires it", () => {
     fireEvent.pointerDown(document.body);
     await settle();
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(document.activeElement).not.toBe(screen.getByRole("button", { name: "More" }));
+    expect(document.activeElement).not.toBe(screen.getByRole("button", { name: "Skills" }));
+  });
+
+  it("the tag's label reopens the menu, to change the skill", () => {
+    viewport(false);
+    render(<Composer />);
+    fireEvent.click(screen.getByRole("button", { name: "Skills" }));
+    fireEvent.click(row(/^Ideas/));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Ideas" }));
+    expect(dialog()).toBeInTheDocument();
+  });
+});
+
+describe("SKILL_MENU", () => {
+  it("lists every skill: the four Home leads with (and Edit), then the rest", () => {
+    expect(SKILL_MENU.map((skill) => skill.id)).toEqual(["test", "edit", "hooks", "script", "remix", "idea", "explore", "account"]);
+    expect(SKILL_MENU[0]?.label).toBe("Simulate");
   });
 });
 

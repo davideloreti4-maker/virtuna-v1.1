@@ -168,6 +168,8 @@ const shell = () => screen.getByTestId("composer-shell");
 /** A skill card (named for its skill alone). */
 const card = (name: (typeof SKILLS)[number]) => screen.getByRole("button", { name });
 const picked = () => field().querySelector('[data-part="picked-skill"]');
+/** The picked skill as the field states it (its tag's description, also send's): "Hooks · 1 credit". The tag itself draws "Hooks · 1". */
+const pickedName = () => picked()?.querySelector("[hidden]")?.textContent;
 const settle = (ms = 30) => act(async () => { await new Promise((r) => setTimeout(r, ms)); });
 const clip = () => new File(["video-bytes"], "take.mp4", { type: "video/mp4" });
 
@@ -263,9 +265,13 @@ describe("Home: /home with no chat open", () => {
   it("a card picks its skill: the field names it with its price, the cards go, the text has focus; its cross puts them back", async () => {
     await renderHome();
     fireEvent.click(card("Hooks"));
-    expect(picked()?.textContent).toBe("Hooks · 1 credit");
+    expect(pickedName()).toBe("Hooks · 1 credit");
+    // The tag draws the short price; its button is named for the skill alone.
+    expect(within(picked() as HTMLElement).getByRole("button", { name: "Hooks" })).toHaveTextContent("Hooks · 1");
     expect(text().placeholder).toBe("What's the video about?");
-    for (const name of SKILLS) expect(screen.queryByRole("button", { name })).toBeNull();
+    // The cards go (the field's own tag, named for the skill, is not a card).
+    for (const name of SKILLS)
+      expect(screen.queryAllByRole("button", { name }).filter((b) => !b.closest('[data-part="picked-skill"]'))).toHaveLength(0);
     expect(document.activeElement).toBe(text());
 
     fireEvent.click(inField().getByRole("button", { name: "Remove Hooks" }));
@@ -280,7 +286,7 @@ describe("Home: /home with no chat open", () => {
   it("Simulate: the field names it at 10 credits, asks for a video or a link, and focus is on +", async () => {
     await renderHome();
     fireEvent.click(card("Simulate"));
-    expect(picked()?.textContent).toBe("Simulate · 10 credits");
+    expect(pickedName()).toBe("Simulate · 10 credits");
     expect(text().placeholder).toBe("Add a video or paste a link");
     expect(document.activeElement).toBe(inField().getByRole("button", { name: "Add a video" }));
     await settle(100);
@@ -291,7 +297,7 @@ describe("Home: /home with no chat open", () => {
     await renderHome();
     fireEvent.change(inField().getByLabelText("Choose a video file"), { target: { files: [clip()] } });
     expect(screen.getByTestId("field-video")).toBeInTheDocument();
-    expect(picked()?.textContent).toBe("Simulate · 10 credits");
+    expect(pickedName()).toBe("Simulate · 10 credits");
     // A staged video is not a send: nothing uploads, nothing runs.
     await settle(100);
     expect(spending()).toEqual([]);
@@ -311,7 +317,7 @@ describe("Home: /home with no chat open", () => {
     expect(screen.getByTestId("home-next")).toBeInTheDocument();
     expect(within(field()).getByRole("alert")).toHaveTextContent("That upload didn't go through.");
     expect(screen.getByTestId("field-video")).toBeInTheDocument();
-    expect(picked()?.textContent).toBe("Simulate · 10 credits");
+    expect(pickedName()).toBe("Simulate · 10 credits");
     expect(await screen.findByRole("heading", { level: 1, name: /^Good (morning|afternoon|evening)/ })).toBeInTheDocument();
     expect(requests("/api/analyze")).toHaveLength(0);
   });
@@ -414,7 +420,7 @@ describe("Home: /home with no chat open", () => {
     await renderHome();
     expect(shell()).toHaveAttribute("data-layout", "home");
     fireEvent.click(card("Hooks"));
-    expect(picked()?.textContent).toBe("Hooks · 1 credit");
+    expect(pickedName()).toBe("Hooks · 1 credit");
     fireEvent.change(text(), { target: { value: "meal prep" } });
     fireEvent.keyDown(text(), { key: "Enter" });
 
@@ -457,7 +463,7 @@ describe("Home: /home with no chat open", () => {
     const menu = await screen.findByRole("dialog", { name: "Skills" });
     expect(within(menu).getByRole("button", { name: "Hooks" })).toHaveAttribute("data-enter", "true");
     fireEvent.keyDown(text(), { key: "Enter" });
-    expect(picked()?.textContent).toBe("Hooks · 1 credit");
+    expect(pickedName()).toBe("Hooks · 1 credit");
     expect(text().value).toBe("");
     expect(screen.queryByRole("dialog", { name: "Skills" })).toBeNull();
     await settle();
@@ -481,7 +487,7 @@ describe("Home: /home with no chat open", () => {
     fireEvent.change(text(), { target: { value: "/idea" } });
     await screen.findByRole("dialog", { name: "Skills" });
     fireEvent.keyDown(text(), { key: "Enter" });
-    expect(picked()?.textContent).toBe("Ideas · 1 credit");
+    expect(pickedName()).toBe("Ideas · 1 credit");
     expect(text().value).toBe("");
   });
 
@@ -527,13 +533,13 @@ describe("Home: /home with no chat open", () => {
 
 // ── The final fix round (brief 2026-11-23) ───────────────────────────────────
 describe("Home: the final fix round", () => {
-  it("A1: More skills opens the More sheet; Ideas picked there is the field's pill, nothing sent", async () => {
+  it("A1: More skills opens the Skills menu; Ideas picked there is the field's tag, nothing sent", async () => {
     await renderHome();
     fireEvent.click(screen.getByRole("button", { name: "More skills" }));
-    const more = await screen.findByRole("dialog", { name: "More" });
-    fireEvent.click(within(more).getByRole("button", { name: /^Ideas/ }));
-    expect(picked()?.textContent).toBe("Ideas · 1 credit");
-    expect(screen.queryByRole("dialog", { name: "More" })).toBeNull();
+    const menu = await screen.findByRole("dialog", { name: "Skills" });
+    fireEvent.click(within(menu).getByRole("button", { name: /^Ideas/ }));
+    expect(pickedName()).toBe("Ideas · 1 credit");
+    expect(screen.queryByRole("dialog", { name: "Skills" })).toBeNull();
     expect(text().placeholder).toBe("What do you want ideas about?");
     await settle(100);
     expect(spending()).toEqual([]);
@@ -610,7 +616,7 @@ describe("Home: the final fix round", () => {
     fireEvent.change(text(), { target: { value: "/explore" } });
     await screen.findByRole("dialog", { name: "Skills" });
     fireEvent.keyDown(text(), { key: "Enter" });
-    expect(picked()?.textContent).toMatch(/^Explore/);
+    expect(pickedName()).toMatch(/^Explore/);
     expect(shell()).toHaveAttribute("data-layout", "home");
     expect(screen.queryByRole("button", { name: "Search" })).toBeNull();
     // The one button named "Run Explore" is the field's send.
@@ -965,7 +971,7 @@ describe("leaving Home: the cursor stays where the creator types", () => {
     fireEvent.click(inField().getByRole("button", { name: "Remove Simulate" }));
     fireEvent.click(card("Hooks"));
     fireEvent.change(text(), { target: { value: "meal prep" } });
-    expect(picked()?.textContent).toBe("Hooks · 1 credit");
+    expect(pickedName()).toBe("Hooks · 1 credit");
     const before = requests("/api/threads/open").length;
 
     act(() => useShellStore.getState().focusField());
@@ -1013,7 +1019,7 @@ describe("leaving Home: the cursor stays where the creator types", () => {
     act(() => useShellStore.getState().focusField());
 
     expect(screen.getByTestId("field-video")).toBeInTheDocument();
-    expect(picked()?.textContent).toBe("Simulate · 10 credits");
+    expect(pickedName()).toBe("Simulate · 10 credits");
     await act(async () => {
       made.resolve();
     });
@@ -1064,14 +1070,16 @@ describe("Branch A under the new look never draws the old arrival (final fix B6)
 });
 
 describe("Home's other side: a chat with content", () => {
-  it("is the thread: docked field with its pills, no greeting", async () => {
+  it("is the thread: docked field with its toolbar (Skills, the audience; no skill pills), no greeting", async () => {
     document.cookie = `${ACTIVE_THREAD_COOKIE}=t1; path=/`;
     threadFixture = chatThread();
     renderWithClient(<Composer />);
     await screen.findByText("Start with the mirror shot.");
     expect(shell()).toHaveAttribute("data-layout", "thread");
     expect(screen.getByTestId("next-field-dock").contains(field())).toBe(true);
-    for (const name of [...SKILLS, "More"]) expect(inField().getByRole("button", { name })).toBeInTheDocument();
+    expect(inField().getByRole("button", { name: "Skills" })).toBeInTheDocument();
+    expect(inField().getByRole("button", { name: /^Audience: / })).toBeInTheDocument();
+    for (const name of [...SKILLS, "More"]) expect(inField().queryByRole("button", { name })).toBeNull();
     expect(screen.queryByRole("heading", { level: 1, name: /^Good (morning|afternoon|evening)/ })).toBeNull();
     expect(screen.queryByTestId("home-next")).toBeNull();
   });

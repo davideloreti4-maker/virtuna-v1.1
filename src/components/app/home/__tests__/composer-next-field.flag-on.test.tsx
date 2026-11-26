@@ -130,14 +130,31 @@ const bodyOf = (c: Call) => JSON.parse(String(c.init?.body ?? "{}")) as Record<s
 const field = () => screen.getByTestId("thread-field");
 const inField = () => within(field());
 const text = () => inField().getByRole("textbox") as HTMLTextAreaElement;
-/** A pill by name, never the send button (whose name follows the selected skill). */
-const pill = (name: string) => {
-  const found = inField()
-    .getAllByRole("button", { name })
-    .filter((b) => b.getAttribute("type") !== "submit");
-  expect(found).toHaveLength(1);
-  return found[0]!;
+/** The toolbar's picked-skill tag (rebuild 2026-11-26: no pills), or null while the field is chat. */
+const pickedTag = () => field().querySelector<HTMLElement>('[data-part="picked-skill"]');
+/** The picked skill's name as the tag names it ("Hooks", "Account"), or null in chat. */
+const picked = () => pickedTag()?.querySelector("button[data-field-skills]")?.getAttribute("aria-label") ?? null;
+/** The control that opens the skill menu: Skills in chat, the tag's label once a skill is picked. */
+const skillsTrigger = () => field().querySelector<HTMLButtonElement>("button[data-field-skills]")!;
+/** Opens the skill menu from the field and returns it. */
+const openSkills = async () => {
+  fireEvent.click(skillsTrigger());
+  return screen.findByRole("dialog", { name: "Skills" });
 };
+/** Picks a skill as a creator does: Skills, then its row in the menu (the menu closes). */
+const pickSkill = async (name: string | RegExp) => {
+  const menu = await openSkills();
+  fireEvent.click(within(menu).getByRole("button", { name }));
+  await waitFor(() => expect(screen.queryByRole("dialog", { name: "Skills" })).toBeNull());
+};
+/** Picks a skill unless it is already the picked one (a field that may be mid-reload: waits for it). */
+const ensurePicked = async (name: string) => {
+  await waitFor(() => expect(field().querySelector("button[data-field-skills]")).not.toBeNull());
+  if (picked() !== name) await pickSkill(name);
+  expect(picked()).toBe(name);
+};
+/** Back to chat: the picked tag's cross. */
+const clearSkill = (name: string) => fireEvent.click(inField().getByRole("button", { name: `Remove ${name}` }));
 const send = () => field().querySelector('button[type="submit"]') as HTMLButtonElement;
 /** The block the composer measures for the bottom reserve: around the field's outer element. */
 const fieldBlock = () => field().parentElement!.parentElement!;
@@ -258,10 +275,10 @@ describe("the composer renders the new field under the flag", () => {
     expect(send()).toBeDisabled();
   });
 
-  it("pill Hooks selects hooks, and the next send calls the hooks stream once with the typed topic", async () => {
+  it("Skills → Hooks selects hooks, and the next send calls the hooks stream once with the typed topic", async () => {
     await renderComposer();
-    fireEvent.click(pill("Hooks"));
-    expect(pill("Hooks")).toHaveAttribute("aria-pressed", "true");
+    await pickSkill("Hooks");
+    expect(picked()).toBe("Hooks");
     expect(text().placeholder).toBe("A topic for your hooks");
     expect(text()).toHaveAttribute("aria-label", "Hook topic (leave empty for Auto)");
     expect(send()).toHaveAttribute("aria-label", "Generate hooks");
@@ -272,24 +289,24 @@ describe("the composer renders the new field under the flag", () => {
     await waitFor(() => expect(requests("/api/tools/hooks")).toHaveLength(1));
     expect(bodyOf(requests("/api/tools/hooks")[0]!).ask).toBe("meal prep for busy students");
     // The one-shot: the field is back to chat.
-    await waitFor(() => expect(pill("Hooks")).toHaveAttribute("aria-pressed", "false"));
+    await waitFor(() => expect(picked()).toBeNull());
     expect(text().placeholder).toBe("Message Maven");
     expect(requests("/api/tools/chat")).toHaveLength(0);
   });
 
-  it("a second tap on a pill goes back to chat", async () => {
+  it("the picked tag's cross goes back to chat", async () => {
     await renderComposer();
-    fireEvent.click(pill("Script"));
-    expect(pill("Script")).toHaveAttribute("aria-pressed", "true");
-    fireEvent.click(pill("Script"));
-    expect(pill("Script")).toHaveAttribute("aria-pressed", "false");
+    await pickSkill("Script");
+    expect(picked()).toBe("Script");
+    clearSkill("Script");
+    expect(picked()).toBeNull();
     expect(text().placeholder).toBe("Message Maven");
   });
 
   it("Simulate selects the video test (`test`): its placeholder, its price, and a link runs the video read", async () => {
     await renderComposer();
-    fireEvent.click(pill("Simulate"));
-    expect(pill("Simulate")).toHaveAttribute("aria-pressed", "true");
+    await pickSkill("Simulate");
+    expect(picked()).toBe("Simulate");
     expect(text().placeholder).toBe("Add a video or paste a link");
     expect(text()).toHaveAttribute("aria-label", "Paste a TikTok link");
     // Fix round 1, ruling A: under the flag the send button says what it does with Simulate.
@@ -314,7 +331,7 @@ describe("the composer renders the new field under the flag", () => {
     const take = clip();
     fireEvent.change(inField().getByLabelText("Choose a video file"), { target: { files: [take] } });
 
-    expect(pill("Simulate")).toHaveAttribute("aria-pressed", "true");
+    expect(picked()).toBe("Simulate");
     expect(screen.getByTestId("field-video")).toBeInTheDocument();
     expect(text().placeholder).toBe("Send to simulate this video");
     expect(send()).not.toBeDisabled();
@@ -338,9 +355,9 @@ describe("the composer renders the new field under the flag", () => {
     await renderComposer();
     fireEvent.change(inField().getByLabelText("Choose a video file"), { target: { files: [clip()] } });
     expect(screen.getByTestId("field-video")).toBeInTheDocument();
-    fireEvent.click(pill("Simulate")); // back to chat
+    clearSkill("Simulate"); // back to chat
     expect(screen.queryByTestId("field-video")).toBeNull();
-    fireEvent.click(pill("Simulate")); // the same file is still there
+    await pickSkill("Simulate"); // the same file is still there
     expect(screen.getByTestId("field-video")).toBeInTheDocument();
     expect(text().placeholder).toBe("Send to simulate this video");
   });
@@ -360,7 +377,7 @@ describe("the composer renders the new field under the flag", () => {
     fireEvent.change(inField().getByLabelText("Choose a video file"), { target: { files: [take] } });
     fireEvent.click(send());
     await screen.findByText(/Couldn’t finish that read/);
-    fireEvent.click(pill("Simulate"));
+    await pickSkill("Simulate");
     expect(screen.getByTestId("field-video")).toBeInTheDocument();
     expect(text().placeholder).toBe("Send to simulate this video");
     fireEvent.click(screen.getByRole("button", { name: "Retry the video test" }));
@@ -368,13 +385,12 @@ describe("the composer renders the new field under the flag", () => {
     expect(upload.mock.calls[1]![2]).toBe(take);
   });
 
-  it('More\'s "Read a file" clicks the evidence input inside the tap', async () => {
+  it('the skill menu\'s "Read a file" clicks the evidence input inside the tap', async () => {
     await renderComposer();
     const input = evidenceInput();
     expect(input).not.toBeNull(); // still mounted under the flag
     const click = vi.spyOn(input, "click").mockImplementation(() => {});
-    fireEvent.click(pill("More"));
-    const sheet = await screen.findByRole("dialog");
+    const sheet = await openSkills();
     fireEvent.click(within(sheet).getByRole("button", { name: /read a file/i }));
     // Synchronously, in the same tap: no await between the click and the picker.
     expect(click).toHaveBeenCalledTimes(1);
@@ -423,7 +439,7 @@ describe("the composer renders the new field under the flag", () => {
   it("Stop sends one abort and no second run", async () => {
     holdHooksOpen = true;
     await renderComposer();
-    fireEvent.click(pill("Hooks"));
+    await pickSkill("Hooks");
     fireEvent.change(text(), { target: { value: "gym myths" } });
     fireEvent.click(send());
 
@@ -443,14 +459,11 @@ describe("the composer renders the new field under the flag", () => {
     expect(requests("/api/tools/hooks")).toHaveLength(1);
   });
 
-  it("a skill picked in More shows on the More button with its price", async () => {
+  it("a skill picked in the menu shows on the toolbar's tag with its price", async () => {
     await renderComposer();
-    fireEvent.click(pill("More"));
-    const sheet = await screen.findByRole("dialog");
-    fireEvent.click(within(sheet).getByRole("button", { name: /^Ideas/ }));
-    const armed = await waitFor(() => pill("Ideas"));
-    expect(armed).toHaveAttribute("aria-pressed", "true");
-    expect(armed.textContent).toBe(`Ideas · ${priceOf("idea")}`);
+    await pickSkill(/^Ideas/);
+    expect(picked()).toBe("Ideas");
+    expect(within(pickedTag()!).getByRole("button", { name: "Ideas" }).textContent).toBe(`Ideas · ${priceOf("idea")}`);
     expect(send()).toHaveAttribute("aria-label", "Generate ideas");
     expect(text().placeholder).toBe("A topic for ideas");
   });
@@ -458,11 +471,9 @@ describe("the composer renders the new field under the flag", () => {
   it("Explore selected keeps its params popover reachable", async () => {
     await renderComposer();
     expect(screen.queryByRole("button", { name: "Search" })).toBeNull();
-    fireEvent.click(pill("More"));
-    const sheet = await screen.findByRole("dialog");
-    fireEvent.click(within(sheet).getByRole("button", { name: /^Explore/ }));
+    await pickSkill(/^Explore/);
     const search = await screen.findByRole("button", { name: "Search" });
-    expect(pill("Explore")).toHaveAttribute("aria-pressed", "true");
+    expect(picked()).toBe("Explore");
     // Inside the measured block, so the thread's bottom reserve makes room for it.
     expect(fieldBlock().contains(search)).toBe(true);
   });
@@ -476,7 +487,7 @@ describe("the composer renders the new field under the flag", () => {
     expect(menu).toHaveAttribute("data-side", "top");
     expect(within(menu).getByRole("button", { name: "Hooks" })).toHaveAttribute("data-enter", "true");
     fireEvent.keyDown(text(), { key: "Enter" });
-    expect(pill("Hooks")).toHaveAttribute("aria-pressed", "true");
+    expect(picked()).toBe("Hooks");
     expect(text().value).toBe("");
   });
 
@@ -485,7 +496,7 @@ describe("the composer renders the new field under the flag", () => {
     fireEvent.change(text(), { target: { value: "/" } });
     const menu = await screen.findByRole("dialog", { name: "Skills" });
     fireEvent.click(within(menu).getByRole("button", { name: "Script" }));
-    expect(pill("Script")).toHaveAttribute("aria-pressed", "true");
+    expect(picked()).toBe("Script");
     expect(text().value).toBe("");
     expect(screen.queryByRole("dialog", { name: "Skills" })).toBeNull();
   });
@@ -497,7 +508,7 @@ describe("the composer renders the new field under the flag", () => {
     fireEvent.keyDown(text(), { key: "Escape" });
     expect(text().value).toBe("");
     expect(screen.queryByRole("dialog", { name: "Skills" })).toBeNull();
-    expect(pill("Hooks")).toHaveAttribute("aria-pressed", "false");
+    expect(picked()).toBeNull();
   });
 
   it("Enter takes the row the menu marks: `/sim` is Simulate, the video test", async () => {
@@ -506,7 +517,7 @@ describe("the composer renders the new field under the flag", () => {
     const menu = await screen.findByRole("dialog", { name: "Skills" });
     expect(within(menu).getByRole("button", { name: "Simulate" })).toHaveAttribute("data-enter", "true");
     fireEvent.keyDown(text(), { key: "Enter" });
-    expect(pill("Simulate")).toHaveAttribute("aria-pressed", "true");
+    expect(picked()).toBe("Simulate");
     expect(text().value).toBe("");
   });
 });
@@ -735,8 +746,8 @@ describe("fix round 1: one attachment at a time", () => {
     // The staged video itself is gone, not just hidden behind chat (fix round 3): selecting
     // Simulate again shows no tile, and Simulate cannot be sent without a video or a link.
     await waitFor(() => expect(screen.queryByTestId("field-evidence")).toBeNull());
-    fireEvent.click(pill("Simulate"));
-    expect(pill("Simulate")).toHaveAttribute("aria-pressed", "true");
+    await pickSkill("Simulate");
+    expect(picked()).toBe("Simulate");
     expect(screen.queryByTestId("field-video")).toBeNull();
     expect(send()).toBeDisabled();
     fireEvent.click(send());
@@ -749,7 +760,7 @@ describe("fix round 1: one attachment at a time", () => {
     fireEvent.drop(field(), { dataTransfer: { files: [shot, clip()], types: ["Files"] } });
     expect(screen.getByTestId("field-video")).toBeInTheDocument();
     expect(screen.queryByTestId("field-evidence")).toBeNull();
-    expect(pill("Simulate")).toHaveAttribute("aria-pressed", "true");
+    expect(picked()).toBe("Simulate");
   });
 
   it("a dropped screenshot clears a staged video", async () => {
@@ -761,7 +772,7 @@ describe("fix round 1: one attachment at a time", () => {
     // Gone, not hidden (fix round 3): remove the evidence, select Simulate, and there is no
     // video to tile or to send.
     fireEvent.click(inField().getByRole("button", { name: "Remove attachment" }));
-    fireEvent.click(pill("Simulate"));
+    await pickSkill("Simulate");
     expect(screen.queryByTestId("field-video")).toBeNull();
     expect(send()).toBeDisabled();
     fireEvent.click(send());
@@ -778,20 +789,19 @@ describe("fix round 1: copy under the flag", () => {
       ["Remix", "Paste a TikTok link"],
       ["Hooks", "A topic for your hooks"],
     ] as const) {
-      fireEvent.click(pill(name));
+      await pickSkill(name);
       expect(text().placeholder).toBe(placeholder);
-      fireEvent.click(pill(name)); // back to chat
+      clearSkill(name); // back to chat
     }
     for (const [name, label, placeholder] of [
       [/^Ideas/, "Ideas", "A topic for ideas"],
       [/^Explore/, "Explore", "A niche to explore"],
       [/^Read my account/, "Account", "Read your account"],
     ] as const) {
-      fireEvent.click(pill("More"));
-      fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name }));
+      await pickSkill(name);
       await waitFor(() => expect(text().placeholder).toBe(placeholder));
-      fireEvent.click(pill(label)); // the armed More button: back to chat
-      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      expect(picked()).toBe(label);
+      clearSkill(label); // the tag's cross: back to chat
     }
     expect(text().placeholder).toBe("Message Maven");
   });
@@ -853,7 +863,7 @@ describe("fix round 1: the measured block", () => {
   });
 });
 
-describe("fix round 1: More's audience row", () => {
+describe("fix round 1: the audience (now the field's own control)", () => {
   const AUDIENCE_ID = "3f2a7c1e-5b6d-4e8f-9a0b-1c2d3e4f5a6b";
   it("opens the audience sheet, and a pick runs its path (persist + the thread pin)", async () => {
     audiencesFixture = [
@@ -872,9 +882,7 @@ describe("fix round 1: More's audience row", () => {
     ];
     await renderComposer();
     await waitFor(() => expect(requests("/api/audiences").length).toBeGreaterThan(0));
-    fireEvent.click(pill("More"));
-    const sheet = await screen.findByRole("dialog");
-    fireEvent.click(within(sheet).getByRole("button", { name: "Audience: General" }));
+    fireEvent.click(inField().getByRole("button", { name: "Audience: General" }));
 
     const audienceSheet = await screen.findByRole("dialog", { name: "Audience" });
     fireEvent.click(within(audienceSheet).getByRole("button", { name: "Gym beginners" }));
@@ -882,9 +890,8 @@ describe("fix round 1: More's audience row", () => {
     await waitFor(() => expect(requests("/api/settings/last-audience")).toHaveLength(1));
     expect(bodyOf(requests("/api/settings/last-audience")[0]!)).toEqual({ audienceId: AUDIENCE_ID });
     await waitFor(() => expect(requests("/api/threads/t1").filter((c) => c.init?.method === "PATCH")).toHaveLength(1));
-    // More names the new audience.
-    fireEvent.click(pill("More"));
-    expect(within(await screen.findByRole("dialog")).getByRole("button", { name: "Audience: Gym beginners" })).toBeInTheDocument();
+    // The field's audience control names the new audience.
+    await waitFor(() => expect(inField().getByRole("button", { name: "Audience: Gym beginners" })).toBeInTheDocument());
   });
 });
 
@@ -897,18 +904,16 @@ describe("the audience sheet (Home plan, Task 1)", () => {
     { id: OWN_ID, name: "Gym beginners", mode: "socials", is_general: false, is_preset: false, platform: "tiktok", personas: [], source_account_id: "acct-1" },
   ];
 
-  async function openFromMore() {
+  async function openFromField() {
     await renderComposer();
     await waitFor(() => expect(requests("/api/audiences").length).toBeGreaterThan(0));
-    fireEvent.click(pill("More"));
-    const more = await screen.findByRole("dialog", { name: "More" });
-    fireEvent.click(within(more).getByRole("button", { name: "Audience: General" }));
+    fireEvent.click(inField().getByRole("button", { name: "Audience: General" }));
     return screen.findByRole("dialog", { name: "Audience" });
   }
 
   it("lists the creator's own audience and General in use; a tap on the other persists it and closes the sheet", async () => {
     audiencesFixture = LIST;
-    const sheet = await openFromMore();
+    const sheet = await openFromField();
     expect(within(sheet).getByRole("button", { name: "Gym beginners" })).toHaveAttribute("aria-pressed", "false");
     expect(within(sheet).getByRole("button", { name: "General" })).toHaveAttribute("aria-pressed", "true");
     expect(within(sheet).queryByRole("button", { name: "Growth Audience" })).toBeNull();
@@ -933,11 +938,11 @@ describe("the audience sheet (Home plan, Task 1)", () => {
 describe("fix round 2", () => {
   it("staging evidence with Simulate selected returns to chat: no pill lit, send reads and runs the profile read only", async () => {
     await renderComposer();
-    fireEvent.click(pill("Simulate"));
-    expect(pill("Simulate")).toHaveAttribute("aria-pressed", "true");
+    await pickSkill("Simulate");
+    expect(picked()).toBe("Simulate");
 
     fireEvent.change(evidenceInput(), { target: { files: [new File(["png"], "shot.png", { type: "image/png" })] } });
-    expect(field().querySelectorAll('button[aria-pressed="true"]')).toHaveLength(0);
+    expect(picked()).toBeNull();
     expect(send()).toHaveAttribute("aria-label", "Read this evidence");
     expect(text().placeholder).toBe("Message Maven");
 
@@ -950,21 +955,19 @@ describe("fix round 2", () => {
 
   it("a dropped screenshot with Hooks selected also returns to chat", async () => {
     await renderComposer();
-    fireEvent.click(pill("Hooks"));
+    await pickSkill("Hooks");
     fireEvent.drop(field(), { dataTransfer: { files: [new File(["png"], "shot.png", { type: "image/png" })], types: ["Files"] } });
-    expect(field().querySelectorAll('button[aria-pressed="true"]')).toHaveLength(0);
+    expect(picked()).toBeNull();
     expect(send()).toHaveAttribute("aria-label", "Read this evidence");
   });
 
-  it("Read my account armed from More reads \"Account · 5\"; More's row keeps its full name", async () => {
+  it("Read my account picked from the menu reads \"Account · 5\" on the tag; the menu's row keeps its full name", async () => {
     await renderComposer();
-    fireEvent.click(pill("More"));
-    const sheet = await screen.findByRole("dialog");
+    const sheet = await openSkills();
     expect(within(sheet).getByRole("button", { name: /^Read my account/ })).toBeInTheDocument();
     fireEvent.click(within(sheet).getByRole("button", { name: /^Read my account/ }));
-    const armed = await waitFor(() => pill("Account"));
-    expect(armed).toHaveAttribute("aria-pressed", "true");
-    expect(armed.textContent).toBe(`Account · ${priceOf("account")}`);
+    await waitFor(() => expect(picked()).toBe("Account"));
+    expect(within(pickedTag()!).getByRole("button", { name: "Account" }).textContent).toBe(`Account · ${priceOf("account")}`);
     expect(send()).toHaveAttribute("aria-label", "Read my account");
   });
 });
@@ -979,9 +982,9 @@ describe("fix round 3: selecting a skill clears staged evidence", () => {
     await renderComposer();
     stageShot();
     expect(screen.getByTestId("field-evidence")).toBeInTheDocument();
-    fireEvent.click(pill("Hooks"));
+    await pickSkill("Hooks");
     expect(screen.queryByTestId("field-evidence")).toBeNull();
-    expect(pill("Hooks")).toHaveAttribute("aria-pressed", "true");
+    expect(picked()).toBe("Hooks");
     expect(send()).toHaveAttribute("aria-label", "Generate hooks");
 
     fireEvent.change(text(), { target: { value: "gym myths" } });
@@ -991,28 +994,27 @@ describe("fix round 3: selecting a skill clears staged evidence", () => {
     expect(requests("/api/tools/profile")).toHaveLength(0);
   });
 
-  it("…the same for a skill picked in More, and for one picked with `/`", async () => {
+  it("…the same for Ideas from the menu, and for one picked with `/`", async () => {
     await renderComposer();
     stageShot();
-    fireEvent.click(pill("More"));
-    fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: /^Ideas/ }));
+    await pickSkill(/^Ideas/);
     await waitFor(() => expect(screen.queryByTestId("field-evidence")).toBeNull());
     expect(send()).toHaveAttribute("aria-label", "Generate ideas");
 
-    fireEvent.click(pill("Ideas")); // back to chat
+    clearSkill("Ideas"); // back to chat
     stageShot();
     expect(screen.getByTestId("field-evidence")).toBeInTheDocument();
     fireEvent.change(text(), { target: { value: "/scr" } });
     const menu = await screen.findByRole("dialog", { name: "Skills" });
     expect(within(menu).getByRole("button", { name: "Script" })).toHaveAttribute("data-enter", "true");
     fireEvent.keyDown(text(), { key: "Enter" });
-    expect(pill("Script")).toHaveAttribute("aria-pressed", "true");
+    expect(picked()).toBe("Script");
     expect(screen.queryByTestId("field-evidence")).toBeNull();
   });
 
   it("returning to chat keeps the evidence (only a skill clears it)", async () => {
     await renderComposer();
-    fireEvent.click(pill("Hooks"));
+    await pickSkill("Hooks");
     stageShot(); // staging returns the field to chat (round 2) and keeps the file
     expect(screen.getByTestId("field-evidence")).toBeInTheDocument();
     expect(send()).toHaveAttribute("aria-label", "Read this evidence");
@@ -1036,7 +1038,7 @@ describe("the live Simulate turn shows the staged video above the bubble", () =>
 
   it("a link run has no file: no tile", async () => {
     await renderComposer();
-    fireEvent.click(pill("Simulate"));
+    await pickSkill("Simulate");
     fireEvent.change(text(), { target: { value: "https://www.tiktok.com/@creator/video/7300000000000000000" } });
     fireEvent.click(send());
     await screen.findByText("https://www.tiktok.com/@creator/video/7300000000000000000", { selector: "p" });
@@ -1154,7 +1156,7 @@ describe("a failed Simulate turn keeps only its own video", () => {
     failAnalyze();
     await renderComposer();
     const link = "https://www.tiktok.com/@creator/video/7300000000000000000";
-    fireEvent.click(pill("Simulate"));
+    await pickSkill("Simulate");
     fireEvent.change(text(), { target: { value: link } });
     fireEvent.click(send());
     await screen.findByText(/Couldn’t finish that read/);
@@ -1257,11 +1259,8 @@ describe("final review: a finished video does not come back (1)", () => {
     expect(bodyOf(requests("/api/tools/test/card")[0]!)).toEqual({ analysisId: "run-1" });
     await waitFor(() => expect(requests("/api/threads/open").length).toBeGreaterThan(reloadsBefore));
 
-    await waitFor(() => {
-      if (pill("Simulate").getAttribute("aria-pressed") !== "true") fireEvent.click(pill("Simulate"));
-      expect(pill("Simulate")).toHaveAttribute("aria-pressed", "true");
-      expect(screen.queryByTestId("field-video")).toBeNull();
-    });
+    await ensurePicked("Simulate");
+    await waitFor(() => expect(screen.queryByTestId("field-video")).toBeNull());
     expect(screen.queryByTestId("field-brief")).toBeNull();
     expect(text().placeholder).toBe("Add a video or paste a link");
     expect(send()).toBeDisabled();
@@ -1284,8 +1283,8 @@ describe("final review: a finished video does not come back (1)", () => {
     // Another thread with content, so the field stays the docked one (an empty chat is Home).
     threadFixture = { ...historyThread(), threadId: "t2" };
     act(() => useBoardStore.getState().switchThread());
-    await waitFor(() => expect(pill("Simulate")).toHaveAttribute("aria-pressed", "false"));
-    fireEvent.click(pill("Simulate"));
+    await waitFor(() => expect(picked()).toBeNull());
+    await pickSkill("Simulate");
     expect(screen.queryByTestId("field-video")).toBeNull();
     expect(screen.queryByTestId("field-brief")).toBeNull();
     expect(send()).toBeDisabled();
@@ -1332,7 +1331,7 @@ describe("final review: one run per send (2)", () => {
     // Simulate with text that is not a link and no video: canSubmit is false, nothing runs.
     // A link typed afterwards sends, so no latch was left behind.
     await renderComposer();
-    fireEvent.click(pill("Simulate"));
+    await pickSkill("Simulate");
     fireEvent.change(text(), { target: { value: "not a link" } });
     fireEvent.keyDown(text(), { key: "Enter" });
     fireEvent.change(text(), { target: { value: "https://www.tiktok.com/@creator/video/7460113355847362834" } });
@@ -1355,7 +1354,7 @@ describe("final review: errors do not stick (4)", () => {
 
     fireEvent.click(send()); // fails again, Simulate still selected (a bail keeps the arm)
     await waitFor(() => expect(field().textContent).toContain(message));
-    fireEvent.click(pill("Hooks"));
+    await pickSkill("Hooks");
     expect(field().textContent).not.toContain(message);
   });
 
@@ -1372,7 +1371,7 @@ describe("final review: errors do not stick (4)", () => {
 
     fireEvent.drop(field(), { dataTransfer: { files: [pdf()], types: ["Files"] } });
     expect(field().textContent).toContain("That file type isn't supported yet");
-    fireEvent.click(pill("Script"));
+    await pickSkill("Script");
     expect(field().textContent).not.toContain("That file type isn't supported yet");
   });
 
@@ -1386,8 +1385,8 @@ describe("final review: errors do not stick (4)", () => {
   });
 });
 
-describe("final review: More → Audience hands focus to the audience sheet (5)", () => {
-  it("focus lands inside the audience sheet, not on More behind it", async () => {
+describe("final review: the audience control hands focus to the audience sheet (5)", () => {
+  it("focus lands inside the audience sheet, not on the field behind it", async () => {
     audiencesFixture = [
       {
         id: "3f2a7c1e-5b6d-4e8f-9a0b-1c2d3e4f5a6b",
@@ -1404,19 +1403,16 @@ describe("final review: More → Audience hands focus to the audience sheet (5)"
     ];
     await renderComposer();
     await waitFor(() => expect(requests("/api/audiences").length).toBeGreaterThan(0));
-    const more = pill("More");
-    more.focus();
-    fireEvent.click(more);
-    const sheet = await screen.findByRole("dialog", { name: "More" });
-    fireEvent.click(within(sheet).getByRole("button", { name: /^Audience: / }));
+    const audience = inField().getByRole("button", { name: /^Audience: / });
+    audience.focus();
+    fireEvent.click(audience);
     const audienceSheet = await screen.findByRole("dialog", { name: "Audience" });
-    // Radix hands focus back on a timer once More's layer is gone.
     await act(async () => {
       await new Promise((r) => setTimeout(r, 30));
     });
-    // The audience sheet took the focus itself (Radix: its first control), and More did not pull it back.
+    // The audience sheet took the focus itself (Radix: its first control); the control behind it did not keep it.
     expect(audienceSheet.contains(document.activeElement)).toBe(true);
-    expect(document.activeElement).not.toBe(pill("More"));
+    expect(document.activeElement).not.toBe(audience);
   });
 });
 
@@ -1440,7 +1436,7 @@ describe("final review: Enter submits like the send button (7)", () => {
     const menu = await screen.findByRole("dialog", { name: "Skills" });
     expect(within(menu).getByRole("button", { name: "Remix" })).toHaveAttribute("data-enter", "true");
     fireEvent.keyDown(text(), { key: "Enter" });
-    expect(pill("Remix")).toHaveAttribute("aria-pressed", "true");
+    expect(picked()).toBe("Remix");
     expect(requests("/api/tools/chat")).toHaveLength(0);
   });
 });
@@ -1477,7 +1473,7 @@ describe("residual fix: a run's inputs are recorded where it is armed", () => {
   const link = "https://www.tiktok.com/@creator/video/7460113355847362834";
   /** Simulate selected, a clip picked and sent; resolves once its seal's card POST and reload ran. */
   async function sendClip(f: File, run: number) {
-    if (pill("Simulate").getAttribute("aria-pressed") !== "true") fireEvent.click(pill("Simulate"));
+    await ensurePicked("Simulate");
     fireEvent.change(inField().getByLabelText("Choose a video file"), { target: { files: [f] } });
     expect(screen.getByTestId("field-video")).toBeInTheDocument();
     await waitFor(() => expect(send()).not.toBeDisabled());
@@ -1489,11 +1485,8 @@ describe("residual fix: a run's inputs are recorded where it is armed", () => {
   }
   /** Simulate again: no tile, and with no link send has nothing to run. */
   async function expectNoStagedClip() {
-    await waitFor(() => {
-      if (pill("Simulate").getAttribute("aria-pressed") !== "true") fireEvent.click(pill("Simulate"));
-      expect(pill("Simulate")).toHaveAttribute("aria-pressed", "true");
-      expect(screen.queryByTestId("field-video")).toBeNull();
-    });
+    await ensurePicked("Simulate");
+    await waitFor(() => expect(screen.queryByTestId("field-video")).toBeNull());
     expect(send()).toBeDisabled();
   }
   const settle = () => act(async () => { await new Promise((r) => setTimeout(r, 100)); });
@@ -1559,13 +1552,13 @@ describe("residual fix: a run's inputs are recorded where it is armed", () => {
     }) as typeof fetch;
     threadFixture = seededThread();
     await renderComposer();
-    fireEvent.click(pill("Simulate"));
+    await pickSkill("Simulate");
     fireEvent.change(inField().getByLabelText("Choose a video file"), { target: { files: [clip()] } });
     expect(screen.getByTestId("field-video")).toBeInTheDocument();
     // The clip's own run fails: it stays staged for its retry (and its run's record stays too).
     fireEvent.click(send());
     await screen.findByText(/Couldn’t finish that read/);
-    if (pill("Simulate").getAttribute("aria-pressed") !== "true") fireEvent.click(pill("Simulate"));
+    await ensurePicked("Simulate");
     expect(screen.getByTestId("field-video")).toBeInTheDocument();
     expect(upload).toHaveBeenCalledTimes(1);
 
@@ -1617,8 +1610,7 @@ describe("residual fix: a run's inputs are recorded where it is armed", () => {
       return base(input, init);
     }) as typeof fetch;
     await renderComposer();
-    fireEvent.click(pill("More"));
-    fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: /^Explore/ }));
+    await pickSkill(/^Explore/);
     fireEvent.click(await screen.findByRole("button", { name: "Search" }));
     // The popover's own button, not the field's send (whose name is also "Run Explore").
     const runs = await screen.findAllByRole("button", { name: "Run Explore" });
@@ -1627,7 +1619,7 @@ describe("residual fix: a run's inputs are recorded where it is armed", () => {
     expect(requests("/api/tools/explore")).toHaveLength(1);
 
     // Back to chat while Explore still streams, a message, Enter.
-    fireEvent.click(pill("Explore"));
+    clearSkill("Explore");
     await waitFor(() => expect(text().placeholder).toBe("Message Maven"));
     fireEvent.change(text(), { target: { value: "and one more thing" } });
     fireEvent.keyDown(text(), { key: "Enter" });
@@ -1660,7 +1652,7 @@ describe("residual fix: a run's inputs are recorded where it is armed", () => {
       return base(input, init);
     }) as typeof fetch;
     await renderComposer();
-    fireEvent.click(pill("Hooks"));
+    await pickSkill("Hooks");
     fireEvent.change(text(), { target: { value: "meal prep" } });
     fireEvent.keyDown(text(), { key: "Enter" });
     const retry = await screen.findByRole("button", { name: /retry/i });
@@ -1725,7 +1717,7 @@ describe("residual fix, round 2: the latch frees send when a run says done befor
   async function afterHooksDone() {
     hooksDoneThenHold();
     await renderComposer();
-    fireEvent.click(pill("Hooks"));
+    await pickSkill("Hooks");
     fireEvent.change(text(), { target: { value: "gym myths" } });
     fireEvent.click(send());
     await waitFor(() => expect(requests("/api/tools/hooks")).toHaveLength(1));
@@ -1771,7 +1763,7 @@ describe("residual fix, round 2: a chat sent while a run seals does not become t
       return base(input, init);
     }) as typeof fetch;
     await renderComposer();
-    fireEvent.click(pill("Simulate"));
+    await pickSkill("Simulate");
     fireEvent.change(inField().getByLabelText("Choose a video file"), {
       target: { files: [new File(["a"], "a.mp4", { type: "video/mp4" })] },
     });
@@ -1780,13 +1772,13 @@ describe("residual fix, round 2: a chat sent while a run seals does not become t
     await waitFor(() => expect(requests("/api/tools/test/card")).toHaveLength(1));
 
     // While the card POST is pending: clip B staged, back to chat, a chat line sent.
-    if (pill("Simulate").getAttribute("aria-pressed") !== "true") fireEvent.click(pill("Simulate"));
+    await ensurePicked("Simulate");
     fireEvent.change(inField().getByLabelText("Choose a video file"), {
       target: { files: [new File(["b"], "b.mp4", { type: "video/mp4" })] },
     });
     expect(screen.getByTestId("field-video")).toBeInTheDocument();
-    fireEvent.click(pill("Simulate"));
-    await waitFor(() => expect(pill("Simulate")).toHaveAttribute("aria-pressed", "false"));
+    clearSkill("Simulate");
+    await waitFor(() => expect(picked()).toBeNull());
     fireEvent.change(text(), { target: { value: "quick question" } });
     await waitFor(() => expect(send()).not.toBeDisabled());
     fireEvent.click(send());
@@ -1802,8 +1794,8 @@ describe("residual fix, round 2: a chat sent while a run seals does not become t
       await new Promise((r) => setTimeout(r, 200));
     });
     expect(requests("/api/threads/open").length).toBeGreaterThan(reloads);
-    fireEvent.click(pill("Simulate"));
-    await waitFor(() => expect(pill("Simulate")).toHaveAttribute("aria-pressed", "true"));
+    await pickSkill("Simulate");
+    await waitFor(() => expect(picked()).toBe("Simulate"));
     expect(screen.getByTestId("field-video")).toBeInTheDocument();
     expect(upload).toHaveBeenCalledTimes(1);
   });
@@ -1986,7 +1978,7 @@ describe("task 6: the thread's header", () => {
       await new Promise((r) => setTimeout(r, 20));
     });
 
-    fireEvent.click(pill("Hooks"));
+    await pickSkill("Hooks");
     fireEvent.change(text(), { target: { value: "gym hooks" } });
     fireEvent.click(send());
     await waitFor(() => expect(requests("/api/tools/hooks")).toHaveLength(1));
@@ -2348,7 +2340,7 @@ describe("thread feel (Task 1): a sent turn sits at the top", () => {
     const el = layOut(geo);
     grown(ro);
 
-    fireEvent.click(pill("Hooks"));
+    await pickSkill("Hooks");
     askInField("gym myths");
     await waitFor(() => expect(turnsIn()).toHaveLength(2));
     geo.tops.push(1330);
@@ -2388,8 +2380,7 @@ describe("thread feel (Task 1): a sent turn sits at the top", () => {
     el.scrollTop = 400;
     fireEvent.scroll(el);
 
-    fireEvent.click(pill("More"));
-    fireEvent.click(within(await screen.findByRole("dialog")).getByRole("button", { name: /^Explore/ }));
+    await pickSkill(/^Explore/);
     fireEvent.click(await screen.findByRole("button", { name: "Search" }));
     // The popover's own button, not the field's send (whose name is also "Run Explore").
     const runs = await screen.findAllByRole("button", { name: "Run Explore" });
@@ -2639,7 +2630,7 @@ describe("thread feel (Task 1): a sent turn sits at the top", () => {
     const el = layOut(geo);
     grown(ro);
 
-    fireEvent.click(pill("Hooks"));
+    await pickSkill("Hooks");
     fireEvent.click(send()); // nothing typed: Auto, no bubble
     await waitFor(() => expect(turnsIn()).toHaveLength(2));
     expect(turnsIn()[1]!.dataset.turn).toBe("answer");
@@ -2658,8 +2649,8 @@ describe("thread feel (Task 1): a sent turn sits at the top", () => {
     el.scrollTop = 400;
     fireEvent.scroll(el);
     holdStream("/api/tools/hooks");
-    await waitFor(() => expect(pill("Hooks")).toHaveAttribute("aria-pressed", "false"));
-    fireEvent.click(pill("Hooks"));
+    await waitFor(() => expect(picked()).toBeNull());
+    await pickSkill("Hooks");
     await waitFor(() => expect(send()).not.toBeDisabled());
     fireEvent.click(send());
     await waitFor(() => expect(requests("/api/tools/hooks")).toHaveLength(2));
@@ -2738,7 +2729,7 @@ describe("thread feel (Task 1): a sent turn sits at the top", () => {
     }
     /** A link sent to Simulate, refused: its turn is the tail, with its failure and a Retry. */
     async function failedVideoTurn() {
-      fireEvent.click(pill("Simulate"));
+      await pickSkill("Simulate");
       fireEvent.change(text(), { target: { value: link } });
       fireEvent.click(send());
       await screen.findByText(/Couldn’t finish that read/);
@@ -3028,7 +3019,7 @@ describe("thread feel (Task 4): the field shows Stop only until the answer is in
     await waitFor(() => expect(requests("/api/tools/chat")).toHaveLength(1));
     await chat.push("dispatch", { skill: "hooks" });
     await chat.push("stage", { name: "Generating", status: "done" });
-    fireEvent.click(pill("Script"));
+    await pickSkill("Script");
     expect(stopButton()).toBeEnabled();
     for (const block of MEAL_PREP_HOOKS) await chat.push("block", { block });
     await waitFor(() => expect(stopButton()).toBeNull());
@@ -3066,7 +3057,7 @@ describe("thread feel (Task 4): the field shows Stop only until the answer is in
   it("a skill's own run (Hooks): Stop until its cards are in, then the arrow, off, until the run says done", async () => {
     const run = holdStream("/api/tools/hooks");
     await renderComposer();
-    fireEvent.click(pill("Hooks"));
+    await pickSkill("Hooks");
     askInField("gym myths");
     await waitFor(() => expect(requests("/api/tools/hooks")).toHaveLength(1));
     await run.push("stage", { name: "Generating", status: "active" });
@@ -3335,7 +3326,7 @@ describe("thread depth (Task 2): a follow-up tapped while the last answer's stre
     const run = holdStream("/api/tools/hooks");
     holdChat(); // the script's run, when it goes, stays on screen as the live turn
     await renderComposer();
-    fireEvent.click(pill("Hooks"));
+    await pickSkill("Hooks");
     askInField(ASK);
     await waitFor(() => expect(requests("/api/tools/hooks")).toHaveLength(1));
     await run.push("stage", { name: "Generating", status: "done" });
@@ -3788,7 +3779,7 @@ describe("thread feel (Task 4): a chat with no title is named in its header at o
     const run = holdStream("/api/tools/hooks");
     await renderComposer();
     expect(await headerNamed("New chat")).toBeInTheDocument();
-    fireEvent.click(pill("Hooks"));
+    await pickSkill("Hooks");
     askInField("gym myths for beginners");
     await waitFor(() => expect(requests("/api/tools/hooks")).toHaveLength(1));
     await waitMs(30);
@@ -3851,7 +3842,7 @@ describe("thread feel (Task 4): a chat with no title is named in its header at o
     answer("/api/threads/list", { threads: [{ id: "t1", title: "Meal prep for busy students", updated_at: "", created_at: "", pinned_at: null }] });
     await renderComposer();
     expect(await headerNamed("Meal prep for busy students")).toBeInTheDocument();
-    fireEvent.click(pill("Hooks"));
+    await pickSkill("Hooks");
     askInField("gym myths for beginners");
     await waitFor(() => expect(requests("/api/tools/hooks")).toHaveLength(1));
     await waitMs(30);
@@ -3915,7 +3906,7 @@ describe("thread feel (Task 4): the list of chats is read again once a run is in
     await waitFor(() => expect(lists()).toBeGreaterThan(0));
     await waitMs(30);
     const before = lists();
-    fireEvent.click(pill("Hooks"));
+    await pickSkill("Hooks");
     askInField("gym myths");
     await waitFor(() => expect(requests("/api/tools/hooks")).toHaveLength(1));
     await run.push("stage", { name: "Generating", status: "done" });
