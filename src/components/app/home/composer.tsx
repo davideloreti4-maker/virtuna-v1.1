@@ -106,6 +106,7 @@ import {
 } from "./composer-controls";
 // ── Composer v8 (CONCEPT_V8_ENABLED — platform concept Phase 1) ──────────────
 import { CONCEPT_V8_ENABLED } from "@/lib/flags/concept-v8";
+import { REMIX_DROPS_ENABLED } from "@/lib/flags/remix-drops";
 // ── The new look (NEW_LOOK_ENABLED — plan 2026-11-20, the thread field) ──────
 import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 import { rememberRunVideo } from "@/lib/result/run-video";
@@ -1252,11 +1253,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // see handleSelectAudience. Flag-off: enabled=false → the hook is inert.
   // New look: the drops are back on Home as the remix carousel (owner 2026-11-26), so they warm there
   // too: the same daily, cached warm (≤6 adapt calls + one batched Flash on a miss, once a day per
-  // audience). The route itself 404s without CONCEPT_V8, so it stays the gate in both looks.
+  // audience). Owner 2026-11-26 "enable it always": the new look warms them with or without v8
+  // (REMIX_DROPS_ENABLED opens the routes); the legacy look still needs v8 on ambient v2.
   const [warmAudienceKey, setWarmAudienceKey] = useState<string>("general");
   const dropsEnabled =
-    CONCEPT_V8_ENABLED &&
-    (NEW_LOOK_ENABLED || AMBIENT_V2_ENABLED) &&
+    (NEW_LOOK_ENABLED || (CONCEPT_V8_ENABLED && AMBIENT_V2_ENABLED)) &&
     !hasConversationContent &&
     !startEngaged &&
     !rehydrating;
@@ -1673,7 +1674,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       // v8 Phase 2: advance the shelf's warm key only AFTER the persist settles —
       // the drops route server-resolves the audience, so a key that leads the PUT
       // would cache the OLD audience's cards under the NEW key (use-lazy-warm doc).
-      if (CONCEPT_V8_ENABLED) void put.then(() => setWarmAudienceKey(newId ?? "general"));
+      if (REMIX_DROPS_ENABLED) void put.then(() => setWarmAudienceKey(newId ?? "general"));
     }
     // WR-02: reconcile the active skill with the new audience's mode. If the current
     // tool isn't valid in the new mode (e.g. "simulate" lingering after a General →
