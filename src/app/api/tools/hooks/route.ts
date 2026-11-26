@@ -54,6 +54,8 @@ import { runHooksPipeline } from "@/lib/tools/runners/hooks-runner";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { getQwenClient, QWEN_REASONING_MODEL } from "@/lib/engine/qwen/client";
 import { KC_CHAT_SYSTEM_PROMPT } from "@/lib/kc/compiled";
+import { withChatVoice, hooksClosingPrompt } from "@/lib/tools/chat-voice";
+import { plainDashes } from "@/lib/tools/plain-dashes";
 import { resolveThreadAudience } from "@/lib/audience/resolve-thread-audience";
 import { requireSocialsAudience } from "@/lib/audience/require-socials-audience";
 import { goalIntentToLens, parseIntentLens } from "@/lib/audience/intent-lens";
@@ -362,23 +364,19 @@ export async function POST(request: Request): Promise<Response> {
         // Emitted via event: followup so the client renders it inline before reload.
         if (blocks.length > 0) {
           try {
-            // Build a compact run summary the model can reference (honesty spine: real data only)
-            const hookLines = blocks
-              .slice(0, 3)
-              .map((b) => `Hook #${b.props.rank} (${b.props.band}): "${b.props.hookLine}"`)
-              .join("\n");
-            const followupPrompt = `You just generated ${blocks.length} ranked hooks for this creator. Here are the top hooks:
-
-${hookLines}
-
-Write ONE short sentence: a concrete observation about what stands out in these results (the strongest hook, an interesting pattern, or a differentiator), followed by a single offered next step (e.g. refine the top hook, write a script for #1, or test it on SIM-1 Max). Be direct and specific — reference the actual hook lines. Do not use bullet points. Keep it under 40 words.`;
+            // The hooks by their own words, in rank order: "Hook #1 (Strong)" was read back as
+            // "Card 1" (chat-voice.ts).
+            const followupPrompt = hooksClosingPrompt(
+              blocks.length,
+              blocks.slice(0, 3).map((b) => b.props.hookLine),
+            );
 
             const ai = getQwenClient();
             let followupText = "";
             const followupParams = {
               model: QWEN_REASONING_MODEL,
               messages: [
-                { role: "system" as const, content: KC_CHAT_SYSTEM_PROMPT },
+                { role: "system" as const, content: withChatVoice(KC_CHAT_SYSTEM_PROMPT) },
                 { role: "user" as const, content: followupPrompt },
               ],
               stream: true as const,
@@ -391,6 +389,8 @@ Write ONE short sentence: a concrete observation about what stands out in these 
               followupText += chunk.choices[0]?.delta?.content ?? "";
             }
 
+            // No dash reaches the thread (plain-dashes.ts): stored and sent as the same text.
+            followupText = plainDashes(followupText);
             if (followupText.trim()) {
               // Persist as a second markdown message (THREAD-04 markdown path — no new block type)
               await insertMessage(

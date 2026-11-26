@@ -31,6 +31,8 @@
 import { assembleBundle } from "@/lib/kc/assembler";
 import type { AssemblerInput } from "@/lib/kc/assembler";
 import { KC_CHAT_SYSTEM_PROMPT } from "@/lib/kc/compiled";
+import { withChatVoice } from "@/lib/tools/chat-voice";
+import { createDashGuard } from "@/lib/tools/plain-dashes";
 import { getQwenClient, QWEN_REASONING_MODEL } from "@/lib/engine/qwen/client";
 import { buildAudienceGroundingLine } from "@/lib/audience/audience-grounding";
 import { resolveAudienceWeights } from "@/lib/audience/resolve-audience-weights";
@@ -352,15 +354,22 @@ export async function runChatPipeline(
     }
   }
 
-  const systemContent = corpusReferenceBlock
+  const groundedSystem = corpusReferenceBlock
     ? `${baseSystem}\n\n${corpusReferenceBlock}`
     : baseSystem;
+  // Open chat answers the creator, so the chat voice rule goes last (chat-voice.ts). A persona is a
+  // viewer talking in its own voice: the creator-facing rule does not apply to it.
+  const systemContent = personaGrounding ? groundedSystem : withChatVoice(groundedSystem);
 
   // ── STREAM: Qwen generation (D-07 temperature 0.3 — matches grounded chat route) ──
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), GENERATE_TIMEOUT_MS);
 
   let fullContent = "";
+  // Open chat answers the creator: its stream goes through the dash pass, and what is returned
+  // (and stored) is exactly what the creator saw. A persona speaks in its own voice: as written.
+  const dash = personaGrounding ? null : createDashGuard(onToken);
+  const emit = dash ? dash.push : onToken;
   try {
     const ai = getQwenClient();
     const chatParams = {
@@ -383,11 +392,12 @@ export async function runChatPipeline(
       const delta = chunk.choices[0]?.delta?.content ?? "";
       if (delta) {
         fullContent += delta;
-        onToken(delta);
+        emit(delta);
       }
     }
   } catch (err) {
     clearTimeout(timer);
+    dash?.release(); // what was held still reaches the creator before the error does
     const error = err instanceof Error ? err : new Error(String(err));
     throw new Error(
       error.name === "AbortError"
@@ -396,6 +406,7 @@ export async function runChatPipeline(
     );
   }
   clearTimeout(timer);
+  if (dash) fullContent = dash.flush();
 
   return { fullContent, coldStart };
 }

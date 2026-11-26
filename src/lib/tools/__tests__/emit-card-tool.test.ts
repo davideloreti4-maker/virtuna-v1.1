@@ -295,3 +295,63 @@ describe("handleEmitCard — a teardown must actually have its receipt", () => {
     expect(r.blocks.length).toBe(1);
   });
 });
+
+describe("handleEmitCard: the card's prose slots get the same dash pass as the chat text", () => {
+  it("prose slots lose their dashes; a hook line, a quote and a script line keep the model's words", async () => {
+    const r = await handleEmitCard(
+      {
+        cards: [
+          {
+            recipe: "brief",
+            eyebrow: "This week — short",
+            why: "They scroll fast — so open on the dish.",
+            deliverable: { kind: "claim", text: "Ship it ugly — then fix it." },
+            body: [
+              { kind: "bullets", items: ["Post 3–5 times — not daily."] },
+              { kind: "label_values", rows: [{ label: "Length — target", value: "45–90 seconds" }] },
+              { kind: "beats", items: [{ label: "Open — fast", text: "Show the plate — then the price." }, { label: "Close", text: "Ask for the save." }] },
+              { kind: "quote", text: "Twenty dollars — seven dinners", attribution: "a creator — on TikTok" },
+              { kind: "chips", items: ["cheap — fast"] },
+              { kind: "note", text: "One take — no cuts." },
+            ],
+          },
+        ],
+      },
+      { materialize: noReceipts },
+    );
+    const p = r.blocks[0]!.props;
+    expect(p.eyebrow).toBe("This week. Short");
+    expect(p.why).toBe("They scroll fast, so open on the dish.");
+    expect(p.deliverable.text).toBe("Ship it ugly. Then fix it.");
+    expect(p.body).toEqual([
+      { kind: "bullets", items: ["Post 3 to 5 times. Not daily."] },
+      { kind: "label_values", rows: [{ label: "Length. Target", value: "45 to 90 seconds" }] },
+      { kind: "beats", items: [{ label: "Open. Fast", text: "Show the plate. Then the price." }, { label: "Close", text: "Ask for the save." }] },
+      // The quoted words are the source's own: left as written; who said it is prose.
+      { kind: "quote", text: "Twenty dollars — seven dinners", attribution: "a creator. On TikTok" },
+      { kind: "chips", items: ["cheap. Fast"] },
+      { kind: "note", text: "One take. No cuts." },
+    ]);
+  });
+
+  it("a hook-set line is the product, filmed word for word: untouched", async () => {
+    const r = await handleEmitCard(
+      { cards: [{ recipe: "hook-set", deliverable: { kind: "line", text: "Twenty dollars — seven dinners." },
+                  body: [{ kind: "note", text: "Say it fast — no pause." }] }] },
+      { materialize: noReceipts },
+    );
+    expect(r.blocks[0]!.props.deliverable.text).toBe("Twenty dollars — seven dinners.");
+    expect(r.blocks[0]!.props.body).toEqual([{ kind: "note", text: "Say it fast. No pause." }]);
+  });
+
+  it("a script timeline's spoken lines are untouched", async () => {
+    const r = await handleEmitCard(
+      { cards: [{ recipe: "script", deliverable: { kind: "claim", text: "x" },
+                  body: [{ kind: "script_timeline", lines: [{ t: "0–3s", text: "Twenty dollars — go." }, { t: "3–9s", text: "Here." }] }] }] },
+      { materialize: noReceipts },
+    );
+    expect(r.blocks[0]!.props.body).toEqual([
+      { kind: "script_timeline", lines: [{ t: "0–3s", text: "Twenty dollars — go." }, { t: "3–9s", text: "Here." }] },
+    ]);
+  });
+});

@@ -45,6 +45,8 @@ import { runScriptPipeline } from "@/lib/tools/runners/script-runner";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { getQwenClient, QWEN_REASONING_MODEL } from "@/lib/engine/qwen/client";
 import { KC_CHAT_SYSTEM_PROMPT } from "@/lib/kc/compiled";
+import { withChatVoice, scriptClosingPrompt } from "@/lib/tools/chat-voice";
+import { plainDashes } from "@/lib/tools/plain-dashes";
 import { resolveThreadAudience } from "@/lib/audience/resolve-thread-audience";
 import { requireSocialsAudience } from "@/lib/audience/require-socials-audience";
 import { goalIntentToLens, parseIntentLens } from "@/lib/audience/intent-lens";
@@ -329,22 +331,16 @@ export async function POST(request: Request): Promise<Response> {
           try {
             const card = blocks[0];
             if (!card) throw new Error("no card");
-            const beatLabels = card.props.beats
-              .slice(0, 3)
-              .map((b) => `${b.label}: "${b.content.slice(0, 80)}"`)
-              .join("\n");
-            const followupPrompt = `You just generated a script for this creator. Here are the key beats:
-
-${beatLabels}
-
-Write ONE short sentence: a concrete observation about the script's structure (what's strong about the opener, an interesting beat transition, or a craft pattern), followed by a single offered next step (refine a beat, test the hook on SIM-1 Max, or turn this into a Remix). Be direct and specific — reference the actual beats. Do not use bullet points. Keep it under 40 words.`;
+            const followupPrompt = scriptClosingPrompt(
+              card.props.beats.slice(0, 3).map((b) => ({ label: b.label, content: b.content.slice(0, 80) })),
+            );
 
             const ai = getQwenClient();
             let followupText = "";
             const followupParams = {
               model: QWEN_REASONING_MODEL,
               messages: [
-                { role: "system" as const, content: KC_CHAT_SYSTEM_PROMPT },
+                { role: "system" as const, content: withChatVoice(KC_CHAT_SYSTEM_PROMPT) },
                 { role: "user" as const, content: followupPrompt },
               ],
               stream: true as const,
@@ -357,6 +353,8 @@ Write ONE short sentence: a concrete observation about the script's structure (w
               followupText += chunk.choices[0]?.delta?.content ?? "";
             }
 
+            // No dash reaches the thread (plain-dashes.ts): stored and sent as the same text.
+            followupText = plainDashes(followupText);
             if (followupText.trim()) {
               await insertMessage(
                 openThread.id,
