@@ -22,7 +22,7 @@
  * --video plays that address as the run's video; --video-file serves a local file as that video
  * (at https://video.fixture/clip); a --video on https://video.fixture/ without a file answers 404.
  * --query appends more of the dev page's parameters to its address (the running screen's moments,
- * e.g. --processing --query "elapsed=42&groups=10&runframes=7"); the file name then carries
+ * e.g. --processing --query "elapsed=42&runframes=7"); the file name then carries
  * q<6 characters of the query's hash> unless --name is given.
  */
 const { chromium } = require("@playwright/test");

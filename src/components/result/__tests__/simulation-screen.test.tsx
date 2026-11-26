@@ -4,7 +4,7 @@
  * run is in flight, the running screen listens to the run's stream, the stream's finish asks for
  * the row again, and the page turns into the result. Real: SimulationScreen, useSimulationRow,
  * TanStack Query, the state function, the result page, the running screen and its stream hook.
- * Stood in for: the network (`fetch`), the browser's EventSource, the stage's measured size
+ * Stood in for: the network (`fetch`), the browser's EventSource, the line's measured width
  * (ResizeObserver), the router, and the build-time flag.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -85,7 +85,7 @@ afterEach(() => {
 });
 
 describe("a run opened while it simulates", () => {
-  it("shows the running screen, the groups as they arrive, and turns into the result at the finish", async () => {
+  it("shows the running screen, the frames as they arrive, and turns into the result at the finish", async () => {
     const { container } = render(
       <QueryClientProvider client={client}>
         <ToastProvider>
@@ -93,25 +93,30 @@ describe("a run opened while it simulates", () => {
         </ToastProvider>
       </QueryClientProvider>,
     );
-    const ring = () => container.querySelector('[data-result="running-ring"]');
+    const running = () => container.querySelector('[data-result="running"]');
+    const filled = () => container.querySelectorAll('[data-result="running-strip"] img').length;
 
     // The row answers in flight: the running screen, listening to this run's stream.
-    await waitFor(() => expect(ring()).not.toBeNull());
+    await waitFor(() => expect(running()).not.toBeNull());
     expect(stream().url).toBe("/api/analyze/fixture-early/stream");
-    expect(container.querySelectorAll("[data-wedge]")).toHaveLength(0);
+    expect(filled()).toBe(0);
 
+    // The roster is read and drawn nowhere; a frame fills its tile.
     act(() => stream().send("roster", roster));
-    await waitFor(() => expect(container.querySelectorAll("[data-wedge]")).toHaveLength(10));
+    act(() => stream().send("filmstrip_segment_ready", { segment_idx: 0, keyframe_uri: "https://f/0.jpg" }));
+    await waitFor(() => expect(filled()).toBe(1));
 
     // The finish: the stream says so and the row, asked for again, has finished.
     const asked = fetchMock.mock.calls.length;
     finished = true;
     act(() => stream().send("complete"));
 
-    await waitFor(() => expect(screen.getByRole("img", { name: /^46% watch to the end/ })).toBeInTheDocument());
+    await waitFor(() =>
+      expect(container.querySelector('[data-result="count"]')).toHaveTextContent("461 of 1,000 watched to the end"),
+    );
     expect(fetchMock.mock.calls.length).toBeGreaterThan(asked);
     expect(FakeEventSource.opened.every((source) => source.readyState === FakeEventSource.CLOSED)).toBe(true);
-    expect(ring()).toBeNull();
+    expect(running()).toBeNull();
   });
 });
 
@@ -139,12 +144,12 @@ describe("a run opened again after the stall limit, last seen in flight", () => 
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     expect(screen.queryByText("This simulation did not finish.")).toBeNull();
-    expect(container.querySelector('[data-result="running-ring"]')).toBeNull();
+    expect(container.querySelector('[data-result="running"]')).toBeNull();
     expect(container.querySelector('[aria-busy="true"]')).not.toBeNull();
 
     await act(async () => release(answer(early)));
 
-    await waitFor(() => expect(screen.getByRole("img", { name: /^46% watch to the end/ })).toBeInTheDocument());
+    await waitFor(() => expect(container.querySelector('[data-result="count"]')).toHaveTextContent("461 of 1,000 watched to the end"));
     expect(screen.queryByText("This simulation did not finish.")).toBeNull();
   });
 

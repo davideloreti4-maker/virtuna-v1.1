@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { sceneIndexAt } from "@/lib/result/curve";
 import { timecode } from "@/lib/result/format";
 import type { Scene, VideoModel } from "@/lib/result/types";
 import { cn } from "@/lib/utils";
+import { runStillOf } from "@/lib/result/run-video";
 import { usePlayhead } from "./playhead";
 import { useSignedVideo } from "./use-signed-video";
 
@@ -28,19 +29,28 @@ function PauseGlyph({ className }: { className?: string }) {
   );
 }
 
+/** The 9:16 tile's box: the result's video, the wait's picture, the loading frame's empty tile. */
+export const TILE = "relative aspect-[9/16] shrink-0";
+/** How a still is cropped in the tile (a scene's frame, and the picture the running screen showed). */
+export const TILE_CROP = "object-cover object-[50%_10%]";
+/**
+ * The tile's width. The hero's is the first card's tile box (`FirstCard`: 53% of the card's inside,
+ * 140 to 200) and the desktop's its column, so both fill their box; the compact player's is its own.
+ */
 const BOX: Record<Size, string> = {
-  hero: "w-[104px]",
+  hero: "w-full",
   desktop: "w-full",
   compact: "w-[62px]",
 };
-const RADIUS: Record<Size, string> = {
+/** The tile's corner; the running screen's tile has the same. */
+export const RADIUS: Record<Size, string> = {
   hero: "rounded-2xl",
   desktop: "rounded-3xl",
   compact: "rounded-lg",
 };
 /**
  * The mock's `.player` / `.vcard` shadows, in tokens: a hairline and a drop in the scrim tone. The
- * running screen's picture uses them too (the small tile `hero`, the large one `desktop`).
+ * running screen's tile uses them too (`hero` on a phone, `desktop` on a wide window).
  */
 export const SHADOW: Record<Size, string> = {
   hero: "shadow-[0_0_0_1px_var(--color-border),0_10px_22px_-10px_var(--color-scrim)]",
@@ -112,6 +122,8 @@ const withFirstFrame = (src: string) => (src.includes("#") ? src : `${src}#t=0.0
  * - Without a file (or while it signs, or when it is gone): the frame of the scene under the
  *   playhead (the first at rest); without frames too, a quiet tile with the clip's length and no
  *   play mark.
+ * - When this tab watched the run, the picture its running screen showed lies under all of that, so
+ *   the tile is never empty while the result's own video or frame loads.
  * - "compact" (the scrolled phone player) never holds a video of its own: the page has one video,
  *   in the hero. It shows the frame under the playhead and, when that video can play, a mark that
  *   plays and pauses it.
@@ -140,31 +152,50 @@ export function Player({ model, size }: { model: VideoModel; size: Size }) {
 
   const frame = frameAt(scenes, resting ? 0 : sceneIndexAt(scenes, t));
   const poster = frameAt(scenes, 0);
+  // The picture the running screen showed for this run, when this tab watched it. The tile stands on
+  // it until its own video or frame has painted, so a result that arrives never shows an empty tile.
+  const remembered = ownsVideo ? runStillOf(model.id) : null;
+  const [underFailed, setUnderFailed] = useState<string | null>(null);
+  const under = remembered !== null && remembered !== underFailed ? remembered : null;
   const pressable = playable || (size === "compact" && canPlay);
   const showMark = pressable && (size === "desktop" || !playing);
 
   return (
-    <div data-result="video" className={cn("relative aspect-[9/16] shrink-0", BOX[size])}>
+    <div data-result="video" className={cn(TILE, BOX[size])}>
       <div
         className={cn(
           "absolute inset-0 overflow-hidden bg-surface-sunken",
           RADIUS[size],
-          playable || frame ? SHADOW[size] : "shadow-[inset_0_0_0_1px_var(--color-border)]",
+          playable || frame || under ? SHADOW[size] : "shadow-[inset_0_0_0_1px_var(--color-border)]",
         )}
       >
+        {under && (
+          // eslint-disable-next-line @next/next/no-img-element -- the cover or frame the running screen showed
+          <img
+            data-part="under"
+            src={under}
+            alt=""
+            draggable={false}
+            referrerPolicy="no-referrer"
+            // A picture that cannot load (a cover the platform refuses) is no ground to stand on.
+            onError={() => setUnderFailed(remembered)}
+            className={cn("absolute inset-0 block h-full w-full", TILE_CROP)}
+          />
+        )}
         {playable ? (
+          // `relative`: above the picture it stands on, which shows through until the video has a frame.
           <video
             ref={setVideo}
             src={withFirstFrame(src)}
             poster={poster ?? undefined}
             playsInline
             preload="metadata"
-            className="block h-full w-full object-cover"
+            className="relative block h-full w-full object-cover"
           />
         ) : frame ? (
           // eslint-disable-next-line @next/next/no-img-element -- a stored frame's signed address
-          <img src={frame} alt="" draggable={false} className="block h-full w-full object-cover object-[50%_10%]" />
-        ) : (
+          <img src={frame} alt="" draggable={false} className={cn("relative block h-full w-full", TILE_CROP)} />
+        ) : under ? null : (
           <span className="flex h-full items-center justify-center text-meta font-[560] text-foreground-muted tabular-nums">
             {timecode(model.clipS)}
           </span>

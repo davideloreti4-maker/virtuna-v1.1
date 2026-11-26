@@ -4,7 +4,8 @@ import { memo, useId, useMemo, useRef } from "react";
 import { sceneEndShareAt, sceneIndexAt } from "@/lib/result/curve";
 import { timecode } from "@/lib/result/format";
 import type { VideoModel } from "@/lib/result/types";
-import { cn } from "@/lib/utils";
+import { LineFrame, stripHeight } from "./first-block";
+import { LAND } from "./landing";
 import { usePlayhead } from "./playhead";
 import { SceneStrip } from "./scene-strip";
 
@@ -72,8 +73,21 @@ function geometryOf(model: VideoModel, width: number, height: number) {
 type Geometry = ReturnType<typeof geometryOf>;
 
 /** The still part of the line: base, fill, the named scene's band, ticks, the line, its coral. */
-const CurveArt = memo(function CurveArt({ geo, width, height }: { geo: Geometry; width: number; height: number }) {
+const CurveArt = memo(function CurveArt({
+  geo,
+  width,
+  height,
+  enter,
+}: {
+  geo: Geometry;
+  width: number;
+  height: number;
+  enter: boolean;
+}) {
   const clipId = useId();
+  // The landing (landing.tsx): the line draws itself as a dash as long as the path, its coral and band
+  // come in after it starts, the fill and the ticks after that.
+  const land = (part: keyof typeof LAND) => (enter ? LAND[part] : undefined);
   return (
     <g>
       {geo.loss && (
@@ -94,11 +108,19 @@ const CurveArt = memo(function CurveArt({ geo, width, height }: { geo: Geometry;
           height={geo.base}
           rx={3}
           fill="var(--color-below-soft)"
+          className={land("coral")}
         />
       )}
-      <path data-part="fill" d={geo.fill} fill="var(--color-surface-sunken)" />
+      <path data-part="fill" d={geo.fill} fill="var(--color-surface-sunken)" className={land("fill")} />
       {geo.ticks.map((x, i) => (
-        <path key={i} data-part="tick" d={`M${x} ${geo.base}v-5`} stroke="var(--color-foreground-muted)" strokeWidth={1} />
+        <path
+          key={i}
+          data-part="tick"
+          d={`M${x} ${geo.base}v-5`}
+          stroke="var(--color-foreground-muted)"
+          strokeWidth={1}
+          className={land("fill")}
+        />
       ))}
       <path
         data-part="line"
@@ -108,6 +130,8 @@ const CurveArt = memo(function CurveArt({ geo, width, height }: { geo: Geometry;
         strokeWidth={2}
         strokeLinecap="round"
         strokeLinejoin="round"
+        className={land("draw")}
+        {...(enter ? { pathLength: 1, strokeDasharray: 1 } : {})}
       />
       {geo.loss && (
         <path
@@ -119,6 +143,7 @@ const CurveArt = memo(function CurveArt({ geo, width, height }: { geo: Geometry;
           strokeLinecap="round"
           strokeLinejoin="round"
           clipPath={`url(#${clipId})`}
+          className={land("coral")}
         />
       )}
     </g>
@@ -127,6 +152,9 @@ const CurveArt = memo(function CurveArt({ geo, width, height }: { geo: Geometry;
 
 /** A touch moves this far sideways (and more sideways than down) before it drags the playhead. */
 const TOUCH_SLOP = 6;
+
+/** The slider's box: a drag moves sideways, the page still scrolls up and down. */
+const GRAB = "cursor-ew-resize touch-pan-y select-none";
 
 /**
  * The still-watching line (the mock's `scrub` and `scr2`): 100% at 0:00, one point at the end of
@@ -142,7 +170,7 @@ const TOUCH_SLOP = 6;
  * by scene, Home to 0:00, End to rest.
  *
  * With `strip`, the scenes' frames under it (`SceneStrip`) when any scene has one: 38 tall, 46 on a
- * line wider than 400.
+ * line wider than 400. Drawn through `LineFrame`, the frame the running screen keeps the line's place in.
  */
 export function Curve({
   model,
@@ -150,6 +178,7 @@ export function Curve({
   height,
   strip,
   mirror = false,
+  enter = false,
 }: {
   model: VideoModel;
   width: number;
@@ -161,6 +190,11 @@ export function Curve({
    * tab stop. The hero's (or desktop's) line is the one control.
    */
   mirror?: boolean;
+  /**
+   * The landing: the line draws itself, then its coral and its band, its fill and ticks, and its strip
+   * come in (landing.tsx). Off by default; only the page's own line lands.
+   */
+  enter?: boolean;
 }) {
   const { t, resting, seek, step } = usePlayhead();
   const { clipS, points } = model.audience;
@@ -231,29 +265,38 @@ export function Curve({
   const dotY = lineY(end[1], height);
   const valueText = `${timecode(stored.at)}, ${stored.pct}% still watching`;
 
+  // Pointer drags seek on the slider and on its copy (the compact player's) alike.
+  const pointer = {
+    onPointerDown,
+    onPointerMove,
+    onPointerUp,
+    onPointerCancel,
+    onLostPointerCapture: onPointerCancel,
+  };
+  const box: React.HTMLAttributes<HTMLDivElement> = mirror
+    ? { "aria-hidden": true, ...pointer, className: GRAB }
+    : {
+        role: "slider",
+        tabIndex: 0,
+        "aria-label": "Still watching",
+        "aria-valuemin": 0,
+        "aria-valuemax": clipS,
+        "aria-valuenow": Math.round(t * 10) / 10,
+        "aria-valuetext": valueText,
+        onKeyDown,
+        ...pointer,
+        className: GRAB,
+      };
+
   return (
-    <div style={{ width }}>
-      <div
-        {...(mirror
-          ? { "aria-hidden": true }
-          : {
-              role: "slider",
-              tabIndex: 0,
-              "aria-label": "Still watching",
-              "aria-valuemin": 0,
-              "aria-valuemax": clipS,
-              "aria-valuenow": Math.round(t * 10) / 10,
-              "aria-valuetext": valueText,
-              onKeyDown,
-            })}
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={onPointerUp}
-        onPointerCancel={onPointerCancel}
-        onLostPointerCapture={onPointerCancel}
-        className="relative cursor-ew-resize touch-pan-y select-none rounded-md"
-      >
-        <div ref={plotRef} data-result="curve" className="relative" style={{ height }}>
+    <LineFrame
+      width={width}
+      height={height}
+      box={box}
+      plotRef={plotRef}
+      plotName="curve"
+      plot={
+        <>
           <svg
             width={width}
             height={height}
@@ -261,7 +304,7 @@ export function Curve({
             className="pointer-events-none block overflow-visible"
             aria-hidden
           >
-            <CurveArt geo={geo} width={width} height={height} />
+            <CurveArt geo={geo} width={width} height={height} enter={enter} />
             {!resting && (
               <path
                 data-part="playhead"
@@ -272,6 +315,8 @@ export function Curve({
             )}
             <circle
               data-part="dot"
+              // Landing: the dot waits for the line that is drawing itself towards it.
+              className={enter ? LAND.dot : undefined}
               cx={f(dotX)}
               cy={f(dotY)}
               r={4.5}
@@ -289,22 +334,11 @@ export function Curve({
               {stored.pct}% · {timecode(stored.at)}
             </span>
           )}
-        </div>
-        {showStrip && (
-          <div className="pointer-events-none mt-2">
-            <SceneStrip model={model} width={width} height={width > 400 ? 46 : 38} />
-          </div>
-        )}
-      </div>
-      <div
-        className={cn(
-          "flex justify-between text-label leading-[21px] text-foreground-muted tabular-nums",
-          showStrip ? "mt-0.5" : "mt-1",
-        )}
-      >
-        <span>{timecode(0)}</span>
-        <span>{timecode(clipS)}</span>
-      </div>
-    </div>
+        </>
+      }
+      strip={showStrip ? <SceneStrip model={model} width={width} height={stripHeight(width)} /> : null}
+      stripClassName={enter ? LAND.strip : undefined}
+      times={[timecode(0), timecode(clipS)]}
+    />
   );
 }

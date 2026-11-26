@@ -188,13 +188,14 @@ describe("the video's page (/simulation/[id])", () => {
     await waitFor(() => expect(askRow()).not.toBeNull());
   });
 
-  it("desk: in the right column, directly under the gauge's card", async () => {
+  it("desk: in the right column, directly under the sentence's card", async () => {
     setWidth(1440);
     answers.posted = posted({ said: { number: 46, measure: "end" }, pieceKey: "fixture-early" });
     renderVideo();
     await waitFor(() => expect(afterCard()).not.toBeNull());
-    const gaugeCard = document.querySelector('[data-result="gauge"]')!.closest("[class*='rounded-3xl']")!;
-    expect(gaugeCard.nextElementSibling).toBe(afterCard());
+    const sentenceCard = document.querySelector('[data-result="sentence-card"]')!;
+    expect(sentenceCard.querySelector('[data-result="moment"]')).not.toBeNull();
+    expect(sentenceCard.nextElementSibling).toBe(afterCard()!.parentElement);
     expect(afterCard()!.textContent).toContain("46%watch to the end");
   });
 

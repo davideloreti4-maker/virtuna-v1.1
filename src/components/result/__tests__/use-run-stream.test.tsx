@@ -81,6 +81,14 @@ describe("useRunStream", () => {
     expect(result.current.frames).toEqual([null, "https://f/1.jpg"]);
   });
 
+  it("learns the post's cover from the source event", () => {
+    const { result } = renderHook(() => useRunStream("run-1", () => {}));
+
+    act(() => stream().send("source", { cover_url: "https://p.test/cover.jpg", handle: "nia.tests", views: 1200, video_url: null }));
+
+    expect(result.current.cover).toBe("https://p.test/cover.jpg");
+  });
+
   it("tells the page once when the run is finished, and closes the stream", () => {
     const onDone = vi.fn();
     const { result } = renderHook(() => useRunStream("run-1", onDone));

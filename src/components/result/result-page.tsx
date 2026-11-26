@@ -3,15 +3,19 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { useIsMobileHydrated } from "@/hooks/useIsMobile";
+import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import type { ResultState } from "@/lib/result/types";
 import { cn } from "@/lib/utils";
 import { useShellStore } from "@/stores/shell-store";
 import { NoAudience } from "./no-audience";
+import { LandingProvider, useLandingWindow } from "./landing";
 import { PlayheadProvider, usePlayhead } from "./playhead";
 import { ResultHeader } from "./result-header";
 import { Running, type RunningPreview } from "./running";
 import { usePushedTitle } from "./use-pushed-title";
-import { ResultFrame, VideoResult } from "./video-result";
+import { ResultFrame } from "./first-block";
+import { VideoResult } from "./video-result";
 
 /** What the page can show: the row's state, or that the row could not be fetched. */
 export type ResultPageState = ResultState | { kind: "not-found" };
@@ -66,8 +70,8 @@ function DeadEnd({ line }: { line: string }) {
 
 /**
  * True once the run turned into its result (or into no audience) while the page was open: that
- * body fades in. A result opened directly does not. The kind seen last is kept in state, not in a
- * ref, so it can be read while rendering.
+ * result lands, that body fades in. A result opened directly does neither. The kind seen last is kept
+ * in state, not in a ref, so it can be read while rendering.
  */
 function useArrivedFromRun(kind: ResultPageState["kind"]): boolean {
   const [seen, setSeen] = useState<{ kind: ResultPageState["kind"]; arrived: boolean }>({ kind, arrived: false });
@@ -79,13 +83,13 @@ function useArrivedFromRun(kind: ResultPageState["kind"]): boolean {
   return seen.arrived;
 }
 
-// The result arriving after a run fades in (not with reduced motion): opacity only, from the
-// element's starting style. An animated transform or filter would, while it ran, make the pinned
-// compact player (position: fixed) place itself against this element instead of the screen.
+// A run that turns into no audience fades in as a whole (not with reduced motion): opacity only, from
+// the element's starting style. A result lands part by part instead (landing.tsx). An animated
+// transform or filter would make a fixed element place itself against this element, not the screen.
 const ARRIVAL_FADE = "motion-safe:transition-opacity motion-safe:duration-[400ms] motion-safe:starting:opacity-0";
 
 /**
- * The result page of one video simulation (spec §5, plan Task 2): loading, not found, running,
+ * The result page of one video simulation: loading, not found, running,
  * stalled, no audience, or the result. `startAt` moves the playhead on arrival and
  * `runningPreview` stands in for a live run (dev page only).
  */
@@ -108,6 +112,13 @@ export function ResultPage({
   const title = titleOf(state);
   usePushedTitle(title);
   const arrived = useArrivedFromRun(state.kind);
+  // Measured once, here: the run's screen and the result that takes its place share it, so the result
+  // is drawn in its first commit and the loading frame never shows between the two.
+  const viewport = useIsMobileHydrated();
+  // Only a result that arrives from its run lands, and only with motion allowed. The setting was read
+  // while the run's screen was open, so it has settled by the time the result arrives.
+  const reducedMotion = usePrefersReducedMotion();
+  const landing = useLandingWindow(arrived && state.kind === "result" && !reducedMotion);
 
   let body: React.ReactNode;
   switch (state.kind) {
@@ -121,8 +132,10 @@ export function ResultPage({
       body = <DeadEnd line="This simulation did not finish." />;
       break;
     case "running":
-      // Keyed by the run: another run starts with its own clock, wedges and picture.
-      body = <Running key={state.id} id={state.id} startedAt={state.startedAt} preview={runningPreview} />;
+      // Keyed by the run: another run starts with its own clock, tile and strip.
+      body = (
+        <Running key={state.id} id={state.id} startedAt={state.startedAt} preview={runningPreview} viewport={viewport} />
+      );
       break;
     case "no-audience":
       body = <NoAudience videoPath={state.videoPath} simulateAgain={simulateAgain} />;
@@ -131,24 +144,26 @@ export function ResultPage({
       body = (
         <PlayheadProvider key={state.model.id} clipS={state.model.clipS} scenes={state.model.audience.scenes}>
           {startAt != null && <StartAt t={startAt} />}
-          <VideoResult model={state.model} after={after} />
+          <LandingProvider value={landing}>
+            <VideoResult model={state.model} after={after} viewport={viewport} />
+          </LandingProvider>
         </PlayheadProvider>
       );
       break;
   }
 
   return (
-    // A column as tall as what the shell leaves: the running screen fills the rest under the header.
+    // A column as tall as what the shell leaves.
     <div className="flex min-h-full flex-col">
       <ResultHeader title={title} />
       <div
-        // A new element when the result arrives, so its starting style (transparent) applies.
+        // A new element when the run's outcome arrives, so the no-audience fade's starting style
+        // (transparent) applies.
         key={arrived ? "arrived" : "page"}
         data-result-body=""
         data-arrived={arrived ? "" : undefined}
-        // Only the running screen lays out as a column (its stage takes the rest of the height);
-        // the other bodies stay blocks, so a centred column such as NoAudience keeps its width.
-        className={cn("flex-1", state.kind === "running" && "flex flex-col", arrived && ARRIVAL_FADE)}
+        data-result-landing={landing ? "" : undefined}
+        className={cn("flex-1", arrived && state.kind === "no-audience" && ARRIVAL_FADE)}
       >
         {body}
       </div>

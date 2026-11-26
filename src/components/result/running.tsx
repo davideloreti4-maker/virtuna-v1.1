@@ -2,84 +2,70 @@
 
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useIsMobileHydrated } from "@/hooks/useIsMobile";
 import { usePrefersReducedMotion } from "@/hooks/usePrefersReducedMotion";
 import { queryKeys } from "@/lib/queries/query-keys";
 import { timecode } from "@/lib/result/format";
-import { NO_PROGRESS, arrivedFrames, elapsedSeconds, frameOnScreen, type RunProgress } from "@/lib/result/run-progress";
-import { runVideoOf } from "@/lib/result/run-video";
+import { NO_PROGRESS, arrivedFrames, elapsedSeconds, type RunProgress } from "@/lib/result/run-progress";
+import { forgetRunStill, rememberRunStill, runVideoOf } from "@/lib/result/run-video";
 import { cn } from "@/lib/utils";
-import { SHADOW } from "./player";
-import { equalRing, RunningRing } from "./running-ring";
+import {
+  FirstCard,
+  LineFrame,
+  PHONE_COLUMN,
+  PHONE_LINE_FALLBACK,
+  PLOT_PX,
+  ResultFrame,
+  STRIP_GAP_PX,
+  STRIP_TILE,
+  stripHeight,
+  UNDER_FIRST_LINE,
+  UNDER_LINE,
+  WIDE_LINE_FALLBACK,
+  WideFrame,
+  type Viewport,
+  STRIP_CROP,
+} from "./first-block";
+import { RADIUS, SHADOW, TILE, TILE_CROP } from "./player";
+import { useContentWidth } from "./use-content-width";
 import { useRunStream } from "./use-run-stream";
 
 /**
  * What the dev page and the tests hand the screen instead of the live run: the stream's progress,
- * the creator's own video (null for none), the seconds on the clock, and `arriving`, the number of
- * wedges drawn while the groups arrive (the dev page's picture of the arrival).
+ * the creator's own video (null for none) and the seconds on the clock.
  */
 export interface RunningPreview {
   progress?: RunProgress;
   video?: string | null;
   elapsed?: number;
-  arriving?: number;
 }
 
 /**
- * The reference's two rings (the mock's `rn2Ring2`; `run2-ring2-boxes.json`): the radii and dots,
- * the clock's gap under the dots, and the picture's corner and shadow (the result's video tile:
- * `hero` for the small one, `desktop` for the large one). Which one is drawn depends on the room
- * the stage has, not on the device.
+ * Where frames come at all, the first is there within seconds of the start (1 to 12 were measured).
+ * After this long without one (a run whose frame job does not deliver) the strip's tiles stop
+ * shimmering: a shimmer would promise frames that are not coming.
  */
-const SMALL = { name: "small", R: 175, r1: 140, n: 400, clockGap: 20, corner: "rounded-xl", shadow: SHADOW.hero } as const;
-const LARGE = { name: "large", R: 265, r1: 212, n: 800, clockGap: 28, corner: "rounded-3xl", shadow: SHADOW.desktop } as const;
-type RingSize = typeof SMALL | typeof LARGE;
+const FRAMES_DUE_S = 20;
+/** The strip's tiles before the scenes are known: seven, as drawn; more once a frame names a later scene. */
+const WAIT_TILES = 7;
+/** More scenes than a run is cut into (4 to 19): a broken event cannot draw the strip as a comb of slivers. */
+const MOST_TILES = 24;
+/** Where the dotted base runs in the plot while the line is not known yet, as drawn. */
+const WAIT_BASE_Y = 30;
 
-/** The clock's height: `text-4xl` (36) at a line height of 1. */
-const CLOCK_PX = 36;
-/** Room the figure keeps above and below it, and beside the large ring. */
-const CLEAR = 24;
-/** Room the small ring keeps on each side before the whole figure is scaled down. */
-const GUTTER = 8;
-/** Every run has ten viewer groups; the ring is laid out for them before the roster says so. */
-const GROUPS_BEFORE_ROSTER = 10;
-/** One wedge appears every 60 ms once the roster is in. */
-const ARRIVAL_STEP_MS = 60;
-/** The picture stays this far clear of the innermost dots. */
-const PICTURE_CLEAR = 8;
-
-type Box = { width: number; height: number };
-
-/**
- * The ring for a stage: the large one where its box and the clock hanging under it fit with
- * `CLEAR` all round (the ring is centred, so the clock's side decides the height: 713 for ten
- * groups), else the small one, scaled down as a whole where the stage is narrower than its box
- * and two gutters.
- */
-function figureFor(stage: Box, groups: number): { size: RingSize; scale: number } {
-  const large = equalRing(groups, LARGE.r1, LARGE.R, LARGE.n).layout;
-  const reach = Math.max(large.size / 2, LARGE.R + large.dotR + LARGE.clockGap + CLOCK_PX);
-  if (stage.width >= large.size + 2 * CLEAR && stage.height >= 2 * (reach + CLEAR)) return { size: LARGE, scale: 1 };
-  const box = equalRing(groups, SMALL.r1, SMALL.R, SMALL.n).layout.size;
-  const room = stage.width - 2 * GUTTER;
-  return { size: SMALL, scale: room < box ? Math.max(0, room) / box : 1 };
-}
-
-/** The stage's content box as it resizes; null until it is measured. */
-function useStageBox(): [React.RefObject<HTMLDivElement | null>, Box | null] {
-  const ref = useRef<HTMLDivElement>(null);
-  const [box, setBox] = useState<Box | null>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new ResizeObserver(([entry]) => {
-      const { width, height } = entry?.contentRect ?? { width: 0, height: 0 };
-      if (width > 0 && height > 0) setBox((prev) => (prev && prev.width === width && prev.height === height ? prev : { width, height }));
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-  return [ref, box];
-}
+// The wait's motion (keyframes `result-*` in globals.css). Every class is `motion-safe:`, and the parts
+// that only move are not drawn at all with reduced motion: then nothing moves by itself.
+/** A band of light down the tile, while it shows a still or nothing. */
+const SWEEP = "motion-safe:animate-[result-sweep_2.8s_cubic-bezier(0.4,0,0.2,1)_infinite]";
+/** A quiet band of light across the plot. */
+const SCAN = "motion-safe:animate-[result-scan_2.2s_linear_infinite]";
+/** An empty strip tile's shimmer. */
+const SHIMMER = "motion-safe:animate-[result-shimmer_1.6s_ease-in-out_infinite]";
+/** A strip tile's frame once its picture has loaded: a short fade and settle. */
+const SETTLE = "motion-safe:animate-[result-settle_0.7s_cubic-bezier(0.2,0.8,0.2,1)_both]";
+/** The three dots after the words, blinking in turn (held dim through their delay, not lit). */
+const BLINK = "motion-safe:animate-[result-blink_1.2s_ease-in-out_infinite_both]";
+const BLINK_DELAYS = ["", "motion-safe:[animation-delay:200ms]", "motion-safe:[animation-delay:400ms]"] as const;
 
 /** The time, read again every second while `ticking`. */
 function useNow(ticking: boolean): number {
@@ -93,99 +79,37 @@ function useNow(ticking: boolean): number {
 }
 
 /**
- * How many wedges are drawn: none before the roster; then one more every 60 ms up to `total`. A
- * roster that is there when the screen opens is drawn whole, and so is any with reduced motion.
- * Wedges once drawn stay drawn, also when the motion setting changes while the screen is open.
- */
-function useArrival(total: number, reducedMotion: boolean): number {
-  const [count, setCount] = useState(total);
-  if (reducedMotion && count < total) setCount(total);
-  const arrived = count >= total;
-  useEffect(() => {
-    if (reducedMotion || arrived) return;
-    const timer = setInterval(() => setCount((c) => c + 1), ARRIVAL_STEP_MS);
-    return () => clearInterval(timer);
-  }, [reducedMotion, arrived]);
-  return reducedMotion ? total : Math.min(count, total);
-}
-
-// A new frame fades in over the one before, once its image has loaded (not with reduced motion:
-// the frames stand still then).
-const FRAME_FADE = "motion-safe:animate-in motion-safe:fade-in motion-safe:duration-500";
-const FRAME = "absolute inset-0 block h-full w-full object-cover";
-
-/** One image of the picture: its address and the turn it was put on top in (its React key). */
-type Layer = { turn: number; src: string };
-
-/**
- * The frame of the moment. A new frame stays hidden until its image has loaded, then fades in;
- * the last frame that was showing stays under it meanwhile.
- *
- * Every frame put on top is a new image element (keyed by its turn, not by its address): a frame
- * that is due again while it still lies underneath (two frames taking turns) must load as a new
- * image, or no `load` would come and it would stay hidden. The image underneath keeps its element
- * (and its key), so it does not reload either.
- */
-function Frames({ current }: { current: string }) {
-  const [state, setState] = useState<{ top: Layer; loaded: boolean; under: Layer | null }>({
-    top: { turn: 0, src: current },
-    loaded: false,
-    under: null,
-  });
-  let { top, loaded, under } = state;
-  if (top.src !== current) {
-    // The frame showing now (the top once loaded, else what was under it) goes under the new one.
-    under = loaded ? top : under;
-    top = { turn: top.turn + 1, src: current };
-    loaded = false;
-    setState({ top, loaded, under });
-  }
-  const turn = top.turn;
-  return (
-    <>
-      {under && (
-        // eslint-disable-next-line @next/next/no-img-element -- a stored frame's signed address
-        <img key={under.turn} data-frame="previous" src={under.src} alt="" draggable={false} className={FRAME} />
-      )}
-      {/* eslint-disable-next-line @next/next/no-img-element -- a stored frame's signed address */}
-      <img
-        key={turn}
-        data-frame="current"
-        data-loaded={loaded ? "" : undefined}
-        src={top.src}
-        alt=""
-        draggable={false}
-        onLoad={() => setState((prev) => (prev.top.turn === turn && !prev.loaded ? { ...prev, loaded: true } : prev))}
-        className={cn(FRAME, loaded ? FRAME_FADE : "opacity-0")}
-      />
-    </>
-  );
-}
-
-/**
- * The creator's own video: decoration that plays by itself, not the page's playhead, no controls,
- * no sound. With reduced motion it does not start by itself: its first frame shows. When it cannot
- * play (a revoked or expired address, autoplay refused) the run is shown as one without a video.
+ * The creator's own video: decoration that plays by itself, not the page's playhead, no controls, no
+ * sound, nothing for a screen reader. With reduced motion it does not start by itself: its first frame
+ * shows. The same when the browser will not start it (a phone saving power refuses even a muted
+ * clip): the creator's clip stands still rather than being dropped. When it cannot play at all (a
+ * revoked or expired address) the tile falls through to what comes next.
  */
 function RunVideo({ src, still, onFail }: { src: string; still: boolean; onFail: (src: string) => void }) {
   const ref = useRef<HTMLVideoElement>(null);
+  const [refused, setRefused] = useState(false);
+  const held = still || refused;
   useEffect(() => {
-    if (still) return;
+    if (held) return;
     const playing = ref.current?.play();
     if (!playing) return;
     playing.catch((error: unknown) => {
+      const name = (error as { name?: string } | null)?.name;
       // An interrupted load is not a refusal.
-      if ((error as { name?: string } | null)?.name !== "AbortError") onFail(src);
+      if (name === "AbortError") return;
+      if (name === "NotAllowedError") setRefused(true);
+      else onFail(src);
     });
-  }, [src, still, onFail]);
+  }, [src, held, onFail]);
   return (
     <video
       ref={ref}
-      // Still: `#t=0.001` makes Safari paint the first frame instead of a black box.
-      src={still ? `${src}#t=0.001` : src}
+      aria-hidden="true"
+      // Held: `#t=0.001` makes Safari paint the first frame instead of a black box.
+      src={held ? `${src}#t=0.001` : src}
       muted
-      autoPlay={!still}
-      preload={still ? "metadata" : undefined}
+      autoPlay={!held}
+      preload={held ? "metadata" : undefined}
       loop
       playsInline
       onError={() => onFail(src)}
@@ -194,131 +118,285 @@ function RunVideo({ src, still, onFail }: { src: string; still: boolean; onFail:
   );
 }
 
-/** The 9:16 picture in the ring's middle: the creator's own video, or the frame of the moment. */
-const Picture = memo(function Picture({
+/**
+ * A still filling the tile: the post's cover or a scene frame, drawn as the app draws a post's cover
+ * (a plain image with an empty alt that reports a failed load), so a picture that cannot load falls
+ * through to the next.
+ */
+function Still({ src, onFail }: { src: string; onFail: (src: string) => void }) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- a cover or a stored frame's address (it can expire); next/image has nothing to optimise
+    <img
+      src={src}
+      alt=""
+      draggable={false}
+      decoding="async"
+      // A post's cover lives on the platform's host: it is asked for without saying where from.
+      referrerPolicy="no-referrer"
+      onError={() => onFail(src)}
+      // The crop the result's player gives a frame: the picture does not shift when the result arrives.
+      className={cn("absolute inset-0 block h-full w-full", TILE_CROP)}
+    />
+  );
+}
+
+/**
+ * The tile where the result's video will stand, its size and corner. It shows the creator's own clip,
+ * else the post's cover, else the first scene frame that arrived, else nothing (a sunken tile). A band
+ * of light sweeps down it while it shows a still or nothing, never over the playing clip, and never
+ * with reduced motion.
+ */
+const RunningTile = memo(function RunningTile({
   video,
+  cover,
   frame,
-  width,
-  height,
   size,
   still,
-  onVideoFailed,
+  onFail,
 }: {
   video: string | null;
+  cover: string | null;
   frame: string | null;
-  width: number;
-  height: number;
-  size: RingSize;
+  size: "hero" | "desktop";
   still: boolean;
-  onVideoFailed: (src: string) => void;
+  onFail: (src: string) => void;
 }) {
+  const shows = video ? "clip" : cover ? "cover" : frame ? "frame" : "none";
   return (
-    <div
-      data-result="running-picture"
-      className={cn(
-        "absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 overflow-hidden bg-surface",
-        size.shadow,
-        size.corner,
-      )}
-      style={{ width, height }}
-    >
-      {video ? <RunVideo key={video} src={video} still={still} onFail={onVideoFailed} /> : frame && <Frames current={frame} />}
+    <div data-result="running-picture" data-shows={shows} className={cn(TILE, "w-full")}>
+      <div
+        className={cn(
+          "absolute inset-0 overflow-hidden bg-surface-sunken",
+          RADIUS[size],
+          shows === "none" ? "shadow-[inset_0_0_0_1px_var(--color-border)]" : SHADOW[size],
+        )}
+      >
+        {video ? (
+          <RunVideo key={video} src={video} still={still} onFail={onFail} />
+        ) : cover ? (
+          <Still key={cover} src={cover} onFail={onFail} />
+        ) : frame ? (
+          <Still key={frame} src={frame} onFail={onFail} />
+        ) : null}
+        {!video && !still && (
+          // White over a picture, as the play mark on footage: a band of light whichever the theme.
+          <span
+            data-part="sweep"
+            aria-hidden="true"
+            className={cn(
+              // Its resting place in the property the keyframes animate: a `translate` class would add to them.
+              "pointer-events-none absolute inset-x-0 top-0 h-[38%] [transform:translateY(-106%)] bg-linear-to-b from-transparent via-white/20 to-transparent",
+              SWEEP,
+            )}
+          />
+        )}
+      </div>
     </div>
   );
 });
 
 /**
- * The ring, the picture inscribed in it and the clock. The ring's box is the figure's box and is
- * centred in the stage with auto margins (so a stage too short for it scrolls from the top
- * instead of clipping it); the picture sits in its middle and the clock, under the ring, hangs
- * below the box without pushing it. Scaled as a whole on a stage narrower than the small ring.
+ * Where the count will stand: the words, three dots in turn and the time since the start. It lays
+ * itself out as the count does in the same box: in a box under 290 wide (a 320 phone) one line cannot
+ * hold it, so there the time always stands under the words; from 290 on, one line.
  */
-function Figure({
-  stage,
-  groups,
-  shown,
-  video,
-  frame,
-  elapsed,
-  still,
-  onVideoFailed,
-}: {
-  stage: Box;
-  groups: number;
-  shown: number;
-  video: string | null;
-  frame: string | null;
-  elapsed: number;
-  still: boolean;
-  onVideoFailed: (src: string) => void;
-}) {
-  const { size, scale } = figureFor(stage, groups);
-  const { R, r1, n } = size;
-  const { layout, innerRow } = equalRing(groups, r1, R, n);
-  const box = layout.size;
-  // The mock's tile: its half diagonal reaches to 8 clear of the innermost dots; 9:16.
-  const halfDiagonal = innerRow - layout.dotR - PICTURE_CLEAR;
-  const width = (2 * halfDiagonal * 9) / Math.sqrt(9 * 9 + 16 * 16);
-  const height = (width * 16) / 9;
-  const pictured = video != null || frame != null;
+function BuildingLine({ elapsed }: { elapsed: number }) {
+  return (
+    <p data-part="building" className={UNDER_LINE}>
+      <span className={cn("text-title font-[640] text-foreground", UNDER_FIRST_LINE)}>
+        Building your 1,000 viewers
+        <span data-part="dots" aria-hidden="true" className="ml-0.5 inline-flex gap-[3px]">
+          {BLINK_DELAYS.map((delay, i) => (
+            <i key={i} className={cn("block size-1 rounded-full bg-current", BLINK, delay)} />
+          ))}
+        </span>
+      </span>
+      {/* Not announced every second; the page's heading names the screen. */}
+      <span data-result="running-clock" aria-hidden="true" className="text-ui text-foreground-secondary tabular-nums">
+        {timecode(elapsed)}
+      </span>
+    </p>
+  );
+}
 
+/** Where the line will be: a dotted base with a quiet band of light passing over it. */
+function WaitPlot({ width, height, still }: { width: number; height: number; still: boolean }) {
+  return (
+    <div className="absolute inset-0 overflow-hidden">
+      <svg width={width} height={height} viewBox={`0 0 ${width} ${height}`} className="block" aria-hidden="true">
+        <path
+          data-part="base"
+          d={`M0 ${WAIT_BASE_Y}H${width}`}
+          fill="none"
+          stroke="var(--color-foreground)"
+          strokeOpacity={0.16}
+          strokeWidth={2}
+          strokeDasharray="1 6"
+          strokeLinecap="round"
+        />
+      </svg>
+      {!still && (
+        // The carrier is as wide as the plot and moves by its own width; the band rides its left edge.
+        <span data-part="scan" aria-hidden="true" className={cn("absolute inset-0 [transform:translateX(-60px)]", SCAN)}>
+          <i className="block h-full w-[60px] bg-linear-to-r from-transparent via-foreground/[0.07] to-transparent" />
+        </span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * One tile of the wait's strip: it shimmers while empty and takes its scene's frame once it has loaded.
+ * Once a picture for its scene has loaded the tile stays filled: the same frame sent again under a
+ * new address (the stream replays on a reconnect, and a stored picture is signed anew) does not hide
+ * it and start over. A picture that cannot load leaves the tile empty and still: a shimmer would
+ * promise a frame that is not coming.
+ */
+function WaitTile({ frame, still }: { frame: string | null; still: boolean }) {
+  const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
+  const broken = frame !== null && failed === frame;
+  const shown = frame !== null && loaded && !broken;
   return (
     <div
-      data-running-figure=""
-      data-ring={size.name}
-      className="relative m-auto shrink-0"
-      style={{ width: box * scale, height: box * scale }}
+      data-tile=""
+      data-filled={shown ? "" : undefined}
+      data-failed={broken ? "" : undefined}
+      className={cn("relative min-w-0 flex-1 overflow-hidden", STRIP_TILE)}
     >
-      <div
-        className="absolute left-0 top-0 origin-top-left"
-        style={{ width: box, height: box, ...(scale < 1 ? { transform: `scale(${scale})` } : null) }}
-      >
-        <RunningRing groups={groups} shown={shown} r1={r1} R={R} n={n} />
-        {pictured && (
-          <Picture
-            video={video}
-            frame={frame}
-            width={width}
-            height={height}
-            size={size}
-            still={still}
-            onVideoFailed={onVideoFailed}
-          />
-        )}
-        <p
-          data-result="running-clock"
-          data-clock={pictured ? "below" : "centre"}
-          // Not announced every second; the page's heading names the screen.
+      {!shown && !broken && !still && (
+        // The card's own surface passing over the sunken tile: a shimmer in either theme, from tokens.
+        <span
+          data-part="shimmer"
           aria-hidden="true"
           className={cn(
-            "absolute left-1/2 block -translate-x-1/2 whitespace-nowrap text-4xl font-bold leading-none tracking-[-0.04em] text-foreground tabular-nums",
-            !pictured && "top-1/2 -translate-y-1/2",
+            "absolute inset-0 bg-linear-to-r from-transparent from-30% via-surface via-50% to-transparent to-70%",
+            SHIMMER,
           )}
-          style={pictured ? { top: box / 2 + R + layout.dotR + size.clockGap } : undefined}
-        >
-          {timecode(elapsed)}
-        </p>
-      </div>
+        />
+      )}
+      {frame && !broken && (
+        // eslint-disable-next-line @next/next/no-img-element -- a stored frame's signed address
+        <img
+          src={frame}
+          alt=""
+          draggable={false}
+          onLoad={() => setLoaded(true)}
+          onError={() => {
+            setLoaded(false);
+            setFailed(frame);
+          }}
+          className={cn("absolute inset-0 block h-full w-full", STRIP_CROP, shown ? SETTLE : "opacity-0")}
+        />
+      )}
     </div>
+  );
+}
+
+/**
+ * The strip while the scenes are not known: equal tiles, seven or as many as the latest frame names
+ * (never more than a run has scenes), each filled with its scene's frame as it arrives.
+ */
+function WaitStrip({ frames, width, still }: { frames: ReadonlyArray<string | null>; width: number; still: boolean }) {
+  const count = Math.min(MOST_TILES, Math.max(WAIT_TILES, frames.length));
+  return (
+    <div
+      data-result="running-strip"
+      data-tiles={count}
+      className="flex"
+      style={{ width, height: stripHeight(width), gap: STRIP_GAP_PX }}
+    >
+      {Array.from({ length: count }, (_, i) => (
+        <WaitTile key={i} frame={frames[i] ?? null} still={still} />
+      ))}
+    </div>
+  );
+}
+
+/** The line's place in the result's own frame: the plot waiting, the strip filling, the times' row empty. */
+function WaitLine({
+  width,
+  height,
+  frames,
+  still,
+  stripStill,
+}: {
+  width: number;
+  height: number;
+  frames: ReadonlyArray<string | null>;
+  still: boolean;
+  /** The strip's tiles stand still (reduced motion, or no frame is coming). */
+  stripStill: boolean;
+}) {
+  return (
+    <LineFrame
+      width={width}
+      height={height}
+      plot={<WaitPlot width={width} height={height} still={still} />}
+      strip={<WaitStrip frames={frames} width={width} still={stripStill} />}
+      times={null}
+    />
+  );
+}
+
+interface WaitParts {
+  tile: React.ReactNode;
+  under: React.ReactNode;
+  frames: ReadonlyArray<string | null>;
+  still: boolean;
+  stripStill: boolean;
+}
+
+/** Phone: the first card, nothing under it. */
+function PhoneWait({ tile, under, frames, still, stripStill }: WaitParts) {
+  const [cardRef, width] = useContentWidth<HTMLDivElement>(PHONE_LINE_FALLBACK);
+  return (
+    <div className={PHONE_COLUMN}>
+      <FirstCard
+        name="running"
+        cardRef={cardRef}
+        tile={tile}
+        under={under}
+        line={<WaitLine width={width} height={PLOT_PX.phone} frames={frames} still={still} stripStill={stripStill} />}
+      />
+    </div>
+  );
+}
+
+/** Wide window: the result's two columns; the sentence's card empty, no tabs, no panel. */
+function WideWait({ tile, under, frames, still, stripStill }: WaitParts) {
+  const [lineCard, width] = useContentWidth<HTMLDivElement>(WIDE_LINE_FALLBACK);
+  return (
+    <WideFrame
+      name="running"
+      tile={tile}
+      under={under}
+      first={null}
+      lineCardRef={lineCard}
+      line={<WaitLine width={width} height={PLOT_PX.wide} frames={frames} still={still} stripStill={stripStill} />}
+    />
   );
 }
 
 /** The screen itself, from what is known about the run so far. */
 function RunningScreen({
+  id,
   progress,
   video: givenVideo,
   startedAt,
   elapsed: fixedElapsed,
-  arriving,
+  viewport,
 }: {
+  id: string;
   progress: RunProgress;
   video: string | null;
   startedAt: number | null;
   elapsed?: number;
-  arriving?: number;
+  viewport?: Viewport;
 }) {
-  const [stageRef, stage] = useStageBox();
-  const reducedMotion = usePrefersReducedMotion();
+  const measured = useIsMobileHydrated();
+  const { isMobile, hydrated } = viewport ?? measured;
+  const still = usePrefersReducedMotion();
 
   const [openedAt] = useState(() => Date.now());
   const now = useNow(fixedElapsed === undefined);
@@ -326,67 +404,95 @@ function RunningScreen({
   const origin = startedAt !== null && startedAt <= openedAt ? startedAt : openedAt;
   const elapsed = fixedElapsed ?? elapsedSeconds(origin, now);
 
-  const groups = progress.groups?.length ?? 0;
-  const arrival = useArrival(groups, reducedMotion);
-  const shown = arriving ?? arrival;
-
-  const [failedVideo, setFailedVideo] = useState<string | null>(null);
-  const onVideoFailed = useCallback((src: string) => setFailedVideo(src), []);
-  const video = givenVideo !== null && givenVideo !== failedVideo ? givenVideo : null;
-  const frame = video ? null : frameOnScreen(arrivedFrames(progress), elapsed, { still: reducedMotion });
-
-  return (
-    // What the shell leaves under the header: the page lays the stage out as its last flex child.
-    // On the phone 9 under the header's band (as the result's first card) down to the bottom's
-    // safe area; on desktop the content area under the header row.
-    <div
-      ref={stageRef}
-      className="flex flex-1 pb-[env(safe-area-inset-bottom)] pt-[9px] md:pb-0 md:pt-0"
-    >
-      {stage && (
-        <Figure
-          stage={stage}
-          groups={groups || GROUPS_BEFORE_ROSTER}
-          shown={shown}
-          video={video}
-          frame={frame}
-          elapsed={elapsed}
-          still={reducedMotion}
-          onVideoFailed={onVideoFailed}
-        />
-      )}
-    </div>
+  // What failed to load falls through to the next: the clip, the cover, the first frame, nothing.
+  const [failed, setFailed] = useState<ReadonlySet<string>>(() => new Set());
+  const onFail = useCallback(
+    (src: string) => setFailed((prev) => (prev.has(src) ? prev : new Set(prev).add(src))),
+    [],
   );
+  const usable = (src: string | null) => (src !== null && !failed.has(src) ? src : null);
+  const arrived = arrivedFrames(progress);
+  const usableCover = usable(progress.cover);
+  const firstFrame = arrived.find((src) => !failed.has(src)) ?? null;
+  const video = usable(givenVideo);
+  const cover = video ? null : usableCover;
+  const frame = video || cover ? null : firstFrame;
+
+  // The still of this run (what the tile shows, or under the creator's clip the first frame that
+  // arrived): the result's player stands on it when the result takes this screen's place.
+  const picture = usableCover ?? firstFrame;
+  useEffect(() => {
+    if (picture) rememberRunStill(id, picture);
+    // What was remembered could not load, and nothing else has come: no picture to stand on.
+    else forgetRunStill(id);
+  }, [id, picture]);
+
+  // Before the viewport is measured: the result's empty frame, so the clip mounts once, in its layout.
+  if (!hydrated) return <ResultFrame />;
+
+  const parts: WaitParts = {
+    tile: (
+      <RunningTile
+        video={video}
+        cover={cover}
+        frame={frame}
+        size={isMobile ? "hero" : "desktop"}
+        still={still}
+        onFail={onFail}
+      />
+    ),
+    under: <BuildingLine elapsed={elapsed} />,
+    frames: progress.frames,
+    still,
+    stripStill: still || (elapsed >= FRAMES_DUE_S && arrived.length === 0),
+  };
+  return isMobile ? <PhoneWait {...parts} /> : <WideWait {...parts} />;
 }
 
 /** The live run: its own stream; at the finish the stored row is asked for at once. */
-function LiveRunning({ id, startedAt }: { id: string; startedAt: number | null }) {
+function LiveRunning({ id, startedAt, viewport }: { id: string; startedAt: number | null; viewport?: Viewport }) {
   const client = useQueryClient();
   const progress = useRunStream(id, () => {
     void client.invalidateQueries({ queryKey: queryKeys.analysis.detail(id) });
   });
-  return <RunningScreen progress={progress} video={runVideoOf(id)} startedAt={startedAt} />;
+  return <RunningScreen id={id} progress={progress} video={runVideoOf(id)} startedAt={startedAt} viewport={viewport} />;
 }
 
 /**
- * A video simulation still in flight (spec section 7; the mock's `look=ring2`): three things only,
- * the ring of the run's viewer groups, the picture in its middle (the creator's own video when this
- * device started the run, else the scene frames as they arrive) and the time since the start. No
- * stage, no percent, no estimate. The row keeps polling (useSimulationRow); the stream's finish
- * asks for it at once, and the page turns into the result.
+ * A video simulation still in flight: the result's first block building
+ * itself, drawn by the result's own layout parts (`first-block.tsx`), so the result takes its place
+ * without a jump. The tile shows the creator's own clip (a run this tab started from a file), else the
+ * post's cover once the stream names it, else the first scene frame that arrived, else nothing; under
+ * it "Building your 1,000 viewers" and the time since the start; where the line will be, a dotted base
+ * with a band of light passing; the strip's tiles fill with the scenes' frames as they arrive. No
+ * count, no line, no percent: the stream carries none. The roster is read, not drawn. The row keeps
+ * polling (useSimulationRow); the stream's finish asks for it at once, and the page turns into the
+ * result.
  *
- * `preview` is for the dev page and tests only: it replaces the stream, the remembered video and
- * the clock.
+ * `preview` is for the dev page and tests only: it replaces the stream, the remembered video and the
+ * clock.
  */
-export function Running({ id, startedAt, preview }: { id: string; startedAt: number | null; preview?: RunningPreview }) {
-  if (!preview) return <LiveRunning id={id} startedAt={startedAt} />;
+export function Running({
+  id,
+  startedAt,
+  preview,
+  viewport,
+}: {
+  id: string;
+  startedAt: number | null;
+  preview?: RunningPreview;
+  /** The page's measurement of the window; measured here when the screen is drawn on its own. */
+  viewport?: Viewport;
+}) {
+  if (!preview) return <LiveRunning id={id} startedAt={startedAt} viewport={viewport} />;
   return (
     <RunningScreen
+      id={id}
       progress={preview.progress ?? NO_PROGRESS}
       video={preview.video ?? null}
       startedAt={startedAt}
       elapsed={preview.elapsed}
-      arriving={preview.arriving}
+      viewport={viewport}
     />
   );
 }

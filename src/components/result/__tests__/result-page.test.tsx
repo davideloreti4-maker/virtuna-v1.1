@@ -1,6 +1,6 @@
 /** @vitest-environment happy-dom */
 /**
- * The result page's states on recorded runs (spec §5, plan Task 2). The page, the state function,
+ * The result page's states on recorded runs. The page, the state function,
  * the playhead, the panel switch and the stubs are real; only the router and the network (`fetch`)
  * are stood in for.
  */
@@ -31,7 +31,9 @@ import middle from "@/lib/result/__tests__/fixtures/middle.json";
 import noAudience from "@/lib/result/__tests__/fixtures/no-audience.json";
 import noGroups from "@/lib/result/__tests__/fixtures/no-groups.json";
 import opening from "@/lib/result/__tests__/fixtures/opening.json";
+import { LAND } from "../landing";
 import { ResultPage, type ResultPageState } from "../result-page";
+import { modelOf } from "./hero-harness";
 
 const stateOf = (fixture: unknown): ResultState => videoStateOf(fixture as ResultRow);
 
@@ -116,28 +118,20 @@ describe("not found", () => {
 });
 
 describe("running", () => {
-  // Layout does not run here: the running screen's stage is measured through a stand-in
-  // ResizeObserver reporting the reference desktop's content area.
-  class FakeResizeObserver {
-    constructor(private callback: ResizeObserverCallback) {}
-    observe(target: Element) {
-      this.callback([{ target, contentRect: { width: 1192, height: 832 } } as unknown as ResizeObserverEntry], this as unknown as ResizeObserver);
-    }
-    unobserve() {}
-    disconnect() {}
-  }
-  beforeEach(() => vi.stubGlobal("ResizeObserver", FakeResizeObserver));
+  const body = (c: HTMLElement) => c.querySelector<HTMLElement>("[data-result-body]");
 
-  it("shows the running screen and names the screen 'Simulating'", () => {
+  it("shows the running screen, the result's first block building itself, and names the screen 'Simulating'", () => {
     const { container } = renderPage({ kind: "running", id: "run-1", startedAt: null });
-    expect(container.querySelector('[data-result="running-ring"]')).not.toBeNull();
+    expect(container.querySelector('[data-result="running"]')).not.toBeNull();
     expect(useShellStore.getState().pushedTitle).toBe("Simulating");
     // On desktop the page's heading names it (the phone's is the shell's pushed header).
     expect(screen.getByRole("heading", { level: 1, name: "Simulating" })).toBeInTheDocument();
     expect(document.body.textContent).not.toMatch(/%/);
+    // A block in the page's flow, as the result is: no stage stretched to the screen's height.
+    expect(body(container)!.className).not.toMatch(/flex-col/);
   });
 
-  it("another run starts fresh: its groups arrive again instead of appearing at once", () => {
+  it("another run starts fresh: its own stream, and none of the frames of the run before", () => {
     type Listener = (event: MessageEvent) => void;
     const opened: Array<{ url: string; listeners: Map<string, Listener[]> }> = [];
     vi.stubGlobal(
@@ -154,51 +148,18 @@ describe("running", () => {
         close() {}
       },
     );
-    const roster = JSON.stringify({ personas: Array.from({ length: 10 }, (_, i) => ({ archetype: `group-${i}` })) });
-    const sendRoster = () => act(() => opened.at(-1)!.listeners.get("roster")!.forEach((l) => l({ data: roster } as MessageEvent)));
-    const wedges = (c: HTMLElement) => c.querySelectorAll("[data-wedge]").length;
-    vi.useFakeTimers();
-    try {
-      const { container, rerender } = renderPage({ kind: "running", id: "run-1", startedAt: null });
-      sendRoster();
-      act(() => vi.advanceTimersByTime(600));
-      expect(wedges(container)).toBe(10);
+    const frame = JSON.stringify({ segment_idx: 0, keyframe_uri: "https://f/0.jpg" });
+    const sendFrame = () =>
+      act(() => opened.at(-1)!.listeners.get("filmstrip_segment_ready")!.forEach((l) => l({ data: frame } as MessageEvent)));
+    const filled = (c: HTMLElement) => c.querySelectorAll('[data-result="running-strip"] img').length;
 
-      rerender(<ResultPage state={{ kind: "running", id: "run-2", startedAt: null }} />);
-      expect(opened.at(-1)!.url).toBe("/api/analyze/run-2/stream");
-      sendRoster();
-
-      expect(wedges(container)).toBeLessThan(10);
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  const body = (c: HTMLElement) => c.querySelector<HTMLElement>("[data-result-body]");
-
-  it("the result fades in when the run finishes while the page is open", () => {
     const { container, rerender } = renderPage({ kind: "running", id: "run-1", startedAt: null });
-    expect(body(container)?.hasAttribute("data-arrived")).toBe(false);
+    sendFrame();
+    expect(filled(container)).toBe(1);
 
-    rerender(<ResultPage state={stateOf(early)} />);
-
-    expect(container.querySelector('[data-result="gauge"]')).not.toBeNull();
-    expect(body(container)?.hasAttribute("data-arrived")).toBe(true);
-    // Opacity only: an animated transform or filter would, for its 400 ms, make the pinned
-    // compact player position against the page body instead of the screen.
-    const fade = body(container)?.className ?? "";
-    expect(fade).toMatch(/motion-safe:transition-opacity/);
-    expect(fade).toMatch(/motion-safe:starting:opacity-0/);
-    expect(fade).not.toMatch(/animate-in|fade-in|zoom|slide|spin|blur|translate|scale|rotate|transform|filter/);
-  });
-
-  it("a run that turns into no audience fades in too", () => {
-    const { container, rerender } = renderPage({ kind: "running", id: "run-1", startedAt: null });
-
-    rerender(<ResultPage state={{ kind: "no-audience", id: "run-1", title: "Video", videoPath: null }} />);
-
-    expect(screen.getByText("No audience came back.")).toBeInTheDocument();
-    expect(body(container)?.hasAttribute("data-arrived")).toBe(true);
+    rerender(<ResultPage state={{ kind: "running", id: "run-2", startedAt: null }} />);
+    expect(opened.at(-1)!.url).toBe("/api/analyze/run-2/stream");
+    expect(filled(container)).toBe(0);
   });
 
   it("a run that stalls does not fade in", () => {
@@ -210,11 +171,181 @@ describe("running", () => {
     expect(body(container)?.hasAttribute("data-arrived")).toBe(false);
   });
 
-  it("a result opened directly does not fade in", () => {
-    const { container } = renderPage(stateOf(early));
-    expect(container.querySelector('[data-result="gauge"]')).not.toBeNull();
-    expect(body(container)?.hasAttribute("data-arrived")).toBe(false);
-    expect(body(container)?.className ?? "").not.toMatch(/fade-in|opacity/);
+  // The landing. Stand-ins: the user's motion setting, the clock and the animation frames, and the
+  // browser's report that the first card has scrolled away (so the pinned player shows).
+  const realMatchMedia = window.matchMedia;
+  const motion = (reduce: boolean) => {
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes("no-preference") ? !reduce : reduce,
+      media: query,
+      onchange: null,
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      addListener: () => {},
+      removeListener: () => {},
+      dispatchEvent: () => false,
+    })) as unknown as typeof window.matchMedia;
+  };
+  class ScrolledAway {
+    constructor(private callback: IntersectionObserverCallback) {}
+    observe(target: Element) {
+      this.callback(
+        [{ target, isIntersecting: false, boundingClientRect: { top: -400 } } as unknown as IntersectionObserverEntry],
+        this as unknown as IntersectionObserver,
+      );
+    }
+    unobserve() {}
+    disconnect() {}
+  }
+  /** Every animation class on the page. */
+  const animations = (root: ParentNode) =>
+    [...root.querySelectorAll("[class*='animate-[']")].flatMap((el) =>
+      el.getAttribute("class")!.split(/\s+/).filter((name) => name.includes("animate-[")),
+    );
+  const withFrames = (): ResultPageState => ({ kind: "result", model: modelOf(early, { frames: true }) });
+  /** The page while the run simulates, then its result arriving. */
+  const land = (after?: ReactNode) => {
+    const view = renderPage({ kind: "running", id: "run-1", startedAt: null });
+    view.rerender(<ResultPage state={withFrames()} after={after} />);
+    return view;
+  };
+  afterEach(() => {
+    window.matchMedia = realMatchMedia;
+    vi.useRealTimers();
+  });
+
+  it("a result that arrives from its run lands, on a phone: the count rolls, the line draws itself, its coral, fill and strip come in, the rest after 0.9 s; opacity and the stroke only", () => {
+    setWidth(393);
+    motion(false);
+    vi.stubGlobal("IntersectionObserver", ScrolledAway);
+    vi.useFakeTimers({
+      toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date", "requestAnimationFrame", "cancelAnimationFrame"],
+    });
+    const { container } = land(<p data-testid="after">Posted it?</p>);
+    const hero = container.querySelector('[data-result="hero"]')!;
+
+    expect(body(container)!.hasAttribute("data-result-landing")).toBe(true);
+    // A result lands part by part: no whole-body fade.
+    expect(body(container)!.className).not.toMatch(/opacity|transition/);
+    expect(hero.querySelector('[data-part="count-number"]')!.textContent).toBe("1,000");
+    expect(hero.querySelector('[data-result="count"] .sr-only')!.textContent).toBe("461");
+    const line = hero.querySelector('[data-part="line"]')!;
+    expect(line.getAttribute("pathLength")).toBe("1");
+    expect(line.getAttribute("class")).toBe(LAND.draw);
+    expect(hero.querySelector('[data-part="loss"]')!.getAttribute("class")).toBe(LAND.coral);
+    expect(hero.querySelector('[data-part="band"]')!.getAttribute("class")).toBe(LAND.coral);
+    expect(hero.querySelector('[data-part="fill"]')!.getAttribute("class")).toBe(LAND.fill);
+    expect(hero.querySelector('[data-part="strip-slot"]')!.className).toContain(LAND.strip);
+    // Outside the first card: After posting, the moment, the switch and the panel.
+    for (const el of [
+      screen.getByTestId("after").parentElement!,
+      container.querySelector('[data-result="moment"]')!.parentElement!,
+      container.querySelector('[data-result="tabs"]')!.parentElement!,
+      container.querySelector('[data-result="panel"]')!.parentElement!,
+    ]) {
+      expect(el.className).toContain(LAND.rest);
+    }
+    // The tile is the result's own player at rest; it does not move.
+    expect(hero.querySelector('[data-result="video"]')!.closest("[class*='animate-[']")).toBeNull();
+    // Only the landing's two keyframes, and none on an ancestor of the pinned player.
+    expect(new Set(animations(container).map((name) => name.match(/result-[a-z]+/)![0]))).toEqual(
+      new Set(["result-draw", "result-fade"]),
+    );
+    expect(container.querySelector('[data-result="compact"]')!.closest("[class*='animate-[']")).toBeNull();
+
+    act(() => vi.advanceTimersByTime(1600));
+    expect(hero.querySelector('[data-part="count-number"]')!.textContent).toBe("461");
+    // Past the longest part (the fill ends at 1.7 s) the window is still open: nothing snaps early.
+    act(() => vi.advanceTimersByTime(500));
+    expect(body(container)!.hasAttribute("data-result-landing")).toBe(true);
+    expect(animations(container).length).toBeGreaterThan(0);
+    // The landing is over: its classes leave, so a part mounted later does not land again.
+    act(() => vi.advanceTimersByTime(500));
+    expect(body(container)!.hasAttribute("data-result-landing")).toBe(false);
+    expect(animations(container)).toEqual([]);
+  });
+
+  it("on a wide window: the sentence, After posting, the switch and the panel come in after 0.9 s; the line's card stays and its line draws", () => {
+    setWidth(1440);
+    motion(false);
+    const { container } = land(<p data-testid="after">Posted it?</p>);
+    const sentence = container.querySelector('[data-result="sentence-card"]')!;
+    expect(sentence.className).not.toContain("animate-[");
+    expect(sentence.firstElementChild!.className).toContain(LAND.rest);
+    expect(screen.getByTestId("after").parentElement!.className).toContain(LAND.rest);
+    expect(container.querySelector('[data-result="tabs"]')!.parentElement!.className).toContain(LAND.rest);
+    const lineCard = container.querySelector('[data-part="line-card"]')!;
+    expect(lineCard.className).not.toContain("animate-[");
+    expect(lineCard.querySelector('[data-part="line"]')!.getAttribute("class")).toBe(LAND.draw);
+    expect(container.querySelector('[data-part="count-number"]')!.textContent).toBe("1,000");
+  });
+
+  it("with reduced motion the arriving result is there at once", () => {
+    setWidth(393);
+    motion(true);
+    const { container } = land();
+    expect(body(container)!.hasAttribute("data-arrived")).toBe(true);
+    expect(body(container)!.hasAttribute("data-result-landing")).toBe(false);
+    expect(container.querySelector('[data-part="count-number"]')!.textContent).toBe("461");
+    expect(container.querySelector('[data-result="count"] .sr-only')).toBeNull();
+    expect(animations(container)).toEqual([]);
+  });
+
+  it.each([
+    ["a phone", 393, '[data-result="hero"]'],
+    ["a wide window", 1280, '[data-result="sentence-card"]'],
+  ])("the arriving result is drawn at once on %s: the loading frame never shows between the wait and the result", async (_name, width, mark) => {
+    setWidth(width);
+    motion(false);
+    const view = renderPage({ kind: "running", id: "run-1", startedAt: null });
+    expect(view.container.querySelector('[data-result="running"]')).not.toBeNull();
+
+    // Every node that enters or leaves the page while the result takes the wait's place. A frame that
+    // showed for one commit is seen leaving again (a node that entered is read later, as it then is).
+    const moved: Element[] = [];
+    const note = (records: MutationRecord[]) => {
+      for (const record of records)
+        for (const node of [...record.addedNodes, ...record.removedNodes]) if (node instanceof Element) moved.push(node);
+    };
+    const observer = new MutationObserver(note);
+    observer.observe(view.container, { childList: true, subtree: true });
+    view.rerender(<ResultPage state={withFrames()} />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+    note(observer.takeRecords());
+    observer.disconnect();
+
+    expect(view.container.querySelector(mark)).not.toBeNull();
+    expect(moved.length).toBeGreaterThan(0);
+    const busy = moved.filter((el) => el.matches('[aria-busy="true"]') || el.querySelector('[aria-busy="true"]') !== null);
+    expect(busy).toEqual([]);
+  });
+
+  it("a result opened directly is there at once", () => {
+    setWidth(393);
+    motion(false);
+    const { container } = renderPage(withFrames());
+    expect(body(container)!.hasAttribute("data-arrived")).toBe(false);
+    expect(body(container)!.hasAttribute("data-result-landing")).toBe(false);
+    expect(container.querySelector('[data-part="count-number"]')!.textContent).toBe("461");
+    expect(animations(container)).toEqual([]);
+    expect(body(container)!.className).not.toMatch(/fade-in|opacity/);
+  });
+
+  it("a run that turns into no audience fades in as a whole, as before (opacity only)", () => {
+    const { container, rerender } = renderPage({ kind: "running", id: "run-1", startedAt: null });
+
+    rerender(<ResultPage state={{ kind: "no-audience", id: "run-1", title: "Video", videoPath: null }} />);
+
+    expect(screen.getByText("No audience came back.")).toBeInTheDocument();
+    expect(body(container)?.hasAttribute("data-arrived")).toBe(true);
+    // Opacity only: an animated transform or filter would, for its 400 ms, make a fixed element
+    // place itself against the page body instead of the screen.
+    const fade = body(container)?.className ?? "";
+    expect(fade).toMatch(/motion-safe:transition-opacity/);
+    expect(fade).toMatch(/motion-safe:starting:opacity-0/);
+    expect(fade).not.toMatch(/animate-in|fade-in|zoom|slide|spin|blur|translate|scale|rotate|transform|filter/);
   });
 });
 
@@ -406,21 +537,33 @@ describe("result", () => {
     expect(text).not.toMatch(/Low confidence|Don.t post yet|craft/i);
   });
 
-  it("desktop: the video, the gauge beside the moment, the line as its own card, the switch and a panel", () => {
+  it("desktop: the video with the count under it, the sentence's card alone, the line as its own card, the switch and a panel; no gauge", () => {
     const { container } = renderPage(stateOf(early));
-    for (const name of ["video", "gauge", "moment", "curve", "tabs", "panel"]) {
+    for (const name of ["video", "count", "sentence-card", "moment", "curve", "tabs", "panel"]) {
       expect(container.querySelector(`[data-result="${name}"]`), name).not.toBeNull();
     }
     expect(container.querySelector('[data-result="hero"]')).toBeNull();
+    expect(container.querySelector('[data-result="gauge"]')).toBeNull();
+    // The count stands under the video, in the left column.
+    const column = container.querySelector('[data-result="video"]')!.parentElement!;
+    expect(column.getAttribute("data-part")).toBe("tile-column");
+    expect(column.querySelector('[data-result="count"]')).toHaveTextContent("461 of 1,000 watched to the end");
+    // The sentence has the first card to itself.
+    const card = container.querySelector('[data-result="sentence-card"]')!;
+    expect([...card.querySelectorAll("[data-result]")].map((el) => el.getAttribute("data-result"))).toEqual(["moment"]);
   });
 
-  it("phone: the hero card, the moment, the switch and a panel", async () => {
+  it("phone: the first card with the video and the count, the moment, the switch and a panel; no gauge", async () => {
     setWidth(393);
     const { container } = renderPage(stateOf(early));
     await waitFor(() => expect(container.querySelector('[data-result="hero"]')).not.toBeNull());
     for (const name of ["moment", "tabs", "panel"]) {
       expect(container.querySelector(`[data-result="${name}"]`), name).not.toBeNull();
     }
+    const hero = container.querySelector('[data-result="hero"]')!;
+    expect(hero.querySelector('[data-result="video"]')).not.toBeNull();
+    expect(hero.querySelector('[data-result="count"]')).toHaveTextContent("461 of 1,000 watched to the end");
+    expect(container.querySelector('[data-result="gauge"]')).toBeNull();
   });
 });
 

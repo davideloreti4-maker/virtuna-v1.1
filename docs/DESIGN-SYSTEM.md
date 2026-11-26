@@ -247,19 +247,20 @@ landmarks, chrome screenshots) and `scripts/next-look-compare.cjs` compares two 
 
 | Token | Role | Light | Dark |
 |---|---|---|---|
-| `--color-background` | ground | `#f4f3f0` | `#08080a` |
-| `--color-surface` | card | `#ffffff` | `#131315` |
-| `--color-surface-elevated` | raised control on a card, tooltip | `#efeeea` | `#232326` |
-| `--color-surface-sunken` | tint fill: secondary button, chip, search field | `rgba(18, 18, 17, 0.06)` | `rgba(255, 255, 255, 0.07)` |
-| `--color-border` | hairline | `rgba(17, 17, 16, 0.06)` | `rgba(255, 255, 255, 0.075)` |
-| `--color-border-hover` | hairline, hovered | `rgba(17, 17, 16, 0.12)` | `rgba(255, 255, 255, 0.14)` |
-| `--color-foreground` | text, icons | `#121211` | `#f7f6f3` |
-| `--color-foreground-secondary` | secondary text | `rgba(18, 18, 17, 0.6)` | `rgba(247, 246, 243, 0.62)` |
-| `--color-foreground-muted` | placeholder, unit, disabled | `rgba(18, 18, 17, 0.46)` | `rgba(247, 246, 243, 0.38)` |
-| `--color-action` | primary button | `#121211` | `#f7f6f3` |
-| `--color-action-foreground` | text on the primary button | `#ffffff` | `#0b0b0c` |
-| `--color-hover` | overlay tint on hover | `rgba(18, 18, 17, 0.04)` | `rgba(255, 255, 255, 0.05)` |
-| `--color-active` | overlay tint, pressed or selected | `rgba(18, 18, 17, 0.08)` | `rgba(255, 255, 255, 0.1)` |
+| `--color-background` | ground | `#f9f9f7` | `#191918` |
+| `--color-sidebar` | the desktop sidebar's panel, edged by a hairline | `#f2f1ee` | `#1f1f1e` |
+| `--color-surface` | card | `#ffffff` | `#232322` |
+| `--color-surface-elevated` | raised control on a card, tooltip | `#f0efec` | `#2c2c2a` |
+| `--color-surface-sunken` | tint fill: secondary button, chip, search field | `rgba(25, 25, 24, 0.05)` | `rgba(255, 255, 255, 0.06)` |
+| `--color-border` | hairline | `rgba(25, 25, 24, 0.08)` | `rgba(255, 255, 255, 0.09)` |
+| `--color-border-hover` | hairline, hovered | `rgba(25, 25, 24, 0.14)` | `rgba(255, 255, 255, 0.15)` |
+| `--color-foreground` | text, icons | `#191918` | `#ededeb` |
+| `--color-foreground-secondary` | secondary text | `rgba(25, 25, 24, 0.64)` | `rgba(237, 237, 235, 0.6)` |
+| `--color-foreground-muted` | placeholder, unit, disabled | `rgba(25, 25, 24, 0.48)` | `rgba(237, 237, 235, 0.4)` |
+| `--color-action` | primary button | `#191918` | `#ededeb` |
+| `--color-action-foreground` | text on the primary button | `#ffffff` | `#191918` |
+| `--color-hover` | overlay tint on hover | `rgba(25, 25, 24, 0.045)` | `rgba(255, 255, 255, 0.06)` |
+| `--color-active` | overlay tint, pressed or selected | `rgba(25, 25, 24, 0.075)` | `rgba(255, 255, 255, 0.11)` |
 | `--color-track` | empty part of a gauge or progress line | `rgba(18, 18, 17, 0.07)` | `rgba(255, 255, 255, 0.09)` |
 | `--color-gauge-track` | empty part of a thread gauge, the pack's progress line and the mini curve | `rgba(18, 18, 17, 0.12)` | `rgba(255, 255, 255, 0.17)` |
 | `--color-above` | 6+ above usual, graphic and text | `#17783b` | `#62d892` |
@@ -267,7 +268,7 @@ landmarks, chrome screenshots) and `scripts/next-look-compare.cjs` compares two 
 | `--color-below` | 6+ below usual, graphic | `#ec4a35` | `#ff5f4c` |
 | `--color-below-text` | 6+ below usual, text | `#c5371f` | `#ff8778` |
 | `--color-below-soft` | its pill background | `#fde9e4` | `rgba(255, 98, 80, 0.16)` |
-| `--color-glass` | floating chrome fill | `rgba(255, 255, 255, 0.78)` | `rgba(30, 30, 33, 0.78)` |
+| `--color-glass` | floating chrome fill | `rgba(255, 255, 255, 0.78)` | `rgba(35, 35, 34, 0.8)` |
 | `--color-scrim` | behind a sheet | `rgba(0, 0, 0, 0.42)` | `rgba(0, 0, 0, 0.6)` |
 
 `--color-accent` stays `#FF6363` and is the brand mark only. `--color-success` aliases
@@ -282,11 +283,11 @@ coral.
 
 | Token | Use | Light | Dark |
 |---|---|---|---|
-| `--shadow-rest` | card | `0 0 0 1px var(--color-border), 0 1px 1px rgba(0, 0, 0, 0.03), 0 10px 26px -12px rgba(0, 0, 0, 0.1), 0 34px 60px -34px rgba(0, 0, 0, 0.14)` | `0 0 0 1px var(--color-border), inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 24px 50px -24px rgba(0, 0, 0, 0.9)` |
-| `--shadow-lift` | card hovered (desktop) | `0 0 0 1px var(--color-border-hover), 0 14px 30px -12px rgba(0, 0, 0, 0.16), 0 40px 70px -34px rgba(0, 0, 0, 0.18)` | `0 0 0 1px var(--color-border-hover), inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 24px 50px -24px rgba(0, 0, 0, 0.9)` |
+| `--shadow-rest` | card | `0 0 0 1px var(--color-border), 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 16px -6px rgba(0, 0, 0, 0.08)` | `0 0 0 1px var(--color-border), 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 24px -8px rgba(0, 0, 0, 0.4)` |
+| `--shadow-lift` | card hovered (desktop) | `0 0 0 1px var(--color-border-hover), 0 2px 4px rgba(0, 0, 0, 0.05), 0 12px 28px -10px rgba(0, 0, 0, 0.14)` | `0 0 0 1px var(--color-border-hover), 0 1px 2px rgba(0, 0, 0, 0.2), 0 12px 32px -8px rgba(0, 0, 0, 0.5)` |
 | `--shadow-press` | pressed | `0 0 0 1px var(--color-border), 0 1px 2px rgba(0, 0, 0, 0.06)` | `0 0 0 1px var(--color-border)` |
-| `--shadow-control` | control resting on the ground: icon button, chip, New chat | `0 0 0 1px var(--color-border), 0 2px 6px -2px rgba(0, 0, 0, 0.12)` | `0 0 0 1px var(--color-border), 0 2px 6px -2px rgba(0, 0, 0, 0.12)` |
-| `--shadow-float` | message field, popover and menu, desktop dialog, toast | `0 0 0 1px var(--color-border), 0 14px 34px -12px rgba(0, 0, 0, 0.3)` | `0 0 0 1px var(--color-border), 0 14px 34px -12px rgba(0, 0, 0, 0.7)` |
+| `--shadow-control` | control resting on the ground: icon button, chip, New chat | `0 0 0 1px var(--color-border), 0 1px 2px rgba(0, 0, 0, 0.06)` | `0 0 0 1px var(--color-border), 0 1px 2px rgba(0, 0, 0, 0.24)` |
+| `--shadow-float` | message field, popover and menu, desktop dialog, toast | `0 0 0 1px var(--color-border), 0 2px 4px rgba(0, 0, 0, 0.06), 0 10px 28px -6px rgba(0, 0, 0, 0.16)` | `0 0 0 1px var(--color-border), 0 2px 4px rgba(0, 0, 0, 0.2), 0 12px 32px -8px rgba(0, 0, 0, 0.6)` |
 | `--shadow-button` | primary button | `inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 10px 20px -10px rgba(0, 0, 0, 0.45)` | `0 0 0 0 transparent` |
 | `--shadow-sheet` | sheet | `0 -20px 50px rgba(0, 0, 0, 0.3)` | `0 -20px 50px rgba(0, 0, 0, 0.6)` |
 
@@ -300,6 +301,15 @@ phone has no bottom tab bar: the left drawer, an opaque panel, is its one way ar
 
 Inter only. Four weights: `font-[430]` text, `font-[560]` label, `font-[640]` title, `font-bold`
 numbers and screen titles. Every number is tabular.
+In dark, running text (the body's inherited weight) drops to 400: light on dark reads heavier
+(claude.ai does the same, 400 to 360). Explicit weights do not change.
+
+Sidebar (desktop, redesign 2026-11-26, measured against claude.ai): a panel in `--color-sidebar`
+with a `border-border` hairline on its right edge; rows 34 tall, 14px (`text-reading`) at 480, text
+at full strength whether current or not, the current row lit by `bg-active`; the section label is
+the only quiet text (`text-label`, secondary); the account sits under a divider. New chat is the
+first row, marked by an ink dot (`bg-action`), never coral. The brand is `MavenLogo` (the new-look
+lockup: the heavier mark set against its ink, then "Maven" at 680, -0.04em).
 
 | Role | Utility | Size / line |
 |---|---|---|
@@ -324,31 +334,52 @@ is 50 tall, `xl` is 56), `IconButton`, `Chip`, `Badge` (the tag), `Sheet`. Shell
 (`src/components/shell`): `SideNav` (desktop), `Drawer` with its `MenuButton` (phone; no tab
 bar), `PlaceHeader`, `PushedHeader`, `NextShell`.
 
-Result page (`src/components/result`, logic in `src/lib/result`; spec
-`docs/superpowers/specs/2026-11-19-result-page-design.md`): `ResultPage` (loading, running,
-stalled, not found, no audience, result), `VideoResult` (phone column / desktop grid), `Hero`,
-`Player`, `Gauge`, `Curve` with `SceneStrip`, `Moment`, `CompactPlayer`, `PanelSwitch`,
+Result page (`src/components/result`, logic in `src/lib/result`; specs
+`docs/superpowers/specs/2026-11-19-result-page-design.md` and
+`docs/superpowers/specs/2026-11-25-result-video-focus-design.md`): `ResultPage` (loading, running,
+stalled, not found, no audience, result), `VideoResult` (phone column / desktop grid) drawn through
+the first block's layout parts (`FirstCard`, `WideFrame`, `LineFrame` in `first-block.tsx`), `Hero`,
+`Player`, `ViewerCount`, `Curve` with `SceneStrip`, `Moment`, `CompactPlayer`, `PanelSwitch`,
 `BrainPanel`, `EngagementPanel`, `AudiencePanel` with `AudienceRing`. One playhead for all of them:
 `PlayheadProvider` / `usePlayhead()`. Rules of that page:
 
-- Coral (`--color-below`, text `--color-below-text`, band `--color-below-soft`) marks one thing:
-  the scene the sentence names (its part of the line, its tile in the strip, its wedges and rows).
+- Coral (`--color-below`, text `--color-below-text`, band `--color-below-soft`) marks two things:
+  the scene the sentence names (its part of the line, its tile in the strip, its wedges and rows)
+  and, while the video is away from rest, the video's moment (the marker on Engagement's bar, the
+  line on each of the Brain's curves).
 - Tokens only; `result-guard.test.ts` enforces it. Glass exists in one place, the play mark on
   the video (`PlayMark` in `player.tsx`, blur as an inline style).
-- The number is `headlineOf()` and nothing else; the craft grader's score is never shown.
-- While the playhead moves, the readout shows a stored value (the end of the scene under it),
-  and its dot sits at that point.
+- The video is in focus: on a phone the first card holds the video, the count under it, then the
+  line with the strip; on a wide window the video stands large at the left with the count under it
+  and the sentence has the right column's first card to itself. The gauge is not on this page.
+- The numbers are counts of 1,000 viewers (`count.ts`: a stored share times ten, rounded): under
+  the video, in the pinned player and on Engagement. A count is never read off the headline's
+  rounded percent; the craft grader's score is never shown.
+- While the playhead moves, the line's readout shows a stored value (the end of the scene under
+  it), and its dot sits at that point; the count under the video shows the line's value at the
+  moment.
+- Engagement's four bars are drawn on tracks of one length (the row with the highest value carries
+  "Most likely", the other rows keep its room), so the bars compare.
 - The brain's porcelain look is `look="porcelain-light" | "porcelain-dark"` on `CortexCanvas`
-  (`cortex-porcelain.ts`); the default `"scan"` is the legacy look, unchanged.
+  (`cortex-porcelain.ts`); the default `"scan"` is the legacy look, unchanged. Its signals are said
+  in words (`brain-read.ts`): what each stands for, and above, at or below rest. No sentence sums
+  them up (the model builds over its first seconds on every clip, so one would say the same of each).
 - To look at it: `/dev/result?fixture=<name>` and `node scripts/result-shots.cjs --out <dir>`.
 - Each panel lays itself out for the width it gets, not the window's (container queries and
-  `audienceLayoutFor`), so a tablet or a narrow window never cuts a part off.
-- The running screen (`Running` with `RunningRing`; what the run's stream has said so far is
-  `useRunStream` over `run-progress.ts`) holds three things: the pale ring of the viewer groups,
-  the picture in its centre (the creator's video, else the scene frames in turn, else none) and
-  the clock. No words but the header's "Simulating", nothing coral, no stage and no percent: the
-  page's stream carries none, so the screen names none. Its moments on the dev page:
-  `/dev/result?fixture=early&processing=1&elapsed=<s>&groups=<n>[&arriving=<k>][&runframes=<n>][&own=1]`.
+  `audienceLayoutFor`), so a tablet or a narrow window never cuts a part off. The line under the
+  video does the same (`UNDER_LINE`): in a box under 290 its second part stands under the first in
+  every state.
+- The running screen (`Running`; what the run's stream has said so far is `useRunStream` over
+  `run-progress.ts`) is the result's first block building itself, drawn by the same layout parts:
+  the tile (the creator's own clip when this tab started the run from a file, else the post's
+  cover, else the first scene frame that arrived, else an empty tile), "Building your 1,000
+  viewers" with the time since the start, a dotted base where the line will be, and the strip's
+  tiles filling as the frames arrive. No count, no line, no percent, nothing coral. A result that
+  arrives while it is open lands (`landing.tsx`): the tile keeps the picture the running screen
+  showed until the player's own is there (`run-video.ts`), the count rolls from 1,000, the line
+  draws itself, the rest comes in; opacity and the line's stroke only, `motion-safe:` only
+  (keyframes `result-*` in `globals.css`). Its moments on the dev page:
+  `/dev/result?fixture=early&processing=1&elapsed=<s>[&runframes=<n>][&own=1][&cover=<url>][&land=<s>]`.
 
 The message field and the thread frame (`src/components/thread-next`; spec
 `docs/superpowers/specs/2026-11-20-thread-field-design.md`; rebuilt 2026-11-26 on the Claude app's

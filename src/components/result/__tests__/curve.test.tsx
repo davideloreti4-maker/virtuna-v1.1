@@ -1,6 +1,6 @@
 /** @vitest-environment happy-dom */
 /**
- * The still-watching line, its playhead and the strip of scenes (plan Task 3, spec §5 "The curve",
+ * The still-watching line, its playhead and the strip of scenes (the result page's spec, "The curve",
  * "The strip", "Player"). Real components and the real playhead on recorded runs. Only layout is
  * absent (happy-dom measures nothing), so a drag is given in pixels from the plot's left edge.
  */
@@ -12,6 +12,7 @@ import middle from "@/lib/result/__tests__/fixtures/middle.json";
 import opening from "@/lib/result/__tests__/fixtures/opening.json";
 import type { VideoModel } from "@/lib/result/types";
 import { Curve } from "../curve";
+import { LAND } from "../landing";
 import { FRAME_BASE, modelOf, playhead, renderWithPlayhead } from "./hero-harness";
 
 const W = 329;
@@ -256,5 +257,35 @@ describe("the strip", () => {
   it("46 tall on a line wider than 400 (desktop)", () => {
     const { container } = mountCurve(modelOf(early, { frames: true }), { width: 540, height: 104 });
     expect(container.querySelector<HTMLElement>('[data-result="strip"]')!.style.height).toBe("46px");
+  });
+});
+
+describe("entering (the landing)", () => {
+  it("off by default: the line is not dashed and nothing carries a landing class", () => {
+    const { part, container } = mountCurve(modelOf(early, { frames: true }));
+    expect(part("line")!.hasAttribute("pathLength")).toBe(false);
+    expect(part("line")!.hasAttribute("stroke-dasharray")).toBe(false);
+    expect(container.innerHTML).not.toContain("animate-[result-");
+    expect(part("dot")!.hasAttribute("class")).toBe(false);
+  });
+
+  it("entering: the line draws itself, its coral and band come in after 0.5 s, the fill and ticks after 0.9 s, the strip at once; the rest as at rest", () => {
+    const model = modelOf(early, { frames: true });
+    const view = renderWithPlayhead(model, <Curve model={model} width={W} height={H} strip enter />);
+    const part = (name: string) => view.container.querySelector(`[data-part="${name}"]`)!;
+    expect(part("line").getAttribute("pathLength")).toBe("1");
+    expect(part("line").getAttribute("stroke-dasharray")).toBe("1");
+    expect(part("line").getAttribute("class")).toBe(LAND.draw);
+    expect(part("loss").getAttribute("class")).toBe(LAND.coral);
+    expect(part("band").getAttribute("class")).toBe(LAND.coral);
+    expect(part("fill").getAttribute("class")).toBe(LAND.fill);
+    for (const tick of view.container.querySelectorAll('[data-part="tick"]')) expect(tick.getAttribute("class")).toBe(LAND.fill);
+    expect(part("strip-slot").className).toContain(LAND.strip);
+    // The same line, the dot at its end (held back until the line has reached it), the slider at rest.
+    expect(part("loss").getAttribute("d")).toBe(part("line").getAttribute("d"));
+    expect(Number(part("dot").getAttribute("cx"))).toBeCloseTo(W, 0);
+    expect(part("dot").getAttribute("class")).toBe(LAND.dot);
+    expect(LAND.dot).toContain("_1.2s_");
+    expect(screen.getByRole("slider")).toHaveAttribute("aria-valuenow", "29");
   });
 });
