@@ -57,6 +57,16 @@ describe("remixFilmOf: what is known before a read", () => {
     expect(remixFilmOf(blank({ theTurn: " " }))!.why).toEqual({ text: DECODE.hookPattern, sub: null });
   });
 
+  it("a plain line (whyPlain, from the decode's WHY_PLAIN_RULE): shown alone, in place of the technical beats", () => {
+    const plain = "A dog steals the sandwich in the first second. People stay to see if he gets caught.";
+    const p = remix("x", { sourceDecode: { ...DECODE, whyPlain: `  ${plain}  ` } }).props;
+    expect(remixFilmOf(p)!.why).toEqual({ text: plain, sub: null });
+  });
+
+  it("a stored remix without it, or a blank one: the old text, as before", () => {
+    expect(remixFilmOf(remix("x", { sourceDecode: { ...DECODE, whyPlain: "  " } }).props)!.why).toEqual({ text: DECODE.hookPattern, sub: DECODE.theTurn });
+  });
+
   it("a plan only: no why row", () => {
     expect(remixFilmOf(remix("x", { production: PLAN }).props)).toMatchObject({ why: null, plan: filmPlanOf(PLAN) });
   });

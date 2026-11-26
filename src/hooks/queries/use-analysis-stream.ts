@@ -29,6 +29,7 @@ import { STREAM_TIMEOUT_ERROR } from "@/lib/engine/stream-errors";
 import { resolveRunError } from "@/lib/net/run-failure";
 import { isCreditQuotaExceeded, type CreditQuotaExceeded } from "@/lib/billing/quota-error";
 import { reportSession401, SessionExpiredRefusal } from "@/lib/auth/session-expired";
+import { holdLetGo, reportLetGoRunEnded } from "@/lib/thread-next/let-go-runs";
 import {
   PANEL_IDS,
   type PanelId,
@@ -71,6 +72,10 @@ export interface AnalysisStreamInput {
   creator_handle?: string;
   /** Plan 02-03: user intent forwarded into the POST body (mode=remix routes decode+adapt). */
   mode?: "score" | "remix";
+  /** The chat this run was started in: the server adds the Test card there when it completes. */
+  thread_id?: string;
+  /** This run's own nonce (made when it is armed; sent with its seal too): one card per run. */
+  run_nonce?: string;
   /** Plan 05-01: source remix analysis id forwarded into the POST body for developed-child lineage (D-07). */
   parent_id?: string;
 }
@@ -168,6 +173,16 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  // Leaving the page lets the run go on (see the unmount cleanup): the POST this hook reads IS the
+  // analyze run, so aborting it there was a client disconnect from a 10-credit run. These say which
+  // request is still the one on screen, and which were let go (with their hold, `holdLetGo`).
+  const isMountedRef = useRef(true);
+  const genRef = useRef(0);
+  const letGoRef = useRef(new Map<number, () => void>());
+  // The creator cancelled this run (`abort` / `reset` / "New analysis"): no reconnect, whatever error
+  // the abort surfaces as. A ref of its own because the run's `finally` clears abortRef before
+  // onError reads it, and an abort is not always an AbortError.
+  const userAbortedRef = useRef(false);
 
   const panelReady = useMemo(() => {
     if (stages.length === 0 && phase === "complete") {
@@ -256,6 +271,13 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
         setPhase("analyzing");
       }
     } else if (eventType === "complete") {
+      // A cache hit sends one `complete` and no `started`: its payload names the analysis (the
+      // route puts the row id on the cached result), so the seal can card it.
+      const payloadId = (data as { id?: unknown }).id;
+      if (!analysisIdRef.current && typeof payloadId === "string" && payloadId) {
+        analysisIdRef.current = payloadId;
+        setAnalysisId(payloadId);
+      }
       setResult(data as PredictionResult);
       setPhase("complete");
       // Push the finalized result into the shared detail cache so every OTHER
@@ -334,72 +356,90 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
 
       const controller = new AbortController();
       abortRef.current = controller;
+      userAbortedRef.current = false;
+      // This request's number: an unmount lets it go (the cleanup below), and from then on every
+      // frame it still sends is read and dropped, so the route runs to its end.
+      const gen = ++genRef.current;
+      const isLive = () => isMountedRef.current && genRef.current === gen;
+      try {
+        const res = await fetch("/api/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(input),
+          signal: controller.signal,
+        });
 
-      const res = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
-        signal: controller.signal,
-      });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({ error: "Analysis failed" }));
 
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({ error: "Analysis failed" }));
+          // 401 FIRST — the route refuses for a dead session ABOVE its own credit gate
+          // (api/analyze/route.ts:400, before getCreditQuotaVerdict), so nothing was metered and the
+          // 402 payload below cannot exist on this response. Throwing the refusal rather than
+          // returning lets `resolveRunError` in onError classify the cause; without it the run died
+          // into the route's `{ error: "Unauthorized" }` slug and rendered the generic "the
+          // generation or SIM-1 pass dropped out" — a description of a failure that did not happen,
+          // on the priciest action in the product.
+          if (reportSession401(res.status)) throw new SessionExpiredRefusal();
 
-        // 401 FIRST — the route refuses for a dead session ABOVE its own credit gate
-        // (api/analyze/route.ts:400, before getCreditQuotaVerdict), so nothing was metered and the
-        // 402 payload below cannot exist on this response. Throwing the refusal rather than
-        // returning lets `resolveRunError` in onError classify the cause; without it the run died
-        // into the route's `{ error: "Unauthorized" }` slug and rendered the generic "the
-        // generation or SIM-1 pass dropped out" — a description of a failure that did not happen,
-        // on the priciest action in the product.
-        if (reportSession401(res.status)) throw new SessionExpiredRefusal();
-
-        // 402 = the allowance is spent. Not a failure — a paywall. Keep the payload (tier,
-        // used, limit, inTrial) so the UI can say which wall was hit and what to do about it;
-        // throwing the bare slug is how `credit_quota_exceeded` ended up on screen.
-        if (res.status === 402 && isCreditQuotaExceeded(err)) {
-          setQuotaError(err);
-          throw new Error(err.message);
-        }
-
-        // Prefer the server's human `message` over the machine slug in `error`.
-        throw new Error(err.message ?? err.error ?? "Analysis failed");
-      }
-      if (!res.body) throw new Error("No response body");
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-
-        // WR-03: proper SSE frame accumulator — split on double-newline (SSE frame boundary),
-        // then extract event:, id:, and data: fields from each frame. The prior line-pair
-        // assumption (event: immediately followed by data:) silently dropped frames
-        // containing id: prefixes (e.g. the id:complete event from the server).
-        const frames = buffer.split("\n\n");
-        buffer = frames.pop() ?? "";
-
-        for (const frame of frames) {
-          const frameLines = frame.split("\n");
-          let eventType = "message";
-          let dataLine = "";
-          for (const fLine of frameLines) {
-            if (fLine.startsWith("event: ")) eventType = fLine.slice(7).trim();
-            else if (fLine.startsWith("data: ")) dataLine = fLine.slice(6);
-            // id: lines are intentionally skipped — browser EventSource manages Last-Event-ID
+          // 402 = the allowance is spent. Not a failure — a paywall. Keep the payload (tier,
+          // used, limit, inTrial) so the UI can say which wall was hit and what to do about it;
+          // throwing the bare slug is how `credit_quota_exceeded` ended up on screen.
+          if (res.status === 402 && isCreditQuotaExceeded(err)) {
+            setQuotaError(err);
+            throw new Error(err.message);
           }
-          if (dataLine) {
-            try {
-              const data = JSON.parse(dataLine);
-              dispatch(eventType, data);
-            } catch {
-              // Malformed JSON — silently drop frame.
+
+          // Prefer the server's human `message` over the machine slug in `error`.
+          throw new Error(err.message ?? err.error ?? "Analysis failed");
+        }
+        if (!res.body) throw new Error("No response body");
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          // WR-03: proper SSE frame accumulator — split on double-newline (SSE frame boundary),
+          // then extract event:, id:, and data: fields from each frame. The prior line-pair
+          // assumption (event: immediately followed by data:) silently dropped frames
+          // containing id: prefixes (e.g. the id:complete event from the server).
+          const frames = buffer.split("\n\n");
+          buffer = frames.pop() ?? "";
+
+          for (const frame of frames) {
+            const frameLines = frame.split("\n");
+            let eventType = "message";
+            let dataLine = "";
+            for (const fLine of frameLines) {
+              if (fLine.startsWith("event: ")) eventType = fLine.slice(7).trim();
+              else if (fLine.startsWith("data: ")) dataLine = fLine.slice(6);
+              // id: lines are intentionally skipped — browser EventSource manages Last-Event-ID
+            }
+            if (dataLine && isLive()) {
+              try {
+                const data = JSON.parse(dataLine);
+                dispatch(eventType, data);
+              } catch {
+                // Malformed JSON — silently drop frame.
+              }
             }
           }
+        }
+      } catch (err) {
+        // A run let go (unmount, or the creator left the chat): its end, failed or not, draws nothing.
+        if (!isLive()) return;
+        throw err;
+      } finally {
+        if (abortRef.current === controller) abortRef.current = null;
+        const letGoHold = letGoRef.current.get(gen);
+        if (letGoHold) {
+          letGoRef.current.delete(gen);
+          letGoHold();
+          reportLetGoRunEnded();
         }
       }
     },
@@ -415,10 +455,13 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
       }
     },
     onError: (err: Error) => {
-      // Intentional abort (component unmounted / navigated away mid-stream): the
-      // POST was cancelled on purpose. Do NOT reconnect — a reconnect here spawns
-      // a rogue EventSource on the unmounting component and the rejection surfaces
-      // as an unhandled error during the navigation commit (WSOD). Just bail.
+      // Unmounted (the run was let go): nothing to draw, and no reconnect on a gone component.
+      if (!isMountedRef.current) return;
+      // The creator's own cancel: nothing to reconnect to, whatever the error looks like.
+      if (userAbortedRef.current) return;
+      // Intentional abort (the creator's own cancel, `abort`/`reset`): the POST was cancelled on
+      // purpose. Do NOT reconnect — a reconnect here spawns a rogue EventSource and the rejection
+      // surfaces as an unhandled error during the navigation commit (WSOD). Just bail.
       if (abortRef.current?.signal.aborted || err.name === "AbortError") {
         return;
       }
@@ -498,11 +541,21 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
     return () => document.removeEventListener("visibilitychange", onVis);
   }, []);
 
-  // Cleanup on unmount
+  // Cleanup on unmount. The EventSource (a reconnect READER of /api/analyze/[id]/stream) closes.
+  // The POST does not abort: it IS the run (the SSE branch of /api/analyze does the work inside the
+  // request, and adds the Test card to its chat at the end), so leaving the page lets it go on, as a
+  // thread switch does for the other streams: read to its end in the background, nothing set or
+  // cached after (`isLive`), its end told (`let-go-runs`). `abort`/`reset` still cancel.
   useEffect(() => {
+    isMountedRef.current = true;
+    const letGo = letGoRef.current;
     return () => {
+      isMountedRef.current = false;
       eventSourceRef.current?.close();
-      abortRef.current?.abort();
+      // `long: true`: a paid run, kept out of the let-go FIFO (never ended to make room for another).
+      if (abortRef.current) letGo.set(genRef.current, holdLetGo(abortRef.current, { long: true }));
+      genRef.current += 1;
+      abortRef.current = null;
     };
   }, []);
 
@@ -599,9 +652,31 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
   // instance; the node instances each hold their own completed `result` and
   // would keep rendering the old analysis. This wipe runs in every instance.
   const wipeToIdle = useCallback(() => {
+    if (abortRef.current) userAbortedRef.current = true;
     abortRef.current?.abort();
     eventSourceRef.current?.close();
     eventSourceRef.current = null;
+    setAnalysisId(null);
+    setResult(null);
+    setStages([]);
+    setPartial({ personas: [] });
+    setFilmstrips({});
+    setError(null);
+    setPhase("idle");
+  }, []);
+
+  // A thread switch (New chat, or another chat: the board store's `switchThread`, which bumps BOTH
+  // signals) is the creator LEAVING the chat, not a cancel. Its run goes on, as on unmount: the POST
+  // is let go (held, read to its end so the route bills and adds the card to its chat), nothing of it
+  // is drawn in the next chat, and this instance is idle for it. Live check 2026-11-26: New chat 10 s
+  // into a simulation aborted the POST here (`wipeToIdle`).
+  const detachToIdle = useCallback(() => {
+    if (abortRef.current) letGoRef.current.set(genRef.current, holdLetGo(abortRef.current, { long: true }));
+    genRef.current += 1;
+    abortRef.current = null;
+    eventSourceRef.current?.close();
+    eventSourceRef.current = null;
+    analysisIdRef.current = null;
     setAnalysisId(null);
     setResult(null);
     setStages([]);
@@ -616,14 +691,22 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
   // — a freshly-completed analysis sets the URL via history.replaceState (which
   // bypasses Next's router, so useParams never reports the id), so the route
   // transition below can't be relied on for the run→complete→New-analysis flow.
+  // A bump that comes with an activeThreadSignal bump is a thread switch: detach, not abort.
   const newAnalysisSignal = useBoardStore((s) => s.newAnalysisSignal);
+  const activeThreadSignal = useBoardStore((s) => s.activeThreadSignal);
   const prevSignalRef = useRef(newAnalysisSignal);
+  const prevThreadSignalRef = useRef(activeThreadSignal);
   useEffect(() => {
+    // Only `switchThread` counts it UP; `triggerNewAnalysis` / `resetToIdle` put it back to 0 with
+    // the rest of the board's defaults, which is not a switch.
+    const switched = activeThreadSignal > prevThreadSignalRef.current;
+    prevThreadSignalRef.current = activeThreadSignal;
     if (prevSignalRef.current !== newAnalysisSignal) {
       prevSignalRef.current = newAnalysisSignal;
-      wipeToIdle();
+      if (switched) detachToIdle();
+      else wipeToIdle();
     }
-  }, [newAnalysisSignal, wipeToIdle]);
+  }, [newAnalysisSignal, activeThreadSignal, wipeToIdle, detachToIdle]);
 
   // Secondary trigger: route leaves a permalink (/analyze/[id] → /analyze base),
   // e.g. browser back button without clicking the CTA. Guard on phase so an
@@ -650,6 +733,7 @@ export function useAnalysisStream(opts?: UseAnalysisStreamOptions): AnalysisStre
   // Fix 3 (05-ux): abort() — cancels the in-flight POST body-reader and/or EventSource,
   // then resets phase to 'idle'. Safe to call when phase is already 'idle' or 'complete'.
   const abort = useCallback(() => {
+    if (abortRef.current) userAbortedRef.current = true;
     abortRef.current?.abort();
     eventSourceRef.current?.close();
     eventSourceRef.current = null;

@@ -60,10 +60,17 @@ export interface ActiveRun {
   warnings: string[];
   error: string | null;
   outliersAvailable: boolean;
+  /** The creator stopped this run while its request was out (see `RunCandidate.isStopped`). */
+  isStopped: boolean;
   /** Abort the in-flight stream (every hook backs this with a real AbortController). */
   stop: () => void;
   /** Clear the stream so the persisted thread owns this run's history. */
   reset: () => void;
+  /**
+   * Run it again as it was asked (the failed turn's Retry). It rides the run, not its `skill`: a run
+   * the chat dispatched is named by the skill it ran, and retrying it is the chat's to do.
+   */
+  retry?: () => void;
 }
 
 /**
@@ -72,6 +79,12 @@ export interface ActiveRun {
  */
 export interface RunCandidate {
   skill: ChatTurnKind;
+  /**
+   * The stream this run is on, when it is not named by `skill` alone: the chat names its run by the
+   * skill it dispatched, so a chat-dispatched hooks run and the hooks stream's own run share a skill
+   * but are two runs. Defaults to `skill`.
+   */
+  stream?: string;
   isStreaming: boolean;
   isDone?: boolean;
   /** Omit for streams with no late frame — it defaults TRUE, i.e. "fold as soon as done". */
@@ -83,8 +96,26 @@ export interface RunCandidate {
   warnings?: string[];
   error?: string | null;
   outliersAvailable?: boolean;
+  /**
+   * The creator stopped this run while its request was out. Holds the tail on its own, so a run
+   * stopped before anything arrived keeps its turn (and the creator's message) on screen.
+   */
+  isStopped?: boolean;
+  /**
+   * How many runs this stream has started (each hook counts its starts). A new number is a new run,
+   * whether or not a render ever saw it streaming: a request refused at once ends in the render it
+   * started in.
+   */
+  runs?: number;
+  /**
+   * A wait with no request of ours behind it (a chat reopened while its run goes on, on the server).
+   * It may hold the tail, but it never holds the field: it is not "streaming" to the composer's
+   * one-run-at-a-time gate, and Stop does not reach it.
+   */
+  waitOnly?: boolean;
   stop: () => void;
   reset: () => void;
+  retry?: () => void;
 }
 
 function normalize(c: RunCandidate): ActiveRun {
@@ -100,10 +131,14 @@ function normalize(c: RunCandidate): ActiveRun {
     warnings: c.warnings ?? [],
     error: c.error ?? null,
     outliersAvailable: c.outliersAvailable ?? false,
+    isStopped: c.isStopped ?? false,
     stop: c.stop,
     reset: c.reset,
+    retry: c.retry,
   };
 }
+
+const streamOf = (c: RunCandidate): string => c.stream ?? c.skill;
 
 /**
  * True when a candidate still has anything worth rendering as the tail turn.
@@ -127,14 +162,23 @@ function normalize(c: RunCandidate): ActiveRun {
  * BEFORE it sends the event, so the folded turn already carries the outro. And while a run is
  * genuinely live its blocks/stages/isStreaming already make it the tail — a follow-up has never
  * arrived before them.
+ *
+ * A stopped run is content too, so Stop pressed before a single word, stage or card keeps the turn
+ * (the live turn is what draws the creator's message). Only until another run starts, whatever the
+ * stopped one holds: a stream is not reset when a different one runs next (a stopped run is never
+ * done, so no fold resets it), and once that run has folded into history the stopped one would come
+ * back as the tail, its words and stages under the newest message, drawn a second time. Its ask is
+ * not lost: the chat and skill routes store the ask before they answer, so the next fold's read
+ * brings it in (the account read stores its message with a delivered read only, so a stopped one
+ * leaves nothing behind).
+ *
+ * A failed run the same: it is never done either, so it keeps its error (and its Retry) until the
+ * creator retries it, and only while it is the newest run. Once another has started and folded, the
+ * failed one would come back with its Retry under that run's ask.
  */
-function hasContent(c: RunCandidate): boolean {
-  return (
-    c.isStreaming ||
-    (c.blocks?.length ?? 0) > 0 ||
-    (c.stages?.length ?? 0) > 0 ||
-    !!c.error
-  );
+function hasContent(c: RunCandidate, lastStarted: string | null): boolean {
+  if ((c.isStopped || c.error) && !c.isStreaming) return streamOf(c) === lastStarted;
+  return c.isStreaming || (c.blocks?.length ?? 0) > 0 || (c.stages?.length ?? 0) > 0;
 }
 
 export interface UseActiveRunResult {
@@ -147,7 +191,7 @@ export interface UseActiveRunResult {
 }
 
 export function useActiveRun(candidates: RunCandidate[]): UseActiveRunResult {
-  // Remember which skill last began streaming, so that when two runs both hold content — the
+  // Remember which stream last began streaming, so that when two runs both hold content — the
   // previous one settled but not yet folded into history, because its reload is still in flight or
   // failed — the NEWER one owns the tail. Without this the tail falls back to candidate ORDER,
   // which would flip the thread back to a stale run.
@@ -161,21 +205,38 @@ export function useActiveRun(candidates: RunCandidate[]): UseActiveRunResult {
   // what makes this terminate — React re-runs the render immediately and the second pass is a
   // no-op. It only fires when a NEW run starts, and while one is streaming the streaming branch
   // wins outright anyway.
-  const [lastStarted, setLastStarted] = useState<ChatTurnKind | null>(null);
+  //
+  // A run usually starts by streaming. One refused at once can end in the render it started in (its
+  // request is refused before React draws it running), so a stream whose count of starts (`runs`)
+  // went up since the last render has started too: it is the run the creator just sent. What the
+  // stream holds cannot tell: a stream that failed before and is refused again holds an error before
+  // and after. `seenRuns` is every stream's count as of the last render, kept the same way.
+  const [lastStarted, setLastStarted] = useState<string | null>(null);
+  const runsNow = candidates.map((c) => c.runs ?? 0).join(",");
+  const [seenRuns, setSeenRuns] = useState(() => candidates.map(() => 0).join(","));
   const streaming = candidates.find((c) => c.isStreaming) ?? null;
-  const streamingSkill = streaming?.skill ?? null;
-  if (streamingSkill && streamingSkill !== lastStarted) setLastStarted(streamingSkill);
+  let started = streaming ? streamOf(streaming) : null;
+  if (runsNow !== seenRuns) {
+    if (!started) {
+      const before = seenRuns.split(",").map(Number);
+      started = candidates.filter((c, i) => (c.runs ?? 0) > (before[i] ?? 0)).map(streamOf).pop() ?? null;
+    }
+    setSeenRuns(runsNow);
+  }
+  if (started && started !== lastStarted) setLastStarted(started);
 
-  const settled = candidates.filter(hasContent);
+  const settled = candidates.filter((c) => hasContent(c, lastStarted));
   const preferred =
     streaming ??
-    settled.find((c) => c.skill === lastStarted) ??
+    settled.find((c) => streamOf(c) === lastStarted) ??
     settled[settled.length - 1] ??
     null;
 
   return {
     activeRun: preferred ? normalize(preferred) : null,
-    isAnyStreaming: !!streaming,
-    stopActive: () => streaming?.stop(),
+    isAnyStreaming: candidates.some((c) => c.isStreaming && !c.waitOnly),
+    stopActive: () => {
+      if (streaming && !streaming.waitOnly) streaming.stop();
+    },
   };
 }

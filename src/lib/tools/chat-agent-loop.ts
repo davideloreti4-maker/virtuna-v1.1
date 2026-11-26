@@ -40,6 +40,8 @@ import { EMIT_CARD_TOOL, handleEmitCard } from "@/lib/tools/emit-card-tool";
 import { REVISE_REMIX_TOOL, handleReviseRemix, type ReviseRemixDeps } from "@/lib/tools/revise-remix-tool";
 import { createProseCallGuard } from "@/lib/tools/prose-call";
 import { stripLeakedReasoning, capRunawayProse } from "@/lib/tools/reasoning-leak";
+import { withChatVoice } from "@/lib/tools/chat-voice";
+import { createDashGuard, plainDashes } from "@/lib/tools/plain-dashes";
 import { createSearchGovernor } from "@/lib/grounding/search-budget";
 import type { RetrievedExample } from "@/lib/grounding/types";
 import { retrieveCachedExamples } from "@/lib/grounding/retrieve";
@@ -572,7 +574,7 @@ function toolUseDirective(
         "lines, no idea/concept list, no script or outline, not even ONE as an example, an illustration, a " +
         "demo, or 'the thinking'. A refusal sentence followed by the content is still delivering the " +
         "content. Never write a quoted candidate line they could paste into a video. " +
-        "What you MAY do: name the mechanism in the abstract, ask what would sharpen the angle, and " +
+        "What you MAY do: say in plain words what makes a line work, ask what would sharpen the angle, and " +
         "critique lines THEY write. If they push, hold the limit and point at the account. ";
   const base =
     makeLine +
@@ -1060,7 +1062,11 @@ export async function runChatAgentStream(
 
   // The caller's prompt grounds voice/chat; the loop appends the tool-use directive (it owns the tools).
   // The directive is told what THIS caller bound, so it can never advertise a skill the model cannot call.
-  const systemContent = `${input.systemPrompt}\n\n${toolUseDirective(!!input.grounding, skills, !!input.cardsSlot, composing)}`;
+  // The chat voice rule goes LAST: everything this loop streams is read by the creator, and the
+  // caller's craft corpus asks for named mechanisms the rule overrides (chat-voice.ts).
+  const systemContent = withChatVoice(
+    `${input.systemPrompt}\n\n${toolUseDirective(!!input.grounding, skills, !!input.cardsSlot, composing)}`,
+  );
   const boundNames = new Set(tools.map((t) => (t as { function?: { name?: string } }).function?.name ?? ""));
   const messages: Array<Record<string, unknown>> = [
     { role: "system", content: systemContent },
@@ -1145,10 +1151,16 @@ export async function runChatAgentStream(
   // safety rests on, which is what allowed the last model holdout to be retired. A PAYING creator
   // gets the identity function, so their stream stays byte-for-byte untouched — for them a quoted
   // line or an enumerated pack is the product, not a leak.
+  //
+  // The dash guard (plain-dashes.ts) sits INNERMOST, just before the creator's `onToken`, for
+  // everyone: the artefact and prose-call guards still read the model's own text, and the
+  // creator's stream changes only at an em or en dash. Released at the end of every round; the
+  // stored text is put through `plainDashes` per round, so live and reload read the same.
+  const dash = createDashGuard(input.onToken);
   const guard: ArtefactGuard = guardArtefacts
-    ? createArtefactGuard(input.onToken)
+    ? createArtefactGuard(dash.push)
     : {
-        push: input.onToken,
+        push: dash.push,
         flush: () => "",
       };
 
@@ -1278,25 +1290,33 @@ export async function runChatAgentStream(
     const proseGuard = proseCallTool && !alreadyProsePinned ? createProseCallGuard(guard.push) : null;
     const sink = proseGuard ? proseGuard.push : guard.push;
     const toolAcc = new Map<number, { id?: string; name?: string; args: string }>();
-    for await (const chunk of stream) {
-      const delta = chunk.choices?.[0]?.delta;
-      if (!delta) continue;
-      if (delta.content && roundText.length < textCap) {
-        const room = textCap - roundText.length;
-        const slice = delta.content.length > room ? delta.content.slice(0, room) : delta.content;
-        roundText += slice;
-        sink(slice);
-      }
-      if (delta.tool_calls) {
-        for (const tc of delta.tool_calls) {
-          const idx = tc.index ?? 0;
-          const acc = toolAcc.get(idx) ?? { args: "" };
-          if (tc.id) acc.id = tc.id;
-          if (tc.function?.name) acc.name = tc.function.name;
-          if (tc.function?.arguments) acc.args += tc.function.arguments;
-          toolAcc.set(idx, acc);
+    try {
+      for await (const chunk of stream) {
+        const delta = chunk.choices?.[0]?.delta;
+        if (!delta) continue;
+        if (delta.content && roundText.length < textCap) {
+          const room = textCap - roundText.length;
+          const slice = delta.content.length > room ? delta.content.slice(0, room) : delta.content;
+          roundText += slice;
+          sink(slice);
+        }
+        if (delta.tool_calls) {
+          for (const tc of delta.tool_calls) {
+            const idx = tc.index ?? 0;
+            const acc = toolAcc.get(idx) ?? { args: "" };
+            if (tc.id) acc.id = tc.id;
+            if (tc.function?.name) acc.name = tc.function.name;
+            if (tc.function?.arguments) acc.args += tc.function.arguments;
+            toolAcc.set(idx, acc);
+          }
         }
       }
+    } catch (err) {
+      // A round that throws mid-stream: what the dash guard held still reaches the creator. Not a
+      // `finally`: on the normal path the prose-call guard may still push text below, and the
+      // release has to come after it.
+      dash.release();
+      throw err;
     }
     // Resolve the round's calls (ids stable so the assistant message + tool results line up).
     const calls = [...toolAcc.values()]
@@ -1320,7 +1340,11 @@ export async function runChatAgentStream(
      * Stripping it from the history is deliberate: the pinned round forces the call regardless, and
      * leaving a malformed call in the transcript is precedent for writing another one.
      */
-    const shownText = proseGuard ? proseGuard.close(proseCallPinFires) : roundText;
+    const shownRaw = proseGuard ? proseGuard.close(proseCallPinFires) : roundText;
+    // End of the round: what the dash guard held goes out now (a tool call may run next), and the
+    // stored and replayed text gets the same pass, per round, so it matches what was streamed.
+    dash.release();
+    const shownText = plainDashes(shownRaw);
     fullText += shownText;
     if (cardsAlreadyDelivered) postCardText += shownText;
 
@@ -1737,8 +1761,8 @@ export async function runChatAgentStream(
                   cards_on_screen: onScreen.lines,
                   note:
                     "these are the cards the creator can NOW SEE, in order. Reply with ONE short " +
-                    "closing line that refers to them by their text — name the strongest and why, " +
-                    "or point at the next step. They are ALREADY on screen: never re-list them, " +
+                    "closing line that refers to them by their own words, never by number. Name the " +
+                    "strongest and why, or point at the next step. They are ALREADY on screen: never re-list them, " +
                     "and never present them as something you are producing now.",
                 }
               : onScreen?.kind === "results"
@@ -1818,11 +1842,18 @@ export async function runChatAgentStream(
   // Same threshold because it is the same population: a visitor turn is all prose and has no card
   // pack, exactly like the no-card branch above.
   //
-  // 🔴 `guard.flush()` stays INSIDE the ternary. It is not a getter: it settles held state and
-  // `emit()`s the release through `onToken`, so hoisting it to a `const` would push extra tokens
-  // into the creator's stream on the bound path — the one thing this whole change must not do.
+  // 🔴 `guard.flush()` stays INSIDE the ternary (via `flushUnbound`, called only there). It is not
+  // a getter: it settles held state and `emit()`s the release through `onToken`, so hoisting it to
+  // a `const` would push extra tokens into the creator's stream on the bound path.
+  const flushUnbound = () => {
+    guard.flush();
+    return dash.flush();
+  };
   return {
-    text: unbound ? capRunawayProse(stripLeakedReasoning(guard.flush())) : answer,
+    // Unbound: the artefact guard releases what it held into the dash guard, whose own record is
+    // exactly what the creator saw. Bound: every round already released, so `dash.flush()` would
+    // emit nothing; it is not called there.
+    text: unbound ? capRunawayProse(stripLeakedReasoning(flushUnbound())) : answer,
     skillRuns,
     uiBlocks,
     toolCalls,

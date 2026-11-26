@@ -1,7 +1,9 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queries/query-keys";
+import { subscribeLetGoRunsEnded } from "@/lib/thread-next/let-go-runs";
 
 /** A sidebar chat-thread summary (active = index 0, newest-first). */
 export interface ThreadSummary {
@@ -14,6 +16,33 @@ export interface ThreadSummary {
 }
 
 /**
+ * A run the creator left (a thread switch, or leaving /home mid-run) ends in the background and is
+ * stored in its chat: the list is read again then (`let-go-runs`), wherever the creator is now, as
+ * long as some list is on screen. One subscription per query client, however many lists are mounted.
+ */
+const letGoSubscriptions = new Map<QueryClient, { count: number; stop: () => void }>();
+function useListFollowsLetGoRuns(queryClient: QueryClient) {
+  useEffect(() => {
+    const held = letGoSubscriptions.get(queryClient);
+    if (held) held.count += 1;
+    else
+      letGoSubscriptions.set(queryClient, {
+        count: 1,
+        stop: subscribeLetGoRunsEnded(() => void queryClient.invalidateQueries({ queryKey: queryKeys.threads.list() })),
+      });
+    return () => {
+      const entry = letGoSubscriptions.get(queryClient);
+      if (!entry) return;
+      entry.count -= 1;
+      if (entry.count === 0) {
+        entry.stop();
+        letGoSubscriptions.delete(queryClient);
+      }
+    };
+  }, [queryClient]);
+}
+
+/**
  * List the user's open chat threads for the sidebar history.
  * Returns newest-first; the active thread is the first row.
  *
@@ -21,6 +50,7 @@ export interface ThreadSummary {
  * lines); by default it is read at once, as before.
  */
 export function useThreadList(options: { enabled?: boolean } = {}) {
+  useListFollowsLetGoRuns(useQueryClient());
   return useQuery<ThreadSummary[]>({
     queryKey: queryKeys.threads.list(),
     queryFn: async () => {

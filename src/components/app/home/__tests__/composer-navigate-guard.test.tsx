@@ -21,7 +21,9 @@ import { screen, fireEvent, cleanup, act, waitFor } from '@testing-library/react
 import { renderWithClient } from '@/test/render-with-client';
 
 // ── controllable stream mock ────────────────────────────────────────────
-const start = vi.fn().mockResolvedValue(undefined);
+const start = vi.fn().mockImplementation(async () => {
+  order.push('analyze');
+});
 let analysisId: string | null = null;
 let phase = 'idle';
 
@@ -75,11 +77,17 @@ vi.mock('@/lib/supabase/client', () => ({
 // `cardOk`/`cardBody` let each test choose the seal outcome (sealed vs degraded); everything else
 // resolves to a benign empty payload so an incidental mount fetch never throws.
 let cardOk = true;
+/** The order of the two calls a Test from a blank chat makes: the chat first, then the run. */
+const order: string[] = [];
 let cardBody: Record<string, unknown> = { block: {} };
 const fetchMock = vi.fn((input: RequestInfo | URL) => {
   const url = typeof input === 'string' ? input : input.toString();
   if (url.includes('/api/tools/test/card')) {
     return Promise.resolve({ ok: cardOk, json: async () => cardBody } as Response);
+  }
+  if (url.includes('/api/threads/new')) {
+    order.push('threads/new');
+    return Promise.resolve({ ok: true, json: async () => ({ threadId: 'chat-new' }) } as Response);
   }
   return Promise.resolve({ ok: true, json: async () => ({ messages: [] }) } as Response);
 });
@@ -121,6 +129,7 @@ async function flush() {
 
 beforeEach(() => {
   start.mockClear();
+  order.length = 0;
   push.mockClear();
   fetchMock.mockClear();
   analysisId = null;
@@ -128,6 +137,7 @@ beforeEach(() => {
   routeId = 'permalink-xyz';
   cardOk = true;
   cardBody = { block: {} };
+  document.cookie = "maven_active_thread=; path=/; max-age=0";
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (globalThis as any).fetch = fetchMock;
   cleanup();
@@ -194,6 +204,80 @@ describe('Composer Test seal guard', () => {
     await waitFor(() => {
       expect(push).toHaveBeenCalledWith('/analyze/fresh-submit-id');
     });
+  });
+});
+
+/**
+ * "Server adds the card" (2026-11-26): the run names the chat it was started in, and the seal
+ * names that chat too. Before, the seal used the chat open NOW, so a creator who moved to chat B
+ * mid-run got chat A's card in B.
+ */
+describe("Composer Test run: the card belongs to the chat the run started in", () => {
+  const setChat = (id: string) => {
+    document.cookie = `maven_active_thread=${encodeURIComponent(id)}; path=/`;
+  };
+  const sealBody = () => {
+    const call = fetchMock.mock.calls.find(([u]) => String(u).includes("/api/tools/test/card"));
+    const init = (call as unknown as [unknown, RequestInit | undefined] | undefined)?.[1];
+    return call ? JSON.parse(String(init?.body ?? "{}")) : null;
+  };
+
+  it("started in chat A, the creator moves to chat B: the run and the seal both name A", async () => {
+    setChat("chat-A");
+    const { rerender } = renderWithClient(<Composer />);
+    await submitTestRun();
+    expect(start).toHaveBeenCalledTimes(1);
+    expect(start.mock.calls[0]![0]).toMatchObject({ thread_id: "chat-A" });
+
+    setChat("chat-B"); // the creator opened another chat mid-run
+    phase = "complete";
+    analysisId = "run-in-A";
+    await act(async () => {
+      rerender(<Composer />);
+    });
+    await flush();
+
+    await waitFor(() => expect(sealBody()).not.toBeNull());
+    // The run's own nonce, made when it was armed: sent with the run and with its seal, so the
+    // server's card and the seal meet on one id, and a run of the same video again gets its own.
+    const nonce = (start.mock.calls[0]![0] as { run_nonce?: string }).run_nonce;
+    expect(typeof nonce).toBe("string");
+    expect(sealBody()).toEqual({ analysisId: "run-in-A", threadId: "chat-A", runNonce: nonce });
+  });
+
+  it("each run gets its own nonce", async () => {
+    setChat("chat-A");
+    renderWithClient(<Composer />);
+    await submitTestRun();
+    await submitTestRun();
+    const nonces = start.mock.calls.map((c) => (c[0] as { run_nonce?: string }).run_nonce);
+    expect(nonces).toHaveLength(2);
+    expect(nonces[0]).not.toBe(nonces[1]);
+  });
+
+  it("a Test from a blank new chat makes the chat first, then names it with the run", async () => {
+    setChat("__new__");
+    renderWithClient(<Composer />);
+    await submitTestRun();
+    expect(order).toEqual(["threads/new", "analyze"]);
+    expect(start.mock.calls[0]![0]).toMatchObject({ thread_id: "chat-new" });
+  });
+
+  it("a degraded seal for a run from chat A does not pull a creator out of chat B", async () => {
+    setChat("chat-A");
+    cardBody = { degraded: "no_craft" };
+    const { rerender } = renderWithClient(<Composer />);
+    await submitTestRun();
+    setChat("chat-B");
+    phase = "complete";
+    analysisId = "run-in-A";
+    await act(async () => {
+      rerender(<Composer />);
+    });
+    await flush();
+    await waitFor(() => expect(sealBody()).not.toBeNull());
+    await flush();
+    expect(push).not.toHaveBeenCalled();
   });
 });
 

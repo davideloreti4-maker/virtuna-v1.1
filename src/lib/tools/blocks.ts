@@ -570,6 +570,9 @@ export const RemixCardBlockSchema = z.object({
         structure: z.string().min(1),    // structure_pacing beat body
         theTurn: z.string().min(1),      // the_turn beat body
         emotionalBeat: z.string().min(1),// emotional_beat beat body
+        // "Why the original worked" in plain words (decode-prompts.ts WHY_PLAIN_RULE). Absent on
+        // remixes stored before it existed: the sheet falls back to the beats above.
+        whyPlain: z.string().min(1).optional(),
       })
       .optional(),
 

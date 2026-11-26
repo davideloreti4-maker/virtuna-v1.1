@@ -23,9 +23,17 @@ vi.mock("@/lib/supabase/service", () => ({
   createServiceClient: vi.fn(),
 }));
 
-vi.mock("@/lib/threads/messages", () => ({
-  insertMessage: vi.fn(),
-}));
+// The message store is stubbed in this file. A user turn reaches `insertMessage` as it did before
+// `insertUserTurnUnlessRepeat` (its repeat rule is tested against a real store in
+// src/lib/threads/__tests__/insert-user-turn.test.ts and the chat and ideas route-repeat-ask tests).
+vi.mock("@/lib/threads/messages", () => {
+  const insertMessage = vi.fn();
+  return {
+    insertMessage,
+    insertUserTurnUnlessRepeat: (threadId: string, block: unknown, kcGenVersion?: string) =>
+      insertMessage(threadId, "user", [block], kcGenVersion),
+  };
+});
 
 vi.mock("@/lib/threads/threads", () => ({
   createOpenThreadLazy: vi.fn(),
@@ -376,8 +384,9 @@ describe("POST /api/tools/hooks (SSE route)", () => {
         yield { choices: [{ delta: { content: " — refine it." } }] };
       },
     };
+    const followupCreate = vi.fn().mockResolvedValue(followupStream);
     (getQwenClient as ReturnType<typeof vi.fn>).mockReturnValueOnce({
-      chat: { completions: { create: vi.fn().mockResolvedValue(followupStream) } },
+      chat: { completions: { create: followupCreate } },
     });
 
     const { POST } = await import("@/app/api/tools/hooks/route");
@@ -395,6 +404,8 @@ describe("POST /api/tools/hooks (SSE route)", () => {
 
     // The follow-up DID emit (so the ordering assertion is meaningful)…
     expect(rawOutput).toContain("event: followup");
+    // …with the model's dash taken out before it is sent or stored (plain-dashes.ts).
+    expect(rawOutput).toContain("Hook #1 lands hardest. Refine it.");
     expect(rawOutput).toContain("event: done");
     // …and `done` precedes `followup` — the chat turn streams AFTER run completion.
     const doneIdx = rawOutput.indexOf("event: done");
@@ -404,6 +415,16 @@ describe("POST /api/tools/hooks (SSE route)", () => {
     // The user-action row (Stage A, N-8), the cards, and the follow-up markdown all
     // persist (3 inserts, user row first).
     expect(insertMessage).toHaveBeenCalledTimes(3);
+
+    // The closing line is written in the chat voice (chat-voice.ts): the rule last in the
+    // system prompt, and the hooks handed over by their own words, not "Hook #1 (Strong)".
+    const { KC_CHAT_SYSTEM_PROMPT } = await import("@/lib/kc/compiled");
+    const { withChatVoice, hooksClosingPrompt } = await import("@/lib/tools/chat-voice");
+    const sent = followupCreate.mock.calls[0]![0] as { messages: Array<{ role: string; content: string }> };
+    expect(sent.messages).toEqual([
+      { role: "system", content: withChatVoice(KC_CHAT_SYSTEM_PROMPT) },
+      { role: "user", content: hooksClosingPrompt(1, [mockBlocks[0]!.props.hookLine]) },
+    ]);
   });
 
   it("content event carries ranked card face with lead scrollQuote + audienceArchetype + rank (content-first)", async () => {

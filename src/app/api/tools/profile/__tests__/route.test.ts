@@ -23,10 +23,12 @@ vi.mock("@/lib/supabase/server", () => ({
 
 vi.mock("@/lib/threads/threads", () => ({
   createOpenThreadLazy: vi.fn(),
+  setThreadTitleIfEmpty: vi.fn(),
 }));
 
 vi.mock("@/lib/threads/messages", () => ({
   insertMessage: vi.fn(),
+  deleteMessage: vi.fn(),
 }));
 
 vi.mock("@/lib/engine/stimulus/normalize", () => ({
@@ -42,8 +44,8 @@ vi.mock("@/lib/kc/kc-stamp", () => ({
 }));
 
 import { createClient } from "@/lib/supabase/server";
-import { createOpenThreadLazy } from "@/lib/threads/threads";
-import { insertMessage } from "@/lib/threads/messages";
+import { createOpenThreadLazy, setThreadTitleIfEmpty } from "@/lib/threads/threads";
+import { insertMessage, deleteMessage } from "@/lib/threads/messages";
 import { normalizeStimulus } from "@/lib/engine/stimulus/normalize";
 import { runProfile } from "@/lib/tools/runners/profile-runner";
 
@@ -179,7 +181,7 @@ describe("POST /api/tools/profile — video ownership (CR-01 IDOR)", () => {
 });
 
 describe("POST /api/tools/profile — happy path", () => {
-  it("returns 200 { block } with a profile-read block and persists once", async () => {
+  it("returns 200 { block } with a profile-read block, and stores its message, then the read", async () => {
     const res = await callPOST({ kind: "text", text: "Alex: close by Friday or I walk." });
 
     expect(res.status).toBe(200);
@@ -188,10 +190,39 @@ describe("POST /api/tools/profile — happy path", () => {
     expect(body.block.type).toBe("profile-read");
 
     expect(mockRunProfile).toHaveBeenCalledTimes(1);
-    expect(mockInsertMessage).toHaveBeenCalledTimes(1);
-    const [threadId, role, blocks] = mockInsertMessage.mock.calls[0]!;
+    // Its own message first, so a reload shows the read as its own turn: stored with no message, it
+    // joined the turn before it and hid that turn's answer (a turn holding a card shows no prose).
+    expect(mockInsertMessage).toHaveBeenCalledTimes(2);
+    const [userThread, userRole, userBlocks] = mockInsertMessage.mock.calls[0]!;
+    expect([userThread, userRole, userBlocks]).toEqual(["thread-1", "user", [{ type: "markdown", props: { text: "Read this evidence" } }]]);
+    const [threadId, role, blocks] = mockInsertMessage.mock.calls[1]!;
     expect(threadId).toBe("thread-1");
     expect(role).toBe("assistant");
     expect(blocks[0].type).toBe("profile-read");
+    // A new chat is named by it, as by any first message.
+    expect(setThreadTitleIfEmpty).toHaveBeenCalledWith("user-1", "thread-1", "Read this evidence");
+  });
+
+  it("a read that fails stores nothing: no message, no card", async () => {
+    mockRunProfile.mockRejectedValue(new Error("engine down"));
+    const res = await callPOST({ kind: "text", text: "Alex: close by Friday or I walk." });
+    expect(res.status).toBe(500);
+    expect(mockInsertMessage).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/tools/profile — never a message with no read under it", () => {
+  it("the read's row failing to store takes its message back out", async () => {
+    mockInsertMessage.mockResolvedValueOnce({ id: "m-user" }).mockRejectedValueOnce(new Error("db down"));
+    const res = await callPOST({ kind: "text", text: "Alex: close by Friday or I walk." });
+    expect(res.status).toBe(500);
+    expect(deleteMessage).toHaveBeenCalledWith("m-user");
+  });
+
+  it("a read that would not store (an invalid block) stores nothing, not even its message", async () => {
+    mockRunProfile.mockResolvedValue({ type: "profile-read", props: {} });
+    const res = await callPOST({ kind: "text", text: "Alex: close by Friday or I walk." });
+    expect(res.status).toBe(500);
+    expect(mockInsertMessage).not.toHaveBeenCalled();
   });
 });

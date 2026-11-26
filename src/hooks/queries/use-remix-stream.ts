@@ -24,7 +24,7 @@
  *   url — a trending/competitor TikTok URL to decode + adapt.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { reportCredit402, CreditWallRefusal, isCreditWallRefusal } from '@/lib/billing/credit-wall';
 import { reportSession401, SessionExpiredRefusal } from '@/lib/auth/session-expired';
 import { resolveRunError } from '@/lib/net/run-failure';
@@ -33,6 +33,7 @@ import { parsePopulationProp, parseProofProp } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
 import { parseRunEvidence, type RunEvidence } from '@/lib/tools/evidence';
 import type { IntentLens } from '@/lib/audience/intent-lens';
+import { useLetGoRun } from '@/hooks/queries/use-let-go-run';
 
 // ── Partial remix card (band/fraction absent until score event) ────────────────
 
@@ -46,6 +47,8 @@ export interface PartialRemixCard {
     structure: string;
     theTurn: string;
     emotionalBeat: string;
+    /** The decode's plain line (WHY_PLAIN_RULE), when it wrote one. */
+    whyPlain?: string;
   };
   scrollQuote: string;
   model: 'sim1-flash';
@@ -113,6 +116,17 @@ export interface UseRemixStreamReturn {
   error: string | null;
   /** True once the stream has completed (done event received). */
   isDone: boolean;
+  /**
+   * The creator pressed Stop while this run's request was out. A stopped run is still a run: its
+   * turn (the creator's message above it) stays on screen even when Stop came before a single
+   * stage or card, as it does for a run stopped mid-way. Cleared by the next start and by reset().
+   */
+  isStopped: boolean;
+  /**
+   * How many runs this stream has started (a refine and a retry each count). A new number is a new
+   * run even when no render saw it streaming: a request refused at once ends in the render it began in.
+   */
+  runs: number;
   /** The SSE stream has closed — everything the run will ever persist is on disk. */
   isClosed: boolean;
   /** Pipeline stages — populated by SSE stage events (STUDIO-01). */
@@ -133,8 +147,19 @@ export interface UseRemixStreamReturn {
    * never empty (the route reads a present brief as the adaptation target).
    */
   start: (url: string, platform: string, intent?: IntentLens, brief?: string) => Promise<void>;
+  /**
+   * Replay the last start() exactly as it was made (the failed turn's Retry): its link, platform,
+   * intent and brief. No-op before the first start.
+   */
+  retry: () => Promise<void>;
   /** Abort the in-flight stream. */
   stop: () => void;
+  /**
+   * Let go of the request in flight without ending it (a thread switch): it runs to its end in the
+   * background, so its route stays alive to store the result in the chat it was started in, and
+   * every frame it still sends is dropped. Stop is different: it ends the request (`stop`).
+   */
+  detach: () => void;
   /** Reset state for a new run. */
   reset: () => void;
   /**
@@ -151,6 +176,8 @@ export function useRemixStream(): UseRemixStreamReturn {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDone, setIsDone] = useState(false);
+  const [isStopped, setIsStopped] = useState(false);
+  const [runs, setRuns] = useState(0);
   /**
    * THE STREAM IS CLOSED — the server has finished sending, not merely finished the CARDS.
    *
@@ -175,16 +202,16 @@ export function useRemixStream(): UseRemixStreamReturn {
   const [evidence, setEvidence] = useState<RunEvidence | null>(null);
   const [followupText, setFollowupText] = useState<string | null>(null);
 
+  // The in-flight request's controller; null once its stream has ended, so Stop can tell a run it
+  // cut short from one that was already over.
   const abortRef = useRef<AbortController | null>(null);
+  // The last call as it was made, so Retry replays the run the creator asked for.
+  const lastCallRef = useRef<Parameters<UseRemixStreamReturn['start']> | null>(null);
   const isMountedRef = useRef(true);
 
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-      abortRef.current?.abort();
-    };
-  }, []);
+  // The let-go machinery (`use-let-go-run`): each request's number and liveness, a thread switch or an
+  // unmount letting the run go on in the background, and the mount effect that owns `isMountedRef`.
+  const letGo = useLetGoRun(abortRef, isMountedRef);
 
   const cardsRef = useRef<PartialRemixCard[]>([]);
   const stagesRef = useRef<StageState[]>([]);
@@ -194,6 +221,7 @@ export function useRemixStream(): UseRemixStreamReturn {
     setIsStreaming(false);
     setError(null);
     setIsDone(false);
+    setIsStopped(false);
     setIsClosed(false);
     setStages([]);
     setEvidence(null);
@@ -203,22 +231,35 @@ export function useRemixStream(): UseRemixStreamReturn {
   }, []);
 
   const stop = useCallback(() => {
-    abortRef.current?.abort();
+    const inFlight = abortRef.current;
+    inFlight?.abort();
+    abortRef.current = null;
     if (isMountedRef.current) {
       setIsStreaming(false);
+      if (inFlight) setIsStopped(true);
     }
   }, []);
+
+  // A thread switch lets the run go on in the background (see the interface): its request is left
+  // open and its number retired, so its reader drops what is still to come.
+  const detach = letGo.detach;
 
   const start = useCallback(async (url: string, platform: string, intent?: IntentLens, brief?: string) => {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
+    // This request's number and liveness (`use-let-go-run`): once let go, every frame it still sends
+    // is read and dropped, so it reaches its end without touching the next chat's run.
+    const { gen, isLive } = letGo.begin();
+    lastCallRef.current = [url, platform, intent, brief];
 
     setStreamingCards([]);
     setError(null);
     setIsDone(false);
     setIsClosed(false);
+    setIsStopped(false);
     setIsStreaming(true);
+    setRuns((r) => r + 1);
     setStages([]);
     setEvidence(null);
     setFollowupText(null);
@@ -254,6 +295,7 @@ export function useRemixStream(): UseRemixStreamReturn {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+        if (!isLive()) continue; // detached: read on to the end, draw nothing
         buffer += decoder.decode(value, { stream: true });
 
         const frames = buffer.split('\n\n');
@@ -281,7 +323,7 @@ export function useRemixStream(): UseRemixStreamReturn {
             // because a throw inside this read loop would kill the whole stream — cards, receipt
             // and closing line with it — over a decorative thumbnail rail.
             const parsedEvidence = parseRunEvidence(data);
-            if (parsedEvidence && isMountedRef.current) setEvidence(parsedEvidence);
+            if (parsedEvidence && isLive()) setEvidence(parsedEvidence);
 
           } else if (eventType === 'stage') {
             const stageName = typeof data.name === 'string' ? data.name : '';
@@ -299,12 +341,12 @@ export function useRemixStream(): UseRemixStreamReturn {
                 updated = [...stagesRef.current, { name: stageName, status: stageStatus }];
               }
               stagesRef.current = updated;
-              if (isMountedRef.current) setStages([...updated]);
+              if (isLive()) setStages([...updated]);
             }
 
           } else if (eventType === 'followup') {
             const text = typeof data.text === 'string' ? data.text : null;
-            if (text && isMountedRef.current) setFollowupText(text);
+            if (text && isLive()) setFollowupText(text);
 
           } else if (eventType === 'content') {
             // content event: card face; band/fraction absent until score event
@@ -324,6 +366,9 @@ export function useRemixStream(): UseRemixStreamReturn {
                     structure: String(sourceDecode.structure ?? ''),
                     theTurn: String(sourceDecode.theTurn ?? ''),
                     emotionalBeat: String(sourceDecode.emotionalBeat ?? ''),
+                    // The plain line, when the decode wrote one: rebuilt with the four above, it was
+                    // dropped here and shown only after a reload.
+                    ...(typeof sourceDecode.whyPlain === 'string' ? { whyPlain: sourceDecode.whyPlain } : {}),
                   },
                   scrollQuote: String(props.scrollQuote ?? ''),
                   model: 'sim1-flash' as const,
@@ -343,7 +388,7 @@ export function useRemixStream(): UseRemixStreamReturn {
               .filter((c: PartialRemixCard) => c.adaptedHook.length > 0);
 
             cardsRef.current = cards;
-            if (isMountedRef.current) setStreamingCards([...cards]);
+            if (isLive()) setStreamingCards([...cards]);
 
           } else if (eventType === 'score') {
             // score event: patch the card (only one card per run — D-02)
@@ -354,10 +399,10 @@ export function useRemixStream(): UseRemixStreamReturn {
               !c.scored ? { ...c, band, fraction, scored: true } : c,
             );
             cardsRef.current = patched;
-            if (isMountedRef.current) setStreamingCards([...patched]);
+            if (isLive()) setStreamingCards([...patched]);
 
           } else if (eventType === 'done') {
-            if (isMountedRef.current) {
+            if (isLive()) {
               setIsDone(true);
             }
 
@@ -374,14 +419,21 @@ export function useRemixStream(): UseRemixStreamReturn {
       // A null result means draw nothing: an abort is the user's own Stop, not a failure.
       const message = resolveRunError(err, 'Remix stream error');
       if (message === null) return;
-      if (isMountedRef.current) setError(message);
+      if (isLive()) setError(message);
     } finally {
-      if (isMountedRef.current) {
+      if (abortRef.current === controller) abortRef.current = null;
+      letGo.finish(gen);
+      if (isLive()) {
         setIsStreaming(false);
         setIsClosed(true);
       }
     }
-  }, []);
+  }, [letGo]);
+
+  const retry = useCallback(async () => {
+    const last = lastCallRef.current;
+    if (last) await start(...last);
+  }, [start]);
 
   const toBlocks = useCallback((): RemixCardBlock[] => {
     return streamingCards.map((c): RemixCardBlock => ({
@@ -420,12 +472,16 @@ export function useRemixStream(): UseRemixStreamReturn {
     isStreaming,
     error,
     isDone,
+    isStopped,
+    runs,
     isClosed,
     stages,
     evidence,
     followupText,
     start,
+    retry,
     stop,
+    detach,
     reset,
     toBlocks,
   };

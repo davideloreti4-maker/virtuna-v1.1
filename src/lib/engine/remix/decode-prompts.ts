@@ -21,6 +21,17 @@ import type { OmniStructuralInput } from "./decode-types";
 
 export { DecodeResultZodSchema } from "./decode-types";
 
+/**
+ * The one field of the decode the CREATOR reads first (the film sheet's "Why the original
+ * worked"). The beats above stay analysis for the adapt step; this is said from the seat of a
+ * person watching, in plain words (the chat voice rule's lessons, chat-voice.ts and hooks-runner's
+ * WHY_RULE: name the concrete thing, no theory terms, a shape and NO example sentence, since an
+ * example gets pasted). Exported so a test pins it word for word.
+ */
+export const WHY_PLAIN_RULE = `## Why It Worked, in Plain Words
+
+"why_plain" is what the creator reads first: two or three short, plain sentences saying why people watched this video to the end. Tell it from the seat of a person watching: what they see or hear in THIS video (a moment, a line, a shot, a sound) and what they do because of it ("people", "they", "viewers"; never "you", never "the creator's audience"). Use short, everyday words a friend would use. Never use theory or industry terms: not "prediction error", "curiosity gap", "pattern interrupt", "open loop", "loop", "mechanism", "dopamine", "retention", "engagement", "payoff structure", "hook". No em dash or en dash: use a period or a comma. No advice. Shape: what happens in the video, then what people watching do because of it.`;
+
 // =====================================================
 // Cache-stable system prompt (byte-stable — never interpolate here).
 // Grounded in the shared KNOWLEDGE_CORE (R12/D-11) via §5 Decode Lens.
@@ -69,6 +80,8 @@ The luck array MUST contain at least 1 entry from this FIXED taxonomy (use exact
 
 If none clearly apply, identify the closest fit and explain in the note. DO NOT return an empty luck array.
 
+${WHY_PLAIN_RULE}
+
 ## JSON Output Schema
 
 Return a JSON object with exactly these fields:
@@ -83,7 +96,8 @@ Return a JSON object with exactly these fields:
   "repeatable": ["...", "..."],
   "luck": [
     { "category": "timing_trend_moment|existing_audience_reach|algorithmic_outlier|topic_zeitgeist", "note": "..." }
-  ]
+  ],
+  "why_plain": "..."
 }
 
 Return ONLY raw JSON. No markdown fences, no explanation.`;

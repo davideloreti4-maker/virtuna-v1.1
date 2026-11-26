@@ -44,6 +44,7 @@ import { CardPrimaryAction } from './card-primitives';
 import { useTestRunStages } from './use-test-run-stages';
 import { useTestRunEvidence } from './use-test-run-evidence';
 import { resultHref } from '@/lib/result/href';
+import { newRunNonce, runChatIdFromCookie } from '@/lib/threads/active-thread-cookie';
 
 export interface InputRequestBlockRendererProps {
   block: InputRequestBlock;
@@ -616,6 +617,10 @@ function UploadField({ block }: InputRequestBlockRendererProps) {
   const [degradedId, setDegradedId] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const cardHandledRef = useRef(false);
+  /** The chat this run was started in: the server adds the card there, and the seal names it too. */
+  const runChatRef = useRef<string | null>(null);
+  /** This run's own nonce (one card per run, even for the same video again). */
+  const runNonceRef = useRef<string | null>(null);
 
   const trimmedUrl = url.trim();
   const isValidTikTok = trimmedUrl.length > 0 && TIKTOK_URL_PATTERN.test(trimmedUrl);
@@ -643,7 +648,11 @@ function UploadField({ block }: InputRequestBlockRendererProps) {
         const res = await fetch('/api/tools/test/card', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ analysisId }),
+          body: JSON.stringify({
+            analysisId,
+            ...(runChatRef.current ? { threadId: runChatRef.current } : {}),
+            ...(runNonceRef.current ? { runNonce: runNonceRef.current } : {}),
+          }),
         });
         const data = (await res.json().catch(() => ({}))) as {
           block?: unknown;
@@ -678,6 +687,12 @@ function UploadField({ block }: InputRequestBlockRendererProps) {
   const handleSubmit = useCallback(async () => {
     if (!canSubmit) return;
     cardHandledRef.current = false;
+    runChatRef.current = runChatIdFromCookie();
+    runNonceRef.current = newRunNonce();
+    const chat = {
+      ...(runChatRef.current ? { thread_id: runChatRef.current } : {}),
+      run_nonce: runNonceRef.current,
+    };
     setStageError(null);
     setCardError(null);
     setDegradedId(null);
@@ -710,6 +725,7 @@ function UploadField({ block }: InputRequestBlockRendererProps) {
           input_mode: 'video_upload',
           content_type: 'video',
           video_storage_path: path,
+          ...chat,
         }).catch(() => {
           /* phase → error owns the UI */
         });
@@ -723,6 +739,7 @@ function UploadField({ block }: InputRequestBlockRendererProps) {
       input_mode: 'tiktok_url',
       content_type: 'video',
       tiktok_url: trimmedUrl,
+      ...chat,
     }).catch(() => {
       /* phase → error owns the UI */
     });

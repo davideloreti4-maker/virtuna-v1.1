@@ -281,6 +281,18 @@ describe("runRemixPipeline (new call system — generate-and-project)", () => {
     }
   });
 
+  it("the decode's plain line rides every card as sourceDecode.whyPlain; a decode without one adds no key", async () => {
+    setupHappyPath();
+    mockRunDecode.mockResolvedValue({ ...makeDecodeResult(), whyPlain: "People see the plate first and stay for the price." });
+    const { runRemixPipeline } = await import("@/lib/tools/runners/remix-runner");
+    const { blocks } = await runRemixPipeline({ ...baseInput, profileRow: makeProfileRow() });
+    for (const b of blocks) expect(b.props.sourceDecode!.whyPlain).toBe("People see the plate first and stay for the price.");
+
+    setupHappyPath();
+    const again = await runRemixPipeline({ ...baseInput, profileRow: makeProfileRow() });
+    for (const b of again.blocks) expect("whyPlain" in b.props.sourceDecode!).toBe(false);
+  });
+
   it("coerces a malformed personaStops to 0 (Weak) — never a fabricated high", async () => {
     setupHappyPath();
     const bad = makeAdaptConcepts([8, 8, 8]);

@@ -27,7 +27,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { listOpenThreads, setThreadTitleIfEmpty } from "@/lib/threads/threads";
-import { deriveTitleFromBlocks } from "@/lib/threads/title";
+import { deriveTitleFromBlocks, videoNameTitle } from "@/lib/threads/title";
 
 /** Normalise a persisted message body to its blocks array (bare or { blocks } wrapper). */
 function unwrapBody(body: unknown): unknown[] {
@@ -58,6 +58,8 @@ export async function GET(_request: Request): Promise<Response> {
   // a user turn's text beats any assistant-derived headline, regardless of order.
   const untitled = threads.filter((t) => !t.title);
   const derivedByThread = new Map<string, string>();
+  /** Shown only, never persisted (see `fileTitle` below). */
+  const shownFileTitle = new Map<string, string>();
 
   if (untitled.length > 0) {
     const service = createServiceClient();
@@ -70,17 +72,29 @@ export async function GET(_request: Request): Promise<Response> {
 
     const userTitle = new Map<string, string>();
     const blockTitle = new Map<string, string>();
+    // A simulation chat's only user turn is often the dropped file's name, which the derive refuses
+    // (a file name is not a general title). Its video's name (no extension) is SHOWN for it, so the
+    // drawer does not list it as "New chat"; it is not read-repaired, so a typed ask can still claim
+    // the write-once slot (a simulation's card names the chat at the server, test-card.ts).
+    const fileTitle = new Map<string, string>();
     for (const row of msgRows ?? []) {
       const { thread_id: tid, role } = row as { thread_id: string; role: string };
+      const blocks = unwrapBody((row as { body: unknown }).body);
+      if (role === "user" && !fileTitle.has(tid)) {
+        const first = blocks[0] as { props?: { text?: unknown } } | undefined;
+        const name = videoNameTitle(first?.props?.text);
+        if (name) fileTitle.set(tid, name);
+      }
       const bucket = role === "user" ? userTitle : blockTitle;
       if (bucket.has(tid)) continue; // first (earliest) message per bucket wins
-      const title = deriveTitleFromBlocks(unwrapBody((row as { body: unknown }).body));
+      const title = deriveTitleFromBlocks(blocks);
       if (title) bucket.set(tid, title);
     }
 
     for (const t of untitled) {
       const derived = userTitle.get(t.id) ?? blockTitle.get(t.id);
       if (derived) derivedByThread.set(t.id, derived);
+      else if (fileTitle.has(t.id)) shownFileTitle.set(t.id, fileTitle.get(t.id)!);
     }
 
     // Read-repair: persist what we derived (write-once guard keeps this safe
@@ -93,7 +107,7 @@ export async function GET(_request: Request): Promise<Response> {
   return Response.json({
     threads: threads.map((t) => ({
       id: t.id,
-      title: t.title ?? derivedByThread.get(t.id) ?? null,
+      title: t.title ?? derivedByThread.get(t.id) ?? shownFileTitle.get(t.id) ?? null,
       updated_at: t.updated_at,
       created_at: t.created_at,
       pinned_at: t.pinned_at ?? null,

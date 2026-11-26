@@ -20,7 +20,7 @@
  * (thread-turn.tsx:106) — an Error object cannot survive that trip.
  */
 
-export type RunFailureCause = "offline" | "session";
+export type RunFailureCause = "offline" | "session" | "accountScrape";
 
 /**
  * What a hook writes into its `error` state. Namespaced so it can never collide with a real
@@ -29,6 +29,7 @@ export type RunFailureCause = "offline" | "session";
 export const RUN_FAILURE_SENTINEL: Record<RunFailureCause, string> = {
   offline: "maven:run-failure/offline",
   session: "maven:run-failure/session",
+  accountScrape: "maven:run-failure/account-scrape",
 };
 
 /** The user pressed Stop, or the component unmounted. Not a failure; it must draw nothing. */
@@ -46,9 +47,20 @@ function isSessionRefusal(err: unknown): boolean {
   );
 }
 
+/**
+ * The account read's route said TikTok would not load the posts (`cause: "scrape_failed"`): the
+ * scrape was refused or came back empty. Flagged by the stream hook, the same way as the session.
+ */
+function isAccountScrapeFailure(err: unknown): boolean {
+  return (
+    !!err && typeof err === "object" && (err as { accountScrapeFailed?: unknown }).accountScrapeFailed === true
+  );
+}
+
 export function classifyRunFailure(err: unknown): RunFailureCause | null {
   if (isAbort(err)) return null;
   if (isSessionRefusal(err)) return "session";
+  if (isAccountScrapeFailure(err)) return "accountScrape";
 
   const isNetworkTypeError = err instanceof TypeError;
   const browserSaysOffline = typeof navigator !== "undefined" && navigator.onLine === false;
@@ -90,6 +102,14 @@ const CAUSE_COPY: Record<RunFailureCause, Copy> = {
     headline: "You’ve been signed out.",
     body: "Your session ended before that run started — nothing was charged. Sign in again to pick up where you left off.",
     retryLabel: "Retry after signing in",
+  },
+  // Named by the account read's route. Its skill copy below ("Check the handle") blamed a handle
+  // the creator never typed here (it is their own, from their audience) when TikTok blocked the
+  // posts scrape or sent nothing back: measured live twice, 2026-11-26.
+  accountScrape: {
+    headline: "Couldn’t read your account just now.",
+    body: "TikTok didn’t let us load your posts this time. Try again in a few minutes. Nothing was charged.",
+    retryLabel: "Retry the account read",
   },
 };
 

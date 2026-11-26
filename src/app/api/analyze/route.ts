@@ -14,7 +14,10 @@ import { TIKTOK_URL_PATTERN } from "@/lib/tiktok-url";
 import { resolvePack } from "@/lib/engine/packs";
 // R1′b — load the user's active calibrated audience (same per-thread pin the generative
 // skills use) so the Read fold simulates the REAL audience, not generic archetypes.
-import { createOpenThreadLazy } from "@/lib/threads/threads";
+import { createOpenThreadLazy, getOwnedOpenThread } from "@/lib/threads/threads";
+// The Test card, added by the server to the chat the run was started in (lib/tools/test-card.ts).
+import { addTestCardToThread, withinWait } from "@/lib/tools/test-card";
+import { keepAlive } from "@/lib/server/keep-alive";
 import { getAudience, GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
 import { requireSocialsAudience } from "@/lib/audience/require-socials-audience";
 import type { Audience } from "@/lib/audience/audience-types";
@@ -654,6 +657,48 @@ export async function POST(request: Request) {
       backfillCreatorFollowers(service, user.id, creatorProfile.tiktok_handle, log);
     }
 
+    // -------------------------------------------------------
+    // The chat this run was started in (2026-11-26, "Server adds the card"). The in-thread Test
+    // sends `thread_id` (and `run_nonce`, made when the run was armed); the chat is pinned HERE, at
+    // the start, only when it is the caller's own open chat. When the run completes the server adds
+    // the result card to THAT chat, so a creator who moved to another chat, or closed the app, still
+    // finds it where they started it. Not for: a run that names no chat (the board, the funnel: no
+    // card from here, as before), a remix decode, a sealed /go visitor. Never blocks the run.
+    // -------------------------------------------------------
+    const rawThreadId = typeof (body as { thread_id?: unknown }).thread_id === "string" ? (body as { thread_id: string }).thread_id : "";
+    const rawNonce = (body as { run_nonce?: unknown }).run_nonce;
+    const runNonce = typeof rawNonce === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(rawNonce) ? rawNonce : null;
+    let cardThread: Awaited<ReturnType<typeof getOwnedOpenThread>> = null;
+    if (rawThreadId && validated.mode !== "remix" && !verdictSealed) {
+      try {
+        cardThread = await getOwnedOpenThread(user.id, rawThreadId);
+      } catch {
+        cardThread = null;
+      }
+    }
+    /**
+     * Add the Test card to the run's chat. The chat is checked again first (archived or gone mid-run:
+     * no card). Callers wait for it at most `testCardTiming.waitMs` before `complete`
+     * (`withinWait`), and keep it alive past the response (`keepAlive`).
+     */
+    const addCardToRunChat = async (id: string) => {
+      if (!cardThread) return;
+      try {
+        const thread = await getOwnedOpenThread(user.id, cardThread.id);
+        if (!thread) {
+          log.info("test_card skipped: the run's chat is gone", { analysisId: id });
+          return;
+        }
+        const res = await addTestCardToThread({ supabase, userId: user.id, analysisId: id, thread, runNonce });
+        log.info("test_card", { analysisId: id, threadId: thread.id, kind: res.kind });
+      } catch (err) {
+        log.error("test_card failed (the client seal can still add it)", {
+          analysisId: id,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    };
+
     // CONTEXT D-15 — bypass_cache from query param OR body (eval harness)
     const url = new URL(request.url);
     const bypassCache =
@@ -682,6 +727,16 @@ export async function POST(request: Request) {
       // plays from this very file: then the cleanup keeps it (it used to delete it).
       // Single call covers both wantsJSON and SSE sub-branches below.
       await cleanupOrphanUpload(service, validated, user.id, retentionOptedIn, log);
+
+      // The same video run again: no new row, so its card is the cached analysis' card, under THIS
+      // run's nonce (a new card in this chat, testCardMessageId). Waited for as on a fresh run.
+      const cachedRawId = (cached as unknown as { id?: unknown }).id;
+      const cachedId = typeof cachedRawId === "string" && cachedRawId ? cachedRawId : null;
+      const cachedCard = cachedId ? addCardToRunChat(cachedId) : null;
+      if (cachedCard) {
+        keepAlive(cachedCard);
+        await withinWait(cachedCard);
+      }
 
       if (wantsJSON) {
         return Response.json(sealForWire(cached));
@@ -879,7 +934,8 @@ export async function POST(request: Request) {
       if (insertError) {
         log.error("DB insert failed (json)", { error: insertError.message });
       } else {
-        populatePredictionCache(contentHash, user.id, finalResult, {
+        // The row id rides the cached payload, so a cache-hit re-run can card that analysis.
+        populatePredictionCache(contentHash, user.id, { ...finalResult, id: jsonInsertId } as PredictionResult, {
           bypass: bypassCache,
         });
         // Persist Content-craft signals into variants.craft (no migration). The
@@ -930,6 +986,12 @@ export async function POST(request: Request) {
           log.error("analysis_count increment failed", { error: error.message });
         }
       })();
+
+      if (!insertError) {
+        const card = addCardToRunChat(jsonInsertId);
+        keepAlive(card);
+        await withinWait(card);
+      }
 
       return Response.json(sealForWire(finalResult));
     }
@@ -1046,8 +1108,15 @@ export async function POST(request: Request) {
     // SSE stream setup (default branch — preserves existing client contract)
     // -------------------------------------------------------
     const encoder = new TextEncoder();
+    // The run happens INSIDE this streaming response, so a closed tab must not end it: the whole
+    // start() below (pipeline, persist, bill, card) is registered with after() (`keepAlive`), and
+    // the function lives until it settles, whether or not anyone is still reading.
+    let endRun: () => void = () => {};
+    keepAlive(new Promise<void>((resolve) => (endRun = resolve)));
     const stream = new ReadableStream({
       async start(controller) {
+        /** The card build, if one started: the run is not over until it settles too. */
+        let card: Promise<void> | null = null;
         const send = (event: string, data: unknown) => {
           // Guard: client may have cancelled (navigated away mid-stream) — an
           // enqueue after cancel throws "Controller is already closed".
@@ -1143,7 +1212,8 @@ export async function POST(request: Request) {
             log.error("DB insert failed", { error: insertError.message });
           } else {
             // Phase 3 — hydrate L1 cache after successful INSERT (CONTEXT D-15 symmetric bypass).
-            populatePredictionCache(contentHash, user.id, finalResult, {
+            // The row id rides the cached payload, so a cache-hit re-run can card that analysis.
+            populatePredictionCache(contentHash, user.id, { ...finalResult, id: analysisId } as PredictionResult, {
               bypass: bypassCache,
             });
             // Persist Content-craft signals into variants.craft (no migration).
@@ -1239,6 +1309,18 @@ export async function POST(request: Request) {
             ms: Math.round(performance.now() - tDb),
           });
 
+          // The result card into the chat the run was started in, BEFORE `complete`: the client's
+          // seal after it then finds the card and adds none (insert-once), and a client that is gone
+          // (another chat, a closed tab) still gets it in the right chat.
+          // At most `testCardTiming.waitMs` (8 s): a slow or hanging build must not hold back the
+          // `complete` of a run already billed. Past it the build goes on in the background (this
+          // run is kept alive until it settles, below), and the client's seal, idempotent, finds
+          // or finishes the card.
+          if (!insertError) {
+            card = addCardToRunChat(analysisId);
+            await withinWait(card);
+          }
+
           send("complete", sealForWire(finalResult));
 
           // reading-ux 2026-06-15 (Option A): KEEP the uploaded video on success so the
@@ -1268,6 +1350,9 @@ export async function POST(request: Request) {
           } catch {
             /* already closed/cancelled */
           }
+          // The stream is closed; the run ends when its card build (if any) has settled.
+          if (card) await card;
+          endRun();
         }
       },
     });

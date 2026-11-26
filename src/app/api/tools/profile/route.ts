@@ -23,8 +23,9 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
-import { createOpenThreadLazy } from "@/lib/threads/threads";
-import { insertMessage } from "@/lib/threads/messages";
+import { createOpenThreadLazy, setThreadTitleIfEmpty } from "@/lib/threads/threads";
+import { deleteMessage, insertMessage } from "@/lib/threads/messages";
+import { validateBlock } from "@/lib/tools/block-registry";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { csrfGuard } from "@/lib/http/csrf-guard";
 import { billUsage, creditGate } from "@/lib/billing/credit-gate";
@@ -59,6 +60,10 @@ function fileFromBody(file: unknown): File | null {
   const buf = Buffer.from(f.dataBase64, "base64");
   return new File([buf], f.name, { type: f.type });
 }
+
+// The read's message in the chat: the field's own words for the send that runs it ("Read this
+// evidence", composer.tsx). Not exported: a route file may only export its handlers and config.
+const PROFILE_READ_ASK = "Read this evidence";
 
 export async function POST(request: Request): Promise<Response> {
   const supabase = await createClient();
@@ -167,8 +172,34 @@ export async function POST(request: Request): Promise<Response> {
     const stimulus = await normalizeStimulus(input);
     const openThread = await createOpenThreadLazy(user.id);
     const block = await runProfile({ supabase, stimulus });
-    // insertMessage re-validates the block at the write boundary (T-03-11) + KC stamp.
-    await insertMessage(openThread.id, "assistant", [block], kcStamp().kcGenVersion);
+    // Its own message first, so the read is its own turn on reload. Stored with none, the card
+    // joined the turn before it and hid that turn's answer (a turn holding a card shows no prose).
+    // The words are the field's own for this send ("Read this evidence"). Only here, once the read
+    // is in: a refused or failed read stores nothing.
+    // Never a message with no read under it: the card is checked before its message is stored (the
+    // write boundary would refuse it after), and a card that fails to store takes its message out.
+    if (!validateBlock(block).ok) throw new Error("profile-read block failed validation");
+    const asked = await insertMessage(
+      openThread.id,
+      "user",
+      [{ type: "markdown", props: { text: PROFILE_READ_ASK } }],
+      kcStamp().kcGenVersion,
+    );
+    try {
+      // insertMessage re-validates the block at the write boundary (T-03-11) + KC stamp.
+      await insertMessage(openThread.id, "assistant", [block], kcStamp().kcGenVersion);
+    } catch (err) {
+      await deleteMessage(asked.id).catch(() => {
+        /* best-effort — the run's failure below is what the creator is told */
+      });
+      throw err;
+    }
+    // A chat whose first message this is takes it as its name, as any stored message does.
+    try {
+      await setThreadTitleIfEmpty(user.id, openThread.id, PROFILE_READ_ASK);
+    } catch {
+      /* best-effort — a missed title only leaves the chat unnamed */
+    }
     
     // BILL — on delivery only: the block is persisted; nothing after can un-deliver it.
     await billUsage({ userId: user.id, action: "profile", tier: creditVerdict.tier });

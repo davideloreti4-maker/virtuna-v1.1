@@ -18,8 +18,8 @@ import type { ApolloDimension, CounterfactualSuggestionItem, GeminiVideoSignals,
 // ─── Mocks (IO seams only) ──────────────────────────────────────────────────────
 
 vi.mock("@/lib/supabase/server", () => ({ createClient: vi.fn() }));
-vi.mock("@/lib/threads/threads", () => ({ createOpenThreadLazy: vi.fn() }));
-vi.mock("@/lib/threads/messages", () => ({ insertMessage: vi.fn() }));
+vi.mock("@/lib/threads/threads", () => ({ createOpenThreadLazy: vi.fn(), getOwnedOpenThread: vi.fn() }));
+vi.mock("@/lib/threads/messages", () => ({ insertMessageOnce: vi.fn(), findMessage: vi.fn() }));
 vi.mock("@/lib/kc/kc-stamp", () => ({ kcStamp: vi.fn(() => ({ kcGenVersion: "gen.1.0.0" })) }));
 vi.mock("@/lib/engine/filmstrip/storage", () => ({ signAnalysisFrames: vi.fn(async () => ({})) }));
 vi.mock("@/lib/grounding/corpus-tool", () => ({
@@ -38,14 +38,18 @@ vi.mock("@/lib/flags/ambient-v2", () => ({ AMBIENT_V2_ENABLED: true }));
 vi.mock("@/lib/threads/sim-seals", () => ({ writeSimSeal: vi.fn(async () => true) }));
 
 import { createClient } from "@/lib/supabase/server";
-import { createOpenThreadLazy } from "@/lib/threads/threads";
-import { insertMessage } from "@/lib/threads/messages";
+import { createOpenThreadLazy, getOwnedOpenThread } from "@/lib/threads/threads";
+import { insertMessageOnce, findMessage } from "@/lib/threads/messages";
+import { testCardMessageId } from "@/lib/tools/test-card";
 import { executeCorpusSearch } from "@/lib/grounding/corpus-tool";
 import { writeSimSeal } from "@/lib/threads/sim-seals";
 
 const mockCreateClient = createClient as ReturnType<typeof vi.fn>;
 const mockOpenThread = createOpenThreadLazy as ReturnType<typeof vi.fn>;
-const mockInsertMessage = insertMessage as ReturnType<typeof vi.fn>;
+/** The insert-once write (lib/tools/test-card.ts): (messageId, threadId, role, blocks, kc). */
+const mockInsertMessage = insertMessageOnce as ReturnType<typeof vi.fn>;
+const mockFindMessage = findMessage as ReturnType<typeof vi.fn>;
+const mockOwnedThread = getOwnedOpenThread as ReturnType<typeof vi.fn>;
 const mockCorpusSearch = executeCorpusSearch as ReturnType<typeof vi.fn>;
 const mockWriteSimSeal = writeSimSeal as ReturnType<typeof vi.fn>;
 
@@ -183,8 +187,48 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockCreateClient.mockResolvedValue(makeSupabase("user-1", scoredRow()));
   mockOpenThread.mockResolvedValue({ id: "thread-1", type: "open", user_id: "user-1", reading_id: null, active_audience_id: null });
-  mockInsertMessage.mockResolvedValue(undefined);
+  mockInsertMessage.mockResolvedValue({ inserted: true, row: {} });
+  mockFindMessage.mockResolvedValue(null);
+  mockOwnedThread.mockResolvedValue(null);
   mockCorpusSearch.mockResolvedValue({ content: "", examples: [], citable: [], record: {} });
+});
+
+describe("POST /api/tools/test/card — the run's own chat, at most once (2026-11-26)", () => {
+  const chatA = { id: "chat-A", type: "open", user_id: "user-1", reading_id: null, active_audience_id: null };
+
+  it("with the run's threadId: the card goes to THAT chat, not the one open now", async () => {
+    mockOwnedThread.mockResolvedValue(chatA);
+    const res = await callPOST({ analysisId: "an-1", threadId: "chat-A" });
+    expect(res.status).toBe(200);
+    expect(mockOwnedThread).toHaveBeenCalledWith("user-1", "chat-A");
+    expect(mockOpenThread).not.toHaveBeenCalled();
+    const [messageId, threadId] = mockInsertMessage.mock.calls[0]!;
+    expect(threadId).toBe("chat-A");
+    expect(messageId).toBe(testCardMessageId("an-1", "chat-A"));
+  });
+
+  it("the run's nonce goes into the card's id (the same video run again here gets its own card)", async () => {
+    mockOwnedThread.mockResolvedValue(chatA);
+    await callPOST({ analysisId: "an-1", threadId: "chat-A", runNonce: "run-7" });
+    expect(mockInsertMessage.mock.calls[0]![0]).toBe(testCardMessageId("an-1", "chat-A", "run-7"));
+  });
+
+  it("a threadId that is not the caller's own open chat: 404, nothing written", async () => {
+    mockOwnedThread.mockResolvedValue(null);
+    const res = await callPOST({ analysisId: "an-1", threadId: "someone-elses" });
+    expect(res.status).toBe(404);
+    expect(mockInsertMessage).not.toHaveBeenCalled();
+  });
+
+  it("the server already added it: the stored card comes back, nothing built or written again", async () => {
+    mockOwnedThread.mockResolvedValue(chatA);
+    const stored = { type: "video-test-card", props: { analysisId: "an-1" } };
+    mockFindMessage.mockResolvedValue({ id: "m", body: { kcGenVersion: "gen.1.0.0", blocks: [{ type: "run-header", props: {} }, stored] } });
+    const res = await callPOST({ analysisId: "an-1", threadId: "chat-A" });
+    expect(res.status).toBe(200);
+    expect((await res.json()).block).toEqual(stored);
+    expect(mockInsertMessage).not.toHaveBeenCalled();
+  });
 });
 
 describe("POST /api/tools/test/card", () => {
@@ -227,7 +271,8 @@ describe("POST /api/tools/test/card", () => {
 
     // The block was persisted to the open thread, behind the turn's RUN STAMP.
     expect(mockInsertMessage).toHaveBeenCalledTimes(1);
-    const [threadId, role, blocks] = mockInsertMessage.mock.calls[0]!;
+    const [messageId, threadId, role, blocks] = mockInsertMessage.mock.calls[0]!;
+    expect(messageId).toBe(testCardMessageId("an-1", "thread-1"));
     expect(threadId).toBe("thread-1");
     expect(role).toBe("assistant");
     // run-header is FIRST by contract: <ThreadTurn> reads it to rebuild the intro + stage receipt

@@ -175,3 +175,24 @@ describe("runErrorCopy — cause beats skill", () => {
     expect(runErrorCopy(undefined, "hooks").body).toMatch(/dropped out/i);
   });
 });
+
+describe("the account read's scrape failure — TikTok would not load the posts", () => {
+  const scrapeFailure = () => Object.assign(new Error("Couldn't read your account just now."), { accountScrapeFailed: true });
+
+  it("is classified by its flag, as the session refusal is", () => {
+    expect(classifyRunFailure(scrapeFailure())).toBe("accountScrape");
+    expect(resolveRunError(scrapeFailure(), "x")).toBe(RUN_FAILURE_SENTINEL.accountScrape);
+  });
+
+  it("says what happened, not that the handle is wrong (the handle is the creator's own, never typed here)", () => {
+    const copy = runErrorCopy(RUN_FAILURE_SENTINEL.accountScrape, "account");
+    expect(copy.headline).toBe("Couldn’t read your account just now.");
+    expect(copy.body).toBe("TikTok didn’t let us load your posts this time. Try again in a few minutes. Nothing was charged.");
+    expect(copy.body).not.toMatch(/handle/i);
+    expect(copy.retryLabel).toBe("Retry the account read");
+  });
+
+  it("leaves the account read's other failures on its default copy", () => {
+    expect(runErrorCopy("Account Read stream error", "account").headline).toBe("Couldn’t read that account.");
+  });
+});

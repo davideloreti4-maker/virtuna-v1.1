@@ -22,6 +22,7 @@ import {
   ARCHETYPE_TRIGGERS,
 } from "@/lib/engine/wave3/persona-registry";
 import { KC_CHAT_SYSTEM_PROMPT } from "@/lib/kc/compiled";
+import { CHAT_VOICE_RULE, VIEWER_VOICE_RULE, withChatVoice } from "@/lib/tools/chat-voice";
 import type { RetrievedExample } from "@/lib/grounding/types";
 
 // ─── Mock Qwen client — capture the create() args + emit two tokens ────────────
@@ -96,12 +97,12 @@ describe("runChatPipeline personaGrounding [runner]", () => {
 
     expect(result.fullContent).toBe("Hello world");
 
-    // System prompt is the unmodified compiled chat prompt (no persona prefix).
+    // System prompt is the compiled chat prompt with the chat voice rule last (no persona prefix).
     const createArgs = createMock.mock.calls[0]![0] as {
       messages: Array<{ role: string; content: string }>;
     };
     const systemMsg = createArgs.messages.find((m) => m.role === "system")!;
-    expect(systemMsg.content).toBe(KC_CHAT_SYSTEM_PROMPT);
+    expect(systemMsg.content).toBe(withChatVoice(KC_CHAT_SYSTEM_PROMPT));
 
     // assembleBundle received NO overrides for the General/no-persona path (byte-identical).
     const assemblerInput = assembleBundleMock.mock.calls[0]![0] as Record<string, unknown>;
@@ -137,6 +138,10 @@ describe("runChatPipeline personaGrounding [runner]", () => {
     );
     // A trigger phrase from the registry is woven in (in-voice instruction).
     expect(systemMsg.content).toContain(ARCHETYPE_TRIGGERS.tough_crowd.stop[0]!);
+    // A viewer talks in its own voice: not Maven's chat voice rule, but the viewer's, last and once.
+    expect(systemMsg.content).not.toContain(CHAT_VOICE_RULE);
+    expect(systemMsg.content.endsWith(VIEWER_VOICE_RULE)).toBe(true);
+    expect(systemMsg.content.split(VIEWER_VOICE_RULE)).toHaveLength(2);
 
     // The concept text + reaction quote do NOT leak into the system prompt — they ride the
     // fenced assembleBundle.overrides (Security Domain — injection-safe).
@@ -250,7 +255,7 @@ describe("runChatPipeline corpus PULL [runner]", () => {
   it("flag OFF (default): the pull never runs — system prompt byte-identical", async () => {
     await runChatPipeline(BASE_INPUT, () => {}, { gatherReferences: gatherSpy as never });
     expect(gatherSpy).not.toHaveBeenCalled();
-    expect(systemOf()).toBe(KC_CHAT_SYSTEM_PROMPT);
+    expect(systemOf()).toBe(withChatVoice(KC_CHAT_SYSTEM_PROMPT));
   });
 
   it("flag ON + open chat: the model's pulled reference is injected AFTER the chat prompt", async () => {
@@ -264,6 +269,8 @@ describe("runChatPipeline corpus PULL [runner]", () => {
     expect(system).toContain("proven by @pulledcreator");
     // The block is appended — the chat prompt stays primary.
     expect(system.indexOf(KC_CHAT_SYSTEM_PROMPT)).toBeLessThan(system.indexOf("PROVEN REFERENCE MATERIAL"));
+    // …and the voice rule still comes last, after the references.
+    expect(system.endsWith(CHAT_VOICE_RULE)).toBe(true);
   });
 
   it("flag ON + PERSONA chat: the pull is excluded (a viewer reacts in-voice, not from a strategy corpus)", async () => {
@@ -285,6 +292,27 @@ describe("runChatPipeline corpus PULL [runner]", () => {
     const result = await runChatPipeline(BASE_INPUT, () => {}, { gatherReferences: throwing as never });
 
     expect(result.fullContent).toBe("Hello world");
-    expect(systemOf()).toBe(KC_CHAT_SYSTEM_PROMPT); // no block — byte-identical fallback
+    expect(systemOf()).toBe(withChatVoice(KC_CHAT_SYSTEM_PROMPT)); // no block: the plain prompt
+  });
+});
+
+describe("runChatPipeline: the dash pass on open chat (plain-dashes.ts)", () => {
+  it("open chat: no dash reaches the creator, split mid-dash, and what is returned (stored) is what streamed", async () => {
+    createMock.mockResolvedValue(makeStream(["Post three times a week ", "—", " not daily. Aim for 45", "–90 seconds."]));
+    const tokens: string[] = [];
+    const result = await runChatPipeline(BASE_INPUT, (d) => tokens.push(d));
+    expect(tokens.join("")).toBe("Post three times a week. Not daily. Aim for 45 to 90 seconds.");
+    expect(result.fullContent).toBe(tokens.join(""));
+  });
+
+  it("persona chat: its own voice, but the same dash pass, and what is stored is what streamed", async () => {
+    createMock.mockResolvedValue(makeStream(["I'd keep scrolling ", "—", " seen it."]));
+    const tokens: string[] = [];
+    const result = await runChatPipeline(
+      { ...BASE_INPUT, personaGrounding: { archetype: "tough_crowd", personaName: "Maya" } },
+      (d) => tokens.push(d),
+    );
+    expect(tokens.join("")).toBe("I'd keep scrolling. Seen it.");
+    expect(result.fullContent).toBe(tokens.join(""));
   });
 });

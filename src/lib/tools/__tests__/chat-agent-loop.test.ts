@@ -97,7 +97,9 @@ describe("runChatAgentStream [tools]", () => {
     expect(res.text).toBe("Post three times.");
     expect(res.skillRuns).toHaveLength(0);
     expect(onToken).toHaveBeenCalledTimes(3);
-    expect(onToken).toHaveBeenNthCalledWith(1, "Post ");
+    // Token by token, except a trailing space waits for the next token: it could be the start of
+    // " —", which the dash guard (plain-dashes.ts) removes with the dash.
+    expect(onToken.mock.calls.map((c) => c[0])).toEqual(["Post", " three", " times."]);
   });
 
   it("accumulates fragmented tool-call deltas, runs the skill, streams its card, then continues", async () => {
@@ -115,7 +117,8 @@ describe("runChatAgentStream [tools]", () => {
     expect(res.skillRuns).toHaveLength(1);
     expect(res.skillRuns[0]!.name).toBe("generate_ideas");
     expect(onBlock).toHaveBeenCalledWith({ type: "idea-card", props: { topic: "morning routines" } });
-    expect(res.text).toBe("Made you 1 angle — want hooks?");
+    // The model's dash goes through the dash pass (plain-dashes.ts), stream and stored alike.
+    expect(res.text).toBe("Made you 1 angle. Want hooks?");
     expect(ideas.run).toHaveBeenCalledWith({ topic: "morning routines", anchor: undefined, draft: undefined }, CTX);
   });
 
@@ -1698,8 +1701,8 @@ describe("the unbound artefact guard — structure, not just quotation", () => {
   });
 
   it("still releases a SHORT quotation — a term of art is not the artefact", async () => {
-    const s = 'Do not lead with "save money" — it is generic.';
-    expect(await seen(s)).toBe(s);
+    // The quote itself is released as written; the dash after it goes through the dash pass.
+    expect(await seen('Do not lead with "save money" — it is generic.')).toBe('Do not lead with "save money". It is generic.');
   });
 
   it("a SIGNED-IN creator's stream is byte-for-byte untouched — they paid for the lines", async () => {
@@ -2030,7 +2033,7 @@ describe("runChatAgentStream [composedCards]", () => {
       DEPS(stream, { skills: [mkSkill("generate_ideas")] }),
     );
 
-    expect(res.text).toBe("That's the brief — want me to turn it into hooks?");
+    expect(res.text).toBe("That's the brief. Want me to turn it into hooks?");
   });
 
   it("streams a composed card to onBlock and persists it, without spending anything", async () => {
