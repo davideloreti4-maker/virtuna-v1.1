@@ -14,7 +14,8 @@ import { cn } from "@/lib/utils";
  * point at the bottom. Same 2.5:1 box, so no call site changes. The standalone assets
  * (`public/brand/*.svg`, `src/app/icon.svg`, `apple-icon.svg`) switch at cut-over.
  *
- * Wordmark is Inter (the platform typeface), sentence-case, tight tracking.
+ * Wordmark is Inter (the platform typeface), sentence-case, tight tracking. New look: `MavenLogo`
+ * draws the lockup (`NextLockup`), a heavier wordmark set against the mark's ink.
  * "Maven" is the product; the company "Numen Machines" signs the footer.
  *
  * Usage:
@@ -30,35 +31,35 @@ const MARK_PATH =
 const MARK_VIEWBOX = "0 0 240 96";
 
 /**
- * New-look geometry. One closed path, mirrored on x = 120: bottom point (120, 131.1), notch
- * (120, 77.8), wing tips (8, 24) and (232, 24). Generated from a centre line and a taper, then
- * fitted with cubics (max deviation 0.09 units); regenerate rather than hand-edit.
+ * New-look geometry (heavier redraw 2026-11-26: the 2026-11-19 stroke read as a hairline at sidebar
+ * size). One closed path, mirrored on x = 120: bottom point (120, 135.2), notch (120, 63.3), wing
+ * tips (10, 28) and (230, 28). Built from a cubic centre line per wing, (120,98) (142,70) (170,40)
+ * (230,28), with a thickness of 46 at the body tapering as 1 - t^2.6 to a point at the tip, so the
+ * wings stay full for most of their length; the body is the lower edges run on to the centre line.
+ * Fitted with Catmull-Rom cubics on the right wing; the left is that half mirrored and run backwards,
+ * so the two are exact mirrors. Regenerate rather than hand-edit.
  * Exported for Earn's saved share card, which draws the same mark on a canvas.
  */
 export const MARK_PATH_NEXT =
-  "M120 131.1 L129.6 109.2 C133.5 100.3 137.1 91.2 140.7 82.7 " +
-  "C144.4 74.2 148.3 66.1 153.1 60.4 C156.2 55.4 160.6 51.7 166.6 48.2 " +
-  "C171.8 45.2 177.6 42.6 183.6 40.3 C188.8 38.3 194 36.5 199.4 34.8 " +
-  "C203.7 33.3 208.1 32 212.5 30.6 C215.9 29.5 219.3 28.4 222.7 27.3 " +
-  "C224.9 26.6 227.1 25.8 229.3 25 C230.2 24.7 231.1 24.4 232 24 " +
-  "C231.6 24 231.2 24 230.7 24 C229.7 24.1 228.7 24.2 227.6 24.2 " +
-  "C226 24.3 224.5 24.4 222.9 24.5 C220.9 24.7 218.8 24.8 216.8 25 " +
-  "C214.3 25.1 211.8 25.3 209.3 25.5 C206.3 25.7 203.4 26 200.4 26.2 " +
-  "C197 26.5 193.7 26.8 190.3 27.2 C186.5 27.7 182.6 28.2 178.8 28.8 " +
-  "C174.5 29.5 170.3 30.4 166 31.5 C161.3 32.7 156.5 34.2 151.7 36.5 " +
-  "C146.5 38.9 141.1 42.7 136.9 46.9 C132.7 52 129.7 57.3 127 62.4 " +
-  "C124.4 67.6 122.1 72.8 120 77.8 C117.9 72.8 115.6 67.6 113 62.4 " +
-  "C110.3 57.3 107.3 52 103.1 46.9 C98.9 42.7 93.5 38.9 88.3 36.5 " +
-  "C83.5 34.2 78.7 32.7 74 31.5 C69.7 30.4 65.5 29.5 61.2 28.8 " +
-  "C57.4 28.2 53.5 27.7 49.7 27.2 C46.3 26.8 43 26.5 39.6 26.2 C36.6 26 33.7 25.7 30.7 25.5 " +
-  "C28.2 25.3 25.7 25.1 23.2 25 C21.2 24.8 19.1 24.7 17.1 24.5 C15.5 24.4 14 24.3 12.4 24.2 " +
-  "C11.3 24.2 10.3 24.1 9.3 24 C8.8 24 8.4 24 8 24 C8.9 24.4 9.8 24.7 10.7 25 " +
-  "C12.9 25.8 15.1 26.6 17.3 27.3 C20.7 28.4 24.1 29.5 27.5 30.6 " +
-  "C31.9 32 36.3 33.3 40.6 34.8 C46 36.5 51.2 38.3 56.4 40.3 C62.4 42.6 68.2 45.2 73.4 48.2 " +
-  "C79.4 51.7 83.8 55.4 86.9 60.4 C91.7 66.1 95.6 74.2 99.3 82.7 " +
-  "C102.9 91.2 106.5 100.3 110.4 109.2 Z";
-/** 300 x 120 around the 224 x 107 mark: the same 2.5:1 box as the legacy mark. */
-export const MARK_VIEWBOX_NEXT = "-30 18 300 120";
+  "M120 135.2 L138.1 112.2 C139.2 110.9 142.3 106.8 144.4 104.2 " +
+  "C146.5 101.6 148.7 99 150.9 96.4 C153.1 93.8 155.2 91.1 157.5 88.5 C159.8 85.9 162.1 83.3 164.5 80.6 " +
+  "C166.9 77.9 169.4 75.3 172 72.6 C174.7 69.9 177.4 67 180.4 64.2 C183.4 61.4 186.5 58.5 190 55.6 " +
+  "C193.5 52.7 197.1 49.7 201.2 46.7 C205.3 43.7 209.6 40.5 214.4 37.4 C219.2 34.3 227.4 29.6 230 28 " +
+  "C226.9 27.8 217.4 26.9 211.4 26.8 C205.4 26.8 199.6 27.1 194 27.7 C188.4 28.3 183.1 29.3 177.9 30.6 " +
+  "C172.7 31.9 167.7 33.5 163 35.3 C158.3 37.1 153.8 39.2 149.5 41.4 C145.2 43.7 141.2 46.2 137.4 48.8 " +
+  "C133.6 51.4 129.3 55 126.7 57.1 C124.1 59.2 122.7 60.7 121.9 61.4 L120 63.3 " +
+  "L118.1 61.4 C117.3 60.7 115.9 59.2 113.3 57.1 C110.7 55 106.4 51.4 102.6 48.8 " +
+  "C98.8 46.2 94.8 43.7 90.5 41.4 C86.2 39.2 81.7 37.1 77 35.3 C72.3 33.5 67.3 31.9 62.1 30.6 " +
+  "C56.9 29.3 51.6 28.3 46 27.7 C40.4 27.1 34.6 26.8 28.6 26.8 C22.6 26.9 13.1 27.8 10 28 " +
+  "C12.6 29.6 20.8 34.3 25.6 37.4 C30.4 40.5 34.7 43.7 38.8 46.7 C42.9 49.7 46.5 52.7 50 55.6 " +
+  "C53.5 58.5 56.6 61.4 59.6 64.2 C62.6 67 65.3 69.9 68 72.6 C70.6 75.3 73.1 77.9 75.5 80.6 " +
+  "C77.9 83.3 80.2 85.9 82.5 88.5 C84.8 91.1 86.9 93.8 89.1 96.4 C91.3 99 93.5 101.6 95.6 104.2 " +
+  "C97.7 106.8 100.8 110.9 101.9 112.2 Z";
+/** 300 x 120 around the 220 x 108 mark: the same 2.5:1 box as the legacy mark. */
+export const MARK_VIEWBOX_NEXT = "-30 21 300 120";
+/** The mark alone, 1 unit of air round it: the lockup sets the wordmark against the ink, not the box. */
+const MARK_VIEWBOX_NEXT_TIGHT = "9 25.8 222 110.4";
+const MARK_TIGHT_RATIO = 222 / 110.4; // width / height
 const MARK_RATIO = 240 / 96; // width / height
 
 /** Kept for backwards-compatible call sites; the mark is now a single design. */
@@ -97,11 +98,43 @@ export function MavenMark({
   );
 }
 
+/**
+ * The new-look lockup: the mark against the ink (its tight box), then "Maven". Sized off the mark's
+ * height: the wordmark's cap height sits at ~80% of the mark's, so the two read as one weight. The
+ * wordmark is Inter at 680 with display tracking (-0.04em); it inherits its colour, the mark is coral.
+ */
+function NextLockup({ size, wordmark, className }: { size: number; wordmark: "maven" | "none"; className?: string }) {
+  const markHeight = size * 0.92;
+  return (
+    <span className={cn("flex items-center", className)} style={{ gap: Math.round(size * 0.42) }}>
+      <svg
+        width={markHeight * MARK_TIGHT_RATIO}
+        height={markHeight}
+        viewBox={MARK_VIEWBOX_NEXT_TIGHT}
+        fill="currentColor"
+        className="shrink-0 text-[var(--color-accent)]"
+        aria-hidden="true"
+      >
+        <path d={MARK_PATH_NEXT} />
+      </svg>
+      {wordmark !== "none" && (
+        <span
+          className="font-[680] leading-none tracking-[-0.04em]"
+          style={{ fontSize: Math.round(size * 1.12) }}
+        >
+          Maven
+        </span>
+      )}
+    </span>
+  );
+}
+
 export function MavenLogo({
   size = 22,
   wordmark = "maven",
   className,
 }: MavenLogoProps) {
+  if (NEW_LOOK_ENABLED) return <NextLockup size={size} wordmark={wordmark} className={className} />;
   return (
     <span className={cn("flex items-center gap-2.5", className)}>
       <MavenMark size={size} className="shrink-0" />

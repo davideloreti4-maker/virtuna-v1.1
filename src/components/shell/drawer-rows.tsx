@@ -5,7 +5,7 @@ import { flushSync } from "react-dom";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { GearSix, SignOut } from "@phosphor-icons/react";
-import { MavenMark } from "@/components/brand/maven-logo";
+import { MavenLogo } from "@/components/brand/maven-logo";
 import { creditsLabel } from "@/components/thread-next/thread-field";
 import { Avatar } from "@/components/ui/avatar";
 import { useThreadList } from "@/hooks/queries";
@@ -161,11 +161,8 @@ export function DrawerRows({ actions, account, choose, balanceRef }: DrawerRowsP
 
   return (
     <div className="flex min-h-0 flex-1 flex-col p-3">
-      <div className="flex h-11 shrink-0 items-center gap-[9px] pl-2 text-foreground">
-        <span aria-hidden className="flex size-[26px] shrink-0 items-center justify-center">
-          <MavenMark size={13} className="shrink-0 text-accent" />
-        </span>
-        <span className="text-title font-[640] tracking-[-0.02em]">Maven</span>
+      <div className="flex h-11 shrink-0 items-center pl-2.5 text-foreground">
+        <MavenLogo size={17} />
       </div>
 
       <button
