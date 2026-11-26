@@ -48,7 +48,7 @@ describe("/dev/home's states", () => {
 
   it("money: the row between the greeting and the field, a link to Earn, nothing earned", () => {
     render(<DevHome state="money" recentOnDesktop={false} earnedCents={0} />);
-    const link = screen.getByRole("link", { name: "Money made: $0. Earn 50%" });
+    const link = screen.getByRole("link", { name: "Money made: $0 of $65k" });
     expect(link).toHaveAttribute("href", "/earn");
     expect(moneyPart()!.contains(link)).toBe(true);
     expect(greeting().nextElementSibling).toBe(moneyPart());
@@ -61,13 +61,13 @@ describe("/dev/home's states", () => {
 
   it("money with an amount in cents: Earn's own money words (a long one, for the narrow widths)", () => {
     render(<DevHome state="money" recentOnDesktop={false} earnedCents={124050} />);
-    const link = screen.getByRole("link", { name: "Money made: $1,240.50. Earn 50%" });
+    const link = screen.getByRole("link", { name: "Money made: $1,240.50 of $65k" });
     expect(within(link).getByText("$1,240.50")).toBeInTheDocument();
   });
 
-  it("money with no amount (enrolled, the number could not be read): Money made and Earn 50% only", () => {
+  it("money with no amount (enrolled, the number could not be read): Money made and the goal only", () => {
     render(<DevHome state="money" recentOnDesktop={false} earnedCents={null} />);
-    const link = screen.getByRole("link", { name: "Money made. Earn 50%" });
-    expect(link.textContent).not.toContain("$");
+    const link = screen.getByRole("link", { name: "Money made. Goal $65k" });
+    expect(link.textContent).not.toContain("$0");
   });
 });

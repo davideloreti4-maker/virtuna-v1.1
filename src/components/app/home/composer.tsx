@@ -149,6 +149,7 @@ import { ChipsRow } from "./v8/chips-row";
 import { ArrivalV8 } from "./v8/arrival";
 // ── Composer v8 Phase 2 (the shelf) ──────────────────────────────────────────
 import { DropShelf } from "./v8/drop-shelf";
+import { RemixCarousel } from "@/components/home-next/remix-carousel";
 import { useLazyWarm } from "@/lib/surfaces/use-lazy-warm";
 import type { LiveDropCard } from "@/lib/surfaces/live-cards";
 import { usePlatformLens, LENS_LABEL, audienceProvenance } from "./v8/platform-lens";
@@ -1238,12 +1239,13 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // cache (spec: the lens changes generation prompts only). The warm key advances
   // only AFTER an audience switch's persist settles (use-lazy-warm contract) —
   // see handleSelectAudience. Flag-off: enabled=false → the hook is inert.
-  // New look (Home, spec 2026-11-23): no drops on Home, so nothing warms them.
+  // New look: the drops are back on Home as the remix carousel (owner 2026-11-26), so they warm there
+  // too: the same daily, cached warm (≤6 adapt calls + one batched Flash on a miss, once a day per
+  // audience). The route itself 404s without CONCEPT_V8, so it stays the gate in both looks.
   const [warmAudienceKey, setWarmAudienceKey] = useState<string>("general");
   const dropsEnabled =
-    !NEW_LOOK_ENABLED &&
     CONCEPT_V8_ENABLED &&
-    AMBIENT_V2_ENABLED &&
+    (NEW_LOOK_ENABLED || AMBIENT_V2_ENABLED) &&
     !hasConversationContent &&
     !startEngaged &&
     !rehydrating;
@@ -5115,6 +5117,18 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       <div data-testid="composer-shell" data-layout="home" className={cn("relative flex w-full flex-col", className)}>
         <HomeNext
           field={composerDock}
+          // The old Home's shelf, as a row above the field (owner 2026-11-26). Remix seeds a chat
+          // from the cached card (no model call) and opens it.
+          remixes={
+            dropsEnabled ? (
+              <RemixCarousel
+                drops={dropCards}
+                status={dropsStatus}
+                onRemix={(card) => void handleRemixDrop(card)}
+                remixingId={remixingDropId}
+              />
+            ) : null
+          }
           // A balance only where it means something: a paid plan or a trial pool with a countable
           // limit (`readingsBalanceLabel`'s rule). An account with no plan still runs its skills.
           credits={shownBalance(usage, billingTier, isTrial)}
