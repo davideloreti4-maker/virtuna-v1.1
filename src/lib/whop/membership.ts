@@ -59,7 +59,9 @@ export async function fetchWhopMembershipRecord(
   });
   if (response.status === 404) return null;
   if (!response.ok) throw new Error(`Whop API returned ${response.status}`);
-  return (await response.json()) as WhopMembership;
+  const body = (await response.json()) as WhopMembership | null;
+  if (typeof body?.status !== "string") throw new Error("Whop API returned a membership with no status");
+  return body;
 }
 
 /** Whop sends the period end as a Unix timestamp (seconds) or an ISO string; either becomes an ISO time. */

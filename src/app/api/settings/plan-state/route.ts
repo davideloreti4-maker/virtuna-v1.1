@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
+import { createLogger } from "@/lib/logger";
 import { fetchWhopMembership, type LiveMembership } from "@/lib/whop/membership";
+
+const log = createLogger({ module: "settings/plan-state" });
 
 /** Two times the same instant? (Postgres writes "+00:00" where Whop's read writes "Z".) */
 function sameTime(a: string, b: string | null | undefined): boolean {
@@ -26,11 +29,16 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
   const service = createServiceClient();
-  const { data: row } = await service
+  const { data: row, error: readError } = await service
     .from("user_subscriptions")
     .select("whop_membership_id, cancel_at_period_end, current_period_end")
     .eq("user_id", user.id)
     .maybeSingle();
+  // A failed read is not "no plan": answering null would show a paying customer "No plan" and offer delete.
+  if (readError) {
+    log.error("Subscription read failed", { code: readError.code ?? null });
+    return NextResponse.json({ unknown: true });
+  }
   if (!row?.whop_membership_id) return NextResponse.json({ membership: null });
 
   let membership: LiveMembership | null;
@@ -45,13 +53,15 @@ export async function GET() {
   const flagDiffers = membership.cancelAtPeriodEnd !== Boolean(row.cancel_at_period_end);
   const endDiffers = membership.renewsAt !== null && !sameTime(membership.renewsAt, row.current_period_end);
   if (flagDiffers || endDiffers) {
-    await service
+    const { error: updateError } = await service
       .from("user_subscriptions")
       .update({
         cancel_at_period_end: membership.cancelAtPeriodEnd,
         ...(membership.renewsAt ? { current_period_end: membership.renewsAt } : {}),
       })
       .eq("user_id", user.id);
+    // The live answer stands; the row catches up on the next read or the daily sync.
+    if (updateError) log.error("Plan state catch-up failed", { code: updateError.code ?? null, flagDiffers, endDiffers });
   }
 
   return NextResponse.json({ membership });

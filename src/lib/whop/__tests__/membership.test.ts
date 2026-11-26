@@ -80,6 +80,12 @@ describe("fetchWhopMembership", () => {
     await expect(fetchWhopMembership(ID, whop(401) as unknown as typeof fetch)).rejects.toThrow(/401/);
   });
 
+  it("200 with no string status throws (an unreadable answer, not a membership)", async () => {
+    await expect(fetchWhopMembership(ID, whop(200, { id: ID, renewal_period_end: null }) as unknown as typeof fetch)).rejects.toThrow(/status/);
+    await expect(fetchWhopMembership(ID, whop(200, { id: ID, status: 3 }) as unknown as typeof fetch)).rejects.toThrow(/status/);
+    await expect(fetchWhopMembership(ID, whop(200, null) as unknown as typeof fetch)).rejects.toThrow(/status/);
+  });
+
   it("a network failure throws", async () => {
     const f = vi.fn(async () => {
       throw new TypeError("fetch failed");

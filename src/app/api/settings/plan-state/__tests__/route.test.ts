@@ -13,6 +13,8 @@ let user: { id: string } | null = { id: "u-test-1" };
 let row: Record<string, unknown> | null = null;
 let reads: Array<{ table: string; columns: string; filter: [string, unknown] }> = [];
 let updates: Array<{ table: string; values: Record<string, unknown>; filter: [string, unknown] }> = [];
+let readError: { code?: string; message: string } | null = null;
+let updateError: { code?: string; message: string } | null = null;
 let whop: () => Promise<Response>;
 
 function serviceClient() {
@@ -25,7 +27,7 @@ function serviceClient() {
               return {
                 maybeSingle: async () => {
                   reads.push({ table, columns, filter: [column, value] });
-                  return { data: row, error: null };
+                  return readError ? { data: null, error: readError } : { data: row, error: null };
                 },
               };
             },
@@ -35,7 +37,7 @@ function serviceClient() {
           return {
             eq: async (column: string, value: unknown) => {
               updates.push({ table, values, filter: [column, value] });
-              return { error: null };
+              return { error: updateError };
             },
           };
         },
@@ -65,6 +67,8 @@ beforeEach(() => {
   row = { whop_membership_id: ID, cancel_at_period_end: false, current_period_end: "2026-12-14T10:00:00+00:00" };
   reads = [];
   updates = [];
+  readError = null;
+  updateError = null;
   whop = async () =>
     new Response(JSON.stringify({ id: ID, status: "active", cancel_at_period_end: false, renewal_period_end: "2026-12-14T10:00:00.000Z" }), {
       status: 200,
@@ -77,6 +81,7 @@ beforeEach(() => {
 afterEach(() => {
   vi.unstubAllEnvs();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
   vi.doUnmock("@/lib/flags/new-look");
   vi.doUnmock("@/lib/supabase/server");
   vi.doUnmock("@/lib/supabase/service");
@@ -194,5 +199,41 @@ describe("GET /api/settings/plan-state", () => {
       new Response(JSON.stringify({ id: ID, status: "active", cancel_at_period_end: true, renewal_period_end: null }), { status: 200 });
     await call();
     expect(updates).toEqual([{ table: "user_subscriptions", values: { cancel_at_period_end: true }, filter: ["user_id", "u-test-1"] }]);
+  });
+
+  it("the row read fails: { unknown: true } (never \"no plan\"), Whop not asked, no update", async () => {
+    readError = { code: "08006", message: "connection failure" };
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { status, body } = await call();
+    expect(status).toBe(200);
+    expect(body).toEqual({ unknown: true });
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(updates).toHaveLength(0);
+    expect(errors).toHaveBeenCalledTimes(1);
+    expect(String(errors.mock.calls[0]?.[0])).not.toContain("u-test-1");
+  });
+
+  it("the catch-up update fails: logged without the user id, the live membership still answered", async () => {
+    updateError = { code: "42501", message: "permission denied" };
+    whop = async () =>
+      new Response(JSON.stringify({ id: ID, status: "active", cancel_at_period_end: true, renewal_period_end: "2026-12-14T10:00:00.000Z" }), {
+        status: 200,
+      });
+    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { status, body } = await call();
+    expect(status).toBe(200);
+    expect(body).toEqual({ membership: { status: "active", cancelAtPeriodEnd: true, renewsAt: "2026-12-14T10:00:00.000Z" } });
+    expect(updates).toHaveLength(1);
+    expect(errors).toHaveBeenCalledTimes(1);
+    const line = String(errors.mock.calls[0]?.[0]);
+    expect(line).toContain("Plan state catch-up failed");
+    expect(line).not.toContain("u-test-1");
+    expect(line).not.toContain(ID);
+  });
+
+  it("Whop answers 200 with no status: { unknown: true }, no update", async () => {
+    whop = async () => new Response(JSON.stringify({ id: ID, cancel_at_period_end: true }), { status: 200 });
+    expect((await call()).body).toEqual({ unknown: true });
+    expect(updates).toHaveLength(0);
   });
 });
