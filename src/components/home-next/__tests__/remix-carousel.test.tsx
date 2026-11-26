@@ -24,7 +24,7 @@ describe("RemixCarousel", () => {
   it("draws each drop: its still (a link to the original when there is one), its views, its hook, its multiplier and Remix", () => {
     render(<RemixCarousel drops={DROPS} status="ready" onRemix={vi.fn()} />);
     const region = carousel()!;
-    expect(within(region).getByRole("heading", { name: "Proven videos, rebuilt for your niche" })).toBeInTheDocument();
+    expect(within(region).getByRole("heading", { name: "Proven videos to remix" })).toBeInTheDocument();
     const items = within(region).getAllByRole("listitem");
     expect(items).toHaveLength(2);
 
