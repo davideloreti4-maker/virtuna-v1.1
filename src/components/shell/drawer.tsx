@@ -23,7 +23,7 @@ const SCRIM = cn(
 /** On the page's ground, flush left, full height, the safe areas kept free. No shadow: the scrim separates it.
  *  While it slides out it takes no taps (Radix sets its pointer events inline: hence the `!`). */
 const PANEL = cn(
-  "fixed inset-y-0 left-0 z-[var(--z-modal)] flex w-[min(86vw,320px)] flex-col bg-background text-foreground outline-none md:hidden",
+  "fixed inset-y-0 left-0 z-[var(--z-modal)] flex w-[min(86vw,320px)] flex-col bg-[var(--color-sidebar)] text-foreground outline-none md:hidden",
   "data-[state=closed]:pointer-events-none!",
   "pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)]",
   "motion-safe:duration-300 motion-safe:ease-[var(--ease-out-quart)]",
@@ -33,7 +33,7 @@ const PANEL = cn(
 /** "Close", out of sight until the keyboard reaches it (a screen reader on a touch screen has no
  *  Escape, and the scrim is not a control), below the safe area. */
 const CLOSE =
-  "sr-only focus-visible:not-sr-only focus-visible:absolute focus-visible:right-4 focus-visible:top-[calc(env(safe-area-inset-top)+16px)] focus-visible:z-[1] focus-visible:rounded-full focus-visible:bg-surface-sunken focus-visible:px-3 focus-visible:py-1.5 focus-visible:text-meta focus-visible:font-[560] focus-visible:text-foreground";
+  "sr-only focus-visible:not-sr-only focus-visible:absolute focus-visible:right-4 focus-visible:top-[calc(env(safe-area-inset-top)+16px)] focus-visible:z-[1] focus-visible:rounded-lg focus-visible:bg-surface-sunken focus-visible:px-3 focus-visible:py-1.5 focus-visible:text-meta focus-visible:font-[560] focus-visible:text-foreground";
 
 /**
  * The phone's left drawer (new look): what the desktop sidebar carries, over a scrim. Mounted once

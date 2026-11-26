@@ -86,6 +86,9 @@ const OLD_FIELDS = [
 const oldFieldsOf = (s: WatchlistSource) =>
   Object.fromEntries(OLD_FIELDS.map((k) => [k, s[k]])) as Pick<WatchlistSource, (typeof OLD_FIELDS)[number]>;
 
+/** One read of a creator: the ingest writes this time on all its rows; "vs own" is its stored basis. */
+const OWN_READ = { platform: "tiktok", baseline_label: "vs own", ingested_at: "2026-11-20T09:00:00Z" };
+
 /**
  * One fixture with every kind of row: a profile with two tracked spellings, a profile merged by its
  * display name, a held profile, and a tracked handle with no profile.
@@ -99,10 +102,10 @@ const USER: Record<string, Rows> = {
   ],
   user_competitors: [{ competitor_id: "p-jay" }, { competitor_id: "p-nia" }, { competitor_id: "p-dev" }],
   scraped_videos: [
-    { creator_handle: "jay.makes", outlier_multiplier: 4.2, posted_at: "2026-11-01T00:00:00Z", cover_url: stored("j1") },
-    { creator_handle: "jaymakes", outlier_multiplier: 12, posted_at: "2026-11-10T00:00:00Z", cover_url: stored("j2") },
-    { creator_handle: "niacooks", outlier_multiplier: 2.9, posted_at: "2026-10-01T00:00:00Z", cover_url: CDN("n1") },
-    { creator_handle: "made.up.creator", outlier_multiplier: "3", posted_at: null, cover_url: null },
+    { creator_handle: "jay.makes", outlier_multiplier: 4.2, posted_at: "2026-11-01T00:00:00Z", cover_url: stored("j1"), ...OWN_READ },
+    { creator_handle: "jaymakes", outlier_multiplier: 12, posted_at: "2026-11-10T00:00:00Z", cover_url: stored("j2"), ...OWN_READ },
+    { creator_handle: "niacooks", outlier_multiplier: 2.9, posted_at: "2026-10-01T00:00:00Z", cover_url: CDN("n1"), ...OWN_READ },
+    { creator_handle: "made.up.creator", outlier_multiplier: "3", posted_at: null, cover_url: null, ...OWN_READ },
   ],
 };
 const SERVICE: Record<string, Rows> = {
@@ -218,13 +221,34 @@ describe("getWatchlistData: today's fields keep their values", () => {
     ]);
   });
 
-  it("asks for profiles by the caller's own handles and links only", async () => {
+  it("asks for profiles by the caller's own handles and links only, each handed as values", async () => {
     const { serviceCalls } = await read(USER, SERVICE);
 
-    const or = serviceCalls.find((c) => c.table === "competitor_profiles" && c.method === "or");
-    expect(or?.args).toEqual([
-      'tiktok_handle.in.("jay.makes","jaymakes","niacooks","made.up.creator"),id.in.(p-jay,p-nia,p-dev)',
+    const asked = serviceCalls.filter((c) => c.table === "competitor_profiles" && c.method === "in").map((c) => c.args);
+    expect(asked).toEqual([
+      ["tiktok_handle", ["jay.makes", "jaymakes", "niacooks", "made.up.creator"]],
+      ["id", ["p-jay", "p-nia", "p-dev"]],
     ]);
+    expect(serviceCalls.some((c) => c.method === "or")).toBe(false);
+  });
+
+  it("does not ask for a handle that could never be a creator's; the others are still asked", async () => {
+    const odd = ['a"b', "x,y", "(z)", "back\\slash"];
+    const { serviceCalls } = await read(
+      { tracked_accounts: [...odd, "jay.makes"].map((handle, i) => ({ id: `t-${i}`, handle, platform: "tiktok" })) },
+      {},
+    );
+
+    const asked = serviceCalls.filter((c) => c.table === "competitor_profiles" && c.method === "in").map((c) => c.args);
+    expect(asked).toEqual([["tiktok_handle", ["jay.makes"]]]);
+  });
+
+  it("a profile both doors reach is listed once", async () => {
+    const { data } = await read(USER, SERVICE);
+
+    const keys = data.sources.map((s) => s.key);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(keys.filter((k) => k === "p-jay")).toHaveLength(1);
   });
 
   it("reads an empty account as an empty list, with no service read", async () => {
@@ -370,16 +394,57 @@ describe("getWatchlistData: proven videos (3× or more)", () => {
       {
         tracked_accounts: [{ id: "t-1", handle: "jay.makes", platform: "tiktok" }],
         scraped_videos: [
-          { creator_handle: "jay.makes", outlier_multiplier: 2.9, posted_at: null, cover_url: null },
-          { creator_handle: "jay.makes", outlier_multiplier: 3, posted_at: null, cover_url: null },
-          { creator_handle: "jay.makes", outlier_multiplier: "14.5", posted_at: null, cover_url: null },
-          { creator_handle: "jay.makes", outlier_multiplier: 1.2, posted_at: null, cover_url: null },
+          { creator_handle: "jay.makes", outlier_multiplier: 2.9, posted_at: null, cover_url: null, ...OWN_READ },
+          { creator_handle: "jay.makes", outlier_multiplier: 3, posted_at: null, cover_url: null, ...OWN_READ },
+          { creator_handle: "jay.makes", outlier_multiplier: "14.5", posted_at: null, cover_url: null, ...OWN_READ },
+          { creator_handle: "jay.makes", outlier_multiplier: 1.2, posted_at: null, cover_url: null, ...OWN_READ },
         ],
       },
       {},
     );
 
     expect(data.sources[0]).toMatchObject({ outlierCount: 4, provenCount: 2, bestMultiplier: 14.5 });
+  });
+
+  it("counts the last read's proven videos only, as the creator's page shows them", async () => {
+    const older = { platform: "tiktok", baseline_label: "vs own", ingested_at: "2026-07-10T09:00:00Z" };
+    const { data } = await read(
+      {
+        tracked_accounts: [{ id: "t-1", handle: "jay.makes", platform: "tiktok" }],
+        scraped_videos: [
+          // The July read's 5.8× was measured against July's median: the page no longer shows it.
+          { creator_handle: "jay.makes", outlier_multiplier: 5.8, posted_at: null, cover_url: null, ...older },
+          { creator_handle: "jay.makes", outlier_multiplier: 3.4, posted_at: null, cover_url: null, ...OWN_READ },
+          { creator_handle: "jay.makes", outlier_multiplier: 1.9, posted_at: null, cover_url: null, ...OWN_READ },
+          // No basis, or no readable read time: not proven (the page shows neither as proven).
+          { creator_handle: "jay.makes", outlier_multiplier: 9, posted_at: null, cover_url: null, ...OWN_READ, baseline_label: null },
+          { creator_handle: "jay.makes", outlier_multiplier: 8, posted_at: null, cover_url: null, ...OWN_READ, baseline_label: "  " },
+          { creator_handle: "jay.makes", outlier_multiplier: 7, posted_at: null, cover_url: null, ...OWN_READ, ingested_at: null },
+          // Another platform's newer read of the same handle: the page reads TikTok only, so it neither counts
+          // nor moves which read is the last.
+          { creator_handle: "jay.makes", outlier_multiplier: 6, posted_at: null, cover_url: null, platform: "instagram", baseline_label: "vs own", ingested_at: "2026-11-25T09:00:00Z" },
+        ],
+      },
+      {},
+    );
+
+    expect(data.sources[0]).toMatchObject({ outlierCount: 7, provenCount: 1, bestMultiplier: 9 });
+  });
+
+  it("finds the last read across a creator's two spellings, as the page reads both", async () => {
+    const { data } = await read(
+      {
+        tracked_accounts: [{ id: "t-1", handle: "jay.makes", platform: "tiktok" }],
+        user_competitors: [{ competitor_id: "p-jay" }],
+        scraped_videos: [
+          { creator_handle: "jay.makes", outlier_multiplier: 4, posted_at: null, cover_url: null, ...OWN_READ, ingested_at: "2026-07-10T09:00:00Z" },
+          { creator_handle: "jaymakes", outlier_multiplier: 6, posted_at: null, cover_url: null, ...OWN_READ },
+        ],
+      },
+      { competitor_profiles: (SERVICE.competitor_profiles ?? []).filter((p) => p.id === "p-jay") },
+    );
+
+    expect(byKey(data.sources, "p-jay").provenCount).toBe(1);
   });
 
   it("counts a profile's proven videos through the tracked spellings, and 0 when there are none", async () => {
@@ -399,7 +464,9 @@ describe("getWatchlistData: covers Maven stores", () => {
     const { userCalls } = await read(USER, SERVICE);
 
     const select = userCalls.find((c) => c.table === "scraped_videos" && c.method === "select");
-    expect(select?.args).toEqual(["creator_handle, outlier_multiplier, posted_at, cover_url:metadata->>cover_url"]);
+    expect(select?.args).toEqual([
+      "creator_handle, platform, outlier_multiplier, baseline_label, posted_at, cover_url:metadata->>cover_url, ingested_at:metadata->>ingested_at",
+    ]);
   });
 
   it("takes stored covers only, from both tables, newest first, each once, at most three", async () => {

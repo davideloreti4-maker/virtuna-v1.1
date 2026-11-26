@@ -19,7 +19,7 @@ vi.mock("@/lib/flags/new-look", () => ({ NEW_LOOK_ENABLED: true }));
 import { BILLABLE_BY_TOOL, type ToolId } from "@/components/app/home/composer-controls";
 import { creditCost } from "@/lib/pricing";
 import { VIDEO_ACCEPT } from "@/lib/video-file";
-import { ThreadField, type ThreadFieldProps } from "../thread-field";
+import { ThreadField, type FieldBar, type ThreadFieldProps } from "../thread-field";
 
 const priceOf = (tool: ToolId): number | null => {
   const action = BILLABLE_BY_TOOL[tool];
@@ -55,6 +55,16 @@ function props(over: Partial<ThreadFieldProps> = {}): ThreadFieldProps {
   };
 }
 
+/** The toolbar's audience and picked skill, as the composer passes them in a thread. */
+function bar(over: Partial<FieldBar> = {}): FieldBar {
+  return {
+    audience: { label: "Your TikTok audience", open: false, onOpen: vi.fn() },
+    picked: null,
+    onClearPicked: vi.fn(),
+    ...over,
+  };
+}
+
 const clip = (name = "take.mp4", type = "video/mp4") => new File(["x"], name, { type });
 const text = () => screen.getByRole("textbox");
 const button = (name: string | RegExp) => screen.getByRole("button", { name });
@@ -78,116 +88,113 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-describe("ThreadField: the four pills", () => {
-  it.each([
-    ["Simulate", "test"],
-    ["Hooks", "hooks"],
-    ["Script", "script"],
-    ["Remix", "remix"],
-  ] as const)("the %s pill selects %s", (label, id) => {
-    const p = props();
-    render(<ThreadField {...p} />);
-    fireEvent.click(button(label));
-    expect(p.onSelectTool).toHaveBeenCalledTimes(1);
-    expect(p.onSelectTool).toHaveBeenCalledWith(id);
-  });
-
-  it("the Simulate pill selects the video test, never the General `simulate` verb", () => {
-    const p = props();
-    render(<ThreadField {...p} />);
-    fireEvent.click(button("Simulate"));
-    expect(p.onSelectTool).not.toHaveBeenCalledWith("simulate");
-  });
-
-  it("a second tap on the selected pill goes back to chat", () => {
-    const p = props({ tool: "hooks" });
-    render(<ThreadField {...p} />);
-    fireEvent.click(button("Hooks"));
-    expect(p.onSelectTool).toHaveBeenCalledWith("chat");
-  });
-
-  it("the price shows on the selected pill only, which is filled", () => {
-    render(<ThreadField {...props({ tool: "test" })} />);
-    expect(button("Simulate")).toHaveAttribute("aria-pressed", "true");
-    for (const name of ["Hooks", "Script", "Remix"]) {
-      expect(button(name)).toHaveAttribute("aria-pressed", "false");
+describe("ThreadField: the toolbar (rebuild 2026-11-26: no skill pills)", () => {
+  it("is + · Skills · the audience · send, and nothing else", () => {
+    render(<ThreadField {...props({ bar: bar() })} />);
+    const names = screen.getAllByRole("button").map((b) => b.getAttribute("aria-label"));
+    expect(names).toEqual(["Add a video", "Skills", "Audience: Your TikTok audience", "Send message"]);
+    for (const gone of ["Simulate", "Hooks", "Script", "Remix", "Edit", "More"]) {
+      expect(screen.queryByRole("button", { name: gone })).toBeNull();
     }
-    expect(screen.getAllByText(/·/)).toHaveLength(1);
   });
 
-  it("a pill keeps its name when pressed; its price is its description", () => {
-    const { rerender } = render(<ThreadField {...props({ tool: "chat" })} />);
-    expect(button("Hooks")).not.toHaveAccessibleDescription();
-    rerender(<ThreadField {...props({ tool: "hooks" })} />);
-    expect(button("Hooks")).toHaveAccessibleDescription("1 credit");
-    rerender(<ThreadField {...props({ tool: "test" })} />);
-    expect(button("Simulate")).toHaveAccessibleDescription("10 credits");
-    expect(button("Hooks")).not.toHaveAccessibleDescription();
-  });
-
-  it("a pill tap returns focus to the text", () => {
+  it("without a bar it is + · Skills · send (no audience to name)", () => {
     render(<ThreadField {...props()} />);
-    fireEvent.click(button("Script"));
-    expect(document.activeElement).toBe(text());
+    const names = screen.getAllByRole("button").map((b) => b.getAttribute("aria-label"));
+    expect(names).toEqual(["Add a video", "Skills", "Send message"]);
   });
 
-  it("Simulate with no video keeps focus on its pill (the next step is +), with a video the text gets it", () => {
-    const { unmount } = render(<ThreadField {...props()} />);
-    fireEvent.click(button("Simulate"));
-    expect(document.activeElement).toBe(button("Simulate"));
-    unmount();
-    render(<ThreadField {...props({ video: clip() })} />);
-    fireEvent.click(button("Simulate"));
-    expect(document.activeElement).toBe(text());
-  });
-});
-
-describe("ThreadField: More", () => {
-  it("opens More, and says it opens a dialog", () => {
-    const p = props();
+  it("Skills opens the skill menu, and says it opens a dialog", () => {
+    const p = props({ bar: bar() });
     render(<ThreadField {...p} />);
-    expect(button("More")).toHaveAttribute("aria-haspopup", "dialog");
-    fireEvent.click(button("More"));
+    expect(button("Skills")).toHaveAttribute("aria-haspopup", "dialog");
+    expect(button("Skills")).toHaveAttribute("aria-expanded", "false");
+    expect(button("Skills")).not.toHaveAttribute("aria-pressed");
+    fireEvent.click(button("Skills"));
     expect(p.onOpenMore).toHaveBeenCalledTimes(1);
   });
 
-  it("a skill picked in More is, while selected, exactly a pill: named for it, pressed, priced; a tap goes back to chat", () => {
-    const p = props({ tool: "idea", moreArmed: { label: "Ideas", price: 1 } });
-    render(<ThreadField {...p} />);
-    expect(screen.queryByRole("button", { name: "More" })).toBeNull();
-    const armed = button("Ideas");
-    expect(armed).toHaveAttribute("aria-pressed", "true");
-    expect(armed).not.toHaveAttribute("aria-haspopup");
-    expect(armed).not.toHaveAttribute("aria-expanded");
-    expect(armed).toHaveAccessibleDescription("1 credit");
-    fireEvent.click(armed);
-    expect(p.onSelectTool).toHaveBeenCalledWith("chat");
-    expect(p.onOpenMore).not.toHaveBeenCalled();
-  });
-
-  it("not armed, More is a popup button: named More, not pressed", () => {
-    render(<ThreadField {...props()} />);
-    const more = button("More");
-    expect(more).toHaveAttribute("aria-haspopup", "dialog");
-    expect(more).toHaveAttribute("aria-expanded", "false");
-    expect(more).not.toHaveAttribute("aria-pressed");
-    expect(more).not.toHaveAccessibleDescription();
-  });
-
-  it("says whether More is open, and a tap while it is open does not open it again", () => {
+  it("says whether the menu is open, and a tap while it is open does not open it again", () => {
     const p = props({ moreOpen: false });
     const { rerender } = render(<ThreadField {...p} />);
-    expect(button("More")).toHaveAttribute("aria-expanded", "false");
     rerender(<ThreadField {...p} moreOpen />);
-    expect(button("More")).toHaveAttribute("aria-expanded", "true");
+    expect(button("Skills")).toHaveAttribute("aria-expanded", "true");
     // The tap's pointerdown is outside the open layer, which closes it; the click must not reopen.
-    fireEvent.pointerDown(button("More"));
-    fireEvent.click(button("More"), { detail: 1 }); // a pointer click
+    fireEvent.pointerDown(button("Skills"));
+    fireEvent.click(button("Skills"), { detail: 1 }); // a pointer click
     expect(p.onOpenMore).not.toHaveBeenCalled();
     rerender(<ThreadField {...p} moreOpen={false} />);
-    fireEvent.pointerDown(button("More"));
-    fireEvent.click(button("More"), { detail: 1 }); // a pointer click
+    fireEvent.pointerDown(button("Skills"));
+    fireEvent.click(button("Skills"), { detail: 1 }); // a pointer click
     expect(p.onOpenMore).toHaveBeenCalledTimes(1);
+  });
+
+  it("a picked skill takes Skills' place: a tag named for the skill, its price the description of it and of send", () => {
+    render(<ThreadField {...props({ tool: "hooks", canSend: true, bar: bar({ picked: { label: "Hooks", price: 1 } }) })} />);
+    expect(screen.queryByRole("button", { name: "Skills" })).toBeNull();
+    expect(button("Hooks")).toHaveTextContent(/^Hooks · 1$/);
+    expect(button("Hooks")).toHaveAccessibleDescription("1 credit");
+    expect(button("Send message")).toHaveAccessibleDescription("Hooks · 1 credit");
+    // Drawn once: the only other "·" is the send's hidden description.
+    expect(screen.getAllByText(/·/).filter((el) => !el.closest("[hidden]"))).toHaveLength(1);
+  });
+
+  it("a skill without a price draws none", () => {
+    render(<ThreadField {...props({ tool: "idea", bar: bar({ picked: { label: "Ideas", price: null } }) })} />);
+    expect(button("Ideas")).toHaveTextContent(/^Ideas$/);
+    expect(button("Ideas")).not.toHaveAccessibleDescription();
+  });
+
+  it("the tag's label opens the menu again, to change the skill", () => {
+    const p = props({ tool: "hooks", bar: bar({ picked: { label: "Hooks", price: 1 } }) });
+    render(<ThreadField {...p} />);
+    expect(button("Hooks")).toHaveAttribute("aria-haspopup", "dialog");
+    fireEvent.click(button("Hooks"));
+    expect(p.onOpenMore).toHaveBeenCalledTimes(1);
+  });
+
+  it("the tag's cross goes back to chat and hands focus to the text", () => {
+    const b = bar({ picked: { label: "Hooks", price: 1 } });
+    render(<ThreadField {...props({ tool: "hooks", bar: b })} />);
+    fireEvent.click(button("Remove Hooks"));
+    expect(b.onClearPicked).toHaveBeenCalledTimes(1);
+    expect(document.activeElement).toBe(text());
+  });
+
+  it("Backspace in an empty text lets the picked skill go; a held key or a typed text does not", () => {
+    const b = bar({ picked: { label: "Hooks", price: 1 } });
+    const p = props({ tool: "hooks", bar: b });
+    const { rerender } = render(<ThreadField {...p} />);
+    fireEvent.keyDown(text(), { key: "Backspace", repeat: true });
+    expect(b.onClearPicked).not.toHaveBeenCalled();
+    fireEvent.keyDown(text(), { key: "Backspace" });
+    expect(b.onClearPicked).toHaveBeenCalledTimes(1);
+    rerender(<ThreadField {...p} value="meal prep" />);
+    fireEvent.keyDown(text(), { key: "Backspace" });
+    expect(b.onClearPicked).toHaveBeenCalledTimes(1);
+    expect(p.onKeyDown).toHaveBeenCalled();
+  });
+
+  it("a skill arriving from the menu hands focus to the text; Simulate with no video to +, which reads Add video", () => {
+    const p = props({ bar: bar() });
+    const { rerender } = render(<ThreadField {...p} />);
+    rerender(<ThreadField {...p} tool="script" bar={bar({ picked: { label: "Script", price: 2 } })} />);
+    expect(document.activeElement).toBe(text());
+    rerender(<ThreadField {...p} tool="test" bar={bar({ picked: { label: "Simulate", price: 10 } })} />);
+    expect(document.activeElement).toBe(button("Add a video"));
+    expect(button("Add a video")).toHaveTextContent(/^Add video$/);
+  });
+
+  it("the audience control names the audience, says whether its sheet is open, and opens it", () => {
+    const b = bar();
+    const { rerender } = render(<ThreadField {...props({ bar: b })} />);
+    const audience = () => button("Audience: Your TikTok audience");
+    expect(audience()).toHaveAttribute("aria-haspopup", "dialog");
+    expect(audience()).toHaveAttribute("aria-expanded", "false");
+    fireEvent.click(audience());
+    expect(b.audience.onOpen).toHaveBeenCalledTimes(1);
+    rerender(<ThreadField {...props({ bar: { ...b, audience: { ...b.audience, open: true } } })} />);
+    expect(audience()).toHaveAttribute("aria-expanded", "true");
   });
 });
 
@@ -233,9 +240,9 @@ describe("ThreadField: a refused file's message does not stick", () => {
     return { p, ...view };
   }
 
-  it("clears on a pill tap", () => {
-    refused();
-    fireEvent.click(button("Hooks"));
+  it("clears when the skill changes", () => {
+    const { p, rerender } = refused();
+    rerender(<ThreadField {...p} tool="hooks" bar={bar({ picked: { label: "Hooks", price: 1 } })} />);
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
@@ -245,11 +252,11 @@ describe("ThreadField: a refused file's message does not stick", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  it("clears on a More pick, and stays gone when the field is back on chat", () => {
+  it("clears on a menu pick, and stays gone when the field is back on chat", () => {
     const { p, rerender } = refused();
-    rerender(<ThreadField {...p} tool="idea" moreArmed={{ label: "Ideas", price: 1 }} />);
+    rerender(<ThreadField {...p} tool="idea" bar={bar({ picked: { label: "Ideas", price: 1 } })} />);
     expect(screen.queryByRole("alert")).toBeNull();
-    rerender(<ThreadField {...p} tool="chat" moreArmed={null} />);
+    rerender(<ThreadField {...p} tool="chat" bar={bar()} />);
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
@@ -499,10 +506,10 @@ describe("ThreadField: the hook brief", () => {
     expect(screen.queryByText(/It fed me for three days/)).toBeNull();
   });
 
-  it("dismissed with Simulate selected and no video, focus goes to the Simulate pill (the next step is +)", () => {
+  it("dismissed with Simulate selected and no video, focus goes to + (the next step)", () => {
     render(<ThreadField {...props({ tool: "test", brief: { hookLine: "This is $5 of food." }, onDismissBrief: vi.fn() })} />);
     fireEvent.click(button("Dismiss hook brief"));
-    expect(document.activeElement).toBe(button("Simulate"));
+    expect(document.activeElement).toBe(button("Add a video"));
   });
 });
 
@@ -541,12 +548,13 @@ describe("ThreadField: names", () => {
           onDismissBrief: vi.fn(),
           errors: ["Upload failed. Try again."],
           sendLabel: "Simulate",
+          bar: bar({ picked: { label: "Simulate", price: 10 } }),
         })}
       />,
     );
     expect(screen.getByRole("textbox", { name: "Ask anything about your content" })).toBeInTheDocument();
     const buttons = screen.getAllByRole("button");
-    expect(buttons.length).toBeGreaterThanOrEqual(10);
+    expect(buttons.length).toBeGreaterThanOrEqual(7);
     // axe's button-name rule computes each name; this says which one, should one be missing.
     for (const b of buttons) expect((b.getAttribute("aria-label") ?? b.textContent ?? "").trim()).not.toBe("");
     const results = await axe(container);

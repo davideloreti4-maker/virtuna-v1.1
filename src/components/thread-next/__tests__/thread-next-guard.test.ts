@@ -101,15 +101,14 @@ describe('thread-next: tokens only', () => {
     expect(code(file).match(BLUR_CLASS)).toBeNull();
   });
 
-  // Glass is allowed in exactly one file here.
+  // Glass is allowed in exactly one file here. Since the rebuild of 2026-11-26 the field is a
+  // solid card and draws none; should it ever go back to glass, only its GLASS object may filter.
   it.each(FILES.filter((file) => file !== 'thread-field.tsx'))('%s uses no glass', (file) => {
     expect(/backdrop-?filter/i.test(code(file))).toBe(false);
   });
 
-  it('thread-field.tsx filters the backdrop only inside its inline style object', () => {
+  it('thread-field.tsx filters the backdrop, if at all, only inside its inline style object', () => {
     const src = code('thread-field.tsx');
-    const glass = src.match(GLASS_OBJECT)?.[0] ?? '';
-    expect(glass).toMatch(/backdropFilter/);
     expect(src.replace(GLASS_OBJECT, '')).not.toMatch(/backdrop/i);
   });
 });

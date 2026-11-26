@@ -37,7 +37,7 @@ const DESK = "(min-width: 768px)";
 
 const TRIGGER = cn(
   // 24 drawn on the phone, so the title keeps its room; `tap-44` keeps a 44 tap area on touch.
-  "tap-44 flex size-6 shrink-0 items-center justify-center rounded-full text-foreground-secondary md:size-[38px]",
+  "tap-44 flex size-6 shrink-0 items-center justify-center rounded-lg text-foreground-secondary md:size-[38px]",
   // On the phone More sits 4 from the card's edge (pulled into its padding): the keyboard ring is
   // drawn inside it there, not 2 outside, so it stays inside the card. `!`: the app-wide ring is
   // unlayered CSS and beats a plain utility (as `SHELL_FOCUS`).
@@ -58,7 +58,7 @@ const ROW = "flex min-h-[52px] items-center md:min-h-11";
 export const MENU_ITEM =
   "flex min-h-[52px] w-full items-center gap-3 rounded-xl px-2 text-left text-ui font-[560] text-foreground transition-colors duration-150 hover:bg-hover md:min-h-11";
 /** A step's pill (the field, Save, the confirming Delete), inside its row. */
-export const MENU_PILL = "flex h-11 w-full items-center justify-center rounded-full text-ui font-[600] md:h-10";
+export const MENU_PILL = "flex h-11 w-full items-center justify-center rounded-xl text-ui font-[600] md:h-10";
 
 export function MenuRow({ children }: { children: React.ReactNode }) {
   return (
@@ -78,7 +78,7 @@ export interface RowMenuLayerProps {
   /** The header's cross. */
   onClose(): void;
   /** Takes the focus when the layer opens. */
-  firstRef: React.RefObject<HTMLButtonElement | null>;
+  firstRef: React.RefObject<HTMLElement | null>;
   /** More itself. */
   triggerRef: React.RefObject<HTMLButtonElement | null>;
   /** Hairlines between the rows (a menu); a step's pill has none. Their 1 px stays, unseen. */

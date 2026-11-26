@@ -83,10 +83,12 @@ export function WatchlistPanel({
     if (key === null) return;
     const had = was.indexOf(key);
     if (had < 0 || keys.includes(key)) return;
-    const buttons = listRef.current
-      ? Array.from(listRef.current.querySelectorAll<HTMLElement>(":scope > li[data-row] > button"))
+    // Each row's control, a link (a creator with a profile) or a button (the menu): both are counted,
+    // or a link would shift the count. A selector list returns them in document order.
+    const controls = listRef.current
+      ? Array.from(listRef.current.querySelectorAll<HTMLElement>(":scope > li[data-row] > a, :scope > li[data-row] > button"))
       : [];
-    (buttons[had] ?? buttons[had - 1] ?? followRef.current)?.focus();
+    (controls[had] ?? controls[had - 1] ?? followRef.current)?.focus();
   }, [keys]);
 
   // The first creator followed: the empty state goes, its Follow with it, and the rows come. The focus

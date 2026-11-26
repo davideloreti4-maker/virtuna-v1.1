@@ -15,7 +15,8 @@ import { BROKEN_COVER, DEV_VIDEOS } from "./fixtures";
  * The Watchlist chip on local state, for /dev/discover (`page.tsx`): the real screen, panel, rows, row
  * menus and Follow sheet over made-up creators. Nothing here sends anything: the search narrows the
  * rows, Remove takes a row off here, Follow shows "Reading @handle" for a moment and closes, and Pull
- * does nothing. The other chips are on `?state=videos` and `?state=collections`.
+ * does nothing. @nia.cooks carries a profile, so its row is a link to the creator's page (the real
+ * route, not a fixture). The other chips are on `?state=videos` and `?state=collections`.
  */
 
 /** The states the page can open in (`page.tsx` checks the name). */
@@ -79,6 +80,7 @@ const SOURCES: WatchlistSource[] = [
     avatarUrl: picture("#9fc3d9", "#8d5a3b", "#1d1410"),
     followerCount: 86_000_000,
     provenCount: 13,
+    profileHandle: "nia.cooks",
     competitorId: "p-nia",
     covers: coversOf("nia.cooks"),
   }),

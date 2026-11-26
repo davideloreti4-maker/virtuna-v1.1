@@ -58,7 +58,7 @@ function NichePicker({ saved, query, busy, failed, onQuery, onPick, onCancel }: 
         enterKeyHint="search"
         aria-controls={options.length > 0 ? `${id}-list` : undefined}
         onChange={(e) => onQuery(e.target.value)}
-        className="mt-2 h-12 w-full rounded-full bg-surface-sunken px-4 text-title text-foreground placeholder:text-foreground-muted md:h-11 md:text-ui"
+        className="mt-2 h-12 w-full rounded-lg bg-surface-sunken px-4 text-title text-foreground placeholder:text-foreground-muted md:h-11 md:text-ui"
       />
       {failed && <ErrorLine>{SAVE_FAILED}</ErrorLine>}
       {options.length === 0 ? (

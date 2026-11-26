@@ -96,9 +96,9 @@ function clock() {
 const later = (ms: number) => vi.advanceTimersByTime(ms);
 
 describe("AudienceMenu — More", () => {
-  it("is the drawing's 38 round button on the page's ground, named for the audience, opening a dialog", () => {
+  it("is the drawing's 38 button (a rounded square since 2026-11-26) on the page's ground, named for the audience, opening a dialog", () => {
     renderMenu();
-    expect(more()).toHaveClass("h-[38px]", "w-[38px]", "rounded-full", "bg-surface", "shadow-[var(--shadow-control)]", "tap-44");
+    expect(more()).toHaveClass("h-[38px]", "w-[38px]", "rounded-lg", "bg-surface", "shadow-[var(--shadow-control)]", "tap-44");
     expect(more()).toHaveAttribute("aria-haspopup", "dialog");
     expect(more()).toHaveAttribute("aria-expanded", "false");
     expect(more().querySelector("svg")).not.toBeNull();

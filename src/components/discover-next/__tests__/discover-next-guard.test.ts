@@ -13,12 +13,13 @@ import { join, relative, resolve } from "node:path";
 //      mutation hook, nothing from `@/hooks/queries` or `@/app/actions`. Only the containers
 //      (`*-next.tsx`, `use-*.ts`) reach the server.
 //   4. The containers reach it only through what Discover is allowed: of `@/hooks/queries`,
-//      `use-saved-items` and `use-channels`; of the old Discover, only `use-remix-launch`; of the
+//      `use-saved-items`, `use-channels` and `use-audience-next` (the creator's page chooses their
+//      audience for new chats); of the old Discover, only `use-remix-launch`; of the
 //      server actions, only `competitors/remove`; nothing else from the old Discover, channel,
 //      competitor or feed folders. A `fetch` and an `/api/` address only in `use-pull.ts`, and
 //      there only `/api/discover` (the paid pull, one request, one place to read it).
-//   5. The two server reads (`library-video-read`, `watchlist-reads`) only as `import type`: a run-time
-//      import would pull a service client into the browser bundle.
+//   5. The three server reads (`library-video-read`, `watchlist-reads`, `creator-read`) only as
+//      `import type`: a run-time import would pull a service client into the browser bundle.
 // An import is read by where it leads: a relative path into a guarded folder counts as its `@/` form.
 // A colour literal is a hex, a colour function, or a colour named in an inline style.
 // The rules cover every file of the folder, so the parts added later are held to them too.
@@ -74,6 +75,7 @@ const modulesOf = (src: string) => importsOf(src).map((i) => i.module);
 const ALLOWED = [
   "@/hooks/queries/use-saved-items",
   "@/hooks/queries/use-channels",
+  "@/hooks/queries/use-audience-next",
   "@/components/discover/use-remix-launch",
   "@/app/actions/competitors/remove",
 ];
@@ -85,7 +87,7 @@ const SENDING_MODULES = /^@\/(?:hooks\/queries|app\/actions)(?:\/|$)/;
 const sendingModules = (src: string) => modulesOf(src).filter((module) => SENDING_MODULES.test(module));
 
 /** Rule 5: the server reads, as a run-time import (a type-only import passes). */
-const SERVER_READS = ["@/lib/discover-next/library-video-read", "@/lib/discover/watchlist-reads"];
+const SERVER_READS = ["@/lib/discover-next/library-video-read", "@/lib/discover/watchlist-reads", "@/lib/discover/creator-read"];
 const runtimeServerReads = (src: string) =>
   importsOf(src)
     .filter((i) => SERVER_READS.includes(i.module) && !i.typeOnly)
@@ -188,6 +190,7 @@ describe("the guard itself", () => {
     "import { useAddChannel, useUntrackChannel } from '@/hooks/queries/use-channels';",
     'import { useRemixLaunch } from "@/components/discover/use-remix-launch";',
     'import { removeCompetitor } from "@/app/actions/competitors/remove";',
+    'import { useSetDefaultAudience } from "@/hooks/queries/use-audience-next";',
     'import type { CardVideo } from "@/lib/discover-next/hub-data";',
     'import { Chip } from "@/components/ui/chip";',
   ])("a container may import: %s", (sample) => {
@@ -222,6 +225,7 @@ describe("the guard itself", () => {
     'import { removeCompetitor } from "../../app/actions/competitors/remove";',
     'import { useSaveItem } from "../../hooks/queries/use-saved-items";',
     'import { useChannels } from "@/hooks/queries/use-channels";',
+    'import { useSetDefaultAudience } from "@/hooks/queries/use-audience-next";',
   ])("a part may not import a data hook or a server action: %s", (sample) => {
     expect(sendingModules(sample)).toHaveLength(1);
   });
@@ -238,6 +242,7 @@ describe("the guard itself", () => {
     'import { getLibraryVideo } from "@/lib/discover-next/library-video-read";',
     'import { getWatchlistData, type WatchlistData } from "@/lib/discover/watchlist-reads";',
     'const m = await import("@/lib/discover/watchlist-reads");',
+    'import { getCreatorPage } from "@/lib/discover/creator-read";',
   ])("refuses a run-time import of a server read: %s", (sample) => {
     expect(runtimeServerReads(sample)).toHaveLength(1);
   });
@@ -245,6 +250,7 @@ describe("the guard itself", () => {
   it.each([
     'import type { LibraryVideo } from "@/lib/discover-next/library-video-read";',
     'import type { WatchlistData, WatchlistSource } from "@/lib/discover/watchlist-reads";',
+    'import type { getCreatorPage } from "@/lib/discover/creator-read";',
   ])("lets a type-only import of a server read through: %s", (sample) => {
     expect(runtimeServerReads(sample)).toEqual([]);
   });

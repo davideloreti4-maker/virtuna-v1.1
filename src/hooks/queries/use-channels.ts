@@ -8,11 +8,13 @@
  *  - useChannelSearch    : GET /api/channels/search?q= (shared-corpus search)
  *  - useAddChannel       : POST /api/channels/ingest  → POST /api/tracked-accounts
  *                          (scrape-or-cache, then idempotently add to the watchlist)
+ *  - useReadChannel      : POST /api/channels/ingest alone (read a followed creator again)
+ *  - useChannelReadOut   : whether such a read is still out
  *  - useUntrackChannel   : DELETE /api/tracked-accounts?id= (optimistic remove)
  *
  * Mirrors use-saved-items: list query + mutations that invalidate on settle.
  */
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useMutationState, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queries/query-keys";
 import type { ChannelWatchlistEntry } from "@/app/api/channels/watchlist/route";
 import type { ChannelSearchResult } from "@/app/api/channels/search/route";
@@ -125,6 +127,44 @@ export function useAddChannel() {
       queryClient.invalidateQueries({ queryKey: queryKeys.channels.all });
     },
   });
+}
+
+/** The key a read alone is sent under, so a page opened again can tell one is still out. */
+const READ_KEY = [...queryKeys.channels.all, "read"] as const;
+
+/**
+ * MUTATION: read a creator again, without following: `POST /api/channels/ingest {handle}` alone. Answers
+ * the route's `status`: "scraped" (read now) or "cached" (read in the last day; the server read nothing).
+ * Refused as the add's read step is: `status` (none when no answer came) and `step: "read"`.
+ */
+export function useReadChannel() {
+  return useMutation<AddChannelResult["status"], AddChannelError, string>({
+    mutationKey: READ_KEY,
+    mutationFn: async (handle) => {
+      const res = await call("read", () =>
+        fetch("/api/channels/ingest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ handle }),
+        }),
+      );
+      if (!res.ok) {
+        const body = (await res.json().catch(() => null)) as { message?: string } | null;
+        throw addRefusal(new Error(body?.message ?? "Could not read this channel"), "read", res.status);
+      }
+      const result = (await res.json().catch(() => null)) as Partial<AddChannelResult> | null;
+      return result?.status === "cached" ? "cached" : "scraped";
+    },
+  });
+}
+
+/** Whether a read of `handle` (`useReadChannel`) is still out, sent from any page of this tab. */
+export function useChannelReadOut(handle: string): boolean {
+  const out = useMutationState({
+    filters: { mutationKey: READ_KEY, status: "pending" },
+    select: (mutation) => mutation.state.variables,
+  });
+  return out.some((variables) => variables === handle);
 }
 
 /** MUTATION: remove a channel from the watchlist (optimistic). */

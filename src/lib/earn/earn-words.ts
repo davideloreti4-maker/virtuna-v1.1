@@ -62,6 +62,21 @@ export function moneyWord(cents: number): string {
   return `${sign}$${dollars}${rest === 0 ? "" : `.${String(rest).padStart(2, "0")}`}`;
 }
 
+/** The figure Home's "Money made" row counts toward (owner 2026-11-26: "0/65k"): $65,000, in cents. */
+export const MONEY_GOAL_CENTS = 6_500_000;
+
+/**
+ * Round money in short words, for a goal: "$65k", "$1.5k", "$2M", "$800". Whole dollars; one decimal
+ * at most, dropped when it is zero. For an amount earned use `moneyWord`, which never rounds.
+ */
+export function shortMoneyWord(cents: number): string {
+  const dollars = Math.round((Number.isFinite(cents) ? cents : 0) / 100);
+  const short = (n: number, unit: string) => `$${Number(n.toFixed(1))}${unit}`;
+  if (dollars >= 1_000_000) return short(dollars / 1_000_000, "M");
+  if (dollars >= 1_000) return short(dollars / 1_000, "k");
+  return `$${dollars}`;
+}
+
 /** "0 creators joined through your link", "1 creator joined through your link". */
 export function joinedLine(n: number): string {
   return `${count.format(n)} ${n === 1 ? "creator" : "creators"} joined through your link`;

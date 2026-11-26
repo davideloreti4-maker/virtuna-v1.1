@@ -3,13 +3,17 @@
 import * as React from "react";
 import { useId, useRef, useState } from "react";
 import { flushSync } from "react-dom";
+import Link from "next/link";
 import { ArrowSquareOut, DownloadSimple, UserMinus } from "@phosphor-icons/react";
 
-import { MENU_ITEM, MENU_PILL, MenuRow, RowMenuLayer } from "@/components/library-next/row-menu-layer";
+import { MENU_ITEM, MenuRow, RowMenuLayer } from "@/components/library-next/row-menu-layer";
 import type { WatchlistSource } from "@/lib/discover/watchlist-reads";
-import { DISCOVER_STRINGS, removeQuestion } from "@/lib/discover-next/discover-words";
+import { creatorHref, creatorPageHandle } from "@/lib/discover-next/discover-view";
+import { DISCOVER_STRINGS } from "@/lib/discover-next/discover-words";
 import { initialOf, profileHref, pullInput, removalOf, rowCovers, rowLine } from "@/lib/discover-next/watchlist";
 import { cn } from "@/lib/utils";
+
+import { RemoveStep } from "./remove-step";
 
 /**
  * One followed creator on the Watchlist chip (spec 3.5; drawing frame 5): the picture (or the initial
@@ -21,15 +25,19 @@ import { cn } from "@/lib/utils";
  *       162M followers · 12 proven                  Open on TikTok                   Cancel
  *                                                   Remove                           [ Remove ]
  *
+ * - A row with a profile is a link to the creator's page (`/competitors/<handle>`), the same face,
+ *   named by "@handle" and described by its line; it opens no menu: Pull, Open on TikTok and Remove
+ *   are on that page. A row without one (a creator on Instagram or YouTube followed from the Explore
+ *   grid), or with one that names no page (`creatorPageHandle`), opens the menu, as below.
  * - The whole row is the button that opens the menu (`RowMenuLayer`'s own trigger, in place of the
  *   three dots): on a phone a small bottom sheet, from 768 a menu standing on the row. A tap focuses
  *   it; every close hands the focus back to it.
  * - Pull and Open on TikTok only for a handle Maven can read; Remove only for a row resting on records
  *   the read could name. A row with nothing to offer is not a button.
- * - Remove clears the creator for good, so it is asked once more, with the focus on Cancel, and the
- *   confirming Remove ignores every press for 500 ms after the question appears (as You's Disconnect,
- *   `account-menu.tsx`): the second press of a double tap lands there, wherever the rows fall. The
- *   button looks the same meanwhile (no `disabled`: the focus must not move).
+ * - Remove clears the creator for good, so it is asked once more (`RemoveStep`), with the focus on
+ *   Cancel, and the confirming Remove ignores every press for 500 ms after the question appears (as
+ *   You's Disconnect, `account-menu.tsx`): the second press of a double tap lands there, wherever the
+ *   rows fall. The button looks the same meanwhile (no `disabled`: the focus must not move).
  * - A closing layer does nothing: it stays on screen and pressable through its exit.
  * - A confirmed Remove puts the focus on the row before `onRemove`: the row leaves at once, and the
  *   list hands the focus on from there.
@@ -44,12 +52,9 @@ export interface WatchlistRowProps {
 
 type Step = "menu" | "remove";
 
-/** How long the confirming Remove ignores presses once the question appears. */
-const CONFIRM_WAIT_MS = 500;
-
 const S = DISCOVER_STRINGS.watchlist;
 
-/** The row, as a button or as a plain line: the picture, the words, the covers. */
+/** The row, as a link, a button or a plain line: the picture, the words, the covers. */
 const ROW = "flex min-h-[64px] w-full min-w-0 items-center gap-3 rounded-xl py-2.5 text-left";
 
 /** A picture that does not load, or none: the initial on a sunken disc. */
@@ -110,7 +115,6 @@ export function WatchlistRow({ source, onPull, onRemove }: WatchlistRowProps): R
   const firstRef = useRef<HTMLButtonElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const lineId = useId();
-  const questionId = useId();
   // Open as of the last tap, not the last render: two taps can land before a render.
   const live = useRef(false);
   // When the question appeared (`performance.now()`): the confirming Remove waits from there.
@@ -122,6 +126,9 @@ export function WatchlistRow({ source, onPull, onRemove }: WatchlistRowProps): R
   const pull = pullInput(source.handle) !== null;
   const profile = profileHref(source.handle);
   const removable = removalOf(source) !== null;
+  // The creator's page, by the handle as the page reads its address: a profile handle with nothing left
+  // ("@", blanks), or `compare` (the old comparison's address), names no page, and the row keeps its menu.
+  const page = creatorPageHandle(source.profileHandle);
 
   const face = (
     <>
@@ -129,15 +136,41 @@ export function WatchlistRow({ source, onPull, onRemove }: WatchlistRowProps): R
       <span className="min-w-0 flex-1">
         <span className="block truncate text-ui font-[600] tracking-[-0.012em] text-foreground">{name}</span>
         {line && (
-          // Wraps to a second line beside the covers rather than cut a count ("162.3M followers · 2 proven").
+          // Wraps to a second line beside the covers rather than cut a count ("162.3M followers · 2 proven"),
+          // and only between its parts: "2 proven" never splits, and the "·" stays at the end of the first line.
           <span id={lineId} className="mt-px block break-words text-meta text-foreground-secondary">
-            {line}
+            {line.split(" · ").map((part, i, parts) =>
+              i < parts.length - 1 ? (
+                <React.Fragment key={i}>
+                  <span className="whitespace-nowrap">{part} ·</span>{" "}
+                </React.Fragment>
+              ) : (
+                <span key={i} className="whitespace-nowrap">
+                  {part}
+                </span>
+              ),
+            )}
           </span>
         )}
       </span>
       <Covers covers={rowCovers(source)} />
     </>
   );
+
+  // A creator with a profile has a page: the row opens it, and the menu's actions are there.
+  if (page) {
+    return (
+      <Link
+        href={creatorHref(page)}
+        prefetch={false}
+        aria-label={name}
+        aria-describedby={line ? lineId : undefined}
+        className={ROW}
+      >
+        {face}
+      </Link>
+    );
+  }
 
   if (!pull && !removable) return <div className={ROW}>{face}</div>;
 
@@ -163,8 +196,6 @@ export function WatchlistRow({ source, onPull, onRemove }: WatchlistRowProps): R
   };
   const confirmRemove = () => {
     if (!live.current) return;
-    // Inside the window the press is dropped, not kept for later.
-    if (performance.now() - askedAt.current < CONFIRM_WAIT_MS) return;
     live.current = false;
     // The focus on the row first: it leaves at once, and the list hands the focus on from there. Left
     // in the closing layer, it would fall to the page.
@@ -175,26 +206,7 @@ export function WatchlistRow({ source, onPull, onRemove }: WatchlistRowProps): R
 
   const rows =
     step === "remove" ? (
-      <>
-        <MenuRow>
-          {/* Not selectable: the second click of a double click on the menu's Remove lands here. */}
-          <div className="flex min-w-0 select-none flex-col justify-center px-2 py-2">
-            <p id={questionId} className="break-words text-ui font-[560] text-foreground">
-              {removeQuestion(handle)}
-            </p>
-          </div>
-        </MenuRow>
-        <MenuRow>
-          <button ref={cancelRef} type="button" onClick={close} className={cn(MENU_ITEM, "justify-center text-foreground-secondary")}>
-            {S.cancel}
-          </button>
-        </MenuRow>
-        <MenuRow>
-          <button type="button" onClick={confirmRemove} aria-describedby={questionId} className={cn(MENU_PILL, "bg-surface-sunken text-error")}>
-            {S.remove}
-          </button>
-        </MenuRow>
-      </>
+      <RemoveStep handle={handle} askedAt={askedAt} cancelRef={cancelRef} onCancel={close} onConfirm={confirmRemove} />
     ) : (
       <>
         {pull && (

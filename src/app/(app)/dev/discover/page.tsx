@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 
 import { DevCollection, type DevCollectionState } from "./dev-collection";
+import { DevCreator, type DevCreatorState } from "./dev-creator";
 import { DevDiscover, type DevDiscoverState } from "./dev-discover";
 import { DevPull, type DevPullState } from "./dev-pull";
 import { DevVideo, type DevVideoState } from "./dev-video";
@@ -20,6 +21,8 @@ import { DevWatchlist, type DevWatchlistState } from "./dev-watchlist";
  *   /dev/discover?state=watchlist|watchlist-empty|watchlist-error
  *   /dev/discover?state=offer|offer-words|offer-link
  *   /dev/discover?state=pull-offer|pull-running|pull-done|pull-empty|pull-limit|pull-failed
+ *   /dev/discover?state=creator|creator-audience|creator-fresh|creator-reading|creator-held|creator-empty|
+ *                       creator-long|creator-gone|creator-failed|creator-loading|creator-sheet
  *
  * - videos (default): thirty made-up videos, 24 shown, then "Show more"
  * - loading: the grid's outline · error: the library could not be read, and Try again
@@ -30,6 +33,19 @@ import { DevWatchlist, type DevWatchlistState } from "./dev-watchlist";
  * - watchlist, watchlist-empty, watchlist-error: the Watchlist chip (`dev-watchlist.tsx`)
  * - offer, offer-words, offer-link: the pull row above the grid, for a @handle, words, a link
  * - pull-offer … pull-failed: the pull page in each state (`dev-pull.tsx`)
+ * - creator: a followed creator's page (`dev-creator.tsx`): @jay.makes read 13 Jul, four figures, Build
+ *   their audience, Pull, twelve videos biggest jump first
+ * - creator-audience: with an audience of theirs: Simulate a video for their viewers, built 14 Nov
+ * - creator-fresh: read this morning: Read again dimmed, and why
+ * - creator-reading: a read out: Read again turning, "Reading…" in the line
+ * - creator-held: their read failed: Couldn't be read and its sentence, no figures, no videos
+ * - creator-empty: no videos read yet
+ * - creator-long: the page at its worst: a 60-character name, a five-line bio, a 24-character handle,
+ *   captions from none to 200 characters
+ * - creator-gone: not on the watchlist, and the way to it
+ * - creator-failed: the page could not be read, and Try again
+ * - creator-loading: the page's outline
+ * - creator-sheet: the first video's sheet, open on arrival
  */
 
 type Params = Record<string, string | string[] | undefined>;
@@ -59,6 +75,20 @@ const WATCHLIST_STATES: readonly DevWatchlistState[] = ["watchlist", "watchlist-
 const isWatchlistState = (value: string): value is DevWatchlistState => (WATCHLIST_STATES as readonly string[]).includes(value);
 const PULL_STATES: readonly DevPullState[] = ["pull-offer", "pull-running", "pull-done", "pull-empty", "pull-limit", "pull-failed"];
 const isPullState = (value: string): value is DevPullState => (PULL_STATES as readonly string[]).includes(value);
+const CREATOR_STATES: readonly DevCreatorState[] = [
+  "creator",
+  "creator-audience",
+  "creator-fresh",
+  "creator-reading",
+  "creator-held",
+  "creator-empty",
+  "creator-long",
+  "creator-gone",
+  "creator-failed",
+  "creator-loading",
+  "creator-sheet",
+];
+const isCreatorState = (value: string): value is DevCreatorState => (CREATOR_STATES as readonly string[]).includes(value);
 
 export default async function DevDiscoverPage({ searchParams }: { searchParams: Promise<Params> }) {
   // Discover's new screen exists in the new look only; with the flag off this page does not exist either.
@@ -68,6 +98,7 @@ export default async function DevDiscoverPage({ searchParams }: { searchParams: 
   if (isCollectionState(state)) return <DevCollection key={state} state={state} />;
   if (isWatchlistState(state)) return <DevWatchlist key={state} state={state} />;
   if (isPullState(state)) return <DevPull key={state} state={state} />;
+  if (isCreatorState(state)) return <DevCreator key={state} state={state} />;
   if (!isState(state)) notFound();
   return <DevDiscover key={state} state={state} />;
 }

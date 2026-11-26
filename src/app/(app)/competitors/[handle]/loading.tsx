@@ -1,4 +1,6 @@
 import { Skeleton } from "@/components/ui/skeleton";
+import { CreatorNextLoading } from "@/components/discover-next/creator-next";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 
 /**
  * Loading skeleton for the competitor detail page.
@@ -8,6 +10,8 @@ import { Skeleton } from "@/components/ui/skeleton";
  * frames + header divider are real structural borders, kept as-is.
  */
 export default function CompetitorDetailLoading() {
+  // Under the new look: the creator's page outline.
+  if (NEW_LOOK_ENABLED) return <CreatorNextLoading />;
   return (
     <div className="space-y-8 pb-8">
       {/* Header skeleton */}

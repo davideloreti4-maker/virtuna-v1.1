@@ -71,8 +71,8 @@ const WEDGES = 10;
 const HEADING_STYLE: CSSProperties = { letterSpacing: "-0.03em", outline: "none" };
 const HEADING = "text-[26px] font-[720] leading-[31px] text-foreground";
 
-/** The ink buttons: full width, round (as the page's). */
-const PILL = "w-full next:rounded-full";
+/** The ink buttons: full width (their corners are the button's own, radius 10). */
+const WIDE = "w-full";
 const QUIET = "flex h-11 w-full items-center justify-center text-ui font-[620] text-foreground";
 
 /** Ten equal wedges, the first `lit` full (clockwise from the top), the rest pale; the face in the middle. */
@@ -166,7 +166,7 @@ export function BuildingView(props: BuildingViewProps) {
         <div className="mt-4 flex flex-col gap-1">
           {mode === "new" && props.onUseGeneral ? (
             <>
-              <Button type="button" variant="primary" size="lg" className={PILL} onClick={props.onUseGeneral}>
+              <Button type="button" variant="primary" size="lg" className={WIDE} onClick={props.onUseGeneral}>
                 {S.useGeneral}
               </Button>
               <button type="button" className={QUIET} onClick={props.onTryAnother}>
@@ -174,11 +174,11 @@ export function BuildingView(props: BuildingViewProps) {
               </button>
             </>
           ) : mode === "new" ? (
-            <Button type="button" variant="primary" size="lg" className={PILL} onClick={props.onTryAnother}>
+            <Button type="button" variant="primary" size="lg" className={WIDE} onClick={props.onTryAnother}>
               {props.tryAnotherLabel ?? S.tryAnother}
             </Button>
           ) : (
-            <Button type="button" variant="secondary" size="lg" className={PILL} onClick={props.onClose}>
+            <Button type="button" variant="secondary" size="lg" className={WIDE} onClick={props.onClose}>
               {S.close}
             </Button>
           )}
@@ -194,7 +194,7 @@ export function BuildingView(props: BuildingViewProps) {
           {state.sentence}
         </p>
         <div className="flex flex-col gap-1">
-          <Button ref={setLead} type="button" variant="primary" size="lg" className={PILL} onClick={props.onTryAgain}>
+          <Button ref={setLead} type="button" variant="primary" size="lg" className={WIDE} onClick={props.onTryAgain}>
             {S.tryAgain}
           </Button>
           {mode === "again" ? (

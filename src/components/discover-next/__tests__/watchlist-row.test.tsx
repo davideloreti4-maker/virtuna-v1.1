@@ -1,9 +1,11 @@
 /** @vitest-environment happy-dom */
 /**
- * WatchlistRow: one followed creator on the Watchlist chip (spec 3.5; drawing frame 5). The real row,
- * standing on Library's layer (`RowMenuLayer`) with the row itself as the trigger (`renderTrigger`),
- * Radix underneath. Stand-ins: `matchMedia` (the phone's sheet or the desk's menu) and, where a test
- * times a press, the page's clock (`performance.now`). Every handle and address is made up.
+ * WatchlistRow: one followed creator on the Watchlist chip (spec 3.5; drawing frame 5). The real row:
+ * with a profile, a link to the creator's page; without one, standing on Library's layer
+ * (`RowMenuLayer`) with the row itself as the trigger (`renderTrigger`), Radix underneath. The menu's
+ * cases run on a row without a profile. Stand-ins: `matchMedia` (the phone's sheet or the desk's
+ * menu) and, where a test times a press, the page's clock (`performance.now`). Every handle and
+ * address is made up.
  */
 import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from "vitest";
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
@@ -36,6 +38,8 @@ beforeEach(() => widthIs("phone"));
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();
+  // A link's click left to the browser moves the test window's address: back where every test starts.
+  window.history.replaceState(null, "", "/");
 });
 
 const COVERS = ["https://store.example/c1.jpg", "https://store.example/c2.jpg", "https://store.example/c3.jpg", "https://store.example/c4.jpg"];
@@ -53,7 +57,8 @@ function source(over: Partial<WatchlistSource> = {}): WatchlistSource {
     newestPostAt: null,
     mergedFrom: null,
     held: false,
-    profileHandle: "jay.makes",
+    // A row without a profile: the menu. A row with one is a link (its own cases, below).
+    profileHandle: null,
     trackedIds: ["t-1"],
     competitorId: "p-1",
     covers: COVERS,
@@ -126,6 +131,14 @@ describe("WatchlistRow — what the row shows", () => {
     const classes = line.className.split(/\s+/);
     expect(classes).toContain("break-words");
     expect(classes).not.toContain("truncate");
+  });
+
+  it("the line breaks only between its parts: '12 proven' stays whole, the '·' ends the first part", () => {
+    renderRow();
+    const line = document.getElementById(row().getAttribute("aria-describedby")!)!;
+    const parts = Array.from(line.children);
+    expect(parts.map((p) => p.textContent)).toEqual(["162M followers ·", "12 proven"]);
+    for (const part of parts) expect(part.className.split(/\s+/)).toContain("whitespace-nowrap");
   });
 
   it("covers are 36 by 48 with small corners", () => {
@@ -327,6 +340,85 @@ describe("WatchlistRow — nothing to offer", () => {
     renderRow({ handle: "Chris Bumstead", trackedIds: [], competitorId: null });
     expect(screen.queryByRole("button")).toBeNull();
     expect(screen.getByText("@Chris Bumstead")).toBeInTheDocument();
+  });
+});
+
+describe("WatchlistRow — a creator with a profile", () => {
+  const PROFILED: Partial<WatchlistSource> = { profileHandle: "jay.makes" };
+  const link = () => screen.getByRole("link", { name: "@jay.makes" });
+
+  it("a link to their page, named @handle, described by its line", () => {
+    renderRow(PROFILED);
+    expect(link()).toHaveAttribute("href", "/competitors/jay.makes");
+    expect(link()).toHaveAccessibleDescription("162M followers · 12 proven");
+    expect(link()).not.toHaveAttribute("aria-haspopup");
+    expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it("the address is the profile's handle, bare and lower case (the page finds the row by it)", () => {
+    renderRow({ profileHandle: "@Jay.Makes" });
+    expect(link()).toHaveAttribute("href", "/competitors/jay.makes");
+  });
+
+  it("the same face: the picture, the line, the covers", () => {
+    renderRow(PROFILED);
+    expect(link().querySelector('[data-part="picture"] img')).toHaveAttribute("src", "https://store.example/jay.jpg");
+    expect(link()).toHaveTextContent("@jay.makes");
+    expect(link()).toHaveTextContent("162M followers · 12 proven");
+    const covers = Array.from(link().querySelectorAll<HTMLImageElement>('[data-part="covers"] img'));
+    expect(covers.map((c) => c.getAttribute("src"))).toEqual(COVERS.slice(0, 3));
+  });
+
+  it("it opens no menu", () => {
+    const { p } = renderRow(PROFILED);
+    link().focus();
+    fireEvent.click(link());
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(p.onPull).not.toHaveBeenCalled();
+    expect(p.onRemove).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["ctrl", { ctrlKey: true }],
+    ["cmd", { metaKey: true }],
+    ["the middle button", { button: 1 }],
+  ])("a click that opens the page elsewhere (%s) is the browser's: not prevented, and it opens nothing here", (_, modifier) => {
+    const { p } = renderRow(PROFILED);
+    const notPrevented = fireEvent.click(link(), modifier);
+    expect(notPrevented).toBe(true);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(p.onPull).not.toHaveBeenCalled();
+    expect(p.onRemove).not.toHaveBeenCalled();
+  });
+
+  it("a creator whose handle is compare (the old comparison's address) keeps the menu row", () => {
+    renderRow({ handle: "compare", profileHandle: "compare" });
+    expect(screen.queryByRole("link")).toBeNull();
+    const button = screen.getByRole("button", { name: "@compare" });
+    expect(button).toHaveAttribute("aria-haspopup", "dialog");
+    button.focus();
+    fireEvent.click(button);
+    expect(rows()).toEqual(["Pull their best videos · 5 credits", "Open on TikTok", "Remove"]);
+  });
+
+  it.each(["@", " ", " @ ", "@@"])("a profile handle with no handle in it (%j) is no page: the row keeps its menu", (profileHandle) => {
+    renderRow({ profileHandle });
+    expect(screen.queryByRole("link")).toBeNull();
+    expect(row()).toHaveAttribute("aria-haspopup", "dialog");
+    open();
+    expect(rows()).toEqual(["Pull their best videos · 5 credits", "Open on TikTok", "Remove"]);
+  });
+
+  it("a held creator with a profile is a link too, described by Couldn't be read", () => {
+    renderRow({ ...PROFILED, held: true, followerCount: null, avatarUrl: null });
+    expect(link()).toHaveAttribute("href", "/competitors/jay.makes");
+    expect(link()).toHaveAccessibleDescription("Couldn't be read");
+  });
+
+  it("axe finds nothing", async () => {
+    const { container } = renderRow(PROFILED);
+    // @ts-expect-error -- vitest-axe matcher type augmentation not picked up
+    expect(await axe(container)).toHaveNoViolations();
   });
 });
 

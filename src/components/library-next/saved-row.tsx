@@ -82,7 +82,7 @@ export function SavedRow({
             data-part="undo"
             aria-label={`Undo: ${item.text}`}
             onClick={() => onUndo?.(item.id)}
-            className="tap-44 inline-flex h-11 shrink-0 items-center rounded-full px-4 text-ui font-[600] text-foreground transition-colors duration-150 hover:bg-surface-sunken"
+            className="tap-44 inline-flex h-11 shrink-0 items-center rounded-xl px-4 text-ui font-[600] text-foreground transition-colors duration-150 hover:bg-surface-sunken"
           >
             Undo
           </button>

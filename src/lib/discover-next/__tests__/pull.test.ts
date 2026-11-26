@@ -8,7 +8,19 @@ import { describe, expect, it } from "vitest";
 import { DISCOVER_DAILY_CAP } from "@/lib/discover/discover-cache";
 
 import { badgeOf, cardLine, cardName, lineOf } from "../card";
-import { PULL_INPUT_MAX, offerFor, pullFailureOf, pullSubjectOf, pulledCardOf, pulledCardsOf, type PullSubject, type PullTile } from "../pull";
+import {
+  EXTREME_FROM,
+  PROVEN_FROM,
+  PULL_INPUT_MAX,
+  captionLine,
+  offerFor,
+  pullFailureOf,
+  pullSubjectOf,
+  pulledCardOf,
+  pulledCardsOf,
+  type PullSubject,
+  type PullTile,
+} from "../pull";
 
 const JAY: PullSubject = { kind: "handle", input: "@jay.makes", handle: "jay.makes", shown: "@jay.makes" };
 const MEAL: PullSubject = { kind: "words", input: "meal prep", handle: null, shown: "meal prep" };
@@ -187,11 +199,13 @@ describe("pulledCardOf: a pulled video as a card", () => {
       multiplier: 16,
       baselineLabel: "vs their usual views",
       proven: true,
+      beat: false,
       extreme: false,
       formats: [],
       likes: 1_200_000,
       comments: 3_400,
       videoUrl: "https://www.tiktok.com/@jay.makes/video/7300000000000000001",
+      posted: null,
     });
   });
 
@@ -230,7 +244,19 @@ describe("pulledCardOf: a pulled video as a card", () => {
     expect(pulledCardOf(tile({ multiplier: null }), JAY)).toMatchObject({ proven: false, multiplier: null });
     expect(pulledCardOf(tile({ baselineLabel: null }), JAY)).toMatchObject({ proven: false, baselineLabel: null });
     expect(pulledCardOf(tile({ multiplier: Number.NaN }), JAY)).toMatchObject({ proven: false, multiplier: null });
-    expect(badgeOf(pulledCardOf(tile({ multiplier: 2.9 }), JAY))).toBeNull();
+  });
+
+  it("beat their usual from 1.5× up to 3×: the multiple shows (without the ▲, which the card draws for proven only)", () => {
+    expect(pulledCardOf(tile({ multiplier: 2.9 }), JAY)).toMatchObject({ proven: false, beat: true });
+    expect(badgeOf(pulledCardOf(tile({ multiplier: 2.9 }), JAY))).toBe("2.9×");
+    expect(pulledCardOf(tile({ multiplier: 1.5 }), JAY).beat).toBe(true);
+    expect(pulledCardOf(tile({ multiplier: 1.49 }), JAY).beat).toBe(false);
+    expect(badgeOf(pulledCardOf(tile({ multiplier: 1.2 }), JAY))).toBeNull();
+    // Proven is not beat; no basis, no multiple: neither.
+    expect(pulledCardOf(tile({ multiplier: 3 }), JAY).beat).toBe(false);
+    expect(pulledCardOf(tile({ multiplier: 2, baselineLabel: null }), JAY).beat).toBe(false);
+    expect(badgeOf(pulledCardOf(tile({ multiplier: 2, baselineLabel: null }), JAY))).toBeNull();
+    expect(pulledCardOf(tile({ multiplier: null }), JAY).beat).toBe(false);
   });
 
   it("past 100: clamped at 100 and marked, so the badge reads 100×+", () => {
@@ -257,6 +283,20 @@ describe("pulledCardOf: a pulled video as a card", () => {
 
   it("a date that is not a string: none", () => {
     expect(pulledCardOf(tile({ postedAt: 12 as unknown as string }), JAY).postedAt).toBeNull();
+  });
+});
+
+describe("the rules a creator's page shares with a pull", () => {
+  it("proof from 3×, shaky past 100×", () => {
+    expect(PROVEN_FROM).toBe(3);
+    expect(EXTREME_FROM).toBe(100);
+  });
+
+  it("the caption as a card's line: hashtags out, a number after # kept; hashtags only: none", () => {
+    expect(captionLine("Day 3 #fyp #1 fan")).toBe("Day 3 #1 fan");
+    expect(captionLine("#fyp #foryou")).toBeNull();
+    expect(captionLine(null)).toBeNull();
+    expect(captionLine(12)).toBeNull();
   });
 });
 

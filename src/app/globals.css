@@ -421,19 +421,20 @@
 :root[data-look="next"] {
   color-scheme: light;
 
-  --color-background: #f4f3f0;
+  --color-background: #f9f9f7;
+  --color-sidebar: #f2f1ee;
   --color-surface: #ffffff;
-  --color-surface-elevated: #efeeea;
-  --color-surface-sunken: rgba(18, 18, 17, 0.06);
-  --color-border: rgba(17, 17, 16, 0.06);
-  --color-border-hover: rgba(17, 17, 16, 0.12);
-  --color-foreground: #121211;
-  --color-foreground-secondary: rgba(18, 18, 17, 0.6);
-  --color-foreground-muted: rgba(18, 18, 17, 0.46);
-  --color-action: #121211;
+  --color-surface-elevated: #f0efec;
+  --color-surface-sunken: rgba(25, 25, 24, 0.05);
+  --color-border: rgba(25, 25, 24, 0.08);
+  --color-border-hover: rgba(25, 25, 24, 0.14);
+  --color-foreground: #191918;
+  --color-foreground-secondary: rgba(25, 25, 24, 0.64);
+  --color-foreground-muted: rgba(25, 25, 24, 0.48);
+  --color-action: #191918;
   --color-action-foreground: #ffffff;
-  --color-hover: rgba(18, 18, 17, 0.04);
-  --color-active: rgba(18, 18, 17, 0.08);
+  --color-hover: rgba(25, 25, 24, 0.045);
+  --color-active: rgba(25, 25, 24, 0.075);
   --color-track: rgba(18, 18, 17, 0.07);
   --color-gauge-track: rgba(18, 18, 17, 0.12);
   --color-above: #17783b;
@@ -464,31 +465,40 @@
   --focus-ring: var(--color-foreground);
 
   /* Every card shadow starts with the hairline. */
-  --shadow-rest: 0 0 0 1px var(--color-border), 0 1px 1px rgba(0, 0, 0, 0.03), 0 10px 26px -12px rgba(0, 0, 0, 0.1), 0 34px 60px -34px rgba(0, 0, 0, 0.14);
-  --shadow-lift: 0 0 0 1px var(--color-border-hover), 0 14px 30px -12px rgba(0, 0, 0, 0.16), 0 40px 70px -34px rgba(0, 0, 0, 0.18);
+  --shadow-rest: 0 0 0 1px var(--color-border), 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 16px -6px rgba(0, 0, 0, 0.08);
+  --shadow-lift: 0 0 0 1px var(--color-border-hover), 0 2px 4px rgba(0, 0, 0, 0.05), 0 12px 28px -10px rgba(0, 0, 0, 0.14);
   --shadow-press: 0 0 0 1px var(--color-border), 0 1px 2px rgba(0, 0, 0, 0.06);
-  --shadow-control: 0 0 0 1px var(--color-border), 0 2px 6px -2px rgba(0, 0, 0, 0.12);
-  --shadow-float: 0 0 0 1px var(--color-border), 0 14px 34px -12px rgba(0, 0, 0, 0.3);
+  --shadow-control: 0 0 0 1px var(--color-border), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-float: 0 0 0 1px var(--color-border), 0 2px 4px rgba(0, 0, 0, 0.06), 0 10px 28px -6px rgba(0, 0, 0, 0.16);
   --shadow-button: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 10px 20px -10px rgba(0, 0, 0, 0.45);
   --shadow-sheet: 0 -20px 50px rgba(0, 0, 0, 0.3);
+  /* Radius, tighter (owner 2026-11-26: "less, more the look of Claude"). The @theme scale is
+     untouched, so flag off renders as before; `rounded-*` utilities read these through var().
+     xs 4 · sm 6 · md 8 stay. Both themes: the dark block inherits these. */
+  --radius-lg: 8px;   /* thumbnail, chip, icon button (was 12) */
+  --radius-xl: 10px;  /* button (was 16) */
+  --radius-2xl: 12px; /* tile, card link (was 20) */
+  --radius-3xl: 16px; /* card, bubble, toast (was 24) */
+  --radius-4xl: 20px; /* sheet top, the message field (was 32) */
 }
 
 :root[data-look="next"][data-theme="dark"] {
   color-scheme: dark;
 
-  --color-background: #08080a;
-  --color-surface: #131315;
-  --color-surface-elevated: #232326;
-  --color-surface-sunken: rgba(255, 255, 255, 0.07);
-  --color-border: rgba(255, 255, 255, 0.075);
-  --color-border-hover: rgba(255, 255, 255, 0.14);
-  --color-foreground: #f7f6f3;
-  --color-foreground-secondary: rgba(247, 246, 243, 0.62);
-  --color-foreground-muted: rgba(247, 246, 243, 0.38);
-  --color-action: #f7f6f3;
-  --color-action-foreground: #0b0b0c;
-  --color-hover: rgba(255, 255, 255, 0.05);
-  --color-active: rgba(255, 255, 255, 0.1);
+  --color-background: #191918;
+  --color-sidebar: #1f1f1e;
+  --color-surface: #232322;
+  --color-surface-elevated: #2c2c2a;
+  --color-surface-sunken: rgba(255, 255, 255, 0.06);
+  --color-border: rgba(255, 255, 255, 0.09);
+  --color-border-hover: rgba(255, 255, 255, 0.15);
+  --color-foreground: #ededeb;
+  --color-foreground-secondary: rgba(237, 237, 235, 0.6);
+  --color-foreground-muted: rgba(237, 237, 235, 0.4);
+  --color-action: #ededeb;
+  --color-action-foreground: #191918;
+  --color-hover: rgba(255, 255, 255, 0.06);
+  --color-active: rgba(255, 255, 255, 0.11);
   --color-track: rgba(255, 255, 255, 0.09);
   --color-gauge-track: rgba(255, 255, 255, 0.17);
   --color-above: #62d892;
@@ -496,16 +506,17 @@
   --color-below: #ff5f4c;
   --color-below-text: #ff8778;
   --color-below-soft: rgba(255, 98, 80, 0.16);
-  --color-glass: rgba(30, 30, 33, 0.78);
+  --color-glass: rgba(35, 35, 34, 0.8);
   --color-scrim: rgba(0, 0, 0, 0.6);
 
-  /* Dark: depth is a step in surface tone, no glow. The button has no shadow; a zero shadow,
-     not `none`, because the value sits inside Tailwind's box-shadow list. */
-  --shadow-rest: 0 0 0 1px var(--color-border), inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 24px 50px -24px rgba(0, 0, 0, 0.9);
-  --shadow-lift: 0 0 0 1px var(--color-border-hover), inset 0 1px 0 rgba(255, 255, 255, 0.045), 0 24px 50px -24px rgba(0, 0, 0, 0.9);
+  /* Dark: depth is a step in surface tone (ground 19, sidebar 1f, card 23, raised 2c), no glow,
+     no inset shine. The button has no shadow; a zero shadow, not `none`, because the value sits
+     inside Tailwind's box-shadow list. */
+  --shadow-rest: 0 0 0 1px var(--color-border), 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 24px -8px rgba(0, 0, 0, 0.4);
+  --shadow-lift: 0 0 0 1px var(--color-border-hover), 0 1px 2px rgba(0, 0, 0, 0.2), 0 12px 32px -8px rgba(0, 0, 0, 0.5);
   --shadow-press: 0 0 0 1px var(--color-border);
-  --shadow-control: 0 0 0 1px var(--color-border), 0 2px 6px -2px rgba(0, 0, 0, 0.12);
-  --shadow-float: 0 0 0 1px var(--color-border), 0 14px 34px -12px rgba(0, 0, 0, 0.7);
+  --shadow-control: 0 0 0 1px var(--color-border), 0 1px 2px rgba(0, 0, 0, 0.24);
+  --shadow-float: 0 0 0 1px var(--color-border), 0 2px 4px rgba(0, 0, 0, 0.2), 0 12px 32px -8px rgba(0, 0, 0, 0.6);
   --shadow-button: 0 0 0 0 transparent;
   --shadow-sheet: 0 -20px 50px rgba(0, 0, 0, 0.6);
 }
@@ -1071,6 +1082,13 @@ select:focus-visible,
 :where([data-look="next"]) body {
   font-weight: 430;
   font-variant-numeric: tabular-nums;
+}
+
+/* Light text on a dark ground reads heavier than the same weight in ink on paper, so dark running
+   text drops a step (as claude.ai does: 400 -> 360). Only the inherited body weight: a label's or a
+   title's explicit weight stays. */
+:where([data-look="next"][data-theme="dark"]) body {
+  font-weight: 400;
 }
 
 /* ============================================

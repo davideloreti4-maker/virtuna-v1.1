@@ -72,12 +72,13 @@ export function PulledSheet({
         <div className="flex min-w-0 flex-col gap-1.5 pt-0.5">
           {words && (
             <p className="flex items-center gap-1.5 text-ui font-[640] text-foreground tabular-nums">
-              <UpMark />
+              {video.proven && <UpMark />}
               {words.text}
             </p>
           )}
           {words?.shaky && <p className="text-meta text-foreground-secondary">{S.shaky}</p>}
           {numbers && <p className="text-meta text-foreground-secondary tabular-nums">{numbers}</p>}
+          {video.posted && <p className="text-meta text-foreground-secondary tabular-nums">{video.posted}</p>}
         </div>
       </div>
       {offered && (
