@@ -113,12 +113,27 @@ const inField = () => within(field());
 const text = () => inField().getByRole("textbox") as HTMLTextAreaElement;
 const send = () => field().querySelector('button[type="submit"]') as HTMLButtonElement;
 const evidenceInput = () => document.querySelector('input[type="file"][accept*=".txt"]') as HTMLInputElement;
-const pill = (name: string) => {
-  const found = inField()
-    .getAllByRole("button", { name })
-    .filter((b) => b.getAttribute("type") !== "submit");
-  expect(found).toHaveLength(1);
-  return found[0]!;
+// Picking a skill as main's composer does (rebuild 2026-11-26: no pills), the helpers of
+// composer-next-field.flag-on.test.tsx: Skills, then its row in the menu; the picked tag names it.
+/** The picked skill's name as the tag names it ("Hooks", "Account"), or null in chat. */
+const picked = () =>
+  field().querySelector('[data-part="picked-skill"]')?.querySelector("button[data-field-skills]")?.getAttribute("aria-label") ?? null;
+/** Opens the skill menu from the field and returns it. */
+const openSkills = async () => {
+  fireEvent.click(field().querySelector<HTMLButtonElement>("button[data-field-skills]")!);
+  return screen.findByRole("dialog", { name: "Skills" });
+};
+/** Picks a skill: Skills, then its row in the menu (the menu closes). */
+const pickSkill = async (name: string | RegExp) => {
+  const menu = await openSkills();
+  fireEvent.click(within(menu).getByRole("button", { name }));
+  await waitFor(() => expect(screen.queryByRole("dialog", { name: "Skills" })).toBeNull());
+};
+/** Picks a skill unless it is already the picked one. */
+const ensurePicked = async (name: string) => {
+  await waitFor(() => expect(field().querySelector("button[data-field-skills]")).not.toBeNull());
+  if (picked() !== name) await pickSkill(name);
+  expect(picked()).toBe(name);
 };
 /** The creator's message in its bubble (a new chat's header also shows it, as the chat's name). */
 const bubble = (t: string) => screen.getByText(t, { selector: "p" });
@@ -134,7 +149,7 @@ async function renderComposer() {
 
 /** Send `ask` (with `skill`'s pill, or chat), wait for Stop, press it, wait for it to go. */
 async function sendAndStop(ask: string, skill?: string) {
-  if (skill) fireEvent.click(pill(skill));
+  if (skill) await ensurePicked(skill);
   fireEvent.change(text(), { target: { value: ask } });
   fireEvent.click(send());
   const stop = await waitFor(() => inField().getByRole("button", { name: "Stop the run" }));
@@ -183,7 +198,7 @@ describe("Stop while the run is still thinking", () => {
     await renderComposer();
     await sendAndStop("what should I post this week?");
 
-    fireEvent.click(pill("Hooks"));
+    await ensurePicked("Hooks");
     fireEvent.change(text(), { target: { value: "meal prep" } });
     fireEvent.click(send());
     expect(await screen.findByText("Three hooks.")).toBeInTheDocument();
@@ -245,7 +260,7 @@ describe("Retry on a failed run sends the request the run sent", () => {
     await waitFor(() => expect(requests("/api/audiences").length).toBeGreaterThan(0));
     await settle();
 
-    fireEvent.click(pill("Hooks"));
+    await ensurePicked("Hooks");
     fireEvent.change(text(), { target: { value: "meal prep" } });
     fireEvent.click(send());
     fireEvent.click(await screen.findByRole("button", { name: /retry/i }));
@@ -260,7 +275,7 @@ describe("Retry on a failed run sends the request the run sent", () => {
   it("remix: the same link", async () => {
     streams["/api/tools/remix/run"] = (signal, n) => (n === 1 ? refused() : sse(signal, [], true));
     await renderComposer();
-    fireEvent.click(pill("Remix"));
+    await ensurePicked("Remix");
     fireEvent.change(text(), { target: { value: "https://www.tiktok.com/@a/video/123" } });
     fireEvent.click(send());
     fireEvent.click(await screen.findByRole("button", { name: /retry/i }));
@@ -328,7 +343,7 @@ describe("a stopped run gives the live turn up for good", () => {
     expect(bubble(STOPPED)).toBeInTheDocument();
     expect(threadText()).toContain(WORDS);
 
-    fireEvent.click(pill("Hooks"));
+    await ensurePicked("Hooks");
     fireEvent.change(text(), { target: { value: "meal prep" } });
     fireEvent.click(send());
     expect(await screen.findByText("Three hooks.")).toBeInTheDocument();
@@ -381,9 +396,7 @@ describe("the account read has a message of its own: \"Read my account\"", () =>
   it("while it reads: its own message once, the thread's earlier ask once (not again over the read); Stop keeps the message", async () => {
     streams["/api/account-read"] = (signal) => sse(signal, [], true);
     await renderComposer();
-    fireEvent.click(pill("More"));
-    const sheet = await screen.findByRole("dialog");
-    fireEvent.click(within(sheet).getByRole("button", { name: /^Read my account/ }));
+    await pickSkill(/^Read my account/);
     await waitFor(() => expect(send()).toHaveAttribute("aria-label", "Read my account"));
     fireEvent.click(send());
     await waitFor(() => expect(requests("/api/account-read")).toHaveLength(1));
@@ -410,7 +423,7 @@ describe("a failed run refused again at once is the newest run, though its strea
     streams["/api/tools/script"] = () => refused();
     await renderComposer();
     const sendWith = async (skill: string, ask: string, path: string, count: number) => {
-      fireEvent.click(pill(skill));
+      await ensurePicked(skill);
       fireEvent.change(text(), { target: { value: ask } });
       fireEvent.click(send());
       await waitFor(() => expect(requests(path)).toHaveLength(count));
@@ -445,7 +458,7 @@ describe("a failed run gives the live turn up once another run starts", () => {
       return sse(signal, [["token", { delta: "Post the gym myth one." }], ["done", {}]], false, 30);
     };
     await renderComposer();
-    fireEvent.click(pill("Hooks"));
+    await ensurePicked("Hooks");
     fireEvent.change(text(), { target: { value: "meal prep" } });
     fireEvent.click(send());
     expect(await screen.findByRole("button", { name: /retry/i })).toBeInTheDocument();
@@ -490,9 +503,7 @@ describe("the account read is stored in the chat, as a run's answer is", () => {
   const accountBodies = () => requests("/api/account-read").map(bodyOf);
 
   async function readFromField() {
-    fireEvent.click(pill("More"));
-    const sheet = await screen.findByRole("dialog");
-    fireEvent.click(within(sheet).getByRole("button", { name: /^Read my account/ }));
+    await pickSkill(/^Read my account/);
     await waitFor(() => expect(send()).toHaveAttribute("aria-label", "Read my account"));
     fireEvent.click(send());
     await waitFor(() => expect(requests("/api/account-read")).toHaveLength(1));
@@ -657,7 +668,7 @@ describe("leaving a chat while a run streams: the run does not follow into the n
     const run = writable();
     streams["/api/tools/hooks"] = (signal) => run.respond(signal);
     await renderComposer();
-    fireEvent.click(pill("Hooks"));
+    await ensurePicked("Hooks");
     fireEvent.change(text(), { target: { value: "meal prep" } });
     fireEvent.click(send());
     await waitFor(() => expect(requests("/api/tools/hooks")).toHaveLength(1));
@@ -700,7 +711,7 @@ describe("leaving a chat while a run streams: the run does not follow into the n
     const run = writable();
     streams["/api/tools/hooks"] = (signal) => run.respond(signal);
     await renderComposer();
-    fireEvent.click(pill("Hooks"));
+    await ensurePicked("Hooks");
     fireEvent.change(text(), { target: { value: "meal prep" } });
     fireEvent.click(send());
     await waitFor(() => expect(requests("/api/tools/hooks")).toHaveLength(1));
@@ -715,12 +726,12 @@ describe("leaving a chat while a run streams: the run does not follow into the n
     const next = writable();
     streams["/api/tools/hooks"] = (signal, n) => (n === 1 ? left.respond(signal) : next.respond(signal));
     await renderComposer();
-    fireEvent.click(pill("Hooks"));
+    await ensurePicked("Hooks");
     fireEvent.change(text(), { target: { value: "meal prep" } });
     fireEvent.click(send());
     await waitFor(() => expect(requests("/api/tools/hooks")).toHaveLength(1));
     await switchAway();
-    fireEvent.click(pill("Hooks"));
+    await ensurePicked("Hooks");
     fireEvent.change(text(), { target: { value: "gym myths" } });
     fireEvent.click(send());
     await waitFor(() => expect(requests("/api/tools/hooks")).toHaveLength(2));
@@ -786,7 +797,7 @@ describe("the chat list follows a chat left mid-run", () => {
     await renderComposer();
     await waitFor(() => expect(lists()).toBeGreaterThan(0));
     await settle();
-    fireEvent.click(pill("Hooks"));
+    await ensurePicked("Hooks");
     fireEvent.change(text(), { target: { value: "meal prep" } });
     fireEvent.click(send());
     await waitFor(() => expect(requests("/api/tools/hooks")).toHaveLength(1));
