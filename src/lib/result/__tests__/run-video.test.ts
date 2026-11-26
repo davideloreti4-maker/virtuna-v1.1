@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { forgetRunVideos, rememberRunVideo, runVideoOf } from "../run-video";
+import { forgetRunVideos, rememberRunStill, rememberRunVideo, runStillOf, runVideoOf } from "../run-video";
 
 afterEach(() => {
   forgetRunVideos();
@@ -51,5 +51,33 @@ describe("the video of a run this device started", () => {
     for (let i = 0; i < 12; i++) rememberRunVideo(`run-${i}`, `blob:${i}`);
     expect(runVideoOf("run-0")).toBeNull();
     expect(runVideoOf("run-11")).toBe("blob:11");
+  });
+});
+
+describe("the picture a run's running screen showed", () => {
+  it("is known for the run it was remembered for, the latest one, and for no other", () => {
+    rememberRunStill("run-1", "https://f.test/0.jpg");
+    expect(runStillOf("run-1")).toBe("https://f.test/0.jpg");
+    rememberRunStill("run-1", "https://p.test/cover.jpg");
+    expect(runStillOf("run-1")).toBe("https://p.test/cover.jpg");
+    expect(runStillOf("run-2")).toBeNull();
+  });
+
+  it("keeps only the last few runs, and is forgotten with the videos", () => {
+    for (let i = 0; i < 12; i++) rememberRunStill(`run-${i}`, `https://f.test/${i}.jpg`);
+    expect(runStillOf("run-0")).toBeNull();
+    expect(runStillOf("run-3")).toBeNull();
+    expect(runStillOf("run-4")).toBe("https://f.test/4.jpg");
+    expect(runStillOf("run-11")).toBe("https://f.test/11.jpg");
+    forgetRunVideos();
+    expect(runStillOf("run-11")).toBeNull();
+  });
+
+  it("is not a video: remembering one lets no video go", () => {
+    const revoke = vi.spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+    rememberRunVideo("run-1", "blob:clip-1");
+    rememberRunStill("run-1", "https://f.test/0.jpg");
+    expect(runVideoOf("run-1")).toBe("blob:clip-1");
+    expect(revoke).not.toHaveBeenCalled();
   });
 });

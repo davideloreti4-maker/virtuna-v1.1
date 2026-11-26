@@ -2,9 +2,8 @@
 
 import { memo } from "react";
 import type { VideoModel } from "@/lib/result/types";
-
-/** Between two tiles. */
-const GAP = 3;
+import { cn } from "@/lib/utils";
+import { STRIP_CROP, STRIP_GAP_PX, STRIP_TILE } from "./first-block";
 
 /**
  * The strip of scenes under the line, on the same time axis (the mock's `rStrip` with `.ed-clip`):
@@ -28,7 +27,7 @@ export const SceneStrip = memo(function SceneStrip({
   return (
     <div data-result="strip" data-scenes={scenes.length} className="relative select-none" style={{ width, height }}>
       {scenes.map((scene, k) => {
-        const w = Math.max(5, x(scene.t1) - x(scene.t0) - (k < last ? GAP : 0));
+        const w = Math.max(5, x(scene.t1) - x(scene.t0) - (k < last ? STRIP_GAP_PX : 0));
         // Tiles of a 9:16-ish crop: as many copies as fit at about 0.62 of the height each.
         const copies = scene.frame ? Math.max(1, Math.round(w / (height * 0.62))) : 0;
         const named = model.verdict.scene === k;
@@ -39,7 +38,7 @@ export const SceneStrip = memo(function SceneStrip({
             className="absolute inset-y-0"
             style={{ left: `${x(scene.t0).toFixed(1)}px`, width: `${w.toFixed(1)}px` }}
           >
-            <div className="absolute inset-0 flex overflow-hidden rounded-lg bg-surface-sunken shadow-[0_0_0_1px_var(--color-border)]">
+            <div className={cn("absolute inset-0 flex overflow-hidden", STRIP_TILE)}>
               {Array.from({ length: copies }, (_, i) => (
                 // eslint-disable-next-line @next/next/no-img-element -- a stored frame's signed address
                 <img
@@ -47,7 +46,7 @@ export const SceneStrip = memo(function SceneStrip({
                   src={scene.frame!}
                   alt=""
                   draggable={false}
-                  className="block h-full min-w-0 flex-1 object-cover object-[50%_14%]"
+                  className={cn("block h-full min-w-0 flex-1", STRIP_CROP)}
                 />
               ))}
             </div>

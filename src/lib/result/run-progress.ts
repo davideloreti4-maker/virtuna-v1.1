@@ -1,11 +1,11 @@
 /**
  * What the result page can know about a run that is still in flight, from the events of
- * `GET /api/analyze/[id]/stream` (spec section 7; measured in
- * `.scratch/next-look/part2/slice-b-inventory.md`, section A).
+ * `GET /api/analyze/[id]/stream`.
  *
- * That stream sends the viewer groups once (`roster`, about 4 seconds in), each scene frame where
- * the frame job runs (`filmstrip_segment_ready`), and the finish (`complete`); it replays all of
- * them on every reconnect. It carries no stage, no percent and no partial result, so nothing here
+ * That stream sends the viewer groups once (`roster`, about 4 seconds in), the post's cover once a
+ * link's scrape has landed (`source`), each scene frame where the frame job runs
+ * (`filmstrip_segment_ready`), and the finish (`complete`); it replays all of them on every
+ * reconnect. It carries no stage, no percent and no partial result, so nothing here
  * invents one.
  */
 
@@ -14,14 +14,17 @@ export interface RunProgress {
   groups: readonly string[] | null;
   /** The frames by scene, null where one has not arrived; grows as frames arrive. */
   frames: ReadonlyArray<string | null>;
+  /** The post's cover (a link run), once the stream named one; null until then, and for a file. */
+  cover: string | null;
   /** True once the stream said the run is finished. */
   done: boolean;
 }
 
-export const NO_PROGRESS: RunProgress = { groups: null, frames: [], done: false };
+export const NO_PROGRESS: RunProgress = { groups: null, frames: [], cover: null, done: false };
 
 export type RunEvent =
   | { type: "roster"; data: unknown }
+  | { type: "source"; data: unknown }
   | { type: "filmstrip_segment_ready"; data: unknown }
   | { type: "complete" };
 
@@ -33,8 +36,8 @@ const MOST_GROUPS = 24;
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
 const isPlace = (value: unknown): value is number =>
   typeof value === "number" && Number.isInteger(value) && value >= 0 && value < MOST_FRAMES;
-/** A frame is a stored picture's signed https address; anything else is not shown. */
-const isFrameAddress = (value: unknown): value is string => {
+/** A frame or a cover is a stored or posted picture's https address; anything else is not shown. */
+export const isPictureAddress = (value: unknown): value is string => {
   if (typeof value !== "string") return false;
   try {
     return new URL(value).protocol === "https:";
@@ -56,10 +59,16 @@ export function applyRunEvent(state: RunProgress, event: RunEvent): RunProgress 
         .filter((group): group is string => typeof group === "string" && group !== "");
       return groups.length > 0 ? { ...state, groups } : state;
     }
+    case "source": {
+      // Sent once, but replayed on every reconnect: the first cover stands.
+      if (state.cover) return state;
+      const cover = isRecord(event.data) ? event.data.cover_url : null;
+      return isPictureAddress(cover) ? { ...state, cover } : state;
+    }
     case "filmstrip_segment_ready": {
       if (!isRecord(event.data)) return state;
       const { segment_idx: place, keyframe_uri: picture } = event.data;
-      if (!isPlace(place) || !isFrameAddress(picture)) return state;
+      if (!isPlace(place) || !isPictureAddress(picture)) return state;
       // Replayed on every reconnect: the same frame at the same place changes nothing.
       if (state.frames[place] === picture) return state;
       const frames = Array.from({ length: Math.max(place + 1, state.frames.length) }, (_, i) => state.frames[i] ?? null);
@@ -80,21 +89,4 @@ export function arrivedFrames(state: RunProgress): string[] {
 export function elapsedSeconds(startedAt: number | null, now: number): number {
   if (startedAt === null) return 0;
   return Math.max(0, Math.floor((now - startedAt) / 1000));
-}
-
-/** How long one frame stays in the centre before the next takes its place. */
-const FRAME_HOLD_S = 3;
-
-/**
- * The frame to show at this second: the arrived frames one after another, starting over after
- * the last. `still` (reduced motion) stays on the first.
- */
-export function frameOnScreen(
-  frames: readonly string[],
-  seconds: number,
-  { still = false }: { still?: boolean } = {},
-): string | null {
-  if (frames.length === 0) return null;
-  if (still) return frames[0]!;
-  return frames[Math.floor(Math.max(0, seconds) / FRAME_HOLD_S) % frames.length]!;
 }

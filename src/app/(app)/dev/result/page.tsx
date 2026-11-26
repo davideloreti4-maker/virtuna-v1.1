@@ -8,19 +8,20 @@ import { DevResult } from "./dev-result";
  * `scripts/result-shots.cjs`). Dev-only: the /dev layout 404s it in production.
  *
  *   /dev/result?fixture=<name>[&frames=<base>][&video=<url>][&processing=1][&t=<seconds>][&again=1]
- *              [&groups=<n>][&arriving=<k>][&runframes=<n>][&own=1][&elapsed=<seconds>]
+ *              [&runframes=<n>][&own=1][&cover=<url>][&elapsed=<seconds>][&land=<seconds>]
  *
  * - fixture: early (default), middle, opening, leak, holds, ending, no-groups, no-audience
  * - frames: every scene gets the frame `<base>/<index>.jpg` (the stored frames expire)
  * - video: plays this address as the run's video
  * - processing=1: the run is still in flight, started `elapsed` seconds ago (now when not given).
  *   The running screen shows a moment built from the parameters below instead of listening to the
- *   run's stream (none given: just opened, no groups, no frames, the clock counting):
- *   - groups: the roster has arrived with n groups
- *   - arriving: only the first k wedges are drawn (the groups arriving)
+ *   run's stream (none given: just opened, no frames, no cover, the clock counting):
  *   - runframes: n scene frames have arrived, `<frames base>/<i>.jpg` as `frames` gives them
- *   - own=1: the `video` address plays as the creator's own video (a run this device started)
+ *   - own=1: the `video` address plays as the creator's own video (a run this tab started)
+ *   - cover: the post's cover the stream named (a link run)
  *   - elapsed: the clock stands at these seconds (it does not count, so a shot is stable)
+ *   - land: the running moment turns into the result after these seconds, so the landing can be
+ *     looked at
  * - again=1: shows "Simulate again" on a run without an audience (dormant in the app; do not press it on a real file)
  * - t: the playhead starts there instead of at rest
  */
@@ -62,12 +63,12 @@ export default async function DevResultPage({ searchParams }: { searchParams: Pr
       simulateAgain={one(params.again) === "1"}
       t={t != null && Number.isFinite(Number(t)) ? Number(t) : undefined}
       run={{
-        groups: count(one(params.groups)),
-        arriving: count(one(params.arriving)),
         frames: count(one(params.runframes)),
         own: one(params.own) === "1",
+        cover: one(params.cover),
         elapsed: count(one(params.elapsed)),
       }}
+      land={count(one(params.land))}
     />
   );
 }

@@ -53,6 +53,7 @@ import { ACTIVE_THREAD_COOKIE, NEW_THREAD_SENTINEL } from "@/lib/threads/active-
 import { reactRequestBody } from "../v8/fire-sim";
 import { MEAL_PREP_HOOKS, population } from "@/components/thread-next/__tests__/fixtures/answers";
 import { useShellStore } from "@/stores/shell-store";
+import { forgetRunVideos, runVideoOf } from "@/lib/result/run-video";
 import { settleClock } from "@/components/thread-next/answer-sheet";
 
 // ── the network ──────────────────────────────────────────────────────────────
@@ -2176,6 +2177,59 @@ describe("step 2: 'Script this one' from a result page lands in its thread", () 
       await new Promise((r) => setTimeout(r, 30));
     });
     expect(requests("/api/tools/chat")).toHaveLength(0);
+  });
+});
+
+describe("the run's page plays the creator's own clip", () => {
+  const LINK = "https://www.tiktok.com/@nia.tests/video/7000000000000000001";
+  beforeEach(() => {
+    // Every object URL is its own, so the one handed over can be told from the field's tile's.
+    let n = 0;
+    vi.mocked(URL.createObjectURL).mockImplementation(() => `blob:test/${++n}`);
+  });
+  afterEach(() => forgetRunVideos());
+
+  it("a clip sent from the field: its file is handed to the run's page once the run has its id, and once only", async () => {
+    let releaseUpload: () => void = () => {};
+    upload.mockImplementation(() => new Promise((r) => (releaseUpload = () => r({ error: null }))));
+    holdAnalyzeStarted("run-7");
+    await renderComposer();
+    const sent = clip();
+    fireEvent.change(inField().getByLabelText("Choose a video file"), { target: { files: [sent] } });
+    fireEvent.click(send());
+
+    // Uploading: the run has no id yet, so nothing is handed over.
+    await waitFor(() => expect(upload).toHaveBeenCalledTimes(1));
+    expect(runVideoOf("run-7")).toBeNull();
+
+    await act(async () => releaseUpload());
+    await waitFor(() => expect(runVideoOf("run-7")).not.toBeNull());
+    const handed = runVideoOf("run-7")!;
+    const created = vi.mocked(URL.createObjectURL);
+    const at = created.mock.results.findIndex((r) => r.value === handed);
+    expect(at).toBeGreaterThanOrEqual(0);
+    expect(created.mock.calls[at]![0]).toBe(sent);
+
+    // Once: later renders hand nothing new over (a new address would replace this one and let it go).
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 100));
+    });
+    expect(runVideoOf("run-7")).toBe(handed);
+    expect(URL.revokeObjectURL).not.toHaveBeenCalledWith(handed);
+  });
+
+  it("a link run hands nothing over", async () => {
+    holdAnalyzeStarted("run-8");
+    await renderComposer();
+    fireEvent.click(pill("Simulate"));
+    fireEvent.change(text(), { target: { value: LINK } });
+    await waitFor(() => expect(send()).not.toBeDisabled());
+    fireEvent.click(send());
+
+    await waitFor(() =>
+      expect(screen.getByRole("link", { name: /Watch it run/ })).toHaveAttribute("href", "/simulation/run-8"),
+    );
+    expect(runVideoOf("run-8")).toBeNull();
   });
 });
 

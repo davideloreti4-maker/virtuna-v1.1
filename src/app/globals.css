@@ -1467,3 +1467,92 @@ select:focus-visible,
     backdrop-filter: none !important;
   }
 }
+
+/* ── Result page (new look): the running screen ───────────────────────────────
+   The screen shown while a video simulates (src/components/result/running.tsx). Every class that
+   names one is `motion-safe:`; with reduced motion the parts that only move are not drawn. */
+
+/* A band of light down the tile while it shows a still or nothing. The band is 38% of the tile tall:
+   from just above the tile to just under it, as a transform (it runs for the whole wait). */
+@keyframes result-sweep {
+  from {
+    transform: translateY(-106%);
+  }
+  to {
+    transform: translateY(277%);
+  }
+}
+
+/* A quiet band of light across the plot, where the line will be: its carrier is as wide as the plot
+   and holds the 60px band at its left edge, so 100% is the plot's own width. */
+@keyframes result-scan {
+  from {
+    transform: translateX(-60px);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* An empty strip tile's shimmer. */
+@keyframes result-shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* The three dots after "Building your 1,000 viewers", in turn. */
+@keyframes result-blink {
+  0%,
+  60%,
+  100% {
+    opacity: 0.2;
+  }
+  30% {
+    opacity: 1;
+  }
+}
+
+/* A strip tile's frame arriving: a short fade and settle. */
+@keyframes result-settle {
+  from {
+    opacity: 0;
+    transform: scale(1.15);
+  }
+  70% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ── Result page (new look): the landing ──────────────────────────────────────
+   A result that arrives while its running screen is open finishes building itself
+   (src/components/result/landing.tsx). Opacity and the line's stroke only: an animated transform or
+   filter on an ancestor of the pinned compact player (position: fixed) would make it place itself
+   against that ancestor. */
+
+/* The line drawing itself: a path with pathLength 1 and a dash of 1. */
+@keyframes result-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* A part of the result coming in. */
+@keyframes result-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

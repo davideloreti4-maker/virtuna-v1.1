@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { NO_PROGRESS, applyRunEvent, type RunEvent, type RunProgress } from "@/lib/result/run-progress";
 
 /** The events of the stream that say something about the run (`applyRunEvent` reads them). */
-const EVENTS = ["roster", "filmstrip_segment_ready", "complete"] as const;
+const EVENTS = ["roster", "source", "filmstrip_segment_ready", "complete"] as const;
 /** After a failed connect the stream is opened again this much later… */
 const REOPEN_AFTER_MS = 5000;
 /** …at most this many times per run. */
@@ -12,7 +12,7 @@ const MOST_REOPENS = 5;
 
 /**
  * What the run's own stream (`GET /api/analyze/[id]/stream`) has said so far, for the running
- * screen: the viewer groups, the frames as they arrive, and the finish.
+ * screen: the viewer groups, the post's cover (a link run), the frames as they arrive, and the finish.
  *
  * `onDone` is called once when the stream says the run is finished; the page then asks for the
  * row at once instead of waiting for its next poll. The stream is a bonus, not the source of the

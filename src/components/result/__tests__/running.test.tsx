@@ -1,20 +1,22 @@
 /** @vitest-environment happy-dom */
 /**
- * The running screen (plan 2026-11-20 slice B, Task 3): the ring of the viewer groups, the picture
- * and the clock, from the run's own stream. Stood in for: the browser's EventSource (a small
- * working one that hands out named events, as in use-run-stream.test.tsx), the clock (fake
- * timers) and the user's motion setting (matchMedia). The screen, the stream hook, the reading of
- * the events, the ring layout and the query client are real. Layout does not run here, so the
- * stage's measured size comes from a stand-in ResizeObserver (default: the reference desktop's
- * content area, 1192 x 832), and the browser's autoplay answer from `play()`.
+ * The running screen: the result's first block building itself, drawn by
+ * the result's own layout parts. Stood in for: the browser's EventSource (a small working one that
+ * hands out named events), the clock (fake timers), the user's motion setting (matchMedia), the
+ * window's width (`innerWidth`), images loading (`load` and `error` events) and the browser's
+ * autoplay answer (`play()`). The screen, the stream hook, the reading of the events, the layout parts,
+ * the result's own parts (for the comparison) and the query client are real.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act, fireEvent, render } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type { ReactNode } from "react";
+import early from "@/lib/result/__tests__/fixtures/early.json";
 import { queryKeys } from "@/lib/queries/query-keys";
-import { forgetRunVideos, rememberRunVideo } from "@/lib/result/run-video";
+import { forgetRunVideos, rememberRunVideo, runStillOf } from "@/lib/result/run-video";
 import { Running } from "../running";
+import { VideoResult } from "../video-result";
+import { modelOf, renderWithPlayhead } from "./hero-harness";
 
 type Listener = (event: MessageEvent) => void;
 
@@ -43,42 +45,30 @@ class FakeEventSource {
 }
 
 const stream = () => FakeEventSource.opened.at(-1)!;
-const roster = { personas: Array.from({ length: 10 }, (_, i) => ({ archetype: `group-${i}`, label: `Group ${i}` })) };
+const COVER = "https://p.test/cover.jpg";
+const sendFrame = (i: number) =>
+  act(() => stream().send("filmstrip_segment_ready", { segment_idx: i, keyframe_uri: `https://f/${i}.jpg` }));
+const sendCover = () =>
+  act(() => stream().send("source", { cover_url: COVER, handle: "nia.tests", views: 1200, video_url: null }));
 
 const realMatchMedia = window.matchMedia;
-type MediaListener = (event: { matches: boolean }) => void;
-let mediaListeners: MediaListener[] = [];
 /** The user's motion setting, as the browser reports it. */
 function prefersReducedMotion(reduce: boolean) {
   window.matchMedia = ((query: string) => ({
     matches: query.includes("no-preference") ? !reduce : reduce,
     media: query,
     onchange: null,
-    addEventListener: (_type: string, listener: MediaListener) => mediaListeners.push(listener),
-    removeEventListener: (_type: string, listener: MediaListener) => {
-      mediaListeners = mediaListeners.filter((l) => l !== listener);
-    },
+    addEventListener: () => {},
+    removeEventListener: () => {},
     addListener: () => {},
     removeListener: () => {},
     dispatchEvent: () => false,
   })) as unknown as typeof window.matchMedia;
 }
-/** The user changes the setting while the screen is open (the hook listens to the no-preference query). */
-function switchReducedMotion(reduce: boolean) {
-  prefersReducedMotion(reduce);
-  act(() => mediaListeners.forEach((listener) => listener({ matches: !reduce })));
-}
 
-/** The stage's measured content box, as a ResizeObserver reports it. */
-let stageSize = { width: 1192, height: 832 };
-class FakeResizeObserver {
-  constructor(private callback: ResizeObserverCallback) {}
-  observe(target: Element) {
-    this.callback([{ target, contentRect: { ...stageSize } } as unknown as ResizeObserverEntry], this as unknown as ResizeObserver);
-  }
-  unobserve() {}
-  disconnect() {}
-}
+const realWidth = window.innerWidth;
+const setWidth = (value: number) =>
+  Object.defineProperty(window, "innerWidth", { configurable: true, writable: true, value });
 
 let client: QueryClient;
 const wrapper = ({ children }: { children: ReactNode }) => (
@@ -87,63 +77,21 @@ const wrapper = ({ children }: { children: ReactNode }) => (
 const renderRunning = (startedAt: number | null = Date.now()) =>
   render(<Running id="run-1" startedAt={startedAt} />, { wrapper });
 
-const ring = (c: HTMLElement) => c.querySelector('[data-result="running-ring"]');
-const wedges = (c: HTMLElement) => c.querySelectorAll("[data-wedge]");
-const clock = (c: HTMLElement) => c.querySelector<HTMLElement>('[data-result="running-clock"]');
-const picture = (c: HTMLElement) => c.querySelector<HTMLElement>('[data-result="running-picture"]');
-/** The frame on top: the one shown (the one before it may still lie under it while it fades in). */
-const shownFrame = (c: HTMLElement) => picture(c)?.querySelector<HTMLImageElement>('img[data-frame="current"]');
-
-/** Lets the timers run as far as `ms`, inside React's act. */
+const q = (root: ParentNode, selector: string) => root.querySelector<HTMLElement>(selector);
+const card = (c: HTMLElement) => q(c, '[data-result="running"]');
+const picture = (c: HTMLElement) => q(c, '[data-result="running-picture"]')!;
+const shows = (c: HTMLElement) => picture(c).getAttribute("data-shows");
+const clock = (c: HTMLElement) => q(c, '[data-result="running-clock"]')!;
+const tiles = (c: HTMLElement) => [...c.querySelectorAll<HTMLElement>('[data-result="running-strip"] [data-tile]')];
 const wait = (ms: number) => act(() => vi.advanceTimersByTime(ms));
-
-/**
- * The browser loading images, stood in for: an <img> fires `load` once for each address it is
- * given (a node that keeps its address does not load again).
- */
-let loadedAs = new WeakMap<Element, string>();
-function loadImages(c: HTMLElement) {
-  for (const img of picture(c)?.querySelectorAll("img") ?? []) {
-    const src = img.getAttribute("src") ?? "";
-    if (loadedAs.get(img) === src) continue;
-    loadedAs.set(img, src);
-    fireEvent.load(img);
-  }
-}
-/** The frame a viewer sees: the topmost image of the picture that is not held transparent. */
-function visibleFrame(c: HTMLElement): string | null {
-  const layers = [...(picture(c)?.querySelectorAll("img") ?? [])].filter((img) => !img.classList.contains("opacity-0"));
-  return layers.at(-1)?.getAttribute("src") ?? null;
-}
-/** Frames 0 to n-1 arrive on the stream and their images load. */
-function framesArrive(c: HTMLElement, n: number) {
-  for (let i = 0; i < n; i++) {
-    act(() => stream().send("filmstrip_segment_ready", { segment_idx: i, keyframe_uri: `https://f/${i}.jpg` }));
-  }
-  loadImages(c);
-}
-/** The picture a viewer sees at 0, 3, 6, 9 s. */
-function seenEveryThreeSeconds(c: HTMLElement, steps: number): Array<string | null> {
-  const seen = [visibleFrame(c)];
-  for (let i = 1; i < steps; i++) {
-    wait(3000);
-    loadImages(c);
-    seen.push(visibleFrame(c));
-  }
-  return seen;
-}
-
 const realPlay = HTMLMediaElement.prototype.play;
 
 beforeEach(() => {
   vi.useFakeTimers({ now: new Date("2026-11-20T10:00:00Z") });
-  loadedAs = new WeakMap();
   FakeEventSource.opened = [];
   vi.stubGlobal("EventSource", FakeEventSource);
-  stageSize = { width: 1192, height: 832 };
-  vi.stubGlobal("ResizeObserver", FakeResizeObserver);
-  mediaListeners = [];
   prefersReducedMotion(false);
+  setWidth(393);
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 });
 
@@ -152,273 +100,333 @@ afterEach(() => {
   vi.unstubAllGlobals();
   window.matchMedia = realMatchMedia;
   HTMLMediaElement.prototype.play = realPlay;
+  setWidth(realWidth);
   forgetRunVideos();
   client.clear();
 });
 
-describe("Running", () => {
-  it("just opened: no wedge, the clock at 0:00 inside the ring, no picture, no other words", () => {
+describe("on a phone: the first card building itself", () => {
+  it("just opened: an empty tile with a band of light, the words and the clock, the dotted base with its band, seven empty tiles; nothing else", () => {
     const { container } = renderRunning();
+    expect(card(container)).not.toBeNull();
+    expect(shows(container)).toBe("none");
+    expect(picture(container).querySelector("img, video")).toBeNull();
+    expect(q(picture(container), '[data-part="sweep"]')).not.toBeNull();
+    expect(q(container, '[data-part="building"]')!.firstElementChild!.textContent).toBe("Building your 1,000 viewers");
+    const dots = q(container, '[data-part="dots"]')!;
+    expect(dots.children).toHaveLength(3);
+    expect(dots.getAttribute("aria-hidden")).toBe("true");
+    expect(clock(container).textContent).toBe("0:00");
+    // Not announced every second; the page's heading names the screen.
+    expect(clock(container).getAttribute("aria-hidden")).toBe("true");
+    expect(container.querySelector('[role="status"], [aria-live]')).toBeNull();
+    expect(q(container, '[data-part="base"]')!.getAttribute("stroke-dasharray")).toBe("1 6");
+    expect(q(container, '[data-part="scan"]')).not.toBeNull();
+    expect(tiles(container)).toHaveLength(7);
+    for (const tile of tiles(container)) {
+      expect(tile.querySelector("img")).toBeNull();
+      expect(tile.querySelector('[data-part="shimmer"]')).not.toBeNull();
+    }
+    // The two times' row keeps its place and shows nothing.
+    expect(q(card(container)!, '[data-part="times"]')!.textContent).toBe("");
+    // No count, no line, no percent: the words are the wait's and the clock's only.
+    expect(container.querySelector('[data-result="count"], [data-result="curve"], [data-result="strip"]')).toBeNull();
+    expect(container.textContent).toBe("Building your 1,000 viewers0:00");
+    // Nothing under the card.
+    expect(card(container)!.nextElementSibling).toBeNull();
+  });
 
-    expect(ring(container)).not.toBeNull();
-    expect(wedges(container)).toHaveLength(0);
-    expect(clock(container)?.textContent).toBe("0:00");
-    expect(clock(container)?.getAttribute("data-clock")).toBe("centre");
-    expect(picture(container)).toBeNull();
-    // The clock is not announced every second. The screen is named once, by the page's heading
-    // ("Simulating", the shell's on the phone, ResultHeader's on desktop): no second announcement here.
-    expect(clock(container)?.getAttribute("aria-hidden")).toBe("true");
-    expect(container.querySelector('[role="status"]')).toBeNull();
-    expect((container.textContent ?? "").replace("0:00", "").trim()).toBe("");
+  it("the words and the clock lay out as the count does: one line from a box of 290, the clock under the words in a narrower one", () => {
+    const { container, unmount } = renderRunning();
+    const building = q(container, '[data-part="building"]')!;
+    const classes = building.className.split(/\s+/);
+    // Narrow box (a 320 phone): always two lines, so the box is as tall while it waits as it will be.
+    expect(classes).toEqual(expect.arrayContaining(["flex", "flex-col", "items-center"]));
+    expect(classes).not.toContain("flex-wrap");
+    // From 290: one line, on one baseline, centred.
+    expect(classes).toEqual(
+      expect.arrayContaining(["@min-[290px]:flex-row", "@min-[290px]:items-baseline", "@min-[290px]:justify-center"]),
+    );
+    // Measured against the box under the tile (the count's box), not the window.
+    expect(building.parentElement!.getAttribute("data-part")).toBe("under");
+    expect(building.parentElement!.className.split(/\s+/)).toContain("@container");
+    // The words first, the clock second.
+    expect(building.lastElementChild).toBe(clock(container));
+    const waited = building.className;
+    unmount();
+
+    // The count that takes its place lays out the same way, class for class.
+    const model = modelOf(early, { frames: true });
+    const result = renderWithPlayhead(model, <VideoResult model={model} />);
+    expect(q(result.container, '[data-result="count"]')!.className).toBe(waited);
   });
 
   it("the clock counts from the run's start", () => {
     const { container } = renderRunning(Date.now() - 42_000);
-    expect(clock(container)?.textContent).toBe("0:42");
-
+    expect(clock(container).textContent).toBe("0:42");
     wait(1000);
-    expect(clock(container)?.textContent).toBe("0:43");
-  });
-
-  it("the groups arrive one wedge at a time once the roster is in", () => {
-    const { container } = renderRunning();
-
-    act(() => stream().send("roster", roster));
-    expect(wedges(container).length).toBeLessThan(10);
-
-    wait(600);
-    expect(wedges(container)).toHaveLength(10);
-  });
-
-  it("the wedges arrive farthest first, so no two of the first four touch", () => {
-    const { container } = renderRunning();
-    act(() => stream().send("roster", roster));
-
-    wait(240);
-    const drawn = [...wedges(container)].map((w) => Number(w.getAttribute("data-wedge"))).sort((a, b) => a - b);
-    expect(drawn).toEqual([0, 2, 5, 7]);
-    for (const a of drawn) {
-      for (const b of drawn) {
-        if (a !== b) expect(Math.min(Math.abs(a - b), 10 - Math.abs(a - b))).toBeGreaterThan(1);
-      }
-    }
-  });
-
-  it.each([8, 12])("a roster of %i groups draws that many wedges", (n) => {
-    const { container } = renderRunning();
-    act(() => stream().send("roster", { personas: Array.from({ length: n }, (_, i) => ({ archetype: `group-${i}` })) }));
-
-    wait(60 * n);
-    expect(wedges(container)).toHaveLength(n);
-  });
-
-  it("leaving in the middle of the arrival leaves no timer running", () => {
-    const { unmount } = renderRunning();
-    act(() => stream().send("roster", roster));
-    wait(120);
-    expect(vi.getTimerCount()).toBeGreaterThan(0);
-
-    unmount();
-
-    expect(vi.getTimerCount()).toBe(0);
-  });
-
-  it("with reduced motion the groups are all there at once", () => {
-    prefersReducedMotion(true);
-    const { container } = renderRunning();
-
-    act(() => stream().send("roster", roster));
-
-    expect(wedges(container)).toHaveLength(10);
-  });
-
-  it("wedges once shown stay when the motion setting changes while the screen is open", () => {
-    prefersReducedMotion(true);
-    const { container } = renderRunning();
-    act(() => stream().send("roster", roster));
-    expect(wedges(container)).toHaveLength(10);
-
-    switchReducedMotion(false);
-
-    expect(wedges(container)).toHaveLength(10);
-  });
-
-  it("frames arrive: the picture shows them one after another and the clock moves under the ring", () => {
-    const { container } = renderRunning();
-    act(() => stream().send("filmstrip_segment_ready", { segment_idx: 0, keyframe_uri: "https://f/0.jpg" }));
-
-    expect(shownFrame(container)?.getAttribute("src")).toBe("https://f/0.jpg");
-    expect(shownFrame(container)?.getAttribute("alt")).toBe("");
-    expect(clock(container)?.getAttribute("data-clock")).toBe("below");
-
-    act(() => stream().send("filmstrip_segment_ready", { segment_idx: 1, keyframe_uri: "https://f/1.jpg" }));
-    expect(shownFrame(container)?.getAttribute("src")).toBe("https://f/0.jpg");
-
-    wait(3000);
-    expect(shownFrame(container)?.getAttribute("src")).toBe("https://f/1.jpg");
-  });
-
-  it("two frames take turns: 0, 1, 0, 1 at 0, 3, 6 and 9 s", () => {
-    const { container } = renderRunning();
-    framesArrive(container, 2);
-
-    expect(seenEveryThreeSeconds(container, 4)).toEqual(["https://f/0.jpg", "https://f/1.jpg", "https://f/0.jpg", "https://f/1.jpg"]);
-  });
-
-  it("one frame alone stays visible", () => {
-    const { container } = renderRunning();
-    framesArrive(container, 1);
-
-    expect(seenEveryThreeSeconds(container, 3)).toEqual(["https://f/0.jpg", "https://f/0.jpg", "https://f/0.jpg"]);
-  });
-
-  it("three frames come back to the first at 9 s", () => {
-    const { container } = renderRunning();
-    framesArrive(container, 3);
-
-    expect(seenEveryThreeSeconds(container, 4)).toEqual(["https://f/0.jpg", "https://f/1.jpg", "https://f/2.jpg", "https://f/0.jpg"]);
-  });
-
-  it("a new frame fades in only once its image has loaded, over the frame before it", () => {
-    const { container } = renderRunning();
-    act(() => stream().send("filmstrip_segment_ready", { segment_idx: 0, keyframe_uri: "https://f/0.jpg" }));
-    act(() => stream().send("filmstrip_segment_ready", { segment_idx: 1, keyframe_uri: "https://f/1.jpg" }));
-    fireEvent.load(shownFrame(container)!);
-    expect(shownFrame(container)?.hasAttribute("data-loaded")).toBe(true);
-
-    wait(3000);
-    const next = shownFrame(container)!;
-    expect(next.getAttribute("src")).toBe("https://f/1.jpg");
-    // Not loaded yet: hidden, no fade started, the first frame still showing under it.
-    expect(next.hasAttribute("data-loaded")).toBe(false);
-    expect(next.className).not.toMatch(/fade-in/);
-    expect(picture(container)?.querySelector('img[data-frame="previous"]')?.getAttribute("src")).toBe("https://f/0.jpg");
-
-    fireEvent.load(next);
-    expect(next.hasAttribute("data-loaded")).toBe(true);
-    expect(next.className).toMatch(/motion-safe:fade-in/);
-    expect(picture(container)?.querySelector('img[data-frame="previous"]')?.getAttribute("src")).toBe("https://f/0.jpg");
-  });
-
-  it("with reduced motion the first frame stays", () => {
-    prefersReducedMotion(true);
-    const { container } = renderRunning();
-    act(() => stream().send("filmstrip_segment_ready", { segment_idx: 0, keyframe_uri: "https://f/0.jpg" }));
-    act(() => stream().send("filmstrip_segment_ready", { segment_idx: 1, keyframe_uri: "https://f/1.jpg" }));
-
-    wait(3000);
-    expect(shownFrame(container)?.getAttribute("src")).toBe("https://f/0.jpg");
-  });
-
-  it("a run this device started plays the creator's own video, muted and looping, frames or not", () => {
-    rememberRunVideo("run-1", "blob:x");
-    const { container } = renderRunning();
-
-    const video = picture(container)?.querySelector("video");
-    expect(video?.getAttribute("src")).toBe("blob:x");
-    expect(video?.muted).toBe(true);
-    expect(video?.loop).toBe(true);
-    expect(video?.hasAttribute("playsinline")).toBe(true);
-    expect(video?.hasAttribute("controls")).toBe(false);
-    expect(clock(container)?.getAttribute("data-clock")).toBe("below");
-
-    act(() => stream().send("filmstrip_segment_ready", { segment_idx: 0, keyframe_uri: "https://f/0.jpg" }));
-    expect(picture(container)?.querySelector("img")).toBeNull();
-  });
-
-  it("with reduced motion the creator's video does not start by itself: its first frame shows", () => {
-    prefersReducedMotion(true);
-    const play = vi.fn(() => Promise.resolve());
-    HTMLMediaElement.prototype.play = play;
-    rememberRunVideo("run-1", "blob:x");
-    const { container } = renderRunning();
-
-    const video = picture(container)!.querySelector("video")!;
-    expect(video.autoplay).toBe(false);
-    expect(video.hasAttribute("autoplay")).toBe(false);
-    expect(video.getAttribute("src")).toMatch(/^blob:x/);
-    expect(video.muted).toBe(true);
-    expect(play).not.toHaveBeenCalled();
-  });
-
-  it("a video that cannot play falls back to the frames", () => {
-    rememberRunVideo("run-1", "blob:revoked");
-    const { container } = renderRunning();
-    act(() => stream().send("filmstrip_segment_ready", { segment_idx: 0, keyframe_uri: "https://f/0.jpg" }));
-
-    fireEvent.error(picture(container)!.querySelector("video")!);
-
-    expect(picture(container)?.querySelector("video")).toBeNull();
-    expect(shownFrame(container)?.getAttribute("src")).toBe("https://f/0.jpg");
-  });
-
-  it("a video that cannot play, with no frame yet: no picture, the clock back in the centre", () => {
-    rememberRunVideo("run-1", "blob:revoked");
-    const { container } = renderRunning();
-    expect(clock(container)?.getAttribute("data-clock")).toBe("below");
-
-    fireEvent.error(picture(container)!.querySelector("video")!);
-
-    expect(picture(container)).toBeNull();
-    expect(clock(container)?.getAttribute("data-clock")).toBe("centre");
-  });
-
-  it("a video the browser will not autoplay falls back too", async () => {
-    HTMLMediaElement.prototype.play = () => Promise.reject(Object.assign(new Error("refused"), { name: "NotAllowedError" }));
-    rememberRunVideo("run-1", "blob:x");
-    const { container } = renderRunning();
-
-    await act(async () => {});
-
-    expect(picture(container)).toBeNull();
-    expect(clock(container)?.getAttribute("data-clock")).toBe("centre");
+    expect(clock(container).textContent).toBe("0:43");
   });
 
   it("without a known start, or with one ahead of this device's clock, it counts from the screen's opening", () => {
     const unknown = renderRunning(null);
     wait(5000);
-    expect(clock(unknown.container)?.textContent).toBe("0:05");
+    expect(clock(unknown.container).textContent).toBe("0:05");
     unknown.unmount();
 
     const ahead = renderRunning(Date.now() + 60_000);
     wait(5000);
-    expect(clock(ahead.container)?.textContent).toBe("0:05");
+    expect(clock(ahead.container).textContent).toBe("0:05");
   });
 
-  it("the frames turn without a known start too", () => {
-    const { container } = renderRunning(null);
-    act(() => stream().send("filmstrip_segment_ready", { segment_idx: 0, keyframe_uri: "https://f/0.jpg" }));
-    act(() => stream().send("filmstrip_segment_ready", { segment_idx: 1, keyframe_uri: "https://f/1.jpg" }));
-
-    wait(3000);
-    expect(shownFrame(container)?.getAttribute("src")).toBe("https://f/1.jpg");
-  });
-
-  it("a short stage (a 1366 x 768 laptop) takes the small ring and keeps the clock inside it", () => {
-    stageSize = { width: 1118, height: 589 };
+  it("the strip fills as the frames arrive: each at its scene, hidden until its picture loaded, then a short fade and settle", () => {
     const { container } = renderRunning();
-    act(() => stream().send("filmstrip_segment_ready", { segment_idx: 0, keyframe_uri: "https://f/0.jpg" }));
+    sendFrame(2);
+    const third = tiles(container)[2]!;
+    const img = third.querySelector("img")!;
+    expect(img.getAttribute("src")).toBe("https://f/2.jpg");
+    expect(img.getAttribute("alt")).toBe("");
+    expect(img.className).toMatch(/\bopacity-0\b/);
+    expect(third.hasAttribute("data-filled")).toBe(false);
+    expect(third.querySelector('[data-part="shimmer"]')).not.toBeNull();
 
-    const box = Number(ring(container)?.getAttribute("width"));
-    expect(box).toBe(360);
-    // The ring is centred in the stage; the clock (36 tall: text-4xl at leading 1) hangs under it.
-    const clockBottom = (stageSize.height - box) / 2 + parseFloat(clock(container)!.style.top) + 36;
-    expect(clockBottom).toBeLessThanOrEqual(stageSize.height);
+    fireEvent.load(img);
+    expect(third.hasAttribute("data-filled")).toBe(true);
+    expect(img.className).toContain("motion-safe:animate-[result-settle_");
+    expect(img.className).not.toMatch(/\bopacity-0\b/);
+    expect(third.querySelector('[data-part="shimmer"]')).toBeNull();
+    for (const i of [0, 1, 3, 4, 5, 6]) expect(tiles(container)[i]!.querySelector("img")).toBeNull();
   });
 
-  it("a tall wide stage takes the large ring", () => {
+  it("a frame of a later scene adds tiles up to it", () => {
     const { container } = renderRunning();
-    expect(Number(ring(container)?.getAttribute("width"))).toBe(540);
+    sendFrame(8);
+    expect(tiles(container)).toHaveLength(9);
+    expect(q(container, '[data-result="running-strip"]')!.getAttribute("data-tiles")).toBe("9");
+    expect(tiles(container)[8]!.querySelector("img")!.getAttribute("src")).toBe("https://f/8.jpg");
   });
 
-  it("a stage narrower than the small ring and its gutters scales the whole figure down", () => {
-    stageSize = { width: 320, height: 797 };
+  it("a broken event cannot draw the strip as a comb: never more tiles than a run has scenes", () => {
+    const { container } = renderRunning();
+    sendFrame(40);
+    expect(tiles(container)).toHaveLength(24);
+    expect(q(container, '[data-result="running-strip"]')!.getAttribute("data-tiles")).toBe("24");
+  });
+
+  it("a strip frame that cannot load: its tile settles empty and still, without the shimmer's promise", () => {
+    const { container } = renderRunning();
+    sendFrame(2);
+    const third = () => tiles(container)[2]!;
+    fireEvent.error(third().querySelector("img")!);
+    expect(third().querySelector("img")).toBeNull();
+    expect(third().querySelector('[data-part="shimmer"]')).toBeNull();
+    expect(third().hasAttribute("data-filled")).toBe(false);
+    expect(third().hasAttribute("data-failed")).toBe(true);
+    // The other tiles still wait.
+    expect(tiles(container)[3]!.querySelector('[data-part="shimmer"]')).not.toBeNull();
+
+    // The same scene under another address (a reconnect signs it anew) gets its chance.
+    act(() => stream().send("filmstrip_segment_ready", { segment_idx: 2, keyframe_uri: "https://f/2.jpg?sig=b" }));
+    expect(third().hasAttribute("data-failed")).toBe(false);
+    fireEvent.load(third().querySelector("img")!);
+    expect(third().hasAttribute("data-filled")).toBe(true);
+  });
+
+  it("a filled tile stays filled when its scene's frame comes again under a new address", () => {
+    const { container } = renderRunning();
+    sendFrame(2);
+    const third = () => tiles(container)[2]!;
+    fireEvent.load(third().querySelector("img")!);
+    expect(third().hasAttribute("data-filled")).toBe(true);
+
+    act(() => stream().send("filmstrip_segment_ready", { segment_idx: 2, keyframe_uri: "https://f/2.jpg?sig=b" }));
+    const img = third().querySelector("img")!;
+    expect(img.getAttribute("src")).toBe("https://f/2.jpg?sig=b");
+    expect(third().hasAttribute("data-filled")).toBe(true);
+    expect(img.className).not.toMatch(/\bopacity-0\b/);
+    expect(third().querySelector('[data-part="shimmer"]')).toBeNull();
+  });
+
+  it("the strip's tiles are equal and 3 apart, the strip 38 tall on a phone", () => {
+    const { container } = renderRunning();
+    const strip = q(container, '[data-result="running-strip"]')!;
+    expect(strip.style.height).toBe("38px");
+    expect(strip.style.gap).toBe("3px");
+    for (const tile of tiles(container)) expect(tile.className).toMatch(/\bflex-1\b/);
+  });
+
+  it("the tile with no clip and no cover: the first frame that arrived, in scene order; a band of light sweeps down it", () => {
+    const { container } = renderRunning();
+    sendFrame(3);
+    sendFrame(1);
+    expect(shows(container)).toBe("frame");
+    expect(picture(container).querySelector("img")!.getAttribute("src")).toBe("https://f/1.jpg");
+    expect(picture(container).querySelector("img")!.getAttribute("alt")).toBe("");
+    expect(q(picture(container), '[data-part="sweep"]')).not.toBeNull();
+  });
+
+  it("a link run: the post's cover once the stream names it, before any frame; a cover that cannot load falls through to the frame", () => {
+    const { container } = renderRunning();
+    sendFrame(0);
+    sendCover();
+    expect(shows(container)).toBe("cover");
+    expect(picture(container).querySelector("img")!.getAttribute("src")).toBe(COVER);
+    // The platform's host is not told which site asks.
+    expect(picture(container).querySelector("img")!.getAttribute("referrerpolicy")).toBe("no-referrer");
+    expect(q(picture(container), '[data-part="sweep"]')).not.toBeNull();
+
+    fireEvent.error(picture(container).querySelector("img")!);
+    expect(shows(container)).toBe("frame");
+    expect(picture(container).querySelector("img")!.getAttribute("src")).toBe("https://f/0.jpg");
+  });
+
+  it("remembers the run's picture for the result's player: the cover, else the first frame; under the creator's clip the first frame", () => {
+    const view = renderRunning();
+    expect(runStillOf("run-1")).toBeNull();
+    sendFrame(3);
+    expect(runStillOf("run-1")).toBe("https://f/3.jpg");
+    sendFrame(0);
+    expect(runStillOf("run-1")).toBe("https://f/0.jpg");
+    sendCover();
+    expect(runStillOf("run-1")).toBe(COVER);
+    // A cover that cannot load is not what the result should stand on.
+    fireEvent.error(picture(view.container).querySelector("img")!);
+    expect(runStillOf("run-1")).toBe("https://f/0.jpg");
+    view.unmount();
+
+    forgetRunVideos();
+    rememberRunVideo("run-1", "blob:clip-1");
+    const withClip = renderRunning();
+    expect(shows(withClip.container)).toBe("clip");
+    sendFrame(0);
+    expect(runStillOf("run-1")).toBe("https://f/0.jpg");
+  });
+
+  it("a run this tab started from a file: the creator's own clip, muted, looping, no controls, ahead of a cover or frames; no band over it", () => {
+    rememberRunVideo("run-1", "blob:x");
+    const { container } = renderRunning();
+    const video = picture(container).querySelector("video")!;
+    expect(shows(container)).toBe("clip");
+    expect(video.getAttribute("src")).toBe("blob:x");
+    expect(video.muted).toBe(true);
+    expect(video.loop).toBe(true);
+    expect(video.hasAttribute("playsinline")).toBe(true);
+    expect(video.hasAttribute("controls")).toBe(false);
+    expect(q(picture(container), '[data-part="sweep"]')).toBeNull();
+
+    sendCover();
+    sendFrame(0);
+    expect(shows(container)).toBe("clip");
+    expect(picture(container).querySelector("img")).toBeNull();
+  });
+
+  it("a clip that cannot play falls through to the cover, and a cover that cannot load to the frame", () => {
+    rememberRunVideo("run-1", "blob:revoked");
+    const { container } = renderRunning();
+    sendFrame(0);
+    sendCover();
+    fireEvent.error(picture(container).querySelector("video")!);
+    expect(shows(container)).toBe("cover");
+    fireEvent.error(picture(container).querySelector("img")!);
+    expect(shows(container)).toBe("frame");
+  });
+
+  it("a clip the browser will not start by itself (a phone saving power) stands on its first frame, and is not dropped", async () => {
+    HTMLMediaElement.prototype.play = () => Promise.reject(Object.assign(new Error("refused"), { name: "NotAllowedError" }));
+    rememberRunVideo("run-1", "blob:x");
+    const { container } = renderRunning();
+    sendFrame(0);
+
+    await act(async () => {});
+
+    expect(shows(container)).toBe("clip");
+    const video = picture(container).querySelector("video")!;
+    expect(video.getAttribute("src")).toBe("blob:x#t=0.001");
+    expect(video.hasAttribute("autoplay")).toBe(false);
+    expect(video.getAttribute("preload")).toBe("metadata");
+  });
+
+  it("a clip that cannot play at all falls through", async () => {
+    HTMLMediaElement.prototype.play = () => Promise.reject(Object.assign(new Error("no source"), { name: "NotSupportedError" }));
+    rememberRunVideo("run-1", "blob:x");
     const { container } = renderRunning();
 
-    const figure = container.querySelector<HTMLElement>("[data-running-figure]")!;
-    expect(Number(ring(container)?.getAttribute("width"))).toBe(360);
-    expect(figure.style.width).toBe("304px");
-    expect(figure.firstElementChild?.getAttribute("style")).toMatch(/scale\(0\.84/);
+    await act(async () => {});
+
+    expect(shows(container)).toBe("none");
+    expect(picture(container).querySelector("video")).toBeNull();
+  });
+
+  it("the creator's clip is decoration: a screen reader does not meet an unnamed video", () => {
+    rememberRunVideo("run-1", "blob:x");
+    const { container } = renderRunning();
+    expect(picture(container).querySelector("video")!.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("a cover that cannot load, with nothing else to show: no picture is kept for the result", () => {
+    const { container } = renderRunning();
+    sendCover();
+    expect(runStillOf("run-1")).toBe(COVER);
+    fireEvent.error(picture(container).querySelector("img")!);
+    expect(shows(container)).toBe("none");
+    expect(runStillOf("run-1")).toBeNull();
+  });
+
+  it("no frame within the time frames take: the strip's tiles stop shimmering; the plot's band goes on", () => {
+    const { container } = renderRunning(Date.now() - 19_000);
+    expect(tiles(container).every((tile) => tile.querySelector('[data-part="shimmer"]') !== null)).toBe(true);
+    wait(1000);
+    expect(clock(container).textContent).toBe("0:20");
+    expect(tiles(container).some((tile) => tile.querySelector('[data-part="shimmer"]') !== null)).toBe(false);
+    expect(q(container, '[data-part="scan"]')).not.toBeNull();
+  });
+
+  it("with a frame in, the empty tiles go on shimmering however long the run takes", () => {
+    const { container } = renderRunning(Date.now() - 40_000);
+    sendFrame(0);
+    fireEvent.load(tiles(container)[0]!.querySelector("img")!);
+    expect(tiles(container)[0]!.querySelector('[data-part="shimmer"]')).toBeNull();
+    expect(tiles(container)[3]!.querySelector('[data-part="shimmer"]')).not.toBeNull();
+  });
+
+  it("with reduced motion: the clip does not start by itself (its first frame shows), and nothing else moves", () => {
+    prefersReducedMotion(true);
+    const play = vi.fn(() => Promise.resolve());
+    HTMLMediaElement.prototype.play = play;
+    rememberRunVideo("run-1", "blob:x");
+    const withClip = renderRunning();
+    const video = picture(withClip.container).querySelector("video")!;
+    expect(video.autoplay).toBe(false);
+    expect(video.hasAttribute("autoplay")).toBe(false);
+    expect(video.getAttribute("src")).toMatch(/^blob:x/);
+    expect(video.muted).toBe(true);
+    expect(play).not.toHaveBeenCalled();
+    for (const name of ["sweep", "scan", "shimmer"]) expect(q(withClip.container, `[data-part="${name}"]`)).toBeNull();
+    withClip.unmount();
+
+    forgetRunVideos();
+    const still = renderRunning();
+    expect(shows(still.container)).toBe("none");
+    expect(q(still.container, '[data-part="sweep"]')).toBeNull();
+  });
+
+  it("every motion is motion-safe", () => {
+    const { container } = renderRunning();
+    const animated = [...container.querySelectorAll("[class*='animate-']")];
+    expect(animated.length).toBeGreaterThan(0);
+    for (const el of animated) {
+      for (const name of el.getAttribute("class")!.split(/\s+/).filter((c) => c.includes("animate-"))) {
+        expect(name).toMatch(/^motion-safe:animate-\[result-/);
+      }
+    }
+  });
+
+  it("the roster is read and drawn nowhere", () => {
+    const { container } = renderRunning();
+    const before = container.innerHTML;
+    act(() => stream().send("roster", { personas: Array.from({ length: 10 }, (_, i) => ({ archetype: `group-${i}` })) }));
+    expect(container.innerHTML).toBe(before);
+    expect(container.querySelector("[data-wedge], [data-result='running-ring']")).toBeNull();
   });
 
   it("the finish asks for the stored row again at once", () => {
@@ -432,20 +440,22 @@ describe("Running", () => {
     expect(client.getQueryState(key)?.isInvalidated).toBe(true);
   });
 
-  it("is ink and greys only, with no percent and no word but the clock", () => {
+  it("is ink and greys only, with no percent", () => {
     const { container } = renderRunning(Date.now() - 42_000);
-    act(() => stream().send("roster", roster));
-    act(() => stream().send("filmstrip_segment_ready", { segment_idx: 0, keyframe_uri: "https://f/0.jpg" }));
-    wait(600);
-
-    expect(wedges(container)).toHaveLength(10);
-    const text = container.textContent ?? "";
-    expect(text).not.toMatch(/%/);
-    expect(text.replace("0:42", "").trim()).toBe("");
+    sendFrame(0);
+    sendCover();
+    expect(container.textContent).not.toMatch(/%/);
     for (const el of container.querySelectorAll("*")) {
       const look = ["class", "fill", "stroke", "style"].map((name) => el.getAttribute(name) ?? "").join(" ");
       expect(look).not.toMatch(/below|accent|coral/);
     }
+  });
+
+  it("leaving leaves no timer running", () => {
+    const { unmount } = renderRunning();
+    expect(vi.getTimerCount()).toBeGreaterThan(0);
+    unmount();
+    expect(vi.getTimerCount()).toBe(0);
   });
 
   it("the dev page's preview replaces the stream, the remembered video and the clock", () => {
@@ -454,35 +464,95 @@ describe("Running", () => {
       <Running
         id="run-1"
         startedAt={Date.now()}
-        preview={{
-          progress: { groups: roster.personas.map((p) => p.archetype), frames: ["https://f/0.jpg", null], done: false },
-          video: null,
-          elapsed: 42,
-        }}
+        preview={{ progress: { groups: null, frames: ["https://f/0.jpg", null], cover: null, done: false }, video: null, elapsed: 42 }}
       />,
       { wrapper },
     );
-
     expect(FakeEventSource.opened).toHaveLength(0);
-    // A roster that is there when the screen opens is drawn whole.
-    expect(wedges(container)).toHaveLength(10);
-    expect(clock(container)?.textContent).toBe("0:42");
-    expect(shownFrame(container)?.getAttribute("src")).toBe("https://f/0.jpg");
-    expect(picture(container)?.querySelector("video")).toBeNull();
+    expect(clock(container).textContent).toBe("0:42");
+    expect(shows(container)).toBe("frame");
+    expect(tiles(container)[0]!.querySelector("img")!.getAttribute("src")).toBe("https://f/0.jpg");
+    expect(picture(container).querySelector("video")).toBeNull();
   });
 
-  it("the preview can hold the arrival at its first wedges, for the dev page's picture of it", () => {
+  it("the preview's cover", () => {
     const { container } = render(
-      <Running
-        id="run-1"
-        startedAt={Date.now()}
-        preview={{ progress: { groups: roster.personas.map((p) => p.archetype), frames: [], done: false }, arriving: 4 }}
-      />,
+      <Running id="run-1" startedAt={Date.now()} preview={{ progress: { groups: null, frames: [], cover: COVER, done: false }, elapsed: 0 }} />,
       { wrapper },
     );
+    expect(shows(container)).toBe("cover");
+  });
+});
 
-    wait(600);
-    const drawn = [...wedges(container)].map((w) => Number(w.getAttribute("data-wedge")));
-    expect(drawn.sort((a, b) => a - b)).toEqual([0, 2, 5, 7]);
+describe("on a wide window", () => {
+  it("the result's two columns: the large tile with the words under it; the sentence's empty card, the line's card with the base, the band and the strip; no tabs, no panel", () => {
+    setWidth(1440);
+    const { container } = renderRunning();
+    const root = card(container)!;
+    const column = q(root, '[data-part="tile-column"]')!;
+    expect(column.firstElementChild).toBe(picture(container));
+    expect(picture(container).firstElementChild!.className).toMatch(/\brounded-3xl\b/);
+    expect(q(column, '[data-part="building"]')).not.toBeNull();
+    const sentence = q(root, '[data-result="sentence-card"]')!;
+    expect(sentence.children).toHaveLength(0);
+    expect(sentence.className).toContain("min-h-[158px]");
+    const lineCard = q(root, '[data-part="line-card"]')!;
+    expect(q(lineCard, '[data-part="base"]')).not.toBeNull();
+    expect(q(lineCard, '[data-part="scan"]')).not.toBeNull();
+    expect(q(lineCard, '[data-part="plot"]')!.style.height).toBe("104px");
+    expect(q(lineCard, '[data-result="running-strip"]')!.style.height).toBe("46px");
+    expect(container.querySelector('[role="tablist"], [role="tabpanel"]')).toBeNull();
+    expect(q(root, '[data-part="after"]')).toBeNull();
+  });
+});
+
+describe("the wait and the result share their boxes", () => {
+  const PHONE_BOXES = ["tile-box", "under", "line-box", "line-frame", "plot", "strip-slot", "times"];
+  const WIDE_BOXES = ["tile-column", "under", "line-card", "line-frame", "plot", "strip-slot", "times"];
+  const boxesOf = (root: Element, names: string[]) =>
+    names.map((name) => {
+      const el = root.querySelector<HTMLElement>(`[data-part="${name}"]`)!;
+      return [name, el.className, el.getAttribute("style")];
+    });
+
+  it("on a phone: the first card's boxes are the result's, class for class and size for size", () => {
+    const wait = renderRunning();
+    const waitCard = card(wait.container)!;
+    const waited = {
+      card: waitCard.className,
+      boxes: boxesOf(waitCard, PHONE_BOXES),
+      tile: picture(wait.container).className,
+      strip: q(waitCard, '[data-result="running-strip"]')!.style.height,
+    };
+    wait.unmount();
+
+    const model = modelOf(early, { frames: true });
+    const result = renderWithPlayhead(model, <VideoResult model={model} />);
+    const hero = q(result.container, '[data-result="hero"]')!;
+    expect(hero.className).toBe(waited.card);
+    expect(boxesOf(hero, PHONE_BOXES)).toEqual(waited.boxes);
+    expect(q(hero, '[data-result="video"]')!.className).toBe(waited.tile);
+    expect(q(hero, '[data-result="strip"]')!.style.height).toBe(waited.strip);
+  });
+
+  it("on a wide window: the columns, the sentence's card and the line's card are the result's", () => {
+    setWidth(1440);
+    const wait = renderRunning();
+    const root = card(wait.container)!;
+    const waited = {
+      grid: q(root, '[data-part="tile-column"]')!.parentElement!.className,
+      sentence: q(root, '[data-result="sentence-card"]')!.className,
+      boxes: boxesOf(root, WIDE_BOXES),
+      tile: picture(wait.container).className,
+    };
+    wait.unmount();
+
+    const model = modelOf(early, { frames: true });
+    const result = renderWithPlayhead(model, <VideoResult model={model} />);
+    const column = q(result.container, '[data-part="tile-column"]')!;
+    expect(column.parentElement!.className).toBe(waited.grid);
+    expect(q(result.container, '[data-result="sentence-card"]')!.className).toBe(waited.sentence);
+    expect(boxesOf(column.parentElement!.parentElement!, WIDE_BOXES)).toEqual(waited.boxes);
+    expect(q(column, '[data-result="video"]')!.className).toBe(waited.tile);
   });
 });
