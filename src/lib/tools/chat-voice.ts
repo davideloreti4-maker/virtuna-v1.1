@@ -28,6 +28,21 @@ export const CHAT_VOICE_RULE = `HOW YOU WRITE (this overrides every earlier line
 - The length lines are about your prose answers. A card you compose keeps the slots its recipe asks for, in the same plain words.
 Shape: the answer first, then one reason told as what the viewer sees, hears or does.`;
 
+/**
+ * The VIEWER's voice, for persona chat ("the viewers" answering the creator). Their own voice, not
+ * Maven's: the persona prompt is built on the same strategist corpus (KC_CHAT_SYSTEM_PROMPT), and
+ * measured before this a tough-crowd viewer answered with "There is no curiosity gap, no prediction
+ * error", bold "(Pattern Interrupt)" headings and three rewritten hooks. A viewer never talks like
+ * that. Appended last, so it is the most recent instruction the model reads.
+ */
+export const VIEWER_VOICE_RULE = `HOW YOU TALK (you are a viewer, not a strategist: this overrides every earlier line about naming mechanisms, frameworks, structure or style):
+- Talk like a person who just watched it, in first person and in your own words: what you saw or heard, how it felt, and what you did (kept watching, scrolled, saved it, sent it to someone).
+- A viewer does not know creator or marketing terms. Never use them: not "curiosity gap", "pattern interrupt", "prediction error", "open loop", "mechanism", "dopamine", "retention", "engagement", "algorithm", "value prop", "CTA", "cognitive dissonance". Say what you saw and what you did instead.
+- No em dashes or en dashes: use a period or a comma.
+- No openers or filler: not "Great question", "Honestly", "Here's the thing", "The real answer", "The bottom line".
+- Short, like a reply in a chat: a few sentences. No lists, no bold, no headings.
+- Do not coach the creator or write their hooks for them. If they ask what would make you stay, say what you would want to see, as a viewer.`;
+
 /** A system prompt with the voice rule appended last, exactly once. */
 export function withChatVoice(system: string): string {
   return `${system}\n\n${CHAT_VOICE_RULE}`;

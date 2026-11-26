@@ -22,7 +22,7 @@ import {
   ARCHETYPE_TRIGGERS,
 } from "@/lib/engine/wave3/persona-registry";
 import { KC_CHAT_SYSTEM_PROMPT } from "@/lib/kc/compiled";
-import { CHAT_VOICE_RULE, withChatVoice } from "@/lib/tools/chat-voice";
+import { CHAT_VOICE_RULE, VIEWER_VOICE_RULE, withChatVoice } from "@/lib/tools/chat-voice";
 import type { RetrievedExample } from "@/lib/grounding/types";
 
 // ─── Mock Qwen client — capture the create() args + emit two tokens ────────────
@@ -138,8 +138,10 @@ describe("runChatPipeline personaGrounding [runner]", () => {
     );
     // A trigger phrase from the registry is woven in (in-voice instruction).
     expect(systemMsg.content).toContain(ARCHETYPE_TRIGGERS.tough_crowd.stop[0]!);
-    // A viewer talks in its own voice: the creator-facing chat voice rule is not added.
+    // A viewer talks in its own voice: not Maven's chat voice rule, but the viewer's, last and once.
     expect(systemMsg.content).not.toContain(CHAT_VOICE_RULE);
+    expect(systemMsg.content.endsWith(VIEWER_VOICE_RULE)).toBe(true);
+    expect(systemMsg.content.split(VIEWER_VOICE_RULE)).toHaveLength(2);
 
     // The concept text + reaction quote do NOT leak into the system prompt — they ride the
     // fenced assembleBundle.overrides (Security Domain — injection-safe).
@@ -303,14 +305,14 @@ describe("runChatPipeline: the dash pass on open chat (plain-dashes.ts)", () => 
     expect(result.fullContent).toBe(tokens.join(""));
   });
 
-  it("persona chat: a viewer speaks in its own voice, so its text is passed through as written", async () => {
-    createMock.mockResolvedValue(makeStream(["I'd keep scrolling — seen it."]));
+  it("persona chat: its own voice, but the same dash pass, and what is stored is what streamed", async () => {
+    createMock.mockResolvedValue(makeStream(["I'd keep scrolling ", "—", " seen it."]));
     const tokens: string[] = [];
     const result = await runChatPipeline(
       { ...BASE_INPUT, personaGrounding: { archetype: "tough_crowd", personaName: "Maya" } },
       (d) => tokens.push(d),
     );
-    expect(result.fullContent).toBe("I'd keep scrolling — seen it.");
-    expect(tokens.join("")).toBe("I'd keep scrolling — seen it.");
+    expect(tokens.join("")).toBe("I'd keep scrolling. Seen it.");
+    expect(result.fullContent).toBe(tokens.join(""));
   });
 });

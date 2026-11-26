@@ -2,7 +2,8 @@
  * remix-film.ts — what a remix's "How to film it" sheet holds (thread depth spec, second part §4).
  *
  * Known from the card itself (`remixFilmOf`), so it decides whether the card has the button at all:
- * - "Why the original worked": the decode's `hookPattern`, then its `theTurn` under it. One of the
+ * - "Why the original worked": the decode's plain line (`whyPlain`) alone when it has one; for a remix
+ *   stored before it existed, the decode's `hookPattern`, then its `theTurn` under it. One of the
  *   two missing: the other alone (as the row's text). Both missing: no row.
  * - The plan, when the card has `production`: the script's own rows (`filmPlanOf`).
  * - Neither: null, and the card has no button. A `blueprintId` alone is not enough: what it holds is
@@ -50,8 +51,9 @@ export interface RemixBeatRow {
 export function remixFilmOf(props: Pick<RemixProps, "sourceDecode" | "production" | "blueprintId" | "blueprintVariant">): RemixFilm | null {
   const pattern = props.sourceDecode?.hookPattern.trim() || null;
   const turn = props.sourceDecode?.theTurn.trim() || null;
+  const plain = props.sourceDecode?.whyPlain?.trim() || null;
   const lead = pattern ?? turn;
-  const why = lead ? { text: lead, sub: pattern ? turn : null } : null;
+  const why = plain ? { text: plain, sub: null } : lead ? { text: lead, sub: pattern ? turn : null } : null;
   const plan = filmPlanOf(props.production);
   if (!why && plan.length === 0) return null;
   return { why, plan, blueprintId: props.blueprintId ?? null, variant: props.blueprintVariant ?? 0 };

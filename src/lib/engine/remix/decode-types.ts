@@ -66,6 +66,8 @@ export interface DecodeResult {
   repeatable: string[];
   /** length >= 1 ALWAYS — pure-TS backstop in runDecode ensures this (D-04) */
   luck: { category: LuckCategory; note: string }[];
+  /** "Why the original worked" in plain words for the creator (WHY_PLAIN_RULE); absent on older decodes. */
+  whyPlain?: string;
 }
 
 /**
@@ -153,6 +155,7 @@ export const DecodeResultZodSchema = z.object({
       note: z.string().min(1),
     }),
   ).min(1),
+  whyPlain: z.string().min(1).optional(),
 });
 
 export type DecodeResultZod = z.infer<typeof DecodeResultZodSchema>;

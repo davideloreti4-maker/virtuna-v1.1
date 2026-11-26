@@ -9,6 +9,7 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   CHAT_VOICE_RULE,
+  VIEWER_VOICE_RULE,
   withChatVoice,
   ideasClosingPrompt,
   hooksClosingPrompt,
@@ -38,6 +39,15 @@ Shape: the answer first, then one reason told as what the viewer sees, hears or 
 
 const DASH = /[–—]/;
 
+/** A viewer's rule, word for word (persona chat). Their own voice; a viewer never says "curiosity gap". */
+const VIEWER_RULE = `HOW YOU TALK (you are a viewer, not a strategist: this overrides every earlier line about naming mechanisms, frameworks, structure or style):
+- Talk like a person who just watched it, in first person and in your own words: what you saw or heard, how it felt, and what you did (kept watching, scrolled, saved it, sent it to someone).
+- A viewer does not know creator or marketing terms. Never use them: not "curiosity gap", "pattern interrupt", "prediction error", "open loop", "mechanism", "dopamine", "retention", "engagement", "algorithm", "value prop", "CTA", "cognitive dissonance". Say what you saw and what you did instead.
+- No em dashes or en dashes: use a period or a comma.
+- No openers or filler: not "Great question", "Honestly", "Here's the thing", "The real answer", "The bottom line".
+- Short, like a reply in a chat: a few sentences. No lists, no bold, no headings.
+- Do not coach the creator or write their hooks for them. If they ask what would make you stay, say what you would want to see, as a viewer.`;
+
 describe("the rule", () => {
   it("is word for word, and itself has no dash to copy", () => {
     expect(CHAT_VOICE_RULE).toBe(RULE);
@@ -49,6 +59,13 @@ describe("the rule", () => {
     expect(out.startsWith("SYSTEM\n\n")).toBe(true);
     expect(out.endsWith(CHAT_VOICE_RULE)).toBe(true);
     expect(out.split(CHAT_VOICE_RULE)).toHaveLength(2);
+  });
+});
+
+describe("the viewer's rule (persona chat)", () => {
+  it("is word for word, and has no dash to copy", () => {
+    expect(VIEWER_VOICE_RULE).toBe(VIEWER_RULE);
+    expect(VIEWER_VOICE_RULE).not.toMatch(DASH);
   });
 });
 
