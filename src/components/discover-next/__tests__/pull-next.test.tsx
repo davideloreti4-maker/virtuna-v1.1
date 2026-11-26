@@ -312,9 +312,12 @@ describe("the pull page — Pull, and what it shows", () => {
     const cards = within(grid()).getAllByRole("button");
     expect(cards.map((c) => c.getAttribute("aria-label"))).toEqual([LINE, "Video by @jay.makes"]);
     expect(cards[0]).toHaveAttribute("aria-haspopup", "dialog");
-    // The first: its badge and meta describe it; the second is not proven: no badge.
+    // The first: its badge and meta describe it, with the ▲ of a proven video; the second beat their
+    // usual (2×) without being proven: its multiple, no ▲.
     expect(cards[0]).toHaveAccessibleDescription("16× @jay.makes · 18.4M");
-    expect(cards[1]!.querySelector('[data-part="badge"]')).toBeNull();
+    expect(cards[0]!.querySelector('[data-part="badge"] svg')).not.toBeNull();
+    expect(cards[1]!.querySelector('[data-part="badge"]')).toHaveTextContent("2×");
+    expect(cards[1]!.querySelector('[data-part="badge"] svg')).toBeNull();
     expect(screen.getByText(LINE)).toBeInTheDocument();
     expect(screen.queryByText(/#diy/)).toBeNull();
     // The library card's face: the count is never the part a narrow card cuts.

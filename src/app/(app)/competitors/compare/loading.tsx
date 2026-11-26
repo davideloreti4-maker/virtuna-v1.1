@@ -1,4 +1,5 @@
 import { Skeleton } from "@/components/ui/skeleton";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 
 /**
  * Loading skeleton for the comparison page.
@@ -8,6 +9,8 @@ import { Skeleton } from "@/components/ui/skeleton";
  * (no bare clinical pulse).
  */
 export default function CompareLoading() {
+  // Under the new look this address only redirects to the Watchlist: nothing to outline.
+  if (NEW_LOOK_ENABLED) return null;
   return (
     <div className="space-y-6">
       {/* Header skeleton */}

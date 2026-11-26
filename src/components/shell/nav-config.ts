@@ -39,8 +39,9 @@ export const PLACES: readonly Place[] = [
   {
     id: "discover",
     label: "Discover",
-    // The hub lives at /feed; /discover and /competitors only redirect into it. Every path under
-    // /feed lights Discover: the hub and the pages it pushes.
+    // The hub lives at /feed; /discover, /competitors and /competitors/compare redirect into it, and
+    // /competitors/<handle> is a page of its own, a followed creator's, pushed from the Watchlist. Every
+    // path under these lights Discover: the hub and the pages it pushes.
     href: "/feed",
     icon: DiscoverIcon,
     prefixes: ["/feed", "/competitors", "/discover"],
@@ -132,6 +133,9 @@ export function backTarget(pathname: string): string {
  * - Discover's pushed pages, a video, a collection and the pull page. They are opened from the hub's
  *   grid, whose filter, order, search and scroll live in the hub's own history entry, so going back
  *   returns to the grid as it was left; pushing `/feed` would drop all of it.
+ * - A followed creator's page, `/competitors/<handle>` (not `/competitors/compare`). It is opened from the
+ *   Watchlist chip, whose search lives in the hub's history entry, so Back returns to the Watchlist as it
+ *   was left.
  * - You, Earn and Settings, exactly. The phone's menu opens them from any place or chat, so Back
  *   returns there as it was left (Library where it was scrolled, the chat that was open); Settings
  *   opened from You still returns to You.
@@ -140,6 +144,7 @@ export function backInHistory(pathname: string): boolean {
   return (
     /^\/feed\/(?:video|collection)\/[^/]+$/.test(pathname) ||
     pathname === "/feed/discover" ||
+    /^\/competitors\/(?!compare$)[^/]+$/.test(pathname) ||
     pathname === YOU.href ||
     pathname === EARN.href ||
     pathname === "/settings"

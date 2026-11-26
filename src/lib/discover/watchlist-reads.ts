@@ -63,7 +63,11 @@ export interface WatchlistSource {
   competitorId?: string | null;
   /** Up to three covers Maven stores (public Storage), newest first, each once. */
   covers?: string[];
-  /** Measured videos at 3× or more (`MIN_OUTLIER_MULTIPLIER`); `outlierCount` counts every one. */
+  /**
+   * Measured videos at 3× or more (`MIN_OUTLIER_MULTIPLIER`) of the creator's last read only, as the
+   * creator's page shows them (`lastReadOf`): one read writes one `ingested_at` on all its rows, and an
+   * older read was measured against an older median. `outlierCount` counts every measured video.
+   */
   provenCount?: number;
 }
 
@@ -181,16 +185,31 @@ export async function getWatchlistData(supabase: ServerClient): Promise<Watchlis
   if (trackedHandles.length > 0) {
     const { data: outlierRows } = await supabase
       .from("scraped_videos")
-      .select("creator_handle, outlier_multiplier, posted_at, cover_url:metadata->>cover_url")
+      .select(
+        "creator_handle, platform, outlier_multiplier, baseline_label, posted_at, cover_url:metadata->>cover_url, ingested_at:metadata->>ingested_at",
+      )
       .in("creator_handle", trackedHandles)
       .not("outlier_multiplier", "is", null);
-    for (const row of outlierRows ?? []) {
+    const rows = outlierRows ?? [];
+    // The newest TikTok read per creator: its rows alone count as proven, as the creator's page reads and
+    // shows that read (TikTok rows, a basis that is not blank).
+    const readAt = (row: { ingested_at: string | null }) => Date.parse(row.ingested_at ?? "");
+    const onPage = (row: { platform: string | null; baseline_label: string | null }) =>
+      row.platform === "tiktok" && Boolean(row.baseline_label?.trim());
+    const lastRead = new Map<string, number>();
+    for (const row of rows) {
+      if (row.platform !== "tiktok") continue;
+      const key = normalize(row.creator_handle);
+      const at = readAt(row);
+      if (Number.isFinite(at) && at > (lastRead.get(key) ?? -Infinity)) lastRead.set(key, at);
+    }
+    for (const row of rows) {
       const key = normalize(row.creator_handle);
       const m = Number(row.outlier_multiplier) || 0;
       const agg = outlierAgg.get(key) ?? { n: 0, best: 0, proven: 0, covers: [] };
       agg.n += 1;
       if (m > agg.best) agg.best = m;
-      if (m >= MIN_OUTLIER_MULTIPLIER) agg.proven += 1;
+      if (m >= MIN_OUTLIER_MULTIPLIER && onPage(row) && readAt(row) === lastRead.get(key)) agg.proven += 1;
       if (isStoredCover(row.cover_url)) agg.covers.push({ url: row.cover_url, postedAt: row.posted_at });
       outlierAgg.set(key, agg);
     }

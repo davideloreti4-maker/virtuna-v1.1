@@ -12,6 +12,7 @@ import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testi
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { ToastProvider } from "@/components/ui/toast";
+import { SESSION_EXPIRED_EVENT } from "@/lib/auth/session-expired";
 import type { CardVideo, HubData } from "@/lib/discover-next/hub-data";
 import type { WatchlistData, WatchlistSource } from "@/lib/discover/watchlist-reads";
 
@@ -105,6 +106,8 @@ function source(over: Partial<WatchlistSource>): WatchlistSource {
   };
 }
 
+// JAY and NIA are drawn as menus: the Remove cases run through a row's menu; a row with a profile is a
+// link, below (KAI).
 /** Followed and linked, on two platforms: three records. */
 const JAY = source({
   key: "p-jay",
@@ -113,15 +116,25 @@ const JAY = source({
   avatarUrl: "https://store.example/jay.jpg",
   followerCount: 162_000_000,
   provenCount: 12,
-  profileHandle: "jay.makes",
+  profileHandle: null,
   trackedIds: ["t-jay-tt", "t-jay-ig"],
   competitorId: "p-jay",
   covers: ["https://store.example/j1.jpg", "https://store.example/j2.jpg", "https://store.example/j3.jpg"],
 });
 /** Linked only. */
-const NIA = source({ key: "p-nia", handle: "nia.cooks", name: "Nia in the kitchen", followerCount: 86_000_000, profileHandle: "nia.cooks", competitorId: "p-nia" });
+const NIA = source({ key: "p-nia", handle: "nia.cooks", name: "Nia in the kitchen", followerCount: 86_000_000, profileHandle: null, competitorId: "p-nia" });
 /** Followed only. */
 const DEV = source({ key: "dev.lifts", handle: "dev.lifts", name: "dev.lifts", trackedIds: ["t-dev"] });
+/** Followed and linked, with a profile: the row is a link to their page. */
+const KAI = source({
+  key: "p-kai",
+  handle: "kai.wanders",
+  name: "kai.wanders",
+  followerCount: 2_000_000,
+  profileHandle: "kai.wanders",
+  trackedIds: ["t-kai"],
+  competitorId: "p-kai",
+});
 
 const WATCHLIST: WatchlistData = { sources: [JAY, NIA, DEV], latest: [], incomplete: false };
 const NOBODY: WatchlistData = { sources: [], latest: [], incomplete: false };
@@ -205,6 +218,8 @@ const rowNames = () =>
     .getAllByRole("button")
     .map((b) => b.getAttribute("aria-label") ?? document.getElementById(b.getAttribute("aria-labelledby") ?? "")?.textContent ?? b.textContent);
 const rowOf = (handle: string) => screen.getByRole("button", { name: `@${handle}` });
+/** A row with a profile: the link to the creator's page. */
+const linkOf = (handle: string) => within(list()).getByRole("link", { name: `@${handle}` });
 const followRow = () => within(list()).getByRole("button", { name: "Follow a creator" });
 const field = () => screen.getByRole("textbox", { name: "Search" });
 const dialog = () => screen.getByRole("dialog");
@@ -285,6 +300,23 @@ describe("Watchlist — the rows", () => {
     expect(errors.mock.calls.filter((call) => /same key/.test(String(call[0])))).toEqual([]);
   });
 
+  it("a creator with a profile is a link to their page; one without keeps its menu", () => {
+    renderChip({ watchlist: { ...WATCHLIST, sources: [DEV, KAI] } });
+    const items = within(list()).getAllByRole("listitem");
+    expect(within(items[1]!).getByRole("link", { name: "@kai.wanders" })).toBe(linkOf("kai.wanders"));
+    expect(linkOf("kai.wanders")).toHaveAttribute("href", "/competitors/kai.wanders");
+    expect(linkOf("kai.wanders")).toHaveAccessibleDescription("2M followers");
+    expect(rowNames()).toEqual(["@dev.lifts", "Follow a creator"]);
+    // The link opens no menu (the browser would follow it; the test stays).
+    linkOf("kai.wanders").addEventListener("click", (e) => e.preventDefault());
+    fireEvent.click(linkOf("kai.wanders"));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    // The row without one still opens its menu.
+    expect(rowOf("dev.lifts")).toHaveAttribute("aria-haspopup", "dialog");
+    fireEvent.click(rowOf("dev.lifts"));
+    expect(screen.getByRole("dialog", { name: "@dev.lifts" })).toBeInTheDocument();
+  });
+
   it("a search no row holds: No creator matches that., and the Follow row", () => {
     renderChip();
     fireEvent.change(field(), { target: { value: "zzz" } });
@@ -363,6 +395,15 @@ describe("Watchlist — the read failed", () => {
     again(WATCHLIST);
     expect(rowOf("jay.makes")).toHaveFocus();
   });
+
+  it("once a retry reads it, a first row with a profile takes the focus on its link", () => {
+    const { again } = renderChip({ watchlist: NOBODY, failures: { corpus: false, watchlist: true } });
+    const button = screen.getByRole("button", { name: "Try again" });
+    button.focus();
+    fireEvent.click(button);
+    again({ ...WATCHLIST, sources: [KAI, JAY, NIA] });
+    expect(linkOf("kai.wanders")).toHaveFocus();
+  });
 });
 
 // ─── Remove ──────────────────────────────────────────────────────────────────
@@ -421,6 +462,22 @@ describe("Watchlist — Remove clears every record the row rests on", () => {
     expect(router.refresh).toHaveBeenCalledTimes(1);
   });
 
+  it("a lapsed session: the app's sign-in dialog, no toast of ours; the row comes back and the page reads again", async () => {
+    const session = vi.fn();
+    window.addEventListener(SESSION_EXPIRED_EVENT, session);
+    onTestFinished(() => window.removeEventListener(SESSION_EXPIRED_EVENT, session));
+    removeCompetitor.mockResolvedValue({ error: "Not authenticated" });
+    renderChip();
+    removeRow("nia.cooks");
+    expect(rowNames()).not.toContain("@nia.cooks");
+    await waitFor(() => expect(session).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(rowNames()).toContain("@nia.cooks"));
+    expect(rowNames()).toEqual(["@jay.makes", "@nia.cooks", "@dev.lifts", "Follow a creator"]);
+    expect(screen.queryByText("Couldn't remove @nia.cooks.")).toBeNull();
+    expect(screen.queryAllByRole("alert")).toEqual([]);
+    expect(router.refresh).toHaveBeenCalledTimes(1);
+  });
+
   it("a link the action refuses (an answer with an error) counts as refused", async () => {
     removeCompetitor.mockResolvedValue({ error: "Failed to remove competitor" });
     renderChip();
@@ -441,6 +498,27 @@ describe("Watchlist — Remove clears every record the row rests on", () => {
     removeRow("dev.lifts");
     await settle();
     expect(rowOf("nia.cooks")).toHaveFocus();
+  });
+
+  it("a removed row's focus goes to the link now in its place", async () => {
+    renderChip({ watchlist: { ...WATCHLIST, sources: [DEV, KAI] } });
+    removeRow("dev.lifts");
+    await settle();
+    expect(linkOf("kai.wanders")).toHaveFocus();
+  });
+
+  it("the last row's focus goes to the link before it", async () => {
+    renderChip({ watchlist: { ...WATCHLIST, sources: [KAI, DEV] } });
+    removeRow("dev.lifts");
+    await settle();
+    expect(linkOf("kai.wanders")).toHaveFocus();
+  });
+
+  it("a link above is counted: the focus goes to the row now in its place, not one further", async () => {
+    renderChip({ watchlist: { ...WATCHLIST, sources: [KAI, DEV, JAY, NIA] } });
+    removeRow("dev.lifts");
+    await settle();
+    expect(rowOf("jay.makes")).toHaveFocus();
   });
 
   it("the only row's focus goes to Follow a creator", async () => {

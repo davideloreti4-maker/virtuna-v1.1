@@ -7,6 +7,9 @@ import { describe, expect, it } from "vitest";
 import { badgeOf, cardMetaParts, cardName } from "../card";
 import {
   DISCOVER_STRINGS,
+  audienceBuilt,
+  creatorLine,
+  creatorMore,
   filterLine,
   followFailed,
   followNotSaved,
@@ -24,6 +27,7 @@ import {
   pullRunning,
   pullTitle,
   pulledNumbers,
+  readFailed,
   readingHandle,
   removeQuestion,
   removeRefused,
@@ -31,6 +35,7 @@ import {
   showVideos,
   videosCount,
   videosRead,
+  viewsWords,
   type PullTopic,
 } from "../discover-words";
 import type { CardVideo } from "../hub-data";
@@ -129,6 +134,35 @@ describe("the fixed strings", () => {
     expect(JSON.stringify(DISCOVER_STRINGS.follow)).not.toMatch(/credit/);
   });
 
+  it("the creator's page", () => {
+    expect(DISCOVER_STRINGS.creator).toEqual({
+      title: "Creator",
+      readAgain: "Read again",
+      reading: "Reading…",
+      readToday: "Read today. Maven reads a creator once a day.",
+      held: "Couldn't be read",
+      heldLine: "Maven couldn't read this account. Read again, or remove it.",
+      build: "Build their audience",
+      buildLine: "Then simulate your video for their viewers. About two minutes. Free.",
+      simulate: "Simulate a video for their viewers",
+      simulateFailed: "Couldn't switch the audience.",
+      pull: "Pull their best videos · 5 credits",
+      videos: "Their videos",
+      order: "Biggest jump",
+      noVideos: "No videos read yet. Read again to get their latest.",
+      noVideosToday: "No videos read yet.",
+      gone: "This creator isn't on your watchlist.",
+      watchlist: "Watchlist",
+      failed: "Couldn't load this creator.",
+      tryAgain: "Try again",
+    });
+    // The words the row wrote before the page are the page's, unchanged.
+    expect(DISCOVER_STRINGS.watchlist.held).toBe("Couldn't be read");
+    expect(DISCOVER_STRINGS.watchlist.pull).toBe("Pull their best videos · 5 credits");
+    expect(DISCOVER_STRINGS.creator.held).toBe(DISCOVER_STRINGS.watchlist.held);
+    expect(DISCOVER_STRINGS.creator.pull).toBe(DISCOVER_STRINGS.watchlist.pull);
+  });
+
   it("pulling", () => {
     expect(DISCOVER_STRINGS.pull).toEqual({
       button: "Pull",
@@ -199,6 +233,39 @@ describe("named words: a handle written once with its @", () => {
     expect(followFailed(handle)).toBe("Couldn't follow @jay.makes. Check the handle and try again.");
     expect(followNotSaved(handle)).toBe("Couldn't follow @jay.makes. Try again.");
     expect(followRefused(handle)).toBe("Couldn't follow @jay.makes.");
+  });
+});
+
+describe("the creator's sentences", () => {
+  it("a card's foot: the views alone, as the card and the sheet count them", () => {
+    expect(viewsWords(106_100)).toBe("106K views");
+    expect(viewsWords(849_100)).toBe("849K views");
+    expect(viewsWords(10_610)).toBe("10.6K views");
+    expect(viewsWords(1)).toBe("1 view");
+  });
+
+  it("the card's line: a part not known is left out with its dot", () => {
+    expect(creatorLine({ handle: "jay.makes", read: "read 13 Jul", videos: 12 })).toBe("@jay.makes · TikTok · read 13 Jul · 12 videos");
+    expect(creatorLine({ handle: null, read: "Reading…", videos: 1 })).toBe("TikTok · Reading… · 1 video");
+    expect(creatorLine({ handle: "jay.makes", read: null, videos: 0 })).toBe("@jay.makes · TikTok");
+    expect(creatorLine({ handle: "@jay.makes", read: null, videos: 0 })).toBe("@jay.makes · TikTok");
+  });
+
+  it("the card's line breaks at its dots only: inside a part the spaces do not break", () => {
+    const line = creatorLine({ handle: "jay.makes", read: "read 30 Dec 2025", videos: 1_200 });
+    expect(line).toBe("@jay.makes · TikTok · read 30 Dec 2025 · 1,200 videos");
+    // The dots keep their ordinary spaces; no part keeps one.
+    const parts = line.split(" · ");
+    expect(parts).toEqual(["@jay.makes", "TikTok", "read 30 Dec 2025", "1,200 videos"]);
+    expect(parts.every((part) => !part.includes(" "))).toBe(true);
+  });
+
+  it("their audience's day, a failed read, and More's name", () => {
+    expect(audienceBuilt("14 Nov")).toBe("Their audience was built 14 Nov.");
+    expect(readFailed("@jay.makes")).toBe("Couldn't read @jay.makes. Try again later.");
+    expect(readFailed("jay.makes")).toBe("Couldn't read @jay.makes. Try again later.");
+    expect(creatorMore("jay.makes")).toBe("More: @jay.makes");
+    expect(creatorMore("@jay.makes")).toBe("More: @jay.makes");
   });
 });
 
@@ -274,6 +341,14 @@ describe("the words never on screen", () => {
     followFailed("jay.makes"),
     followNotSaved("jay.makes"),
     followRefused("jay.makes"),
+    viewsWords(106_100),
+    viewsWords(1),
+    creatorLine({ handle: "jay.makes", read: "read 13 Jul", videos: 12 }),
+    creatorLine({ handle: null, read: "Reading…", videos: 1 }),
+    creatorLine({ handle: "jay.makes", read: null, videos: 0 }),
+    audienceBuilt("14 Nov"),
+    readFailed("jay.makes"),
+    creatorMore("jay.makes"),
     ...[HANDLE, WORDS].flatMap((t) => [pullTitle(t), pullLine(t), pullRunning(t), pullNone(t), pullFailed(t)]),
     // The rules' words over their cases: the stored label says "usual", the words never do.
     ...[

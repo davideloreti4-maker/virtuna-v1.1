@@ -78,7 +78,7 @@ export interface RowMenuLayerProps {
   /** The header's cross. */
   onClose(): void;
   /** Takes the focus when the layer opens. */
-  firstRef: React.RefObject<HTMLButtonElement | null>;
+  firstRef: React.RefObject<HTMLElement | null>;
   /** More itself. */
   triggerRef: React.RefObject<HTMLButtonElement | null>;
   /** Hairlines between the rows (a menu); a step's pill has none. Their 1 px stays, unseen. */

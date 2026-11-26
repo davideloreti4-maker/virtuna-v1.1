@@ -4,7 +4,8 @@ import * as React from "react";
 import { useId, useState } from "react";
 import Link from "next/link";
 
-import { badgeOf, cardMetaParts, cardName, lineOf } from "@/lib/discover-next/card";
+import { badgeOf, cardMetaParts, cardName, lineOf, shownViews } from "@/lib/discover-next/card";
+import { viewsWords } from "@/lib/discover-next/discover-words";
 import type { CardVideo } from "@/lib/discover-next/hub-data";
 
 import { COVER_LOOK, SHADE_BACKGROUND, SHADE_HEIGHT } from "./cover-look";
@@ -21,6 +22,7 @@ import { UpMark } from "./discover-icons";
  *   caption is shown as written (`lineOf`).
  * - A cover that does not load, or none, is the neutral tile; the shade stays, so the words read.
  * - On a narrow card a long handle is cut, never the count beside it.
+ * - On a creator's page every card is theirs: the foot says the views alone ("106K views"), no handle.
  * - The face (`VideoCardFace`) is the one a pulled video's card draws too (a button there: it has no
  *   page), so the two cannot drift.
  */
@@ -59,21 +61,29 @@ export function CoverImage({ src, lazy = false }: { src: string | null; lazy?: b
   );
 }
 
+/**
+ * What a card says at its foot: "@handle · 39.8M" (Discover's grids), or "106K views" alone (a creator's
+ * page, whose cards are all theirs).
+ */
+export type CardFoot = "byline" | "views";
+
 /** The ids of the parts that describe a card (its badge and its meta), for `aria-describedby`. */
-export function cardDescribedBy(id: string, video: CardVideo): string | undefined {
+export function cardDescribedBy(id: string, video: CardVideo, foot: CardFoot = "byline"): string | undefined {
   const { handle, views } = cardMetaParts(video);
-  return [badgeOf(video) ? `${id}-badge` : null, handle || views ? `${id}-meta` : null].filter(Boolean).join(" ") || undefined;
+  const meta = foot === "views" ? shownViews(video.views) !== null : Boolean(handle || views);
+  return [badgeOf(video) ? `${id}-badge` : null, meta ? `${id}-meta` : null].filter(Boolean).join(" ") || undefined;
 }
 
 /**
  * What a card draws over its box: the cover (or the neutral tile), the shade, the multiple's badge, the
- * line and the meta. The meta is drawn in two parts: the handle gives way on a narrow card, and the count
- * beside it keeps its width.
+ * line and the meta. The byline is drawn in two parts: the handle gives way on a narrow card, and the count
+ * beside it keeps its width. The views alone are one part, the count with its word.
  */
-export function VideoCardFace({ video, id }: { video: CardVideo; id: string }): React.JSX.Element {
+export function VideoCardFace({ video, id, foot = "byline" }: { video: CardVideo; id: string; foot?: CardFoot }): React.JSX.Element {
   const line = lineOf(video);
   const badge = badgeOf(video);
   const { handle, views } = cardMetaParts(video);
+  const count = shownViews(video.views);
   return (
     <>
       <CoverImage src={video.coverUrl} lazy />
@@ -85,26 +95,34 @@ export function VideoCardFace({ video, id }: { video: CardVideo; id: string }): 
           className="absolute left-2 top-2 flex h-[26px] items-center gap-1 rounded-full pl-2 pr-2.5 text-meta font-[640] tabular-nums"
           style={{ background: COVER_LOOK.badge, color: COVER_LOOK.ink }}
         >
-          <UpMark />
+          {video.proven && <UpMark />}
           {badge}
         </span>
       )}
       <span className="absolute inset-x-[11px] bottom-2.5 flex flex-col gap-[3px]" style={{ color: COVER_LOOK.ink }}>
         {line && <span className="line-clamp-2 text-reading font-[640] leading-[1.22]">{line}</span>}
-        {(handle || views) && (
-          <span id={`${id}-meta`} className="flex min-w-0 text-label tabular-nums" style={{ color: COVER_LOOK.inkSoft }}>
-            {handle && (
-              <span data-part="handle" className="min-w-0 truncate">
-                {handle}
+        {foot === "views"
+          ? count !== null && (
+              <span className="flex min-w-0 text-label tabular-nums" style={{ color: COVER_LOOK.inkSoft }}>
+                <span id={`${id}-meta`} data-part="views" className="shrink-0 whitespace-pre">
+                  {viewsWords(count)}
+                </span>
+              </span>
+            )
+          : (handle || views) && (
+              <span id={`${id}-meta`} className="flex min-w-0 text-label tabular-nums" style={{ color: COVER_LOOK.inkSoft }}>
+                {handle && (
+                  <span data-part="handle" className="min-w-0 truncate">
+                    {handle}
+                  </span>
+                )}
+                {views && (
+                  <span data-part="views" className="shrink-0 whitespace-pre">
+                    {handle ? ` · ${views}` : views}
+                  </span>
+                )}
               </span>
             )}
-            {views && (
-              <span data-part="views" className="shrink-0 whitespace-pre">
-                {handle ? ` · ${views}` : views}
-              </span>
-            )}
-          </span>
-        )}
       </span>
     </>
   );

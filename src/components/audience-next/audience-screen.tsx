@@ -125,7 +125,7 @@ function Block({ name, className, children }: { name: string; className?: string
 }
 
 /** The drawing's arrow (`I.arrow`, stroke 2.2), after the main button's words. */
-function ArrowGlyph() {
+export function ArrowGlyph() {
   return (
     <svg aria-hidden width={17} height={17} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
       <path d="M4.5 12h15M13.5 6l6 6-6 6" />

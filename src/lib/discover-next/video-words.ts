@@ -22,9 +22,9 @@ export interface MultipleWords {
   shaky: boolean;
 }
 
-/** The multiple in words, only for a proven video. */
-export function multipleWords(video: Pick<CardVideo, "proven" | "extreme" | "multiplier" | "baselineLabel">): MultipleWords | null {
-  if (!video.proven) return null;
+/** The multiple in words, for a proven video, and for a creator's own video that beat their usual (`beat`). */
+export function multipleWords(video: Pick<CardVideo, "proven" | "extreme" | "multiplier" | "baselineLabel" | "beat">): MultipleWords | null {
+  if (!video.proven && !video.beat) return null;
   const basis = basisOf(video.baselineLabel);
   const on = basis ? ` ${basis}` : "";
   if (video.extreme) return { text: `more than 100×${on}`, shaky: true };
