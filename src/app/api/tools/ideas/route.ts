@@ -49,8 +49,8 @@ import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { csrfGuard } from "@/lib/http/csrf-guard";
 import { billUsage, creditGate } from "@/lib/billing/credit-gate";
 import { rateLimitGuard } from "@/lib/http/rate-limit";
-import { createOpenThreadLazy } from "@/lib/threads/threads";
-import { insertMessage } from "@/lib/threads/messages";
+import { createOpenThreadLazy, setThreadTitleIfEmpty } from "@/lib/threads/threads";
+import { insertMessage, insertUserTurnUnlessRepeat } from "@/lib/threads/messages";
 import { runHeaderBlock } from "@/lib/tools/run-header";
 import { runIdeasPipeline } from "@/lib/tools/runners/ideas-runner";
 import { kcStamp } from "@/lib/kc/kc-stamp";
@@ -178,11 +178,11 @@ export async function POST(request: Request): Promise<Response> {
   // A pill-launched one-shot used to persist ONLY its assistant message; on reload the
   // turn grouping folded those cards into the PREVIOUS turn and the causal step vanished
   // from history. The action is now a real user row, as the chat route persists an ask.
+  // Not stored again when it is already the thread's last message (a Retry of a failed run).
   const userAction = rawAsk.trim() || "Generate video ideas";
-  await insertMessage(
+  await insertUserTurnUnlessRepeat(
     openThread.id,
-    "user",
-    [{ type: "markdown", props: { text: userAction } }],
+    { type: "markdown", props: { text: userAction } },
     kcStamp().kcGenVersion,
   );
 
@@ -294,6 +294,11 @@ export async function POST(request: Request): Promise<Response> {
             [runHeaderBlock({ skill: "ideas", audienceLabel: activeAudience?.name, platform }), ...blocks],
             kcStamp().kcGenVersion,
           );
+
+          // Title the thread as the hooks route does: typed ask > the top idea's title (ideas
+          // come out in rank order, so the first is the top one). Without this a chat started
+          // from Ideas stayed untitled. Write-once + best-effort — never fails the run.
+          await setThreadTitleIfEmpty(user.id, openThread.id, rawAsk.trim() || blocks[0]?.props.title);
         }
 
         // ── DONE (S2): emit BEFORE the follow-up turn ────────────────────────

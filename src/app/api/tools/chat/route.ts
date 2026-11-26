@@ -32,7 +32,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { createOpenThreadLazy, getOpenThread, setThreadTitleIfEmpty } from "@/lib/threads/threads";
-import { insertMessage, loadMessages } from "@/lib/threads/messages";
+import { insertMessage, insertUserTurnUnlessRepeat, loadMessages } from "@/lib/threads/messages";
 import { runHeaderBlock } from "@/lib/tools/run-header";
 import { openChatPriorTurns, MAX_PRIOR_TURNS } from "@/lib/threads/chat-prior-turns";
 import { runChatPipeline, isColdStart } from "@/lib/tools/runners/chat-runner";
@@ -449,7 +449,8 @@ export async function POST(request: Request): Promise<Response> {
     const userBlock = personaGrounding
       ? { type: "persona-chat-turn", props: { archetype: personaGrounding.archetype, role: "user", text: rawAsk } }
       : { type: "markdown", props: { text: rawAsk } };
-    await insertMessage(openThread.id, "user", [userBlock], kcStamp().kcGenVersion);
+    // Not stored again when it is already the thread's last message (a Retry of a failed run).
+    await insertUserTurnUnlessRepeat(openThread.id, userBlock, kcStamp().kcGenVersion);
     // First typed question titles the thread (write-once; best-effort).
     await setThreadTitleIfEmpty(user.id, openThread.id, rawAsk);
   }

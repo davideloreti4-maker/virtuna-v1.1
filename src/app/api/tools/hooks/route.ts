@@ -48,7 +48,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { createOpenThreadLazy, setThreadTitleIfEmpty } from "@/lib/threads/threads";
-import { insertMessage } from "@/lib/threads/messages";
+import { insertMessage, insertUserTurnUnlessRepeat } from "@/lib/threads/messages";
 import { runHeaderBlock } from "@/lib/tools/run-header";
 import { runHooksPipeline } from "@/lib/tools/runners/hooks-runner";
 import { kcStamp } from "@/lib/kc/kc-stamp";
@@ -207,10 +207,10 @@ export async function POST(request: Request): Promise<Response> {
     (rawAnchor
       ? `Write hooks from "${rawAnchor.length > 80 ? `${rawAnchor.slice(0, 80).trimEnd()}…` : rawAnchor}"`
       : "Generate hooks");
-  await insertMessage(
+  // Not stored again when it is already the thread's last message (a Retry of a failed run).
+  await insertUserTurnUnlessRepeat(
     openThread.id,
-    "user",
-    [{ type: "markdown", props: { text: userAction } }],
+    { type: "markdown", props: { text: userAction } },
     kcStamp().kcGenVersion,
   );
 

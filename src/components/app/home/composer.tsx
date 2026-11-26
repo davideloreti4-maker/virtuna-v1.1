@@ -960,18 +960,22 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   const { activeRun, isAnyStreaming, stopActive } = useActiveRun([
     { skill: "ideas", isStreaming: ideas.isStreaming, isDone: ideas.isDone, isClosed: ideas.isClosed, blocks: ideasBlocks,
       stages: ideas.stages, evidence: ideas.evidence, followupText: ideas.followupText, warnings: ideas.warnings,
-      error: ideas.error, outliersAvailable: ideas.outliersAvailable, stop: ideas.stop, reset: ideas.reset },
+      error: ideas.error, outliersAvailable: ideas.outliersAvailable, isStopped: ideas.isStopped,
+      stop: ideas.stop, reset: ideas.reset, retry: ideas.retry },
     { skill: "hooks", isStreaming: hooks.isStreaming, isDone: hooks.isDone, isClosed: hooks.isClosed, blocks: hooksBlocks,
       stages: hooks.stages, evidence: hooks.evidence, followupText: hooks.followupText, warnings: hooks.warnings,
-      error: hooks.error, outliersAvailable: hooks.outliersAvailable, stop: hooks.stop, reset: hooks.reset },
+      error: hooks.error, outliersAvailable: hooks.outliersAvailable, isStopped: hooks.isStopped,
+      stop: hooks.stop, reset: hooks.reset, retry: hooks.retry },
     { skill: "script", isStreaming: script.isStreaming, isDone: script.isDone, isClosed: script.isClosed, blocks: scriptBlocks,
       stages: script.stages, evidence: script.evidence, followupText: script.followupText, warnings: script.warnings,
-      error: script.error, outliersAvailable: script.outliersAvailable, stop: script.stop, reset: script.reset },
+      error: script.error, outliersAvailable: script.outliersAvailable, isStopped: script.isStopped,
+      stop: script.stop, reset: script.reset, retry: script.retry },
     { skill: "remix", isStreaming: remix.isStreaming, isDone: remix.isDone, isClosed: remix.isClosed, blocks: remixBlocks,
       stages: remix.stages, evidence: remix.evidence, followupText: remix.followupText, error: remix.error,
-      stop: remix.stop, reset: remix.reset },
+      isStopped: remix.isStopped, stop: remix.stop, reset: remix.reset, retry: remix.retry },
     { skill: "explore", isStreaming: explore.isStreaming, isDone: explore.isDone, blocks: exploreBlocks,
-      stages: explore.stages, error: explore.error, stop: explore.stop, reset: explore.reset },
+      stages: explore.stages, error: explore.error, isStopped: explore.isStopped,
+      stop: explore.stop, reset: explore.reset, retry: explore.retry },
     // The chat agent announces which skill it dispatched (the `dispatch` SSE frame) BEFORE the
     // first stage event. Naming it here is what gives an agent-routed run the SAME capsule label,
     // seeded plan, intro and outro as running that skill directly — the 1:1 the whole unification
@@ -983,11 +987,11 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       // The dispatched runners' REAL warnings (Stage A) — the chat door used to be the one
       // stream that swallowed them.
       stages: chat.stages, evidence: chat.evidence, warnings: chat.warnings,
-      error: chat.error, stop: chat.stop, reset: chat.reset },
+      error: chat.error, isStopped: chat.isStopped, stop: chat.stop, reset: chat.reset, retry: chat.retry },
     // Account emits no stages and no card stream — one block, delivered on done.
     { skill: "account", isStreaming: account.isStreaming,
       blocks: account.block ? [account.block] : [], error: account.error,
-      stop: account.stop, reset: account.reset },
+      stop: account.stop, reset: account.reset, retry: account.start },
   ]);
 
   // The Account starter card ARMS the skill and RUNS it in one tap. The other five cards arm
@@ -1059,7 +1063,12 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     persistedProfileBlocks.length > 0 || // profile-read / reaction-distribution (05-06)
     persistedChatTurns.length > 0 || // the unified persisted stream (thread-unification) — the SSOT for
     // "this thread has history"; the per-type persisted buckets above are retired in Phase 5, this term stays.
-    hasAccountContent;
+    hasAccountContent ||
+    // A run holding the tail is drawn as the thread's last turn, so it is the thread: one stopped
+    // before a word arrived, or one that failed with no cards, has no blocks and is not streaming.
+    // Without this a new chat's first such run drew its turn inside Home's layout, whose room under
+    // the sent turn grows the container it is sized from (the page grew without end).
+    activeRun !== null;
   // ⚠️ hasThread must never key off the ARMED SKILL. Arming a skill is not a thread. Three
   // per-skill view gates used to flip hasThread on TOOL SELECTION ALONE (they were the only
   // skills owning an idle view), which tore the empty
@@ -3780,18 +3789,14 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // The in-flight run, shaped as the thread's last turn. Everything a per-skill view used to own —
   // the intro's inputs, the stage spine, the outro text, the degrade notices, retry, the outliers
   // offer — rides here, so <ThreadTurn> renders it with the SAME grammar it renders a reloaded turn
-  // with. The retry entry points are per-skill because each stream's `start` has its own signature.
+  // with. Retry is the run's own stream replaying its last call as it was made: the same ask,
+  // intent, anchor hook, link or params. It used to be `start("", platform)` per skill, which ran a
+  // different (Auto) run, sent a remix with no link, and for a run the chat dispatched (named by the
+  // skill it ran) started that skill's own route instead of the chat.
+  const activeRunRetry = activeRun?.retry;
   const retryActiveRun = useCallback(() => {
-    switch (activeRun?.skill) {
-      case "ideas": return void ideas.start("", platform);
-      case "hooks": return void hooks.start("", platform);
-      case "script": return void script.start("", platform);
-      case "remix": return void remix.start("", platform);
-      case "explore": return void explore.start({});
-      case "account": return void account.start();
-      default: return undefined;
-    }
-  }, [activeRun?.skill, ideas, hooks, script, remix, explore, account, platform]);
+    void activeRunRetry?.();
+  }, [activeRunRetry]);
 
   const findOutliersActiveRun = useCallback(() => {
     switch (activeRun?.skill) {

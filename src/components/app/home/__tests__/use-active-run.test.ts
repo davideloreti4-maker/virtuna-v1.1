@@ -98,6 +98,43 @@ describe('useActiveRun — the tail turn', () => {
     expect(result.current.activeRun?.isClosed).toBe(false);
   });
 
+  it('a run stopped before anything arrived still holds the tail (its turn keeps the creator’s message)', () => {
+    // Stop while "Thinking": not streaming, no blocks, no stages, no error. Only the flag says a
+    // run was here.
+    const { result, rerender } = renderHook(({ list }) => useActiveRun(list), {
+      initialProps: { list: [candidate({ skill: 'chat', isStreaming: true })] },
+    });
+    rerender({ list: [candidate({ skill: 'chat', isStopped: true })] });
+    expect(result.current.activeRun?.skill).toBe('chat');
+    expect(result.current.activeRun?.isStreaming).toBe(false);
+    expect(result.current.activeRun?.isDone).toBe(false);
+    expect(result.current.isAnyStreaming).toBe(false);
+  });
+
+  it('a stopped run gives the tail up once another run starts, also after that run is reset', () => {
+    // A chat stopped while thinking, then a hooks run: streaming, then folded into history
+    // (`reset()`: nothing left in it). The stopped chat must not come back as the tail: it would
+    // draw the creator's newest message a second time, under the folded run.
+    const { result, rerender } = renderHook(({ list }) => useActiveRun(list), {
+      initialProps: { list: [candidate({ skill: 'chat', isStreaming: true }), candidate({ skill: 'hooks' })] },
+    });
+    rerender({ list: [candidate({ skill: 'chat', isStopped: true }), candidate({ skill: 'hooks' })] });
+    expect(result.current.activeRun?.skill).toBe('chat');
+    rerender({ list: [candidate({ skill: 'chat', isStopped: true }), candidate({ skill: 'hooks', isStreaming: true })] });
+    expect(result.current.activeRun?.skill).toBe('hooks');
+    rerender({ list: [candidate({ skill: 'chat', isStopped: true }), candidate({ skill: 'hooks' })] });
+    expect(result.current.activeRun).toBeNull();
+  });
+
+  it('carries retry through, so Retry replays the stream that owns the tail', () => {
+    let replayed = 0;
+    const { result } = renderHook(() =>
+      useActiveRun([candidate({ skill: 'ideas', error: 'boom', retry: () => { replayed += 1; } })]),
+    );
+    result.current.activeRun?.retry?.();
+    expect(replayed).toBe(1);
+  });
+
   it('an idle thread has no tail', () => {
     const { result } = renderHook(() => useActiveRun([candidate(), candidate({ skill: 'script' })]));
     expect(result.current.activeRun).toBeNull();

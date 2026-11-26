@@ -38,8 +38,8 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
-import { createOpenThreadLazy } from "@/lib/threads/threads";
-import { insertMessage } from "@/lib/threads/messages";
+import { createOpenThreadLazy, setThreadTitleIfEmpty } from "@/lib/threads/threads";
+import { insertMessage, insertUserTurnUnlessRepeat } from "@/lib/threads/messages";
 import { runHeaderBlock } from "@/lib/tools/run-header";
 import { runScriptPipeline } from "@/lib/tools/runners/script-runner";
 import { kcStamp } from "@/lib/kc/kc-stamp";
@@ -189,10 +189,10 @@ export async function POST(request: Request): Promise<Response> {
     (rawAnchor
       ? `Write a script from "${rawAnchor.length > 80 ? `${rawAnchor.slice(0, 80).trimEnd()}…` : rawAnchor}"`
       : "Write a script");
-  await insertMessage(
+  // Not stored again when it is already the thread's last message (a Retry of a failed run).
+  await insertUserTurnUnlessRepeat(
     openThread.id,
-    "user",
-    [{ type: "markdown", props: { text: userAction } }],
+    { type: "markdown", props: { text: userAction } },
     kcStamp().kcGenVersion,
   );
 
@@ -296,6 +296,16 @@ export async function POST(request: Request): Promise<Response> {
               ...blocks,
             ],
             kcStamp().kcGenVersion,
+          );
+
+          // Title the thread as the hooks route does: typed ask > the hook it was written from >
+          // the script's opening line (the line the read-repair takes from a script card too).
+          // Without this a chat started from Script stayed untitled. Write-once + best-effort —
+          // never fails the run.
+          await setThreadTitleIfEmpty(
+            user.id,
+            openThread.id,
+            rawAsk.trim() || rawAnchor?.trim() || blocks[0]?.props.openingBeatSeed,
           );
         }
 

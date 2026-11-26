@@ -23,9 +23,17 @@ vi.mock("@/lib/supabase/service", () => ({
   createServiceClient: vi.fn(),
 }));
 
-vi.mock("@/lib/threads/messages", () => ({
-  insertMessage: vi.fn(),
-}));
+// The message store is stubbed in this file. A user turn reaches `insertMessage` as it did before
+// `insertUserTurnUnlessRepeat` (its repeat rule is tested against a real store in
+// src/lib/threads/__tests__/insert-user-turn.test.ts and the chat and ideas route-repeat-ask tests).
+vi.mock("@/lib/threads/messages", () => {
+  const insertMessage = vi.fn();
+  return {
+    insertMessage,
+    insertUserTurnUnlessRepeat: (threadId: string, block: unknown, kcGenVersion?: string) =>
+      insertMessage(threadId, "user", [block], kcGenVersion),
+  };
+});
 
 vi.mock("@/lib/threads/threads", () => ({
   createOpenThreadLazy: vi.fn(),
