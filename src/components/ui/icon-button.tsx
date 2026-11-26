@@ -24,7 +24,7 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
       ref={ref}
       type={type}
       className={cn(
-        "tap-44 inline-flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-full text-foreground [&_svg]:size-[18px]",
+        "tap-44 inline-flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-lg text-foreground [&_svg]:size-[18px]",
         "duration-150 transition-[color,background-color,box-shadow,scale] motion-safe:active:scale-[0.98]",
         "disabled:pointer-events-none disabled:opacity-40 disabled:shadow-none",
         surface === "ground" && "bg-surface shadow-[var(--shadow-control)]",

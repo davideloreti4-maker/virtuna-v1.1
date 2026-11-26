@@ -86,7 +86,7 @@ const LENSES: ReadonlyArray<readonly [Lens, string]> = [
 /** The platform for the next run, as a segmented control. More and the audience sheet both show it. */
 export function LensControl({ lens, onLensChange }: { lens: Lens; onLensChange(lens: Lens): void }): React.JSX.Element {
   return (
-    <div role="group" aria-label="Platform" className="mt-1 grid h-10 grid-cols-3 gap-0.5 rounded-full bg-surface-sunken p-[3px]">
+    <div role="group" aria-label="Platform" className="mt-1 grid h-10 grid-cols-3 gap-0.5 rounded-lg bg-surface-sunken p-[3px]">
       {LENSES.map(([id, label]) => (
         <button
           key={id}
@@ -94,7 +94,7 @@ export function LensControl({ lens, onLensChange }: { lens: Lens; onLensChange(l
           aria-pressed={lens === id}
           onClick={() => onLensChange(id)}
           className={cn(
-            "tap-44 flex items-center justify-center rounded-full text-reading font-[560] leading-none transition-colors duration-150",
+            "tap-44 flex items-center justify-center rounded-md text-reading font-[560] leading-none transition-colors duration-150",
             lens === id
               ? "bg-surface text-foreground shadow-[var(--shadow-control)]"
               : "text-foreground-secondary hover:text-foreground",

@@ -49,7 +49,7 @@ describe("MenuButton", () => {
     expect(opener().textContent).toBe("JM");
   });
 
-  it("lines: the round button with three lines, no text, the same name and state", () => {
+  it("lines: the 38 square button with three lines, no text, the same name and state", () => {
     useShellStore.setState({ accountFace: { picture: null, initials: "NL" } });
     render(<MenuButton variant="lines" />);
     const button = opener();
@@ -57,8 +57,9 @@ describe("MenuButton", () => {
     expect(button).toHaveAttribute("type", "button");
     // No text node: the band's tests read its textContent; the shell's face is not drawn here.
     expect(button.textContent).toBe("");
-    // Back's 38 round button.
-    expect(button.className.split(/\s+/)).toEqual(expect.arrayContaining(["h-[38px]", "w-[38px]", "rounded-full"]));
+    // Back's 38 button: a rounded square since 2026-11-26 (radius 8, Claude-like), not a circle.
+    expect(button.className.split(/\s+/)).toEqual(expect.arrayContaining(["h-[38px]", "w-[38px]", "rounded-lg"]));
+    expect(button.className.split(/\s+/)).not.toContain("rounded-full");
     const svg = button.querySelector("svg")!;
     expect(svg).toHaveAttribute("aria-hidden", "true");
     const paths = Array.from(svg.querySelectorAll("path"), (path) => path.getAttribute("d"));

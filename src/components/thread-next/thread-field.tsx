@@ -98,10 +98,11 @@ export interface ThreadFieldProps {
 const TEXT_MAX_HEIGHT = 8 * 24 + 8;
 
 /** The card. Solid in both places, as the Claude app draws its composer: the thread's content
- *  passes behind it and is hidden, not blurred. The card shadow (its own 6% hairline); focused,
- *  the lifted shadow (a 12% hairline, a deeper fall). */
+ *  passes behind it and is hidden, not blurred. Radius 20 (`rounded-4xl` under the new look):
+ *  rounder than the cards around it, as Claude's is. The card shadow (its own 6% hairline);
+ *  focused, the lifted shadow (a 12% hairline, a deeper fall). */
 const CARD =
-  "rounded-2xl bg-surface p-3 transition-shadow duration-200 " +
+  "rounded-4xl bg-surface p-3 transition-shadow duration-200 " +
   "shadow-[var(--shadow-rest)] focus-within:shadow-[var(--shadow-lift)]";
 
 /** A 32-tall control on the toolbar (a square with `w-8`), radius 8 (the card's 20 less its 12 padding). */
@@ -167,7 +168,7 @@ function VideoTile({ file, onRemove }: { file: File; onRemove: () => void }) {
           <IconButton
             aria-label="Remove video"
             onClick={onRemove}
-            className="h-[22px] w-[22px] bg-action text-action-foreground shadow-[0_0_0_2px_var(--color-surface)] [&_svg]:size-[11px]"
+            className="h-[22px] w-[22px] rounded-full bg-action text-action-foreground shadow-[0_0_0_2px_var(--color-surface)] [&_svg]:size-[11px]"
           >
             <CloseIcon strokeWidth={2.6} aria-hidden />
           </IconButton>

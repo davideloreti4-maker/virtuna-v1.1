@@ -313,9 +313,11 @@ numbers and screen titles. Every number is tabular.
 | Figure | `text-figure font-bold` | 62 / 58 |
 | Large figure | `text-figure-lg font-bold` | 76 / 72 |
 
-Radius: thumbnail `rounded-lg` 12 · button `rounded-xl` 16 · tile `rounded-2xl` 20 · card
-`rounded-3xl` 24 · sheet top, message field `rounded-4xl` 32 · chip, tag, icon button
-`rounded-full`.
+Radius (tightened 2026-11-26 toward the Claude app; re-valued in `:root[data-look="next"]`, the
+`@theme` scale is untouched): thumbnail, chip, icon button `rounded-lg` 8 · button `rounded-xl` 10 ·
+tile `rounded-2xl` 12 · card, bubble, toast `rounded-3xl` 16 · sheet top, message field `rounded-4xl` 20.
+`rounded-full` is for avatars, dots, the sheet handle and a few round controls (the jump button, a
+thumbnail's remove cross), not for chips or icon buttons.
 
 Parts (`src/components/ui`): `Card` and `Tile`, `Button` (`primary`, `secondary`, `quiet`; `lg`
 is 50 tall, `xl` is 56), `IconButton`, `Chip`, `Badge` (the tag), `Sheet`. Shell

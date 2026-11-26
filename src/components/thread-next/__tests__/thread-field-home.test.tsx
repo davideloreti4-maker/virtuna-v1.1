@@ -228,11 +228,11 @@ describe("ThreadField on Home: the card", () => {
   it("is a solid card in both places, never glass (rebuild 2026-11-26)", () => {
     const { unmount } = renderField();
     expect(screen.getByTestId("thread-field").style.backdropFilter).toBe("");
-    expect(screen.getByTestId("thread-field")).toHaveClass("bg-surface", "rounded-2xl");
+    expect(screen.getByTestId("thread-field")).toHaveClass("bg-surface", "rounded-4xl");
     unmount();
     renderField({ home: null });
     expect(screen.getByTestId("thread-field").style.backdropFilter).toBe("");
-    expect(screen.getByTestId("thread-field")).toHaveClass("bg-surface", "rounded-2xl");
+    expect(screen.getByTestId("thread-field")).toHaveClass("bg-surface", "rounded-4xl");
   });
 });
 
