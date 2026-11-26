@@ -11,12 +11,12 @@
  * server-resolved audience (CR-01 — no cross-user reads possible by construction).
  * A stale/absent cache → 404 drop_not_found (the shelf re-warms tomorrow's cards).
  *
- * ⚠️ 404 unless REMIX_DROPS_ENABLED (v8 or the new look; flag-off byte-identical, incl. no new routes).
+ * ⚠️ 404 unless CONCEPT_V8_ENABLED (flag-off byte-identical, incl. no new routes).
  */
 
 import { createClient } from "@/lib/supabase/server";
 import { csrfGuard } from "@/lib/http/csrf-guard";
-import { REMIX_DROPS_ENABLED } from "@/lib/flags/remix-drops";
+import { CONCEPT_V8_ENABLED } from "@/lib/flags/concept-v8";
 import { resolveUserAudience } from "@/lib/audience/resolve-user-audience";
 import { audienceKeyOf, getFreshSurfaceCards } from "@/lib/surfaces/surface-reactions-repo";
 import type { LiveDropCard } from "@/lib/surfaces/live-cards";
@@ -27,7 +27,7 @@ import { insertMessage } from "@/lib/threads/messages";
 export const runtime = "nodejs";
 
 export async function POST(request: Request): Promise<Response> {
-  if (!REMIX_DROPS_ENABLED) {
+  if (!CONCEPT_V8_ENABLED) {
     return Response.json({ error: "not_found" }, { status: 404 });
   }
 

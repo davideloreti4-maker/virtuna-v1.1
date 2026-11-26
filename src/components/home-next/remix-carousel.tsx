@@ -15,7 +15,7 @@ import { ChevronIcon } from "@/components/thread-next/field-icons";
  * Presentational: the composer owns the warm (`useLazyWarm` over `/api/surfaces/drops`) and the
  * Remix handoff (it seeds a chat from the cached card, no model call, and opens it).
  *
- *   Proven videos, rebuilt for your niche  ‹ ›   the steps: md up, only when the row overflows
+ *   Proven videos to remix  ‹ ›   the steps: md up, only when the row overflows
  *   [still · ▶ 1.2M] [still] [still] …       a 4:5 still, its views on it; a tap opens the original
  *    the adapted hook, two lines
  *    4.2× usual ·········· Remix              one foot line, so the row stays short over the field
@@ -100,7 +100,7 @@ export function RemixCarousel<T extends RemixDrop>({ drops, status, onRemix, rem
     <section data-part="remix-carousel" aria-labelledby={labelId} aria-busy={warming || undefined}>
       <div className="flex items-center justify-between gap-2 pb-2">
         <h2 id={labelId} className="px-1 text-meta font-[560] text-foreground-secondary">
-          Proven videos, rebuilt for your niche
+          Proven videos to remix
         </h2>
         {paged && (
           <div data-part="remix-steps" className="-my-1 flex shrink-0 gap-0.5 max-md:hidden">

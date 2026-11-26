@@ -57,7 +57,7 @@ import { ScriptTestContext } from "@/lib/script-test-context";
 import { RemixDevelopContext } from "@/lib/remix-develop-context";
 import { RemixRefreshContext } from "@/lib/remix-refresh-context";
 import { useParams, useRouter } from "next/navigation";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowUp, Plus, Square } from "lucide-react";
 import { Paperclip, X as XIcon } from "@phosphor-icons/react";
 import { nanoid } from "nanoid";
@@ -106,7 +106,6 @@ import {
 } from "./composer-controls";
 // ── Composer v8 (CONCEPT_V8_ENABLED — platform concept Phase 1) ──────────────
 import { CONCEPT_V8_ENABLED } from "@/lib/flags/concept-v8";
-import { REMIX_DROPS_ENABLED } from "@/lib/flags/remix-drops";
 // ── The new look (NEW_LOOK_ENABLED — plan 2026-11-20, the thread field) ──────
 import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 import { rememberRunVideo } from "@/lib/result/run-video";
@@ -154,6 +153,7 @@ import { DropShelf } from "./v8/drop-shelf";
 import { RemixCarousel } from "@/components/home-next/remix-carousel";
 import { useLazyWarm } from "@/lib/surfaces/use-lazy-warm";
 import type { LiveDropCard } from "@/lib/surfaces/live-cards";
+import type { OutlierPick } from "@/lib/surfaces/outlier-picks";
 import { usePlatformLens, LENS_LABEL, audienceProvenance } from "./v8/platform-lens";
 import type { Platform } from "./platform-chip";
 import type { Audience, AudiencePlatform } from "@/lib/audience/audience-types";
@@ -1251,16 +1251,32 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // cache (spec: the lens changes generation prompts only). The warm key advances
   // only AFTER an audience switch's persist settles (use-lazy-warm contract) —
   // see handleSelectAudience. Flag-off: enabled=false → the hook is inert.
-  // New look: the drops are back on Home as the remix carousel (owner 2026-11-26), so they warm there
-  // too: the same daily, cached warm (≤6 adapt calls + one batched Flash on a miss, once a day per
-  // audience). Owner 2026-11-26 "enable it always": the new look warms them with or without v8
-  // (REMIX_DROPS_ENABLED opens the routes); the legacy look still needs v8 on ambient v2.
+  // The new look never warms them: its carousel reads the free daily picks below.
   const [warmAudienceKey, setWarmAudienceKey] = useState<string>("general");
   const dropsEnabled =
-    (NEW_LOOK_ENABLED || (CONCEPT_V8_ENABLED && AMBIENT_V2_ENABLED)) &&
+    !NEW_LOOK_ENABLED &&
+    CONCEPT_V8_ENABLED &&
+    AMBIENT_V2_ENABLED &&
     !hasConversationContent &&
     !startEngaged &&
     !rehydrating;
+
+  // ── New-look Home's remix carousel: today's six from the collection ─────────
+  // Owner 2026-11-26: "just use videos from the … cache that we have from the collection". One read of
+  // the curated outliers, the same six for everyone, no model call (`/api/surfaces/outlier-picks`).
+  // Remix on a card arms the Remix skill with its link; the run charges for itself on send.
+  const picksEnabled = NEW_LOOK_ENABLED && !hasConversationContent && !startEngaged && !rehydrating;
+  const picksQuery = useQuery({
+    queryKey: ["surfaces", "outlier-picks"],
+    queryFn: async (): Promise<OutlierPick[]> => {
+      const res = await fetch("/api/surfaces/outlier-picks");
+      if (!res.ok) return [];
+      const body = (await res.json()) as { picks?: OutlierPick[] };
+      return Array.isArray(body.picks) ? body.picks : [];
+    },
+    enabled: picksEnabled,
+    staleTime: 60 * 60 * 1000,
+  });
   const { items: dropCards, status: dropsStatus } = useLazyWarm<LiveDropCard>(
     null,
     "/api/surfaces/drops",
@@ -1674,7 +1690,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       // v8 Phase 2: advance the shelf's warm key only AFTER the persist settles —
       // the drops route server-resolves the audience, so a key that leads the PUT
       // would cache the OLD audience's cards under the NEW key (use-lazy-warm doc).
-      if (REMIX_DROPS_ENABLED) void put.then(() => setWarmAudienceKey(newId ?? "general"));
+      if (CONCEPT_V8_ENABLED) void put.then(() => setWarmAudienceKey(newId ?? "general"));
     }
     // WR-02: reconcile the active skill with the new audience's mode. If the current
     // tool isn't valid in the new mode (e.g. "simulate" lingering after a General →
@@ -5129,15 +5145,17 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       <div data-testid="composer-shell" data-layout="home" className={cn("relative flex w-full flex-col", className)}>
         <HomeNext
           field={composerDock}
-          // The old Home's shelf, as a row above the field (owner 2026-11-26). Remix seeds a chat
-          // from the cached card (no model call) and opens it.
+          // The old Home's shelf, as a row above the field (owner 2026-11-26), from the collection.
+          // Remix arms the Remix skill with the video's link: nothing runs until the creator sends.
           remixes={
-            dropsEnabled ? (
+            picksEnabled ? (
               <RemixCarousel
-                drops={dropCards}
-                status={dropsStatus}
-                onRemix={(card) => void handleRemixDrop(card)}
-                remixingId={remixingDropId}
+                drops={picksQuery.data ?? []}
+                status={picksQuery.isPending ? "warming" : "ready"}
+                onRemix={(pick) => {
+                  handleUserSelectTool("remix");
+                  setUrl(pick.videoUrl);
+                }}
               />
             ) : null
           }
