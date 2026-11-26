@@ -22,46 +22,21 @@
  *     client on an already-scoped id).
  *   - insertMessage re-validates the block at the write boundary + stamps KC_GEN_VERSION.
  *
+ * Since 2026-11-26 the card is built by `addTestCardToThread` (src/lib/tools/test-card.ts), which
+ * `/api/analyze` also calls when a run completes: the run remembers the chat it was started in and
+ * the SERVER adds the card there. This route is the client's seal after `complete`: with the run's
+ * `threadId` it is idempotent (the server's card comes back, no second one); without one it falls
+ * back to the open chat, as before.
+ *
  * Degrade honesty: a row with NO craft material (Apollo down AND no filmstrip AND no fixes) has
  * nothing to teach, so the mapper returns null and this route responds { degraded: "no_craft" }
  * with the analysisId — the field then points the creator at the full /analyze page.
  */
 
 import { createClient } from "@/lib/supabase/server";
-import { createOpenThreadLazy } from "@/lib/threads/threads";
-import { insertMessage } from "@/lib/threads/messages";
-import { runHeaderBlock } from "@/lib/tools/run-header";
-import { writeSimSeal } from "@/lib/threads/sim-seals";
-import { hasBrainData } from "@/lib/surfaces/ambient-v2-brain";
-import { buildVideoPopulation } from "@/lib/surfaces/ambient-v2-video-population";
-import { AMBIENT_V2_ENABLED } from "@/lib/flags/ambient-v2";
-import { kcStamp } from "@/lib/kc/kc-stamp";
-import { getAudience, GENERAL_AUDIENCE } from "@/lib/audience/audience-repo";
-import { resolveTier } from "@/lib/audience/resolve-tier";
+import { createOpenThreadLazy, getOwnedOpenThread } from "@/lib/threads/threads";
 import { csrfGuard } from "@/lib/http/csrf-guard";
-import { signAnalysisFrames } from "@/lib/engine/filmstrip/storage";
-import { executeCorpusSearch } from "@/lib/grounding/corpus-tool";
-import { retrieveCachedExamples } from "@/lib/grounding/retrieve";
-import { buildProofFromSource } from "@/lib/tools/runners/build-proof";
-import {
-  predictionResultToVideoTestCard,
-  deriveFixGroundingQueries,
-  type VideoTestSource,
-} from "@/lib/tools/video-test-card";
-import type { Audience } from "@/lib/audience/audience-types";
-import type {
-  ApolloDimension,
-  ApolloRewrite,
-  CounterfactualResult,
-  GeminiVideoSignals,
-  HeatmapPayload,
-  PersonaBehavioralAggregate,
-  PersonaSimulationResult,
-  VerbatimPayload,
-} from "@/lib/engine/types";
-
-/** Ground at most the top N fixes — cheap cache retrieval, but bounded so the card stays snappy. */
-const MAX_GROUNDED_FIXES = 2;
+import { addTestCardToThread } from "@/lib/tools/test-card";
 
 export async function POST(request: Request): Promise<Response> {
   const supabase = await createClient();
@@ -78,8 +53,8 @@ export async function POST(request: Request): Promise<Response> {
   const guard = csrfGuard(request);
   if (guard) return guard;
 
-  // ── (3) Parse body — the analysisId of the run the field just completed ──────
-  let body: { analysisId?: unknown } = {};
+  // ── (3) Parse body — the analysisId of the run, and the chat it was started in ──
+  let body: { analysisId?: unknown; threadId?: unknown; runNonce?: unknown } = {};
   try {
     body = await request.json();
   } catch {
@@ -89,152 +64,30 @@ export async function POST(request: Request): Promise<Response> {
   if (!analysisId) {
     return Response.json({ error: "analysisId is required" }, { status: 400 });
   }
+  const threadId = typeof body.threadId === "string" ? body.threadId.trim() : "";
+  // The run's own nonce (made when it was armed, sent with the run too): one card per run.
+  const runNonce =
+    typeof body.runNonce === "string" && /^[A-Za-z0-9_-]{1,64}$/.test(body.runNonce) ? body.runNonce : null;
 
-  // ── (4) Load the persisted analysis row — user-scoped (a forged id 404s) ─────
-  const { data: row, error: rowErr } = await supabase
-    .from("analysis_results")
-    .select("*")
-    .eq("id", analysisId)
-    .eq("user_id", user.id)
-    .is("deleted_at", null)
-    .single();
-  if (rowErr || !row) {
-    return Response.json({ error: "analysis_not_found" }, { status: 404 });
+  // ── (4) The chat: the run's own (the caller's, or 404), else the open one (as before) ──
+  const thread = threadId ? await getOwnedOpenThread(user.id, threadId) : await createOpenThreadLazy(user.id);
+  if (!thread) {
+    return Response.json({ error: "thread_not_found" }, { status: 404 });
   }
 
-  // A row still running (placeholder overall_score:null + engine_version:'pending') has no
-  // result to card yet — tell the field to keep waiting rather than emit an empty card.
-  const overallRaw = (row as { overall_score?: number | string | null }).overall_score;
-  const overall = typeof overallRaw === "string" ? Number.parseFloat(overallRaw) : overallRaw;
-  if (overall == null || Number.isNaN(overall)) {
-    return Response.json({ error: "analysis_not_ready" }, { status: 409 });
-  }
-
-  // ── (5) Resolve the active audience (thread pin) → name + tier ──────────────
-  // Same per-thread pin the generative skills + the Read use. General on any miss/failure.
-  const openThread = await createOpenThreadLazy(user.id);
-  let audience: Audience = GENERAL_AUDIENCE;
-  const rawThread = openThread as typeof openThread & { active_audience_id?: string | null };
-  const activeAudienceId = rawThread.active_audience_id ?? null;
-  if (activeAudienceId) {
-    try {
-      const loaded = await getAudience(supabase, activeAudienceId);
-      if (loaded) audience = loaded;
-    } catch {
-      // Non-fatal — fall back to General (no regression).
-    }
-  }
-
-  // ── (6) Assemble the narrow CRAFT VideoTestSource from the row ──────────────
-  // apollo lives in the variants JSONB bag (the analyze route persists variants.apollo — the FULL
-  // Apollo object, incl. dimensions); heatmap / counterfactuals / verbatim are first-class columns.
-  const variants =
-    (row as {
-      variants?: {
-        apollo?: { dimensions?: ApolloDimension[]; rewrites?: ApolloRewrite[] } | null;
-        craft?: { video_signals?: GeminiVideoSignals | null } | null;
-      } | null;
-    }).variants ?? null;
-  const source: VideoTestSource = {
-    apollo_reasoning: variants?.apollo
-      ? { dimensions: variants.apollo.dimensions ?? null, rewrites: variants.apollo.rewrites ?? null }
-      : null,
-    heatmap: (row as { heatmap?: HeatmapPayload | null }).heatmap ?? null,
-    counterfactuals: (row as { counterfactuals?: CounterfactualResult | null }).counterfactuals ?? null,
-    verbatim: (row as { verbatim?: VerbatimPayload | null }).verbatim ?? null,
-  };
-
-  // ── (7) Re-sign the persisted keyframes (their frames, ephemeral). Ownership gated at (4). ──
-  const frames = await signAnalysisFrames(analysisId);
-
-  // ── (8) Map → the craft card. No craft material at all → degrade to the link-out. ──
-  const block = predictionResultToVideoTestCard(source, {
-    analysisId,
-    audienceName: audience.name,
-    tier: resolveTier(audience),
-    frames,
-  });
-  if (!block) {
-    return Response.json({ degraded: "no_craft", analysisId });
-  }
-
-  // ── (9) Ground the top 1–2 fixes in a real corpus outlier (best-effort). ─────
-  // Structural retrieval keyed off each fix (deriveFixGroundingQueries), citable-subset only, via
-  // the shared build-proof mapper — so a curated row is never dressed as a proven outlier. Any
-  // failure leaves the fix honestly bare (proof:null); the card already renders without it.
+  // ── (5) Build + add the card, at most once per analysis per chat ────────────
   try {
-    const queries = deriveFixGroundingQueries(source);
-    for (let i = 0; i < Math.min(MAX_GROUNDED_FIXES, block.props.fixes.length); i++) {
-      const q = queries[i];
-      if (!q) continue;
-      try {
-        const { citable } = await executeCorpusSearch(
-          { query: q.query, axis: q.axis },
-          "tiktok",
-          i + 1,
-          retrieveCachedExamples,
-        );
-        const proof = buildProofFromSource(1, citable);
-        if (proof) block.props.fixes[i]!.proof = proof;
-      } catch {
-        /* one fix failing to ground never fails the card */
-      }
+    const res = await addTestCardToThread({ supabase, userId: user.id, analysisId, thread, runNonce });
+    switch (res.kind) {
+      case "not_found":
+        return Response.json({ error: "analysis_not_found" }, { status: 404 });
+      case "not_ready":
+        return Response.json({ error: "analysis_not_ready" }, { status: 409 });
+      case "degraded":
+        return Response.json({ degraded: "no_craft", analysisId });
+      default:
+        return Response.json({ block: res.block });
     }
-  } catch {
-    /* grounding is additive — never blocks the card */
-  }
-
-  // ── (9b) Seal the Ambient v2 VIDEO depth (Phase C, opt-in behind AMBIENT_V2, non-fatal) ──────
-  // The persisted analysis already holds the REAL fold-derived Brain read (heatmap weighted_curve +
-  // craft dims + verbatim). Seal it into the thread's `sim_seals` jsonb — keyed by the analysisId —
-  // so the Brain drill survives reload WITHOUT a fresh (billed) fold. Only when a real attention
-  // curve exists (`hasBrainData`); the would-stop % is the first-2s hold (weighted_hook_score),
-  // falling back to weighted completion. Never blocks the card (writeSimSeal swallows failures).
-  if (AMBIENT_V2_ENABLED && hasBrainData(source.heatmap)) {
-    const heatmap = source.heatmap!;
-    const hold = heatmap.weighted_hook_score ?? heatmap.weighted_completion_pct ?? null;
-    if (hold !== null) {
-      // The AUDIENCE depth, from the same row. The fold ran against this thread's active audience
-      // (analyze route R1′b), so `personas` is a real, audience-specific reception panel — the
-      // Population drill's source. Null on a Wave-3-degraded row ⇒ the drill stays brain-only,
-      // exactly as before.
-      const foldPopulation = buildVideoPopulation({
-        personas: (row as { personas?: PersonaSimulationResult[] | null }).personas ?? [],
-        heatmap,
-        // The engine's own weighted intent read — the action profile's four verbs. Co-present with
-        // `personas` on every real row (one Wave-3 gate, 10-or-0), so it adds no new empty state.
-        aggregate:
-          (row as { persona_behavioral_aggregate?: PersonaBehavioralAggregate | null })
-            .persona_behavioral_aggregate ?? null,
-      });
-      await writeSimSeal(supabase, openThread, analysisId, {
-        pct: Math.max(0, Math.min(100, Math.round(hold * 100))),
-        band: null,
-        at: new Date().toISOString(),
-        ...(foldPopulation ? { population: foldPopulation.aggregate } : {}),
-        video: {
-          analysisId,
-          stopPct: Math.max(0, Math.min(100, Math.round(hold * 100))),
-          craftScore: block.props.craftScore ?? null, // the row's native viral score (craft, not %)
-          heatmap,
-          videoSignals: variants?.craft?.video_signals ?? null,
-          verbatim: source.verbatim,
-          ...(foldPopulation ? { skimmedPct: foldPopulation.skimmedPct } : {}),
-          ...(foldPopulation?.intents ? { intents: foldPopulation.intents } : {}),
-        },
-      });
-    }
-  }
-
-  // ── (10) Persist the block to the open thread (re-validated + KC-stamped) ────
-  try {
-    await insertMessage(
-      openThread.id,
-      "assistant",
-      [runHeaderBlock({ skill: "test", audienceLabel: audience?.name }), block],
-      kcStamp().kcGenVersion,
-    );
-    return Response.json({ block });
   } catch (err) {
     return Response.json(
       { error: err instanceof Error ? err.message : "Failed to persist test card" },

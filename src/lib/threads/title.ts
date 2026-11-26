@@ -125,3 +125,33 @@ export function deriveTitleFromBlocks(blocks: unknown[]): string | null {
   }
   return null;
 }
+
+// ─── Simulation chats ─────────────────────────────────────────────────────────
+
+/**
+ * A dropped video's name as the creator knows it: the file name without its extension (`_` read as
+ * a space). Null for anything that is not a video file name. Used where the video IS the subject
+ * (a simulation's chat), never as a general title candidate: `cleanThreadTitle` still refuses a
+ * file name, so a typed ask can claim an untitled chat first.
+ */
+export function videoNameTitle(raw: unknown): string | null {
+  if (typeof raw !== "string") return null;
+  const text = raw.replace(/\s+/g, " ").trim();
+  if (!/\.(mp4|mov|m4v|webm|avi|mkv)$/i.test(text) || /[/\\]/.test(text)) return null;
+  const stem = text.replace(/\.[a-z0-9]+$/i, "").replace(/_+/g, " ").replace(/\s+/g, " ").trim();
+  return cleanThreadTitle(stem);
+}
+
+/**
+ * The name for a simulation's chat, when the card is added (write-once): the creator's typed text
+ * if their turn was text, else the video's name (a dropped file's name without the extension, or for
+ * a link the post's author). Null when there is nothing a creator would recognise: never a bare id.
+ */
+export function simulationChatTitle(input: { userTurn: string | null; handle: string | null }): string | null {
+  const typed = cleanThreadTitle(input.userTurn);
+  if (typed) return typed;
+  const file = videoNameTitle(input.userTurn);
+  if (file) return file;
+  const handle = input.handle?.trim().replace(/^@/, "");
+  return handle ? `Video by @${handle}` : null;
+}

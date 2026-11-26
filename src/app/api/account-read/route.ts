@@ -30,7 +30,8 @@ import { listAudiences } from "@/lib/audience/audience-repo";
 import { listReconciliations } from "@/lib/flywheel/reconciliation-repo";
 import { generateAccountRead } from "@/lib/account-read/account-read";
 import { createOpenThreadLazy, setThreadTitleIfEmpty } from "@/lib/threads/threads";
-import { insertMessage } from "@/lib/threads/messages";
+import { deleteMessage, insertMessage } from "@/lib/threads/messages";
+import { validateBlock } from "@/lib/tools/block-registry";
 import { runHeaderBlock } from "@/lib/tools/run-header";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import type { AccountReadBlock } from "@/lib/tools/blocks";
@@ -212,20 +213,26 @@ export async function POST(request: Request): Promise<Response> {
         // in the chat with no answer under it. Best-effort — a persist failure must not swallow the
         // streamed result. The account tool skips this (persist=false) and renders the block from
         // the live stream, exactly as before.
-        if (targetThreadId) {
+        // Never a message with no read under it: the read is checked before its message is stored
+        // (the write boundary would refuse it after), and a read that fails to store takes its
+        // message back out.
+        const readBlocks = [runHeaderBlock({ skill: "account" }), block];
+        if (targetThreadId && readBlocks.every((b) => validateBlock(b).ok)) {
           try {
-            await insertMessage(
+            const asked = await insertMessage(
               targetThreadId,
               "user",
               [{ type: "markdown", props: { text: ACCOUNT_READ_ASK } }],
               kcStamp().kcGenVersion,
             );
-            await insertMessage(
-              targetThreadId,
-              "assistant",
-              [runHeaderBlock({ skill: "account" }), block],
-              kcStamp().kcGenVersion,
-            );
+            try {
+              await insertMessage(targetThreadId, "assistant", readBlocks, kcStamp().kcGenVersion);
+            } catch (err) {
+              await deleteMessage(asked.id).catch(() => {
+                /* best-effort — the streamed read still reaches the creator */
+              });
+              throw err;
+            }
             // A chat whose first message this is takes it as its name, as any stored message
             // does (`/api/threads/user-turn`); a titled chat keeps its name.
             await setThreadTitleIfEmpty(user.id, targetThreadId, ACCOUNT_READ_ASK);

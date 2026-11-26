@@ -107,6 +107,12 @@ export interface RunCandidate {
    * started in.
    */
   runs?: number;
+  /**
+   * A wait with no request of ours behind it (a chat reopened while its run goes on, on the server).
+   * It may hold the tail, but it never holds the field: it is not "streaming" to the composer's
+   * one-run-at-a-time gate, and Stop does not reach it.
+   */
+  waitOnly?: boolean;
   stop: () => void;
   reset: () => void;
   retry?: () => void;
@@ -228,7 +234,9 @@ export function useActiveRun(candidates: RunCandidate[]): UseActiveRunResult {
 
   return {
     activeRun: preferred ? normalize(preferred) : null,
-    isAnyStreaming: !!streaming,
-    stopActive: () => streaming?.stop(),
+    isAnyStreaming: candidates.some((c) => c.isStreaming && !c.waitOnly),
+    stopActive: () => {
+      if (streaming && !streaming.waitOnly) streaming.stop();
+    },
   };
 }

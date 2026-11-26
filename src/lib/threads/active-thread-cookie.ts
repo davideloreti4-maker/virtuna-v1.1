@@ -45,6 +45,22 @@ export function clearActiveThreadCookie(): void {
   document.cookie = `${ACTIVE_THREAD_COOKIE}=; path=/; max-age=0; samesite=lax`;
 }
 
+/**
+ * Client-only: the chat a run is started in, to send with it (a Test run names its chat so the
+ * server adds the card there, `/api/analyze`). Null on a fresh blank thread or with no pointer.
+ */
+export function runChatIdFromCookie(): string | null {
+  const pointer = getActiveThreadCookie();
+  return pointer && pointer !== NEW_THREAD_SENTINEL ? pointer : null;
+}
+
+/** A new run's own nonce (a Test run and its seal carry it, so each run gets its own card). */
+export function newRunNonce(): string {
+  return typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+    ? crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+}
+
 /** Client-only: read the current pointer value (thread id, sentinel, or null). */
 export function getActiveThreadCookie(): string | null {
   if (typeof document === "undefined") return null;

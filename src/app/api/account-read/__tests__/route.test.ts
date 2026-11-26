@@ -30,9 +30,17 @@ vi.mock("@/lib/audience/audience-repo", () => ({ listAudiences: vi.fn() }));
 vi.mock("@/lib/flywheel/reconciliation-repo", () => ({ listReconciliations: vi.fn() }));
 vi.mock("@/lib/account-read/account-read", () => ({ generateAccountRead: vi.fn() }));
 vi.mock("@/lib/threads/threads", () => ({ createOpenThreadLazy: vi.fn(), setThreadTitleIfEmpty: vi.fn() }));
-vi.mock("@/lib/threads/messages", () => ({ insertMessage: vi.fn() }));
+vi.mock("@/lib/threads/messages", () => ({ insertMessage: vi.fn(), deleteMessage: vi.fn() }));
 vi.mock("@/lib/tools/run-header", () => ({ runHeaderBlock: vi.fn(() => ({ type: "run-header" })) }));
 vi.mock("@/lib/kc/kc-stamp", () => ({ kcStamp: vi.fn(() => ({ kcGenVersion: "test" })) }));
+// The block schema, at the line this file needs: the run-header stand-in above and the fixture read
+// are not full blocks, so the route's check before storing is answered here: a read with no profile
+// is the one that would not store.
+vi.mock("@/lib/tools/block-registry", () => ({
+  validateBlock: vi.fn((b: { type?: string; props?: { profile?: unknown } }) =>
+    b.type === "account-read" && b.props?.profile === null ? { ok: false } : { ok: true, block: b },
+  ),
+}));
 
 import { POST } from "../route";
 import { createClient } from "@/lib/supabase/server";
@@ -41,7 +49,7 @@ import { listAudiences } from "@/lib/audience/audience-repo";
 import { listReconciliations } from "@/lib/flywheel/reconciliation-repo";
 import { generateAccountRead } from "@/lib/account-read/account-read";
 import { createOpenThreadLazy, setThreadTitleIfEmpty } from "@/lib/threads/threads";
-import { insertMessage } from "@/lib/threads/messages";
+import { insertMessage, deleteMessage } from "@/lib/threads/messages";
 
 const mockCreateClient = createClient as ReturnType<typeof vi.fn>;
 const mockCreditGate = creditGate as ReturnType<typeof vi.fn>;
@@ -275,5 +283,20 @@ describe("POST /api/account-read — a scrape failure is named, not blamed on th
     const body = await drain(await POST(req()));
     expect(body).toContain("event: error");
     expect(body).not.toContain("scrape_failed");
+  });
+});
+
+describe("POST /api/account-read — never a message with no read under it", () => {
+  it("the read's row failing to store takes its message back out; the read still streams", async () => {
+    mockInsert.mockResolvedValueOnce({ id: "m-user" }).mockRejectedValueOnce(new Error("db down"));
+    const body = await drain(await POST(persistReq()));
+    expect(body).toContain("event: done");
+    expect(deleteMessage).toHaveBeenCalledWith("m-user");
+  });
+
+  it("a read that would not store (an invalid block) stores nothing, not even its message", async () => {
+    mockGenerate.mockResolvedValue({ ...SUCCESS_READ, profile: null });
+    await drain(await POST(persistReq()));
+    expect(mockInsert).not.toHaveBeenCalled();
   });
 });

@@ -35,7 +35,9 @@ vi.mock("@/lib/supabase/client", () => ({
 
 import { Composer } from "../composer";
 import { useBoardStore } from "@/stores/board-store";
-import { ACCOUNT_READ_FULL } from "@/components/thread-next/__tests__/fixtures/answers";
+import { forgetRunsEndedHere } from "@/lib/thread-next/runs-ended-here";
+import { StrictMode } from "react";
+import { ACCOUNT_READ_FULL, profileRead } from "@/components/thread-next/__tests__/fixtures/answers";
 
 // ── the network ──────────────────────────────────────────────────────────────
 type Call = { url: string; init?: RequestInit };
@@ -573,7 +575,7 @@ describe("the account read is stored in the chat, as a run's answer is", () => {
     expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
   });
 
-  it("leaving the chat while it reads cancels the read's request: nothing of it lands in the next chat", async () => {
+  it("leaving the chat while it reads lets the read run on (not aborted): nothing of it lands in the next chat", async () => {
     // As over a network: the body errors once its request is aborted; else the read lands after a beat.
     streams["/api/account-read"] = (signal) => {
       const body = new ReadableStream<Uint8Array>({
@@ -595,7 +597,7 @@ describe("the account read is stored in the chat, as a run's answer is", () => {
     threadFixture = { threadId: "t2", messages: [msg("u9", "user", "another chat"), msg("m9", "assistant", "Another answer.")], simSeals: {} };
     act(() => useBoardStore.getState().switchThread());
     expect(await screen.findByText("Another answer.")).toBeInTheDocument();
-    expect(requests("/api/account-read")[0]!.init?.signal?.aborted).toBe(true);
+    expect(requests("/api/account-read")[0]!.init?.signal?.aborted).toBe(false);
     await act(async () => {
       await new Promise((r) => setTimeout(r, 250));
     });
@@ -651,7 +653,7 @@ describe("leaving a chat while a run streams: the run does not follow into the n
     expect(await screen.findByText("Another answer.")).toBeInTheDocument();
   };
 
-  it("a hooks run: its request is aborted, and its later cards and closing line are not in the next chat", async () => {
+  it("a hooks run: its request is NOT aborted (it runs on, to be stored), and its later cards and closing line are not in the next chat", async () => {
     const run = writable();
     streams["/api/tools/hooks"] = (signal) => run.respond(signal);
     await renderComposer();
@@ -662,7 +664,7 @@ describe("leaving a chat while a run streams: the run does not follow into the n
     await run.push("stage", { name: "Generating", status: "active" });
 
     await switchAway();
-    expect(run.aborted()).toBe(true);
+    expect(run.aborted()).toBe(false);
     await run.push("stage", { name: "Generating", status: "done" });
     await run.push("content", { blocks: [{ props: { hookLine: "Late hook from the old chat", rank: 1, scrollQuote: "x" } }] });
     await run.push("followup", { text: "Late closing line." });
@@ -674,7 +676,7 @@ describe("leaving a chat while a run streams: the run does not follow into the n
     expect(inField().queryByRole("button", { name: "Stop the run" })).toBeNull();
   });
 
-  it("a chat run: its request is aborted, and its later words are not in the next chat", async () => {
+  it("a chat run: its request is NOT aborted, and its later words are not in the next chat", async () => {
     const run = writable();
     streams["/api/tools/chat"] = (signal) => run.respond(signal);
     await renderComposer();
@@ -684,7 +686,7 @@ describe("leaving a chat while a run streams: the run does not follow into the n
     await run.push("token", { delta: "Post the " });
 
     await switchAway();
-    expect(run.aborted()).toBe(true);
+    expect(run.aborted()).toBe(false);
     await run.push("token", { delta: "gym myth one." });
     await run.push("done", {});
     await settle();
@@ -693,4 +695,278 @@ describe("leaving a chat while a run streams: the run does not follow into the n
     expect(threadText()).not.toContain("what should I post this week?");
     expect(inField().queryByRole("button", { name: "Stop the run" })).toBeNull();
   });
+
+  it("Stop still ends a run: the creator's own", async () => {
+    const run = writable();
+    streams["/api/tools/hooks"] = (signal) => run.respond(signal);
+    await renderComposer();
+    fireEvent.click(pill("Hooks"));
+    fireEvent.change(text(), { target: { value: "meal prep" } });
+    fireEvent.click(send());
+    await waitFor(() => expect(requests("/api/tools/hooks")).toHaveLength(1));
+    fireEvent.click(await waitFor(() => inField().getByRole("button", { name: "Stop the run" })));
+    await settle();
+    expect(run.aborted()).toBe(true);
+  });
+
+  it("the left run's late frames do not reach the next chat's own run either", async () => {
+    // Leave mid-run, start a run in the next chat, then the left run's frames arrive.
+    const left = writable();
+    const next = writable();
+    streams["/api/tools/hooks"] = (signal, n) => (n === 1 ? left.respond(signal) : next.respond(signal));
+    await renderComposer();
+    fireEvent.click(pill("Hooks"));
+    fireEvent.change(text(), { target: { value: "meal prep" } });
+    fireEvent.click(send());
+    await waitFor(() => expect(requests("/api/tools/hooks")).toHaveLength(1));
+    await switchAway();
+    fireEvent.click(pill("Hooks"));
+    fireEvent.change(text(), { target: { value: "gym myths" } });
+    fireEvent.click(send());
+    await waitFor(() => expect(requests("/api/tools/hooks")).toHaveLength(2));
+    await next.push("stage", { name: "Generating", status: "active" });
+
+    await left.push("stage", { name: "Generating", status: "done" });
+    await left.push("content", { blocks: [{ props: { hookLine: "Late hook from the old chat", rank: 1, scrollQuote: "x" } }] });
+    await left.push("done", {});
+    await settle();
+
+    expect(left.aborted()).toBe(false);
+    expect(threadText()).not.toContain("Late hook from the old chat");
+    // The next chat's own run is still running, untouched by the old one's end.
+    expect(inField().getByRole("button", { name: "Stop the run" })).toBeInTheDocument();
+    fireEvent.click(inField().getByRole("button", { name: "Stop the run" }));
+  });
 });
+
+
+describe("the evidence read is its own turn in the chat", () => {
+  it("after the read and after a reload: the previous turn keeps its answer, and the read's message is drawn once", async () => {
+    // What the route stores for a delivered read: its message, then the card.
+    const stored = () => ({
+      ...historyThread(),
+      messages: [
+        ...historyThread().messages,
+        msg("u2", "user", "Read this evidence"),
+        { id: "m2", thread_id: "t1", role: "assistant", blocks: [profileRead()], created_at: at },
+      ],
+    });
+    await renderComposer();
+    threadFixture = stored();
+    fireEvent.change(evidenceInput(), { target: { files: [new File(["me: hi"], "chat.txt", { type: "text/plain" })] } });
+    fireEvent.click(send());
+    await waitFor(() => expect(requests("/api/tools/profile")).toHaveLength(1));
+    await waitFor(() => expect(screen.getAllByText("Read this evidence", { selector: "p" })).toHaveLength(1));
+    await settle();
+    expect(screen.getByText("First answer.")).toBeInTheDocument();
+    expect(screen.getAllByText("first ask", { selector: "p" })).toHaveLength(1);
+
+    cleanup();
+    await renderComposer();
+    await settle();
+    expect(screen.getByText("First answer.")).toBeInTheDocument();
+    expect(screen.getAllByText("Read this evidence", { selector: "p" })).toHaveLength(1);
+  });
+});
+
+describe("the chat list follows a chat left mid-run", () => {
+  const lists = () => requests("/api/threads/list").length;
+
+  it("is read again when the creator leaves the chat, and again when the left run's request ends", async () => {
+    let end: () => void = () => {};
+    streams["/api/tools/hooks"] = (signal) => {
+      const body = new ReadableStream<Uint8Array>({
+        start(c) {
+          end = () => c.close();
+          signal?.addEventListener("abort", () => c.error(new DOMException("aborted", "AbortError")));
+        },
+      });
+      return { ok: true, status: 200, body, json: async () => ({}) } as unknown as Response;
+    };
+    await renderComposer();
+    await waitFor(() => expect(lists()).toBeGreaterThan(0));
+    await settle();
+    fireEvent.click(pill("Hooks"));
+    fireEvent.change(text(), { target: { value: "meal prep" } });
+    fireEvent.click(send());
+    await waitFor(() => expect(requests("/api/tools/hooks")).toHaveLength(1));
+    await settle();
+    const beforeLeaving = lists();
+
+    threadFixture = { threadId: "t2", messages: [msg("u9", "user", "another chat"), msg("m9", "assistant", "Another answer.")], simSeals: {} };
+    act(() => useBoardStore.getState().switchThread());
+    expect(await screen.findByText("Another answer.")).toBeInTheDocument();
+    await waitFor(() => expect(lists()).toBeGreaterThan(beforeLeaving));
+    await settle();
+    const afterLeaving = lists();
+
+    await act(async () => {
+      end();
+      await new Promise((r) => setTimeout(r, 30));
+    });
+    await waitFor(() => expect(lists()).toBeGreaterThan(afterLeaving));
+  });
+});
+
+describe("a chat reopened while its run still goes on, on the server", () => {
+  const ASK = "hooks about meal prep";
+  const asked = (ago: number) => ({
+    id: "u2",
+    thread_id: "t1",
+    role: "user" as const,
+    blocks: [{ type: "markdown", props: { text: ASK } }],
+    created_at: new Date(Date.now() - ago).toISOString(),
+  });
+  const waiting = () => threadText().includes("Thinking");
+
+  it("shows the run's wait under the question, reads the chat again until the answer is in, then draws it once", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      threadFixture = { ...historyThread(), messages: [...historyThread().messages, asked(3_000)] };
+      await renderComposer();
+      await waitFor(() => expect(waiting()).toBe(true));
+      expect(screen.getAllByText(ASK, { selector: "p" })).toHaveLength(1);
+      const reads = requests("/api/threads/open").length;
+
+      // Not stored yet at the next read: still waiting.
+      await act(async () => {
+        vi.advanceTimersByTime(3_100);
+      });
+      await waitFor(() => expect(requests("/api/threads/open").length).toBeGreaterThan(reads));
+      expect(waiting()).toBe(true);
+
+      // The route stores the answer; the next read brings it in.
+      threadFixture = { ...historyThread(), messages: [...historyThread().messages, asked(9_000), msg("m2", "assistant", "Three hooks for busy students.")] };
+      await act(async () => {
+        vi.advanceTimersByTime(3_100);
+      });
+      await waitFor(() => expect(threadText()).toContain("Three hooks for busy students."));
+      expect(waiting()).toBe(false);
+      expect(screen.getAllByText(ASK, { selector: "p" })).toHaveLength(1);
+      expect(screen.getAllByText("first ask", { selector: "p" })).toHaveLength(1);
+      expect(inField().queryByRole("button", { name: "Stop the run" })).toBeNull();
+
+      // Once in, the chat is not read again.
+      const after = requests("/api/threads/open").length;
+      await act(async () => {
+        vi.advanceTimersByTime(10_000);
+      });
+      expect(requests("/api/threads/open").length).toBe(after);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  beforeEach(() => forgetRunsEndedHere());
+
+  it("an old question with no answer shows no wait: the question alone, as before (the window is 2 min)", async () => {
+    threadFixture = { ...historyThread(), messages: [...historyThread().messages, asked(2 * 60_000 + 5_000)] };
+    await renderComposer();
+    await settle();
+    expect(waiting()).toBe(false);
+    expect(screen.getAllByText(ASK, { selector: "p" })).toHaveLength(1);
+    expect(inField().queryByRole("button", { name: "Stop the run" })).toBeNull();
+  });
+
+  it("a wait whose answer never comes ends at its limit: the question alone", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      threadFixture = { ...historyThread(), messages: [...historyThread().messages, asked(110_000)] };
+      await renderComposer();
+      await waitFor(() => expect(waiting()).toBe(true));
+      await act(async () => {
+        vi.advanceTimersByTime(15_000);
+      });
+      await waitFor(() => expect(waiting()).toBe(false));
+      expect(screen.getAllByText(ASK, { selector: "p" })).toHaveLength(1);
+      expect(inField().queryByRole("button", { name: "Stop the run" })).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("never holds the field: a send ends the wait (the question back in history, once) and goes on", async () => {
+    streams["/api/tools/chat"] = (signal) => sse(signal, [], true);
+    threadFixture = { ...historyThread(), messages: [...historyThread().messages, asked(3_000)] };
+    await renderComposer();
+    await waitFor(() => expect(waiting()).toBe(true));
+    expect(inField().queryByRole("button", { name: "Stop the run" })).toBeNull();
+    expect(send()).toHaveAttribute("aria-label", "Send message");
+
+    fireEvent.change(text(), { target: { value: "and one more thing" } });
+    fireEvent.click(send());
+    await waitFor(() => expect(requests("/api/tools/chat")).toHaveLength(1));
+    await settle();
+    expect(screen.getAllByText(ASK, { selector: "p" })).toHaveLength(1);
+    expect(screen.getAllByText("and one more thing", { selector: "p" })).toHaveLength(1);
+    fireEvent.click(inField().getByRole("button", { name: "Stop the run" }));
+  });
+
+  it("a run this tab stopped: back in its chat, no wait for it, and the field sends", async () => {
+    streams["/api/tools/chat"] = (signal) => sse(signal, [], true);
+    await renderComposer();
+    await sendAndStop(ASK);
+
+    threadFixture = { threadId: "t2", messages: [msg("u9", "user", "another chat"), msg("m9", "assistant", "Another answer.")], simSeals: {} };
+    act(() => useBoardStore.getState().switchThread());
+    expect(await screen.findByText("Another answer.")).toBeInTheDocument();
+    // Back: the route had stored the stopped ask, with no answer after it.
+    threadFixture = { ...historyThread(), messages: [...historyThread().messages, asked(4_000)] };
+    act(() => useBoardStore.getState().switchThread());
+    expect(await screen.findByText("First answer.")).toBeInTheDocument();
+    await settle();
+    expect(waiting()).toBe(false);
+    expect(screen.getAllByText(ASK, { selector: "p" })).toHaveLength(1);
+    expect(send()).toHaveAttribute("aria-label", "Send message");
+  });
+
+  it("a read that answers with another chat is not put on screen: the wait goes on until its own chat answers", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      threadFixture = { ...historyThread(), messages: [...historyThread().messages, asked(3_000)] };
+      await renderComposer();
+      await waitFor(() => expect(waiting()).toBe(true));
+      // The pointer moved meanwhile (another tab): the read names another chat.
+      threadFixture = { threadId: "t2", messages: [msg("u9", "user", "another chat"), msg("m9", "assistant", "Another answer.")], simSeals: {} };
+      const reads = requests("/api/threads/open").length;
+      await act(async () => {
+        vi.advanceTimersByTime(3_100);
+      });
+      await waitFor(() => expect(requests("/api/threads/open").length).toBeGreaterThan(reads));
+      await settle();
+      expect(threadText()).not.toContain("Another answer.");
+      expect(waiting()).toBe(true);
+
+      threadFixture = { ...historyThread(), messages: [...historyThread().messages, asked(9_000), msg("m2", "assistant", "Three hooks for busy students.")] };
+      await act(async () => {
+        vi.advanceTimersByTime(3_100);
+      });
+      await waitFor(() => expect(threadText()).toContain("Three hooks for busy students."));
+      expect(waiting()).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("under StrictMode, a wait that ends at its limit puts the question back once", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      threadFixture = { ...historyThread(), messages: [...historyThread().messages, asked(110_000)] };
+      renderWithClient(
+        <StrictMode>
+          <Composer />
+        </StrictMode>,
+      );
+      await screen.findByTestId("next-field-dock");
+      await waitFor(() => expect(waiting()).toBe(true));
+      await act(async () => {
+        vi.advanceTimersByTime(15_000);
+      });
+      await waitFor(() => expect(waiting()).toBe(false));
+      expect(screen.getAllByText(ASK, { selector: "p" })).toHaveLength(1);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});
+

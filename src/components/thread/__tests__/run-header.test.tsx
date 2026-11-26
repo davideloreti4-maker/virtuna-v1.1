@@ -41,7 +41,8 @@ const STAMPING_ROUTES = [
   'src/app/api/tools/ideas/route.ts',
   'src/app/api/tools/script/route.ts',
   'src/app/api/tools/explore/route.ts',
-  'src/app/api/tools/test/card/route.ts',
+  // The Test card's stamp: built once for both writers (/api/analyze and /api/tools/test/card).
+  'src/lib/tools/test-card.ts',
   'src/app/api/account-read/route.ts',
 ];
 

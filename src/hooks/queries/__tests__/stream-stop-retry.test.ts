@@ -25,6 +25,7 @@ import { useRemixStream } from '@/hooks/queries/use-remix-stream';
 import { useExploreStream } from '@/hooks/queries/use-explore-stream';
 import { useAccountReadStream } from '@/hooks/queries/use-account-read-stream';
 import { RUN_FAILURE_SENTINEL } from '@/lib/net/run-failure';
+import { subscribeLetGoRunsEnded } from '@/lib/thread-next/let-go-runs';
 
 type Call = { url: string; init?: RequestInit };
 let calls: Call[] = [];
@@ -268,15 +269,15 @@ describe('Retry replays a refine as a refine, and "Find new outliers" with its s
   });
 });
 
-describe('account stream: reset() ends the read in flight', () => {
-  it('aborts the request, and is not a stopped run (a thread switch leaves nothing behind)', async () => {
+describe('account stream: reset() lets the read in flight go on, unseen', () => {
+  it('does not abort the request, and is not a stopped run (a thread switch leaves nothing behind)', async () => {
     const { result } = renderHook(() => useAccountReadStream());
     act(() => {
       void result.current.start({ persist: true });
     });
     await waitFor(() => expect(calls).toHaveLength(1));
     act(() => result.current.reset());
-    expect(calls[0]!.init?.signal?.aborted).toBe(true);
+    expect(calls[0]!.init?.signal?.aborted).toBe(false);
     await waitFor(() => expect(result.current.isStreaming).toBe(false));
     expect(result.current.isStopped).toBe(false);
     expect(result.current.error).toBeNull();
@@ -313,5 +314,167 @@ describe('account stream: the route names a scrape failure', () => {
       await result.current.start({ persist: true });
     });
     expect(result.current.error).toBe('Something else broke.');
+  });
+});
+
+/** All seven, each with its call, for the runs let go by a thread switch. */
+const LET_GO_STREAMS: Array<{ name: string; use: () => { detach?: () => void; reset: () => void; stop: () => void }; call: (h: never) => Promise<void>; letGo: (h: never) => void }> = [
+  ...STREAMS.map((s) => ({ ...s, letGo: ((h: { detach: () => void }) => h.detach()) as never })),
+  {
+    name: 'account',
+    use: useAccountReadStream as never,
+    call: ((h: ReturnType<typeof useAccountReadStream>) => h.start({ persist: true })) as never,
+    letGo: ((h: ReturnType<typeof useAccountReadStream>) => h.reset()) as never,
+  },
+];
+
+describe.each(LET_GO_STREAMS)('$name stream: a run let go by a thread switch', ({ use, call, letGo }) => {
+  /** One request whose body ends when the test says (or errors on abort). */
+  const endable = () => {
+    let end: () => void = () => {};
+    global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(input), init });
+      const body = new ReadableStream<Uint8Array>({
+        start(c) {
+          end = () => c.close();
+          init?.signal?.addEventListener('abort', () => c.error(new DOMException('aborted', 'AbortError')));
+        },
+      });
+      return { ok: true, status: 200, body, json: async () => ({}) } as unknown as Response;
+    }) as typeof fetch;
+    return () => end();
+  };
+
+  it('says so when its request ends in the background, once', async () => {
+    const end = endable();
+    const heard = vi.fn();
+    const stopHearing = subscribeLetGoRunsEnded(heard);
+    const { result } = renderHook(() => use());
+    act(() => {
+      void call(result.current as never);
+    });
+    await waitFor(() => expect(calls).toHaveLength(1));
+    act(() => letGo(result.current as never));
+    expect(heard).not.toHaveBeenCalled();
+    await act(async () => {
+      end();
+      await new Promise((r) => setTimeout(r, 20));
+    });
+    expect(heard).toHaveBeenCalledTimes(1);
+    expect(calls[0]!.init?.signal?.aborted).toBe(false);
+    stopHearing();
+  });
+
+  it('unmounted mid-run (the creator leaves /home): the request is let go, not aborted, nothing is set after, and its end is told', async () => {
+    const end = endable();
+    const heard = vi.fn();
+    const stopHearing = subscribeLetGoRunsEnded(heard);
+    // Every render's state, so "nothing set after unmount" is read off the hook itself.
+    const seen: Array<{ isStreaming: boolean; isStopped: boolean }> = [];
+    const { result, unmount } = renderHook(() => {
+      const h = use() as unknown as { isStreaming: boolean; isStopped: boolean };
+      seen.push({ isStreaming: h.isStreaming, isStopped: h.isStopped });
+      return h;
+    });
+    act(() => {
+      void call(result.current as never);
+    });
+    await waitFor(() => expect(calls).toHaveLength(1));
+    unmount();
+    const rendersAtUnmount = seen.length;
+    expect(seen[seen.length - 1]).toEqual({ isStreaming: true, isStopped: false });
+    expect(calls[0]!.init?.signal?.aborted).toBe(false);
+    await act(async () => {
+      end();
+      await new Promise((r) => setTimeout(r, 20));
+    });
+    expect(heard).toHaveBeenCalledTimes(1);
+    // No render after the unmount: the run's end set nothing.
+    expect(seen).toHaveLength(rendersAtUnmount);
+    stopHearing();
+  });
+
+  it('a run let go whose body never ends is ended at the limit, and its end is told', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    endable(); // never ended by the test
+    const heard = vi.fn();
+    const stopHearing = subscribeLetGoRunsEnded(heard);
+    const { result } = renderHook(() => use());
+    try {
+      act(() => {
+        void call(result.current as never);
+      });
+      await waitFor(() => expect(calls).toHaveLength(1));
+      act(() => letGo(result.current as never));
+      await act(async () => {
+        vi.advanceTimersByTime(330_000);
+      });
+      expect(calls[0]!.init?.signal?.aborted).toBe(true);
+      await waitFor(() => expect(heard).toHaveBeenCalledTimes(1));
+      stopHearing();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('a run that ends on screen, or is stopped, says nothing', async () => {
+    const end = endable();
+    const heard = vi.fn();
+    const stopHearing = subscribeLetGoRunsEnded(heard);
+    const { result } = renderHook(() => use());
+    act(() => {
+      void call(result.current as never);
+    });
+    await waitFor(() => expect(calls).toHaveLength(1));
+    await act(async () => {
+      end();
+      await new Promise((r) => setTimeout(r, 20));
+    });
+    act(() => {
+      void call(result.current as never);
+    });
+    await waitFor(() => expect(calls).toHaveLength(2));
+    act(() => result.current.stop());
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 20));
+    });
+    expect(heard).not.toHaveBeenCalled();
+    stopHearing();
+  });
+});
+
+describe('remix stream: the decode\'s plain line rides the live card', () => {
+  const answerWith = (decode: Record<string, unknown>) => {
+    global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(input), init });
+      const frame = `event: content\ndata: ${JSON.stringify({ blocks: [{ props: { adaptedHook: 'My version', sourceDecode: decode } }] })}\n\n`;
+      const body = new ReadableStream<Uint8Array>({
+        start(c) {
+          c.enqueue(new TextEncoder().encode(frame));
+          c.close();
+        },
+      });
+      return { ok: true, status: 200, body, json: async () => ({}) } as unknown as Response;
+    }) as typeof fetch;
+  };
+  const decode = { hookPattern: 'dare', structure: 'setup, payoff', theTurn: 'price', emotionalBeat: 'win' };
+
+  it('carries whyPlain through to the card, as a reload shows it', async () => {
+    answerWith({ ...decode, whyPlain: 'A dog steals the sandwich in the first second.' });
+    const { result } = renderHook(() => useRemixStream());
+    await act(async () => {
+      await result.current.start('https://www.tiktok.com/@a/video/1', 'tiktok');
+    });
+    const card = result.current.toBlocks()[0]!;
+    expect(card.props.sourceDecode).toEqual({ ...decode, whyPlain: 'A dog steals the sandwich in the first second.' });
+  });
+
+  it('a decode with no plain line keeps its four fields only', async () => {
+    answerWith(decode);
+    const { result } = renderHook(() => useRemixStream());
+    await act(async () => {
+      await result.current.start('https://www.tiktok.com/@a/video/1', 'tiktok');
+    });
+    expect(result.current.toBlocks()[0]!.props.sourceDecode).toEqual(decode);
   });
 });

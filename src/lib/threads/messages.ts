@@ -124,6 +124,77 @@ export async function insertMessage(
   return data;
 }
 
+// ─── insertMessageOnce / findMessage ─────────────────────────────────────────
+/**
+ * Insert a message under a CALLER-CHOSEN id, at most once. The id is the idempotency key: a second
+ * writer with the same id hits the primary key and gets `inserted: false` (Postgres 23505), so two
+ * writers racing (a server finishing a run and a client sealing it) cannot both add the row. No
+ * schema change: `messages.id` is a uuid the insert may name. Same write boundary as insertMessage.
+ */
+export async function insertMessageOnce(
+  id: string,
+  threadId: string,
+  role: "user" | "assistant" | "tool",
+  blocks: unknown[],
+  kcGenVersion?: string,
+): Promise<{ inserted: boolean; row: MessageRow | null }> {
+  for (const raw of blocks) {
+    const result = validateBlock(raw);
+    if (!result.ok) {
+      throw new Error(`insertMessageOnce: block failed validation at write boundary: ${JSON.stringify(raw)}`);
+    }
+  }
+  const supabase = createServiceClient();
+  const body: Json = kcGenVersion ? ({ kcGenVersion, blocks } as unknown as Json) : (blocks as Json[]);
+  const { data, error } = await supabase.from("messages").insert({ id, thread_id: threadId, role, body }).select("*").single();
+  if (error?.code === "23505") return { inserted: false, row: null };
+  if (error || !data) {
+    throw new Error(`insertMessageOnce: failed for thread_id=${threadId}: ${error?.message ?? "no data"}`);
+  }
+  await supabase.from("threads").update({ updated_at: new Date().toISOString() }).eq("id", threadId);
+  return { inserted: true, row: data };
+}
+
+/**
+ * Delete one message by id (service client). For a route that stored a message and then failed to
+ * store the answer that belongs under it: the message is taken back out rather than left with no
+ * answer. The caller owns the id (it just inserted it).
+ */
+export async function deleteMessage(id: string): Promise<void> {
+  const supabase = createServiceClient();
+  const { error } = await supabase.from("messages").delete().eq("id", id);
+  if (error) throw new Error(`deleteMessage: failed for id=${id}: ${error.message}`);
+}
+
+/**
+ * The text of a chat's latest user turn (service client), or null: a simulation's is the dropped
+ * file's name, the pasted link, or typed text. Reads either stored body shape.
+ */
+export async function lastUserTurnText(threadId: string): Promise<string | null> {
+  const supabase = createServiceClient();
+  const { data } = await supabase
+    .from("messages")
+    .select("body")
+    .eq("thread_id", threadId)
+    .eq("role", "user")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const body = (data as { body?: unknown } | null)?.body;
+  const blocks = Array.isArray(body) ? body : ((body as { blocks?: unknown[] } | null)?.blocks ?? []);
+  for (const b of blocks as Array<{ props?: { text?: unknown } }>) {
+    if (typeof b?.props?.text === "string" && b.props.text.trim()) return b.props.text.trim();
+  }
+  return null;
+}
+
+/** One message by id (service client), or null. */
+export async function findMessage(id: string): Promise<MessageRow | null> {
+  const supabase = createServiceClient();
+  const { data } = await supabase.from("messages").select("*").eq("id", id).maybeSingle();
+  return (data as MessageRow | null) ?? null;
+}
+
 // ─── insertUserTurnUnlessRepeat ───────────────────────────────────────────────
 /**
  * Store the creator's turn (one user block) before a run, unless the thread's LAST message is

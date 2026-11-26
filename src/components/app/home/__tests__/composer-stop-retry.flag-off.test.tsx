@@ -293,7 +293,7 @@ describe("flag off: two quick taps on the starter card's account read", () => {
 });
 
 describe("flag off: leaving a chat while its answer streams", () => {
-  it("ends the run's request, so nothing more of it reaches the next chat", async () => {
+  it("lets the run's request go on (not aborted), and the next chat is at rest", async () => {
     await renderComposer();
     sendChat("what should I post this week?");
     await screen.findByRole("button", { name: "Stop the run" });
@@ -301,7 +301,37 @@ describe("flag off: leaving a chat while its answer streams", () => {
     threadFixture = { threadId: "t2", messages: [{ id: "m9", thread_id: "t2", role: "assistant", blocks: [{ type: "markdown", props: { text: "Another answer." } }], created_at: at }], simSeals: {} };
     act(() => useBoardStore.getState().switchThread());
     expect(await screen.findByText("Another answer.")).toBeInTheDocument();
-    expect(requests("/api/tools/chat")[0]!.init?.signal?.aborted).toBe(true);
+    expect(requests("/api/tools/chat")[0]!.init?.signal?.aborted).toBe(false);
     expect(screen.queryByRole("button", { name: "Stop the run" })).toBeNull();
+  });
+});
+
+describe("flag off: a chat reopened while its run still goes on, on the server", () => {
+  it("shows the wait under the question; the stored answer arrives on a later read, drawn once", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    try {
+      const asked = (ago: number) => ({ id: "u2", thread_id: "t1", role: "user", blocks: [{ type: "markdown", props: { text: "hooks about meal prep" } }], created_at: new Date(Date.now() - ago).toISOString() });
+      threadFixture = { ...THREAD, messages: [...THREAD.messages, asked(3_000)] };
+      renderWithClient(<Composer />);
+      expect(await screen.findByText("First answer.")).toBeInTheDocument();
+      // The legacy turn's wait; the field stays free (a reopen wait never holds it).
+      await waitFor(() => expect(screen.getByText("Thinking…")).toBeInTheDocument());
+      expect(screen.queryByRole("button", { name: "Stop the run" })).toBeNull();
+      expect(screen.getAllByText("hooks about meal prep", { selector: "p" })).toHaveLength(1);
+
+      threadFixture = {
+        ...THREAD,
+        messages: [...THREAD.messages, asked(9_000), { id: "m2", thread_id: "t1", role: "assistant", blocks: [{ type: "markdown", props: { text: "Three hooks for busy students." } }], created_at: at }],
+      };
+      await act(async () => {
+        vi.advanceTimersByTime(3_100);
+      });
+      await waitFor(() => expect(screen.getAllByText("Three hooks for busy students.")).toHaveLength(1));
+      expect(screen.getAllByText("hooks about meal prep", { selector: "p" })).toHaveLength(1);
+      expect(screen.queryByText("Thinking…")).toBeNull();
+      await waitFor(() => expect(screen.queryByRole("button", { name: "Stop the run" })).toBeNull());
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

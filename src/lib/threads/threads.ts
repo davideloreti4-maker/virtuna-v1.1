@@ -36,6 +36,26 @@ import type { Database } from "@/types/database.types";
 
 export type ThreadRow = Database["public"]["Tables"]["threads"]["Row"];
 
+// ─── getOwnedOpenThread ────────────────────────────────────────────────────────
+/**
+ * A chat by id, only if it is the caller's own open chat (the same check getOpenThread applies to
+ * the cookie pointer). A run that names the chat it started in is pinned to it with this: a
+ * forged, foreign or archived id is null.
+ */
+export async function getOwnedOpenThread(userId: string, threadId: string): Promise<ThreadRow | null> {
+  if (!threadId || threadId === NEW_THREAD_SENTINEL) return null;
+  const supabase = createServiceClient();
+  const { data } = await supabase
+    .from("threads")
+    .select("*")
+    .eq("id", threadId)
+    .eq("user_id", userId)
+    .eq("type", "open")
+    .is("reading_id", null)
+    .maybeSingle();
+  return (data as ThreadRow | null) ?? null;
+}
+
 // ─── createOpenThreadLazy ──────────────────────────────────────────────────────
 /**
  * Get-or-create the user's ACTIVE open thread (type:"open", reading_id IS NULL).

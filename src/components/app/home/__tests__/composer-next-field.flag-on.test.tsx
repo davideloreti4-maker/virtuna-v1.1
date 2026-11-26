@@ -332,6 +332,7 @@ describe("the composer renders the new field under the flag", () => {
       input_mode: "video_upload",
       content_type: "video",
       video_storage_path: path,
+      run_nonce: expect.any(String), // the run's own nonce: one card per run
     });
   });
 
@@ -1255,7 +1256,7 @@ describe("final review: a finished video does not come back (1)", () => {
 
     // The run completes and seals: the card POST, then the thread reload that shows the card.
     await waitFor(() => expect(requests("/api/tools/test/card")).toHaveLength(1));
-    expect(bodyOf(requests("/api/tools/test/card")[0]!)).toEqual({ analysisId: "run-1" });
+    expect(bodyOf(requests("/api/tools/test/card")[0]!)).toEqual({ analysisId: "run-1", runNonce: expect.any(String) });
     await waitFor(() => expect(requests("/api/threads/open").length).toBeGreaterThan(reloadsBefore));
 
     await waitFor(() => {
@@ -1485,7 +1486,7 @@ describe("residual fix: a run's inputs are recorded where it is armed", () => {
     const reloads = requests("/api/threads/open").length;
     fireEvent.click(send());
     await waitFor(() => expect(requests("/api/tools/test/card")).toHaveLength(run));
-    expect(bodyOf(requests("/api/tools/test/card")[run - 1]!)).toEqual({ analysisId: `run-${run}` });
+    expect(bodyOf(requests("/api/tools/test/card")[run - 1]!)).toEqual({ analysisId: `run-${run}`, runNonce: expect.any(String) });
     await waitFor(() => expect(requests("/api/threads/open").length).toBeGreaterThan(reloads));
   }
   /** Simulate again: no tile, and with no link send has nothing to run. */

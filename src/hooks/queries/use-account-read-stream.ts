@@ -13,13 +13,14 @@
  *   event: done      { block }           — the composed account-read block
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { reportCredit402, CreditWallRefusal, isCreditWallRefusal } from "@/lib/billing/credit-wall";
 import { reportSession401, SessionExpiredRefusal } from "@/lib/auth/session-expired";
 import { resolveRunError } from '@/lib/net/run-failure';
 import type { AccountReadBlock } from "@/lib/tools/blocks";
 import { parseRunEvidence, type RunEvidence } from "@/lib/tools/evidence";
 import type { StageState } from "@/components/thread/progress-checklist";
+import { useLetGoRun } from "@/hooks/queries/use-let-go-run";
 
 export interface UseAccountReadStreamReturn {
   /** The composed account-read block from the done event (null until it arrives). */
@@ -57,7 +58,7 @@ export interface UseAccountReadStreamReturn {
   start: (opts?: { persist?: boolean }) => Promise<void>;
   /** Abort the in-flight stream. */
   stop: () => void;
-  /** Reset state for a fresh run (e.g. on a thread switch), ending a read still in flight. */
+  /** Reset state for a fresh run (e.g. on a thread switch), letting a read still in flight go on unseen. */
   reset: () => void;
 }
 
@@ -76,21 +77,16 @@ export function useAccountReadStream(): UseAccountReadStreamReturn {
   const abortRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
 
-  // WR-05: guard against setState on an unmounted component (verbatim the sibling streams).
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-      abortRef.current?.abort();
-    };
-  }, []);
+  // The let-go machinery (`use-let-go-run`): each request's number and liveness, a thread switch or an
+  // unmount letting the run go on in the background, and the mount effect that owns `isMountedRef`.
+  const letGo = useLetGoRun(abortRef, isMountedRef);
 
   const reset = useCallback(() => {
-    // A read still out is ended with it: the composer resets every stream when the creator opens
-    // another chat, and a read left running would land its card in that chat's live turn. The route
-    // stores it in the chat it was asked in (resolved when the request came in), whatever happens here.
-    abortRef.current?.abort();
-    abortRef.current = null;
+    // A read still out is let go, not ended: the composer resets every stream when the creator opens
+    // another chat. Its request stays open to its end, so the route stays alive to store the read in
+    // the chat it was asked in (resolved when the request came in); its number is retired, so its
+    // reader drops the card instead of landing it in the next chat's live turn. Stop ends it.
+    letGo.detach();
     setBlock(null);
     setIsStreaming(false);
     setError(null);
@@ -98,7 +94,7 @@ export function useAccountReadStream(): UseAccountReadStreamReturn {
     setFallbackMessage(null);
     setEvidence(null);
     setStages([]);
-  }, []);
+  }, [letGo]);
 
   const stop = useCallback(() => {
     const inFlight = abortRef.current;
@@ -115,6 +111,9 @@ export function useAccountReadStream(): UseAccountReadStreamReturn {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
+    // This request's number and liveness (`use-let-go-run`): once let go, every frame it still sends
+    // is read and dropped, so it reaches its end without touching the next chat's run.
+    const { gen, isLive } = letGo.begin();
 
     setBlock(null);
     setError(null);
@@ -165,6 +164,7 @@ export function useAccountReadStream(): UseAccountReadStreamReturn {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+        if (!isLive()) continue; // detached: read on to the end, draw nothing
         buffer += decoder.decode(value, { stream: true });
 
         const frames = buffer.split("\n\n");
@@ -191,7 +191,7 @@ export function useAccountReadStream(): UseAccountReadStreamReturn {
             // duplicate a row or let a stale `active` overwrite a `done`.
             const name = typeof data.name === "string" ? data.name : null;
             const status = data.status;
-            if (name && (status === "active" || status === "done") && isMountedRef.current) {
+            if (name && (status === "active" || status === "done") && isLive()) {
               setStages((prev) => {
                 const i = prev.findIndex((s) => s.name === name);
                 if (i === -1) return [...prev, { name, status }];
@@ -205,14 +205,14 @@ export function useAccountReadStream(): UseAccountReadStreamReturn {
             // parseRunEvidence is TOTAL — it lives in the same read loop as every other frame, so
             // a malformed payload yields null and the rail simply does not render.
             const parsedEvidence = parseRunEvidence(data);
-            if (parsedEvidence && isMountedRef.current) setEvidence(parsedEvidence);
+            if (parsedEvidence && isLive()) setEvidence(parsedEvidence);
 
           } else if (eventType === "fallback") {
             const msg =
               typeof data.message === "string"
                 ? data.message
                 : "Not enough history to read yet. Calibrate your personal audience first, then run this again.";
-            if (isMountedRef.current) setFallbackMessage(msg);
+            if (isLive()) setFallbackMessage(msg);
 
           } else if (eventType === "done") {
             // Guard the shape — only accept a block.type === "account-read".
@@ -221,7 +221,7 @@ export function useAccountReadStream(): UseAccountReadStreamReturn {
               typeof raw === "object" &&
               raw !== null &&
               (raw as { type?: unknown }).type === "account-read" &&
-              isMountedRef.current
+              isLive()
             ) {
               setBlock(raw as AccountReadBlock);
             }
@@ -243,12 +243,13 @@ export function useAccountReadStream(): UseAccountReadStreamReturn {
       // A null result means draw nothing: an abort is the user's own Stop, not a failure.
       const message = resolveRunError(err, "Account Read stream error");
       if (message === null) return;
-      if (isMountedRef.current) setError(message);
+      if (isLive()) setError(message);
     } finally {
       if (abortRef.current === controller) abortRef.current = null;
-      if (isMountedRef.current) setIsStreaming(false);
+      letGo.finish(gen);
+      if (isLive()) setIsStreaming(false);
     }
-  }, []);
+  }, [letGo]);
 
   return { block, isStreaming, error, isStopped, runs, fallbackMessage, evidence, stages, start, stop, reset };
 }
