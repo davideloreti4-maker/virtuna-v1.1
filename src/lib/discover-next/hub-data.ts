@@ -27,6 +27,12 @@ export interface CardVideo {
   baselineLabel: string | null;
   /** Baselined and 3× or more (`isProofGrade`). */
   proven: boolean;
+  /**
+   * Set by a creator's page and a pull only (each video measured against its own creator's usual):
+   * baselined, 1.5× or more, and not proven. Its card and sheet show the multiple without the ▲, which stays
+   * the mark of a proven video. The library's reads never set it.
+   */
+  beat?: boolean;
   /** The raw multiplier is 100 or more: a small account makes the number shaky. */
   extreme: boolean;
   /** The names of the "formats" collections that hold it (search only). */

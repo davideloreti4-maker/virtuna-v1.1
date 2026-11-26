@@ -36,7 +36,9 @@ export interface SheetShellProps {
 }
 
 
-const TITLE = "text-subhead font-[640] tracking-[-0.018em] text-foreground";
+// Three lines at most: a pulled video's title is its caption, which can run to a paragraph and would push
+// the video and its actions out of the sheet. Cut on screen only; the dialog is still named by all of it.
+const TITLE = "line-clamp-3 break-words text-subhead font-[640] tracking-[-0.018em] text-foreground";
 
 /** "Close", out of sight until the keyboard reaches it. */
 const CLOSE =

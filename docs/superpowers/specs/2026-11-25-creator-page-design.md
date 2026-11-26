@@ -224,5 +224,17 @@ is never worded here: the card and the sheet word it.
 - **The Watchlist's own "Try again"** hands the focus to the first row, link or button.
 - **Shared parts lifted out of the pull page and the row**, one copy each: the pulled video's card, its
   sheet with the Remix step, the Remove question. The pull page and the row draw what they drew.
+- **Reviewed with the owner on real data (2026-11-26); this wins over section 7, point 1:**
+  - A video that beat their average shows its multiple from 1.5×, without the ▲; the ▲ stays on proven
+    videos (3× or more) only. Seen on the test account: after a fresh read a creator's best videos sat at
+    1.6× to 2×, and a page sorted by Biggest jump showed no number at all. The pull page's cards follow the
+    same rule (the same card).
+  - The video's sheet says when it was posted ("Posted 12 Jul"), worded on the server from its clock; a
+    pull's sheet does not (its read is now).
+  - A sheet's title stops at three lines on screen (a caption can run to a paragraph); the dialog is still
+    named by all of it.
+  - The Watchlist row's "N proven" counts the last read's proven videos only, by the page's own rule (one
+    `ingested_at` per read, a basis required), so the row and the page agree.
+  - The row's line breaks only between its parts: "2 proven" never splits.
 - **Not built, and why:** a way back to the creator after "Build their audience" (the form ends on the
   Audience page, as it always does); the platform of a followed handle carried through the Watchlist's read.

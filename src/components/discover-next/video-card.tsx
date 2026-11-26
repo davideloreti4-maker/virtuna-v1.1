@@ -95,7 +95,7 @@ export function VideoCardFace({ video, id, foot = "byline" }: { video: CardVideo
           className="absolute left-2 top-2 flex h-[26px] items-center gap-1 rounded-full pl-2 pr-2.5 text-meta font-[640] tabular-nums"
           style={{ background: COVER_LOOK.badge, color: COVER_LOOK.ink }}
         >
-          <UpMark />
+          {video.proven && <UpMark />}
           {badge}
         </span>
       )}

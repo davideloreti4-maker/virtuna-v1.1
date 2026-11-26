@@ -59,12 +59,14 @@ const TOP: PulledVideo = {
   multiplier: 12,
   baselineLabel: "vs their average",
   proven: true,
+  beat: false,
   extreme: false,
   formats: [],
   captioned: true,
   likes: 4_200,
   comments: 310,
   videoUrl: "https://videos.example/jay.makes/1",
+  posted: "Posted 12 Jul",
 };
 const SECOND: PulledVideo = {
   ...TOP,
@@ -74,6 +76,7 @@ const SECOND: PulledVideo = {
   views: 12_900,
   multiplier: 1.5,
   proven: false,
+  beat: true,
   videoUrl: "https://videos.example/jay.makes/2",
 };
 
@@ -776,6 +779,14 @@ describe("CreatorNext — Remove", () => {
 // ─── A video ─────────────────────────────────────────────────────────────────
 
 describe("CreatorNext — a video's sheet", () => {
+  it("a video that beat their average without being proven: its multiple in words, no ▲", async () => {
+    renderPage(ready());
+    fireEvent.click(cards()[1]!);
+    const sheet = await screen.findByRole("dialog", { name: "The joint nobody teaches you" });
+    const words = within(sheet).getByText("1.5× their average");
+    expect(words.querySelector("svg")).toBeNull();
+  });
+
   async function opened() {
     renderPage(ready());
     const first = cards()[0]!;
@@ -789,6 +800,9 @@ describe("CreatorNext — a video's sheet", () => {
     setActiveThreadCookie("t-open");
     const { sheet } = await opened();
     expect(within(sheet).getByText("12× their average")).toBeInTheDocument();
+    // A proven video's words carry the ▲; the day it was posted under its numbers.
+    expect(within(sheet).getByText("12× their average").querySelector("svg")).not.toBeNull();
+    expect(within(sheet).getByText("Posted 12 Jul")).toBeInTheDocument();
     const remix = within(sheet).getByRole("button", { name: "Remix this · 10 credits" });
     expect(remix).toHaveAttribute("aria-haspopup", "dialog");
     fireEvent.click(remix);

@@ -66,6 +66,7 @@ function video(n: number, over: Partial<PulledVideo> = {}): PulledVideo {
     multiplier,
     baselineLabel: "vs their average",
     proven: multiplier >= 3,
+    beat: multiplier >= 1.5 && multiplier < 3,
     extreme: false,
     formats: [],
     captioned: true,
@@ -489,13 +490,16 @@ describe("CreatorScreen — their videos", () => {
     expect(order.className).not.toMatch(/(^|\s)font-/);
   });
 
-  it("the badge only on a proven video", () => {
+  it("the multiple on every video that beat their average (1.5× or more); the ▲ on a proven one only", () => {
     renderReady();
     const badges = cards().map((c) => c.querySelector('[data-part="badge"]')?.textContent ?? null);
-    expect(badges).toEqual(["12×", "4.8×", "3.2×", null, null, null, null, null, null, null, null, null]);
-    const fourth = cards()[3]!;
-    expect(within(fourth).queryByText(/×/)).toBeNull();
-    expect(fourth).toHaveAccessibleDescription("23K views");
+    expect(badges).toEqual(["12×", "4.8×", "3.2×", "2.7×", "1.7×", "1.5×", null, null, null, null, null, null]);
+    const marked = cards().map((c) => c.querySelector('[data-part="badge"] svg') !== null);
+    expect(marked).toEqual([true, true, true, false, false, false, false, false, false, false, false, false]);
+    expect(cards()[3]).toHaveAccessibleDescription("2.7× 23K views");
+    const seventh = cards()[6]!;
+    expect(within(seventh).queryByText(/×/)).toBeNull();
+    expect(seventh).toHaveAccessibleDescription("11.2K views");
   });
 
   it("no videos read: the sentence where the grid would be", () => {

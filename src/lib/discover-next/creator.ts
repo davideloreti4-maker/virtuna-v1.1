@@ -23,7 +23,7 @@ import { viewsWord } from "@/lib/posted/posted-words";
 
 import { isStoredCover } from "./covers";
 import { creatorHandleOf } from "./discover-view";
-import { EXTREME_FROM, PROVEN_FROM, captionLine, type PulledVideo } from "./pull";
+import { EXTREME_FROM, PROVEN_FROM, beatOf, captionLine, type PulledVideo } from "./pull";
 import { webAddress } from "./video-words";
 import { removalOf, type Removal } from "./watchlist";
 
@@ -108,12 +108,13 @@ const count = (v: unknown): number | null => ((n) => (n !== null && n >= 0 ? n :
 
 /** One video of a read, as a pulled video's card and sheet draw it; null when it has no id. Field by field
  *  as `pulledCardOf` (`pull.ts`), so the two kinds of card cannot drift. */
-export function creatorVideoOf(row: CreatorVideoRow, handle: string): PulledVideo | null {
+export function creatorVideoOf(row: CreatorVideoRow, handle: string, now?: Date): PulledVideo | null {
   const id = text(row.platform_video_id);
   if (!id) return null;
   const raw = finite(row.outlier_multiplier);
   const stored = text(row.baseline_label);
   const baselineLabel = stored !== null && stored.toLowerCase() === OWN_LABEL ? OWN_AVERAGE_LABEL : stored;
+  const day = now ? builtOn(row.posted_at, now) : null;
   return {
     id,
     coverUrl: isStoredCover(row.cover_url) ? row.cover_url : null,
@@ -126,12 +127,14 @@ export function creatorVideoOf(row: CreatorVideoRow, handle: string): PulledVide
     multiplier: raw === null ? null : Math.min(raw, EXTREME_FROM),
     baselineLabel,
     proven: baselineLabel !== null && raw !== null && raw >= PROVEN_FROM,
+    beat: beatOf(baselineLabel, raw),
     extreme: raw !== null && raw >= EXTREME_FROM,
     formats: [],
     captioned: true,
     likes: count(row.likes),
     comments: count(row.comments),
     videoUrl: webAddress(row.video_url),
+    posted: day ? `Posted ${day}` : null,
   };
 }
 
@@ -145,7 +148,11 @@ export function lastReadOf(rows: readonly CreatorVideoRow[]): CreatorVideoRow[] 
 }
 
 /** The last read's videos, biggest jump (the raw multiple) first, then views; and its stored median. */
-export function creatorVideosOf(rows: readonly CreatorVideoRow[], handle: string): { videos: PulledVideo[]; usual: number | null } {
+export function creatorVideosOf(
+  rows: readonly CreatorVideoRow[],
+  handle: string,
+  now?: Date,
+): { videos: PulledVideo[]; usual: number | null } {
   const last = lastReadOf(rows);
   const raw = (row: CreatorVideoRow) => finite(row.outlier_multiplier) ?? -Infinity;
   const views = (row: CreatorVideoRow) => count(row.views) ?? 0;
@@ -154,7 +161,7 @@ export function creatorVideosOf(rows: readonly CreatorVideoRow[], handle: string
   );
   const seen = new Set<string>();
   const videos = sorted
-    .map((row) => creatorVideoOf(row, handle))
+    .map((row) => creatorVideoOf(row, handle, now))
     .filter((v): v is PulledVideo => v !== null && !seen.has(v.id) && Boolean(seen.add(v.id)));
   const usual = last.map((row) => finite(row.baseline_views)).find((n): n is number => n !== null && n > 0) ?? null;
   return { videos, usual };
@@ -216,7 +223,7 @@ export function creatorFiguresOf(profile: CreatorProfileRow, usual: number | nul
 export function creatorPageOf({ source, profile, videos, audiences, now }: CreatorInput): CreatorPage {
   const handle = creatorHandleOf(profile.tiktok_handle);
   const held = source.held;
-  const read = held ? { videos: [], usual: null } : creatorVideosOf(videos, handle);
+  const read = held ? { videos: [], usual: null } : creatorVideosOf(videos, handle, now);
   return {
     handle,
     name: held ? null : text(profile.display_name),

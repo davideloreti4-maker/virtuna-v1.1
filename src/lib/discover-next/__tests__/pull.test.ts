@@ -199,11 +199,13 @@ describe("pulledCardOf: a pulled video as a card", () => {
       multiplier: 16,
       baselineLabel: "vs their usual views",
       proven: true,
+      beat: false,
       extreme: false,
       formats: [],
       likes: 1_200_000,
       comments: 3_400,
       videoUrl: "https://www.tiktok.com/@jay.makes/video/7300000000000000001",
+      posted: null,
     });
   });
 
@@ -242,7 +244,19 @@ describe("pulledCardOf: a pulled video as a card", () => {
     expect(pulledCardOf(tile({ multiplier: null }), JAY)).toMatchObject({ proven: false, multiplier: null });
     expect(pulledCardOf(tile({ baselineLabel: null }), JAY)).toMatchObject({ proven: false, baselineLabel: null });
     expect(pulledCardOf(tile({ multiplier: Number.NaN }), JAY)).toMatchObject({ proven: false, multiplier: null });
-    expect(badgeOf(pulledCardOf(tile({ multiplier: 2.9 }), JAY))).toBeNull();
+  });
+
+  it("beat their usual from 1.5× up to 3×: the multiple shows (without the ▲, which the card draws for proven only)", () => {
+    expect(pulledCardOf(tile({ multiplier: 2.9 }), JAY)).toMatchObject({ proven: false, beat: true });
+    expect(badgeOf(pulledCardOf(tile({ multiplier: 2.9 }), JAY))).toBe("2.9×");
+    expect(pulledCardOf(tile({ multiplier: 1.5 }), JAY).beat).toBe(true);
+    expect(pulledCardOf(tile({ multiplier: 1.49 }), JAY).beat).toBe(false);
+    expect(badgeOf(pulledCardOf(tile({ multiplier: 1.2 }), JAY))).toBeNull();
+    // Proven is not beat; no basis, no multiple: neither.
+    expect(pulledCardOf(tile({ multiplier: 3 }), JAY).beat).toBe(false);
+    expect(pulledCardOf(tile({ multiplier: 2, baselineLabel: null }), JAY).beat).toBe(false);
+    expect(badgeOf(pulledCardOf(tile({ multiplier: 2, baselineLabel: null }), JAY))).toBeNull();
+    expect(pulledCardOf(tile({ multiplier: null }), JAY).beat).toBe(false);
   });
 
   it("past 100: clamped at 100 and marked, so the badge reads 100×+", () => {

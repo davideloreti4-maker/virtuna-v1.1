@@ -136,9 +136,20 @@ export function WatchlistRow({ source, onPull, onRemove }: WatchlistRowProps): R
       <span className="min-w-0 flex-1">
         <span className="block truncate text-ui font-[600] tracking-[-0.012em] text-foreground">{name}</span>
         {line && (
-          // Wraps to a second line beside the covers rather than cut a count ("162.3M followers · 2 proven").
+          // Wraps to a second line beside the covers rather than cut a count ("162.3M followers · 2 proven"),
+          // and only between its parts: "2 proven" never splits, and the "·" stays at the end of the first line.
           <span id={lineId} className="mt-px block break-words text-meta text-foreground-secondary">
-            {line}
+            {line.split(" · ").map((part, i, parts) =>
+              i < parts.length - 1 ? (
+                <React.Fragment key={i}>
+                  <span className="whitespace-nowrap">{part} ·</span>{" "}
+                </React.Fragment>
+              ) : (
+                <span key={i} className="whitespace-nowrap">
+                  {part}
+                </span>
+              ),
+            )}
           </span>
         )}
       </span>

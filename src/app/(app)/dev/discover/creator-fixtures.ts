@@ -9,8 +9,9 @@ import { DEV_VIDEOS } from "./fixtures";
  * (`creatorPageOf`), so a fixture cannot show what the page would not. The clock is fixed (`DEV_NOW`), so
  * the dates read the same on every visit.
  *
- * - @jay.makes: a two-line bio, four figures, twelve videos of the read of 13 Jul (three proven, one with
- *   only hashtags for a caption); also read this morning, whose read failed, and with no videos read.
+ * - @jay.makes: a two-line bio, four figures, twelve videos of the read of 13 Jul (three proven, two that
+ *   beat their average, one with only hashtags for a caption); also read this morning, whose read failed,
+ *   and with no videos read.
  * - @nia.cooks.weeknight.food: the page at its worst. A 60-character name, a five-line bio of 300
  *   characters with one unbroken 40-character word, a handle of the full 24 characters, read last year,
  *   no picture, eight captions from none to 200 characters, one video past 100.

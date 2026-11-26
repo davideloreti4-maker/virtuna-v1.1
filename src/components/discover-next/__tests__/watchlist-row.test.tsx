@@ -133,6 +133,14 @@ describe("WatchlistRow — what the row shows", () => {
     expect(classes).not.toContain("truncate");
   });
 
+  it("the line breaks only between its parts: '12 proven' stays whole, the '·' ends the first part", () => {
+    renderRow();
+    const line = document.getElementById(row().getAttribute("aria-describedby")!)!;
+    const parts = Array.from(line.children);
+    expect(parts.map((p) => p.textContent)).toEqual(["162M followers ·", "12 proven"]);
+    for (const part of parts) expect(part.className.split(/\s+/)).toContain("whitespace-nowrap");
+  });
+
   it("covers are 36 by 48 with small corners", () => {
     renderRow();
     const tile = row().querySelector<HTMLElement>('[data-part="covers"] > *')!;

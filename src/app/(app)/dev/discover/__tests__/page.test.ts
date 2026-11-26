@@ -313,10 +313,11 @@ describe("/dev/discover", () => {
     expect(screen.getByRole("button", { name: "Pull their best videos · 5 credits" })).toBeInTheDocument();
     // The phone's More in the card (the desk's stands in the header).
     expect(within(creatorCard()!).getByRole("button", { name: "More: @jay.makes" })).toBeInTheDocument();
-    // Twelve videos, biggest jump first: three proven, the rest without a badge.
+    // Twelve videos, biggest jump first: three proven (▲), two that beat their average (no ▲), the rest bare.
     expect(screen.getByText("Biggest jump")).toBeInTheDocument();
     expect(theirCards()).toHaveLength(12);
-    expect(badges()).toEqual(["12×", "4.8×", "3.1×", null, null, null, null, null, null, null, null, null]);
+    expect(badges()).toEqual(["12×", "4.8×", "3.1×", "2.7×", "1.7×", null, null, null, null, null, null, null]);
+    expect(theirCards().map((c) => c.querySelector('[data-part="badge"] svg') !== null).slice(0, 5)).toEqual([true, true, true, false, false]);
     expect(theirCards()[0]!.querySelector('[data-part="views"]')!.textContent).toBe("106K views");
     // The drawn covers (one that does not load), the captions without hashtags, one with no caption.
     expect(document.querySelectorAll('[data-part="videos"] img[src^="data:image/svg+xml"]').length).toBeGreaterThanOrEqual(10);

@@ -111,13 +111,31 @@ describe("a video of a read as a card", () => {
       multiplier: 12,
       baselineLabel: "vs their average",
       proven: true,
+      beat: false,
       extreme: false,
       formats: [],
       captioned: true,
       likes: 8_200,
       comments: 310,
       videoUrl: "https://videos.example/jay.makes/v1",
+      // No clock given: no day worded.
+      posted: null,
     });
+  });
+
+  it("the day it was posted, worded from the given clock; another year says its year; none for no date", () => {
+    expect(creatorVideoOf(row(), "jay.makes", NOW)!.posted).toBe("Posted 1 Jul");
+    expect(creatorVideoOf(row({ posted_at: "2025-12-30T10:00:00Z" }), "jay.makes", NOW)!.posted).toBe("Posted 30 Dec 2025");
+    expect(creatorVideoOf(row({ posted_at: null }), "jay.makes", NOW)!.posted).toBeNull();
+    expect(creatorVideoOf(row({ posted_at: "not a date" }), "jay.makes", NOW)!.posted).toBeNull();
+  });
+
+  it("beat their average from 1.5× up to 3×, with the basis: the multiple shows, not as proven", () => {
+    expect(creatorVideoOf(row({ outlier_multiplier: 1.8 }), "jay.makes")).toMatchObject({ proven: false, beat: true, multiplier: 1.8 });
+    expect(creatorVideoOf(row({ outlier_multiplier: "2.4" }), "jay.makes")!.beat).toBe(true);
+    expect(creatorVideoOf(row({ outlier_multiplier: 1.4 }), "jay.makes")!.beat).toBe(false);
+    expect(creatorVideoOf(row({ outlier_multiplier: 3 }), "jay.makes")).toMatchObject({ proven: true, beat: false });
+    expect(creatorVideoOf(row({ outlier_multiplier: 2, baseline_label: null }), "jay.makes")!.beat).toBe(false);
   });
 
   it("has exactly the fields a pulled video's card has, so the two kinds of card cannot drift", () => {
@@ -402,7 +420,7 @@ describe("the page", () => {
       read: "read 13 Jul",
       canReadAgain: true,
       figures: creatorFiguresOf(profile(), 8_600),
-      videos: creatorVideosOf([row({ platform_video_id: "b", outlier_multiplier: 40 }), row({ platform_video_id: "a", outlier_multiplier: 3 })], "jay.makes").videos,
+      videos: creatorVideosOf([row({ platform_video_id: "b", outlier_multiplier: 40 }), row({ platform_video_id: "a", outlier_multiplier: 3 })], "jay.makes", NOW).videos,
       audience: null,
       removal: { trackedIds: [uuid(600)], competitorId: uuid(500) },
     });
