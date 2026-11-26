@@ -184,8 +184,13 @@ ground (cream on charcoal, charcoal on cream). It replaces the retired **stele "
   sidebar/favicon) and `<MavenLogo />` (mark + **"Maven"** wordmark, Inter, sentence-case).
 - **Standalone assets:** `public/brand/maven-mark.svg` (charcoal `#1c1b19`, for light grounds)
   and `public/brand/maven-mark-light.svg` (cream `#ece7de`, for dark grounds).
-- **Favicons:** `src/app/icon.svg` and `src/app/apple-icon.svg` — the gull in cream on a
-  charcoal `#262624` tile (self-contained so it reads on any browser chrome).
+- **Favicons:** `public/brand/icon.svg` and `public/brand/apple-icon.svg` — the gull in cream on a
+  charcoal `#262624` tile (self-contained so it reads on any browser chrome). Wired through
+  `metadata.icons` in `src/app/layout.tsx` (not file-based) so the flag can switch them.
+- **New look** (`NEXT_PUBLIC_NEW_LOOK`): `public/brand/next-icon.svg` / `next-apple-icon.svg` (the
+  coral mark on an ink `#191918` tile), `public/brand/maven-mark-next.svg` (bare coral mark, tight
+  box), and `src/components/brand/next-og-card.tsx` for both opengraph images. Each carries a copy
+  of `MARK_PATH_NEXT`; `brand-assets.test.ts` fails if they drift from the component.
 - **Path (locked):** `M34 66 Q50 30 84 24 Q106 20 120 48 Q134 20 156 24 Q190 30 206 66 Q192 38
   158 34 Q138 32 120 58 Q102 32 82 34 Q48 38 34 66 Z` on `viewBox="0 0 240 96"`.
 

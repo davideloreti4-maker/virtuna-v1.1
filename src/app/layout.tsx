@@ -48,6 +48,17 @@ export const metadata: Metadata = {
     description:
       "Know what will go viral before you post. AI-powered predictions and audience insights for TikTok creators.",
   },
+  // Config-based, not src/app/icon.svg, so the flag can pick the tile: file-based icons override
+  // `icons` and cannot be switched. Legacy = cream gull on charcoal; new look = coral mark on ink.
+  icons: NEW_LOOK_ENABLED
+    ? {
+        icon: [{ url: "/brand/next-icon.svg", type: "image/svg+xml" }],
+        apple: [{ url: "/brand/next-apple-icon.svg", type: "image/svg+xml" }],
+      }
+    : {
+        icon: [{ url: "/brand/icon.svg", type: "image/svg+xml" }],
+        apple: [{ url: "/brand/apple-icon.svg", type: "image/svg+xml" }],
+      },
 };
 
 // With the flag on, <html> carries the new look. The server always renders "light"; the head
