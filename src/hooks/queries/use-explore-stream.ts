@@ -71,6 +71,11 @@ export interface UseExploreStreamReturn {
    * stage or card, as it does for a run stopped mid-way. Cleared by the next start and by reset().
    */
   isStopped: boolean;
+  /**
+   * How many runs this stream has started (a refine and a retry each count). A new number is a new
+   * run even when no render saw it streaming: a request refused at once ends in the render it began in.
+   */
+  runs: number;
   /** Pipeline stages — populated by SSE stage events. Ephemeral: shown during streaming. */
   stages: StageState[];
   /**
@@ -103,6 +108,7 @@ export function useExploreStream(): UseExploreStreamReturn {
   const [error, setError] = useState<string | null>(null);
   const [isDone, setIsDone] = useState(false);
   const [isStopped, setIsStopped] = useState(false);
+  const [runs, setRuns] = useState(0);
   const [stages, setStages] = useState<StageState[]>([]);
 
   // The in-flight request's controller; null once its stream has ended, so Stop can tell a run it
@@ -159,6 +165,7 @@ export function useExploreStream(): UseExploreStreamReturn {
     setIsDone(false);
     setIsStopped(false);
     setIsStreaming(true);
+    setRuns((r) => r + 1);
     setStages([]);
     stagesRef.current = [];
 
@@ -299,6 +306,7 @@ export function useExploreStream(): UseExploreStreamReturn {
     error,
     isDone,
     isStopped,
+    runs,
     stages,
     start,
     retry,

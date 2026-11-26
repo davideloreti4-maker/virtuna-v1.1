@@ -113,6 +113,11 @@ export interface UseScriptStreamReturn {
    * stage or card, as it does for a run stopped mid-way. Cleared by the next start and by reset().
    */
   isStopped: boolean;
+  /**
+   * How many runs this stream has started (a refine and a retry each count). A new number is a new
+   * run even when no render saw it streaming: a request refused at once ends in the render it began in.
+   */
+  runs: number;
   /** The SSE stream has closed — everything the run will ever persist is on disk. */
   isClosed: boolean;
   /** Pipeline stages — populated by SSE stage events (STUDIO-01). */
@@ -172,6 +177,7 @@ export function useScriptStream(): UseScriptStreamReturn {
   const [error, setError] = useState<string | null>(null);
   const [isDone, setIsDone] = useState(false);
   const [isStopped, setIsStopped] = useState(false);
+  const [runs, setRuns] = useState(0);
   /**
    * THE STREAM IS CLOSED — the server has finished sending, not merely finished the CARDS.
    *
@@ -268,6 +274,7 @@ export function useScriptStream(): UseScriptStreamReturn {
     setIsClosed(false);
     setIsStopped(false);
     setIsStreaming(true);
+    setRuns((r) => r + 1);
     setStages([]);
     setEvidence(null);
     setWarnings([]);
@@ -519,6 +526,7 @@ export function useScriptStream(): UseScriptStreamReturn {
     error,
     isDone,
     isStopped,
+    runs,
     isClosed,
     stages,
     evidence,

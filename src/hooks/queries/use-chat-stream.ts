@@ -82,6 +82,11 @@ export interface UseChatStreamReturn {
    */
   isStopped: boolean;
   /**
+   * How many runs this stream has started (a refine and a retry each count). A new number is a new
+   * run even when no render saw it streaming: a request refused at once ends in the render it began in.
+   */
+  runs: number;
+  /**
    * True when the meta frame carried coldStart=true (D-08).
    * Resets to false on reset() (between sends).
    */
@@ -177,6 +182,7 @@ export function useChatStream(): UseChatStreamReturn {
   const [error, setError] = useState<string | null>(null);
   const [isDone, setIsDone] = useState(false);
   const [isStopped, setIsStopped] = useState(false);
+  const [runs, setRuns] = useState(0);
   const [coldStart, setColdStart] = useState(false);
   // Sticky session-level flag — set once when coldStart fires, never reset (D-08).
   const [nudgeShown, setNudgeShown] = useState(false);
@@ -263,6 +269,7 @@ export function useChatStream(): UseChatStreamReturn {
     setIsStopped(false);
     setColdStart(false);
     setIsStreaming(true);
+    setRuns((r) => r + 1);
     textRef.current = '';
     blocksRef.current = [];
     stagesRef.current = [];
@@ -489,6 +496,7 @@ export function useChatStream(): UseChatStreamReturn {
     error,
     isDone,
     isStopped,
+    runs,
     coldStart,
     nudgeShown,
     start,

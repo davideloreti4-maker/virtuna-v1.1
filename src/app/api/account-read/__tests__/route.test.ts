@@ -29,7 +29,7 @@ vi.mock("@/lib/billing/credit-gate", () => ({ creditGate: vi.fn(), billUsage: vi
 vi.mock("@/lib/audience/audience-repo", () => ({ listAudiences: vi.fn() }));
 vi.mock("@/lib/flywheel/reconciliation-repo", () => ({ listReconciliations: vi.fn() }));
 vi.mock("@/lib/account-read/account-read", () => ({ generateAccountRead: vi.fn() }));
-vi.mock("@/lib/threads/threads", () => ({ createOpenThreadLazy: vi.fn() }));
+vi.mock("@/lib/threads/threads", () => ({ createOpenThreadLazy: vi.fn(), setThreadTitleIfEmpty: vi.fn() }));
 vi.mock("@/lib/threads/messages", () => ({ insertMessage: vi.fn() }));
 vi.mock("@/lib/tools/run-header", () => ({ runHeaderBlock: vi.fn(() => ({ type: "run-header" })) }));
 vi.mock("@/lib/kc/kc-stamp", () => ({ kcStamp: vi.fn(() => ({ kcGenVersion: "test" })) }));
@@ -40,6 +40,8 @@ import { creditGate, billUsage } from "@/lib/billing/credit-gate";
 import { listAudiences } from "@/lib/audience/audience-repo";
 import { listReconciliations } from "@/lib/flywheel/reconciliation-repo";
 import { generateAccountRead } from "@/lib/account-read/account-read";
+import { createOpenThreadLazy, setThreadTitleIfEmpty } from "@/lib/threads/threads";
+import { insertMessage } from "@/lib/threads/messages";
 
 const mockCreateClient = createClient as ReturnType<typeof vi.fn>;
 const mockCreditGate = creditGate as ReturnType<typeof vi.fn>;
@@ -47,6 +49,8 @@ const mockBillUsage = billUsage as ReturnType<typeof vi.fn>;
 const mockListAudiences = listAudiences as ReturnType<typeof vi.fn>;
 const mockListReconciliations = listReconciliations as ReturnType<typeof vi.fn>;
 const mockGenerate = generateAccountRead as ReturnType<typeof vi.fn>;
+const mockOpenThread = createOpenThreadLazy as ReturnType<typeof vi.fn>;
+const mockInsert = insertMessage as ReturnType<typeof vi.fn>;
 
 // ─── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -99,6 +103,8 @@ beforeEach(() => {
   mockListAudiences.mockResolvedValue([PERSONAL_AUDIENCE]);
   mockListReconciliations.mockResolvedValue([]);
   mockGenerate.mockResolvedValue(SUCCESS_READ);
+  mockOpenThread.mockResolvedValue({ id: "t1" });
+  mockInsert.mockResolvedValue(undefined);
 });
 
 // ─── The gate ─────────────────────────────────────────────────────────────────
@@ -187,5 +193,87 @@ describe("POST /api/account-read — bills ON DELIVERY only", () => {
 
     expect(body).toContain("event: error");
     expect(mockBillUsage).not.toHaveBeenCalled();
+  });
+});
+
+// ─── Persist: the read and its message, in the chat it was asked in ─────────────
+
+const persistReq = () =>
+  new Request("http://localhost/api/account-read", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ persist: true }),
+  });
+
+describe("POST /api/account-read — persist stores the read and its message together", () => {
+  it("resolves the chat at the start of the request, before the scrape", async () => {
+    await drain(await POST(persistReq()));
+
+    expect(mockOpenThread).toHaveBeenCalledTimes(1);
+    expect(mockOpenThread.mock.invocationCallOrder[0]!).toBeLessThan(mockGenerate.mock.invocationCallOrder[0]!);
+  });
+
+  it("a delivered read stores its message, then the read, in that chat", async () => {
+    const body = await drain(await POST(persistReq()));
+
+    expect(body).toContain("event: done");
+    expect(mockInsert).toHaveBeenCalledTimes(2);
+    const [user, assistant] = mockInsert.mock.calls;
+    expect(user!.slice(0, 3)).toEqual(["t1", "user", [{ type: "markdown", props: { text: "Read my account" } }]]);
+    expect(assistant![0]).toBe("t1");
+    expect(assistant![1]).toBe("assistant");
+    expect((assistant![2] as Array<{ type: string }>).map((b) => b.type)).toEqual(["run-header", "account-read"]);
+    // A new chat is named by it, as by any first message.
+    expect(setThreadTitleIfEmpty).toHaveBeenCalledWith("user_1", "t1", "Read my account");
+  });
+
+  it("the creator opening another chat during the read does not move it: both rows go to the chat it was asked in", async () => {
+    // The pointer, read again later, would name another chat.
+    mockOpenThread.mockResolvedValueOnce({ id: "t1" }).mockResolvedValue({ id: "t2" });
+    await drain(await POST(persistReq()));
+    expect(mockInsert.mock.calls.map((c) => c[0])).toEqual(["t1", "t1"]);
+  });
+
+  it.each([
+    ["no personal audience", () => mockListAudiences.mockResolvedValue([])],
+    ["a thin history", () => mockGenerate.mockResolvedValue({ fallback: "thin" })],
+    ["a scrape failure", () => mockGenerate.mockResolvedValue({ error: "scrape_failed", message: "x" })],
+    ["an engine that throws", () => mockGenerate.mockRejectedValue(new Error("boom"))],
+  ])("%s stores nothing: no message, no read", async (_name, arrange) => {
+    arrange();
+    await drain(await POST(persistReq()));
+    expect(mockInsert).not.toHaveBeenCalled();
+  });
+
+  it("a credit refusal resolves no chat and stores nothing", async () => {
+    mockCreditGate.mockResolvedValue({ refusal: Response.json({ error: "insufficient_credits" }, { status: 402 }), verdict: null });
+    await POST(persistReq());
+    expect(mockOpenThread).not.toHaveBeenCalled();
+    expect(mockInsert).not.toHaveBeenCalled();
+  });
+
+  it("without persist (the account tool) it touches no chat", async () => {
+    await drain(await POST(req()));
+    expect(mockOpenThread).not.toHaveBeenCalled();
+    expect(mockInsert).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/account-read — a scrape failure is named, not blamed on the handle", () => {
+  it("sends cause scrape_failed, and no 'Check your handle' line", async () => {
+    mockGenerate.mockResolvedValue({ error: "scrape_failed", message: "Blocked (HTTP 200 with an empty body)" });
+    const body = await drain(await POST(req()));
+    const frame = body.split("\n\n").find((f) => f.startsWith("event: error"))!;
+    const data = JSON.parse(frame.split("\n").find((l) => l.startsWith("data: "))!.slice(6)) as Record<string, unknown>;
+    expect(data.cause).toBe("scrape_failed");
+    expect(data.retry).toBe(true);
+    expect(String(data.message)).not.toMatch(/handle/i);
+  });
+
+  it("an engine that throws is not called a scrape failure", async () => {
+    mockGenerate.mockRejectedValue(new Error("boom"));
+    const body = await drain(await POST(req()));
+    expect(body).toContain("event: error");
+    expect(body).not.toContain("scrape_failed");
   });
 });

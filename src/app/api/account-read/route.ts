@@ -29,11 +29,13 @@ import { billUsage, creditGate } from "@/lib/billing/credit-gate";
 import { listAudiences } from "@/lib/audience/audience-repo";
 import { listReconciliations } from "@/lib/flywheel/reconciliation-repo";
 import { generateAccountRead } from "@/lib/account-read/account-read";
-import { createOpenThreadLazy } from "@/lib/threads/threads";
+import { createOpenThreadLazy, setThreadTitleIfEmpty } from "@/lib/threads/threads";
 import { insertMessage } from "@/lib/threads/messages";
 import { runHeaderBlock } from "@/lib/tools/run-header";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import type { AccountReadBlock } from "@/lib/tools/blocks";
+import { ACCOUNT_READ_ASK } from "@/lib/threads/account-read-ask";
+
 
 // Apify own-account scrape can take 1-3 minutes — allow max 300s (Pitfall 4 / P7 parity).
 export const maxDuration = 300;
@@ -87,6 +89,18 @@ export async function POST(request: Request): Promise<Response> {
     persist = body?.persist === true;
   } catch {
     /* no/blank body → persist stays false (the account-tool path) */
+  }
+
+  // The chat the read was asked in, resolved now, at the start of the request: the read takes up to
+  // minutes, and the creator may open another chat meanwhile. Best-effort — a chat that cannot be
+  // resolved costs only the stored copy, never the streamed read.
+  let targetThreadId: string | null = null;
+  if (persist) {
+    try {
+      targetThreadId = (await createOpenThreadLazy(user.id)).id;
+    } catch {
+      targetThreadId = null;
+    }
   }
 
   // ── (2) Resolve the creator's OWN handle from their personal audience ───────
@@ -159,9 +173,12 @@ export async function POST(request: Request): Promise<Response> {
         });
 
         // ── Scrape failure — generic copy, never echo the handle (T-10-13) ──────
+        // The handle is the creator's own (from their audience), so it is not blamed: what failed is
+        // TikTok loading the posts (a blocked or empty scrape). `cause` lets the client say so.
         if ("error" in result) {
           send("error", {
-            message: "Couldn't read your account. Check your handle is public and try again.",
+            message: "Couldn't read your account just now. Try again in a few minutes.",
+            cause: "scrape_failed",
             retry: true,
           });
           return;
@@ -189,19 +206,29 @@ export async function POST(request: Request): Promise<Response> {
           },
         };
 
-        // In-thread chat field: also persist the block to the open thread so a post-run reload
-        // surfaces it in the chat view (mirrors the explore/read/remix routes). Best-effort — a
-        // persist failure must not swallow the streamed result. The account tool skips this
-        // (persist=false) and renders the block from the live stream, exactly as before.
-        if (persist) {
+        // Persist: store the read in the chat it was asked in, with its message first, so a reload
+        // shows it as its own turn ("Read my account", then the read). Only here, on a delivered
+        // read: a refusal, a thin history or a failed scrape stores nothing, so no message is left
+        // in the chat with no answer under it. Best-effort — a persist failure must not swallow the
+        // streamed result. The account tool skips this (persist=false) and renders the block from
+        // the live stream, exactly as before.
+        if (targetThreadId) {
           try {
-            const openThread = await createOpenThreadLazy(user.id);
             await insertMessage(
-              openThread.id,
+              targetThreadId,
+              "user",
+              [{ type: "markdown", props: { text: ACCOUNT_READ_ASK } }],
+              kcStamp().kcGenVersion,
+            );
+            await insertMessage(
+              targetThreadId,
               "assistant",
               [runHeaderBlock({ skill: "account" }), block],
               kcStamp().kcGenVersion,
             );
+            // A chat whose first message this is takes it as its name, as any stored message
+            // does (`/api/threads/user-turn`); a titled chat keeps its name.
+            await setThreadTitleIfEmpty(user.id, targetThreadId, ACCOUNT_READ_ASK);
           } catch {
             /* non-fatal — the streamed block still reaches the client */
           }

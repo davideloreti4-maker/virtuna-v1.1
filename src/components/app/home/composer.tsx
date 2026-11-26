@@ -75,6 +75,7 @@ import {
   NEW_THREAD_SENTINEL,
 } from "@/lib/threads/active-thread-cookie";
 import { opensIntoThread } from "@/lib/threads/opens-into-thread";
+import { ACCOUNT_READ_ASK } from "@/lib/threads/account-read-ask";
 import { Button } from "@/components/ui/button";
 import { VideoUpload } from "@/components/app/video-upload";
 import { useAnalysisStream } from "@/hooks/queries/use-analysis-stream";
@@ -336,6 +337,17 @@ const NEXT_FIELD_REST_HEIGHT = 96;
 // Thread feel §4.6: how long the field shows its send arrow (off) while a stream that has its answer
 // in still bills and closes (normally 3 to 4 s) before Stop comes back.
 const FINISHING_STOP_MS = 8_000;
+// Store a question as the open chat's message, for the skills whose route does not (USER_TURN_TOOLS).
+// Fire-and-forget: the live turn draws it from `lastUserTurn` meanwhile.
+function storeUserTurn(text: string): void {
+  void fetch("/api/threads/user-turn", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  }).catch(() => {
+    /* best-effort — a missed persist only loses the restored question bubble */
+  });
+}
 // Thread depth (Task 2): the longest a follow-up tapped in those seconds waits for that stream to
 // close and fold before it is sent anyway (a stream that hangs); set again while one of the look's
 // sheets is open (Task 3, `onHeldFollowupDue`).
@@ -957,57 +969,54 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
 
   // ⚠️ `skill` here is the DISPLAY namespace (ChatTurnKind — "ideas" PLURAL), never ToolId
   // ("idea" singular). The two differ in exactly this one id and a cast cannot fail (F-017).
+  const accountStart = account.start;
+  const retryAccountRead = useCallback(() => void accountStart({ persist: true }), [accountStart]);
   const { activeRun, isAnyStreaming, stopActive } = useActiveRun([
     { skill: "ideas", isStreaming: ideas.isStreaming, isDone: ideas.isDone, isClosed: ideas.isClosed, blocks: ideasBlocks,
       stages: ideas.stages, evidence: ideas.evidence, followupText: ideas.followupText, warnings: ideas.warnings,
-      error: ideas.error, outliersAvailable: ideas.outliersAvailable, isStopped: ideas.isStopped,
+      error: ideas.error, outliersAvailable: ideas.outliersAvailable, isStopped: ideas.isStopped, runs: ideas.runs,
       stop: ideas.stop, reset: ideas.reset, retry: ideas.retry },
     { skill: "hooks", isStreaming: hooks.isStreaming, isDone: hooks.isDone, isClosed: hooks.isClosed, blocks: hooksBlocks,
       stages: hooks.stages, evidence: hooks.evidence, followupText: hooks.followupText, warnings: hooks.warnings,
-      error: hooks.error, outliersAvailable: hooks.outliersAvailable, isStopped: hooks.isStopped,
+      error: hooks.error, outliersAvailable: hooks.outliersAvailable, isStopped: hooks.isStopped, runs: hooks.runs,
       stop: hooks.stop, reset: hooks.reset, retry: hooks.retry },
     { skill: "script", isStreaming: script.isStreaming, isDone: script.isDone, isClosed: script.isClosed, blocks: scriptBlocks,
       stages: script.stages, evidence: script.evidence, followupText: script.followupText, warnings: script.warnings,
-      error: script.error, outliersAvailable: script.outliersAvailable, isStopped: script.isStopped,
+      error: script.error, outliersAvailable: script.outliersAvailable, isStopped: script.isStopped, runs: script.runs,
       stop: script.stop, reset: script.reset, retry: script.retry },
     { skill: "remix", isStreaming: remix.isStreaming, isDone: remix.isDone, isClosed: remix.isClosed, blocks: remixBlocks,
       stages: remix.stages, evidence: remix.evidence, followupText: remix.followupText, error: remix.error,
-      isStopped: remix.isStopped, stop: remix.stop, reset: remix.reset, retry: remix.retry },
+      isStopped: remix.isStopped, runs: remix.runs, stop: remix.stop, reset: remix.reset, retry: remix.retry },
     { skill: "explore", isStreaming: explore.isStreaming, isDone: explore.isDone, blocks: exploreBlocks,
-      stages: explore.stages, error: explore.error, isStopped: explore.isStopped,
+      stages: explore.stages, error: explore.error, isStopped: explore.isStopped, runs: explore.runs,
       stop: explore.stop, reset: explore.reset, retry: explore.retry },
     // The chat agent announces which skill it dispatched (the `dispatch` SSE frame) BEFORE the
     // first stage event. Naming it here is what gives an agent-routed run the SAME capsule label,
     // seeded plan, intro and outro as running that skill directly — the 1:1 the whole unification
     // is for. No dispatch ⇒ a plain conversational turn.
-    { skill: (chat.dispatchedSkill as ChatTurnKind | null) ?? "chat",
+    // Named by the skill it dispatched, so it says which stream it is: the skill's own stream is
+    // another run under the same name.
+    { skill: (chat.dispatchedSkill as ChatTurnKind | null) ?? "chat", stream: "chat",
       isStreaming: chat.isStreaming,
       // Cards ABOVE the co-pilot line: a dispatched skill's real cards, then the closing prose.
       blocks: [...chat.streamingBlocks, ...chatBlocks],
       // The dispatched runners' REAL warnings (Stage A) — the chat door used to be the one
       // stream that swallowed them.
       stages: chat.stages, evidence: chat.evidence, warnings: chat.warnings,
-      error: chat.error, isStopped: chat.isStopped, stop: chat.stop, reset: chat.reset, retry: chat.retry },
-    // Account emits no stages and no card stream — one block, delivered on done.
+      error: chat.error, isStopped: chat.isStopped, runs: chat.runs, stop: chat.stop, reset: chat.reset, retry: chat.retry },
+    // Account emits no stages and no card stream — one block, delivered on done. Its route stores
+    // that block in the chat (`persist`), so it is done once the block is in and the stream has
+    // ended: the run-completion fold reads the thread and resets it, as for every other run. Without
+    // that it was never folded: a chip under it took the live slot and the read came back after the
+    // chip's run, under the chip's ask, and a reload lost it. Retry stores it too.
     { skill: "account", isStreaming: account.isStreaming,
+      isDone: account.block !== null && !account.isStreaming,
       blocks: account.block ? [account.block] : [], error: account.error,
-      stop: account.stop, reset: account.reset, retry: account.start },
+      // It has a message of its own, so a read stopped before it landed keeps its turn, as a stopped
+      // run of any other skill does.
+      isStopped: account.isStopped, runs: account.runs,
+      stop: account.stop, reset: account.reset, retry: retryAccountRead },
   ]);
-
-  // The Account starter card ARMS the skill and RUNS it in one tap. The other five cards arm
-  // and stop, because the other five skills need the field; Account takes no input, so arming
-  // alone would leave the creator in front of a composer with nothing to type. Declared here
-  // (after `account`, not up beside handleUserSelectTool) so it closes over a live binding
-  // rather than a TDZ one. It spends a Reading — so it fires from the creator's tap, never a
-  // render (D-05).
-  const handleStarterAccountRun = useCallback(() => {
-    // Arms AND runs in one tap, so it never passes through handleSubmit's armFired(). It has
-    // to do both halves itself: name the run, and leave the composer on chat.
-    noteRun("account");
-    setActiveTool(DEFAULT_TOOL);
-    setShowUpload(false);
-    void account.start();
-  }, [account]);
 
   /**
    * THE ACTIVATION CARD — the first-run action, and the one the intro now offers.
@@ -1393,6 +1402,17 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       // New look: a follow-up held for the last chat's stream belongs to that chat (thread depth,
       // Task 2). Dropped first, so the resets below cannot let it go into this one.
       if (NEW_LOOK_ENABLED) dropHeldFollowup();
+      // A run still out belongs to the chat it was sent in: its route stores it there. Its request is
+      // ended first, or its later frames (cards, words, the closing line) would land in this chat's
+      // live turn. `stop()` and not `reset()` does it, because the folds reset a stream whose closing
+      // line may still be coming; the resets below then clear the stop too. (The account read's
+      // `reset()` ends its request itself.)
+      chat.stop();
+      ideas.stop();
+      hooks.stop();
+      script.stop();
+      remix.stop();
+      explore.stop();
       chat.reset();
       ideas.reset();
       hooks.reset();
@@ -2145,6 +2165,28 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     runFoldRetry,
   ]);
 
+  // ── A stopped run whose ask has come into history ───────────────────────────
+  // A stopped run is never done, so neither fold above resets it, and it keeps the tail with the
+  // creator's ask above it. The route stores that ask before it answers, so any later read of the
+  // thread (a fold's, a profile read's, a video's seal) brings it into history, where it is drawn
+  // again: once as the persisted turn and once as the live one. History holds it now, so the stopped
+  // stream is reset, as a fold resets a finished run once its turn is in. Only a turn that came in
+  // after the stop counts: an earlier ask in the same words is another turn, and a read that brings
+  // nothing new leaves the stopped turn on screen. Before paint, so the ask is never drawn twice.
+  const stoppedTailReset = activeRun?.isStopped ? activeRun.reset : null;
+  const stoppedSinceRef = useRef<{ turns: number; ask: string | null } | null>(null);
+  useLayoutEffect(() => {
+    if (!stoppedTailReset) {
+      stoppedSinceRef.current = null;
+      return;
+    }
+    const since = (stoppedSinceRef.current ??= { turns: persistedChatTurns.length, ask: lastUserTurn?.trim() || null });
+    if (since.ask === null) return;
+    if (!persistedChatTurns.slice(since.turns).some((t) => t.userTurn?.trim() === since.ask)) return;
+    stoppedSinceRef.current = null;
+    stoppedTailReset();
+  }, [stoppedTailReset, persistedChatTurns, lastUserTurn]);
+
   // NOTE (2026-07-29): the "late follow-up → one more reload" effect that lived here is GONE, and
   // deliberately so. It existed because the fold above fired on `done` and therefore always reloaded
   // BEFORE the closing line was written — a second GET /api/threads/open per run, to collect one
@@ -2477,6 +2519,35 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     }
   }, [queryClient, setActiveThreadId, expectNewThread]);
 
+  // The Account starter card ARMS the skill and RUNS it in one tap. The other five cards arm
+  // and stop, because the other five skills need the field; Account takes no input, so arming
+  // alone would leave the creator in front of a composer with nothing to type. Declared here
+  // (after `account` and `ensureThreadForSend`, not up beside handleUserSelectTool) so it closes
+  // over live bindings rather than TDZ ones. It spends a Reading — so it fires from the creator's
+  // tap, never a render (D-05).
+  // One read per tap: the card stays on screen while the new chat is made, and a second tap there
+  // would make a second chat and start a second paid read (the first one's request aborted, the
+  // route still finishing and billing it). Held until the read has ended.
+  const starterAccountRunRef = useRef(false);
+  const handleStarterAccountRun = useCallback(async () => {
+    if (starterAccountRunRef.current) return;
+    starterAccountRunRef.current = true;
+    try {
+      // Arms AND runs in one tap, so it never passes through handleSubmit's armFired(). It has
+      // to do both halves itself: name the run, and leave the composer on chat.
+      noteRun("account");
+      setActiveTool(DEFAULT_TOOL);
+      setShowUpload(false);
+      // The read is stored in the chat (see the field's account send), so a new chat is made first.
+      await ensureThreadForSend();
+      setLastUserTurn(ACCOUNT_READ_ASK);
+      hintThreadTitle(ACCOUNT_READ_ASK);
+      await account.start({ persist: true });
+    } finally {
+      starterAccountRunRef.current = false;
+    }
+  }, [account, ensureThreadForSend, hintThreadTitle]);
+
   // ── Submit -> create (lifted/adapted from Board.tsx handleContentSubmit) ──
   // Slim: only the TikTok-URL and video-upload paths for Test; Ideas pipeline for Idea.
   // CRITICAL: Idea path NEVER sets pendingSealRef or calls stream.start (T-03-13).
@@ -2561,6 +2632,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     // `test` belongs here since the D-05 seal-in-thread rework: the run ends as a
     // video-test-card IN the thread, so a reload without this shows a card with no
     // question above it (upload path persists the file name, URL path the URL).
+    // Not `account`: its route stores its message together with the read, and only once the read is
+    // in, so a refused, thin, failed or stopped read leaves no message in the chat with no answer.
     const USER_TURN_TOOLS: ToolId[] = ["remix", "explore", "simulate", "predict", "test"];
     const captureUserTurn = (raw: string) => {
       const t = raw.trim();
@@ -2573,15 +2646,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       // lastUserTurn independent of persisted order, so it never needs awaiting.
       // Must run AFTER the thread exists (ensureThreadForSend) so it targets the
       // right thread — guaranteed by call ordering in every branch below.
-      if (t && USER_TURN_TOOLS.includes(tool)) {
-        void fetch("/api/threads/user-turn", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: t }),
-        }).catch(() => {
-          /* best-effort — a missed persist only loses the restored question bubble */
-        });
-      }
+      if (t && USER_TURN_TOOLS.includes(tool)) storeUserTurn(t);
     };
 
     // Skills that persist into the open chat thread create it lazily on first send.
@@ -2597,7 +2662,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       tool === "script" ||
       tool === "remix" ||
       tool === "explore" ||
-      tool === "test"
+      tool === "test" ||
+      tool === "account"
     ) {
       await ensureThreadForSend();
     }
@@ -2608,9 +2674,14 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     // what D-05 requires — it is not an auto-fire on render.
     if (tool === "account") {
       setUrl(""); // the field was never an input here; don't leave a stale draft behind
+      // The read's own message on the live turn (it used to set none, so the live turn drew the
+      // thread's last ask a second time over the read). The route stores it with the read.
+      captureUserTurn(ACCOUNT_READ_ASK);
       armFired();
       armSentTurn("live"); // new look: the run starts here (see `armSentTurn`)
-      await account.start();
+      // `persist`: the route stores the read in the chat (one assistant row), so it folds into the
+      // thread like any run and is there after a reload. It used to live only in the live stream.
+      await account.start({ persist: true });
       return;
     }
 

@@ -26,6 +26,9 @@ vi.mock("@/lib/supabase/client", () => ({
 }));
 
 import { Composer } from "../composer";
+import { useBoardStore } from "@/stores/board-store";
+import { ACCOUNT_READ_FULL } from "@/components/thread-next/__tests__/fixtures/answers";
+import { ACTIVE_THREAD_COOKIE, NEW_THREAD_SENTINEL } from "@/lib/threads/active-thread-cookie";
 
 type Call = { url: string; init?: RequestInit };
 let calls: Call[] = [];
@@ -147,5 +150,158 @@ describe("flag off: Retry on a failed chat", () => {
     expect(first!.ask).toBe("what should I post this week?");
     expect(again).toEqual(first);
     fireEvent.click(await screen.findByRole("button", { name: "Stop the run" }));
+  });
+});
+
+describe("flag off: a stopped ask that a read of the thread brings in", () => {
+  it("is drawn once (a profile read reads the thread after the stop)", async () => {
+    await renderComposer();
+    sendChat("what should I post this week?");
+    fireEvent.click(await screen.findByRole("button", { name: "Stop the run" }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Stop the run" })).toBeNull());
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50));
+    });
+    expect(screen.getAllByText("what should I post this week?", { selector: "p" })).toHaveLength(1);
+
+    // The route stored the ask before it was stopped; an evidence read stores its card and reads the thread.
+    threadFixture = {
+      ...THREAD,
+      messages: [
+        ...THREAD.messages,
+        { id: "u2", thread_id: "t1", role: "user", blocks: [{ type: "markdown", props: { text: "what should I post this week?" } }], created_at: at },
+        { id: "m2", thread_id: "t1", role: "assistant", blocks: [{ type: "markdown", props: { text: "Read your chat." } }], created_at: at },
+      ],
+    };
+    const input = document.querySelector('input[type="file"][accept*=".txt"]') as HTMLInputElement;
+    fireEvent.change(input, { target: { files: [new File(["me: hi"], "chat.txt", { type: "text/plain" })] } });
+    fireEvent.click(await screen.findByRole("button", { name: "Read this evidence" }));
+    await waitFor(() => expect(requests("/api/tools/profile")).toHaveLength(1));
+    expect(await screen.findByText("Read your chat.")).toBeInTheDocument();
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50));
+    });
+
+    expect(screen.getAllByText("what should I post this week?", { selector: "p" })).toHaveLength(1);
+  });
+});
+
+describe("flag off: the starter card's account read in a brand-new chat", () => {
+  afterEach(() => {
+    document.cookie = `${ACTIVE_THREAD_COOKIE}=; path=/; max-age=0`;
+  });
+
+  it("makes the chat before the read, asks the route to store it, keeps the thread layout through the fold, and the read is in the thread", async () => {
+    document.cookie = `${ACTIVE_THREAD_COOKIE}=${NEW_THREAD_SENTINEL}; path=/`;
+    threadFixture = { messages: [] };
+    const base = global.fetch;
+    global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/api/account-read")) {
+        calls.push({ url, init });
+        // The route stores the read in the new chat, then sends it.
+        threadFixture = {
+          threadId: "t-new",
+          messages: [
+            // Any message the client stored itself, then what the route stores: the read's message and the read.
+            ...requests("/api/threads/user-turn").map((c, i) => ({ id: `ut${i}`, thread_id: "t-new", role: "user", blocks: [{ type: "markdown", props: { text: String(bodyOf(c).text) } }], created_at: at })),
+            { id: "u1", thread_id: "t-new", role: "user", blocks: [{ type: "markdown", props: { text: "Read my account" } }], created_at: at },
+            { id: "m1", thread_id: "t-new", role: "assistant", blocks: [{ type: "run-header", props: { skill: "account" } }, ACCOUNT_READ_FULL], created_at: at },
+          ],
+        };
+        const body = new ReadableStream<Uint8Array>({
+          async start(controller) {
+            await new Promise((r) => setTimeout(r, 30));
+            controller.enqueue(new TextEncoder().encode(`event: done\ndata: ${JSON.stringify({ block: ACCOUNT_READ_FULL })}\n\n`));
+            controller.close();
+          },
+        });
+        return { ok: true, status: 200, body, json: async () => ({}) } as unknown as Response;
+      }
+      return base(input, init);
+    }) as typeof fetch;
+    const onThreadChange = vi.fn();
+    renderWithClient(<Composer onThreadChange={onThreadChange} />);
+    await waitFor(() => expect(requests("/api/threads/open").length).toBeGreaterThan(0));
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50));
+    });
+    expect(onThreadChange).toHaveBeenLastCalledWith(false);
+
+    const opensBefore = requests("/api/threads/open").length;
+    fireEvent.click(await screen.findByRole("button", { name: /Read my recent posts/ }));
+    await waitFor(() => expect(requests("/api/account-read")).toHaveLength(1));
+    const made = calls.findIndex((c) => c.url.includes("/api/threads/new"));
+    expect(made).toBeGreaterThanOrEqual(0);
+    expect(made).toBeLessThan(calls.indexOf(requests("/api/account-read")[0]!));
+    expect(bodyOf(requests("/api/account-read")[0]!)).toEqual({ persist: true });
+    // Its message is the route's to store, with the read: nothing from the client.
+    expect(requests("/api/threads/user-turn")).toHaveLength(0);
+
+    // The fold: the thread read again once the read is in.
+    await waitFor(() => expect(requests("/api/threads/open").length).toBeGreaterThan(opensBefore));
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50));
+    });
+    expect(onThreadChange.mock.calls.slice(1).every(([v]) => v === true)).toBe(true);
+    expect(onThreadChange).toHaveBeenLastCalledWith(true);
+    expect(document.body.textContent?.split("@creator_one").length).toBe(2); // the read, once
+    expect(screen.getAllByText("Read my account", { selector: "p" })).toHaveLength(1); // its message, once
+  });
+});
+
+describe("flag off: two quick taps on the starter card's account read", () => {
+  afterEach(() => {
+    document.cookie = `${ACTIVE_THREAD_COOKIE}=; path=/; max-age=0`;
+  });
+
+  it("make one chat and one read: the second tap lands while the chat is still being made, and does nothing", async () => {
+    document.cookie = `${ACTIVE_THREAD_COOKIE}=${NEW_THREAD_SENTINEL}; path=/`;
+    threadFixture = { messages: [] };
+    let release!: () => void;
+    const made = new Promise<void>((r) => (release = r));
+    const base = global.fetch;
+    global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = String(input);
+      if (url.includes("/api/threads/new")) {
+        calls.push({ url, init });
+        await made;
+        return json({ threadId: "t-new" });
+      }
+      if (url.includes("/api/account-read")) {
+        calls.push({ url, init });
+        return held(init?.signal);
+      }
+      return base(input, init);
+    }) as typeof fetch;
+    renderWithClient(<Composer />);
+    const card = await screen.findByRole("button", { name: /Read my recent posts/ });
+    fireEvent.click(card);
+    fireEvent.click(card);
+    await act(async () => {
+      release();
+      await new Promise((r) => setTimeout(r, 50));
+    });
+    await waitFor(() => expect(requests("/api/account-read")).toHaveLength(1));
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50));
+    });
+    expect(requests("/api/threads/new")).toHaveLength(1);
+    expect(requests("/api/account-read")).toHaveLength(1);
+    expect(requests("/api/account-read")[0]!.init?.signal?.aborted).toBe(false);
+  });
+});
+
+describe("flag off: leaving a chat while its answer streams", () => {
+  it("ends the run's request, so nothing more of it reaches the next chat", async () => {
+    await renderComposer();
+    sendChat("what should I post this week?");
+    await screen.findByRole("button", { name: "Stop the run" });
+
+    threadFixture = { threadId: "t2", messages: [{ id: "m9", thread_id: "t2", role: "assistant", blocks: [{ type: "markdown", props: { text: "Another answer." } }], created_at: at }], simSeals: {} };
+    act(() => useBoardStore.getState().switchThread());
+    expect(await screen.findByText("Another answer.")).toBeInTheDocument();
+    expect(requests("/api/tools/chat")[0]!.init?.signal?.aborted).toBe(true);
+    expect(screen.queryByRole("button", { name: "Stop the run" })).toBeNull();
   });
 });

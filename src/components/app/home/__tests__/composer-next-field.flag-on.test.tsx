@@ -3236,6 +3236,40 @@ describe("thread depth (Task 2): a follow-up tapped while the last answer's stre
     expect(turns[2]!.textContent).not.toContain(HOOK_2);
   });
 
+  it("the landed pack's own \"Script the best\" goes through the same hold: the pack stays under its own question, and the script is sent once the run has folded", async () => {
+    // The thread already holds a measure for each of the three lines, so the live pack lands simulated
+    // and its primary is the script of the best one.
+    const [h1, h2, h3] = MEAL_PREP_HOOKS.map((b) => b.props.hookLine);
+    const seal = (n: number) => ({ fraction: `${n / 10}/10 stop`, scrollQuote: "", personas: [], population: population(n), at: "2026-11-21T00:00:00.000Z" });
+    threadFixture = { ...historyThread(), simSeals: { [h1!.trim()]: seal(20), [h2!.trim()]: seal(25), [h3!.trim()]: seal(60) } };
+    // As `hooksLandedStreamOpen`, but its rows land measured (no "Simulate" on them).
+    const chat = holdChat();
+    await renderComposer();
+    askInField(ASK);
+    await waitFor(() => expect(chats()).toHaveLength(1));
+    await chat.push("dispatch", { skill: "hooks" });
+    await chat.push("stage", { name: "Generating", status: "done" });
+    for (const block of MEAL_PREP_HOOKS) await chat.push("block", { block });
+    const primary = await within(region()).findByRole("button", { name: "Script the best, 2 credits" });
+    expect(stopButton()).toBeNull(); // the field is finishing: the answer is in, the stream open
+    fireEvent.click(primary);
+    await waitMs(50);
+    expect(chats()).toHaveLength(1);
+    expect(chats()[0]!.init?.signal?.aborted).toBe(false);
+    expect(liveTurn()!.textContent).toContain(ASK);
+    expect(liveTurn()!.textContent).toContain(h3);
+
+    threadFixture = { ...storedHooksTurn(), simSeals: (threadFixture as { simSeals: unknown }).simSeals };
+    await chat.push("done", {});
+    await chat.end();
+    await waitFor(() => expect(chats()).toHaveLength(2));
+    expect(bodyOf(chats()[1]!)).toMatchObject({ ask: "Write the script for hook 3.", skill: "script", anchor: h3 });
+    const turns = turnsIn();
+    expect(turns).toHaveLength(3);
+    expect(turns[1]!.textContent).toContain(ASK);
+    expect(turns[1]!.textContent).toContain(h3);
+  });
+
   it("Stop while a follow-up is held: the stream stops as Stop does today, and no request follows", async () => {
     await hooksLandedStreamOpen();
     await scriptRow2FromSheet();

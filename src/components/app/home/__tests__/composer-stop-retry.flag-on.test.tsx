@@ -34,6 +34,8 @@ vi.mock("@/lib/supabase/client", () => ({
 }));
 
 import { Composer } from "../composer";
+import { useBoardStore } from "@/stores/board-store";
+import { ACCOUNT_READ_FULL } from "@/components/thread-next/__tests__/fixtures/answers";
 
 // ── the network ──────────────────────────────────────────────────────────────
 type Call = { url: string; init?: RequestInit };
@@ -108,6 +110,7 @@ const field = () => screen.getByTestId("thread-field");
 const inField = () => within(field());
 const text = () => inField().getByRole("textbox") as HTMLTextAreaElement;
 const send = () => field().querySelector('button[type="submit"]') as HTMLButtonElement;
+const evidenceInput = () => document.querySelector('input[type="file"][accept*=".txt"]') as HTMLInputElement;
 const pill = (name: string) => {
   const found = inField()
     .getAllByRole("button", { name })
@@ -117,6 +120,7 @@ const pill = (name: string) => {
 };
 /** The creator's message in its bubble (a new chat's header also shows it, as the chat's name). */
 const bubble = (t: string) => screen.getByText(t, { selector: "p" });
+const threadText = () => screen.getByTestId("composer-thread-region").textContent ?? "";
 const settle = () => act(async () => { await new Promise((r) => setTimeout(r, 50)); });
 
 async function renderComposer() {
@@ -293,5 +297,400 @@ describe("Retry on a failed run sends the request the run sent", () => {
     const [first, again] = requests("/api/tools/chat").map(bodyOf);
     expect(again).toEqual(first);
     fireEvent.click(inField().getByRole("button", { name: "Stop the run" }));
+  });
+});
+
+describe("a stopped run gives the live turn up for good", () => {
+  const STOPPED = "what should I post this week?";
+  const WORDS = "Post the gym myth one";
+  /** The ask the chat route stored before its answer was stopped, as the thread holds it. */
+  const withStoppedAsk = (...more: ReturnType<typeof msg>[]) => ({
+    ...historyThread(),
+    messages: [...historyThread().messages, msg("u2", "user", STOPPED), ...more],
+  });
+
+  it("stopped after some words, then another run: once that run is in the thread, the stopped words do not come back under its ask, and the stopped ask shows once", async () => {
+    streams["/api/tools/chat"] = (signal) => sse(signal, [["token", { delta: WORDS }]], true);
+    streams["/api/tools/hooks"] = (signal) => {
+      threadFixture = withStoppedAsk(msg("u3", "user", "meal prep"), msg("m3", "assistant", "Three hooks."));
+      return sse(signal, [["stage", { name: "Ran your audience", status: "done" }], ["done", {}]], false, 30);
+    };
+    await renderComposer();
+    fireEvent.change(text(), { target: { value: STOPPED } });
+    fireEvent.click(send());
+    // The words stream in word by word, so they are read off the thread's text.
+    await waitFor(() => expect(threadText()).toContain(WORDS));
+    fireEvent.click(inField().getByRole("button", { name: "Stop the run" }));
+    await waitFor(() => expect(inField().queryByRole("button", { name: "Stop the run" })).toBeNull());
+    await settle();
+    expect(bubble(STOPPED)).toBeInTheDocument();
+    expect(threadText()).toContain(WORDS);
+
+    fireEvent.click(pill("Hooks"));
+    fireEvent.change(text(), { target: { value: "meal prep" } });
+    fireEvent.click(send());
+    expect(await screen.findByText("Three hooks.")).toBeInTheDocument();
+    await settle();
+
+    expect(screen.getAllByText("meal prep", { selector: "p" })).toHaveLength(1);
+    expect(screen.getAllByText(STOPPED, { selector: "p" })).toHaveLength(1);
+    expect(threadText()).not.toContain(WORDS);
+  });
+
+  it("a read of the thread that brings the stopped ask in (a profile read): the ask is drawn once", async () => {
+    streams["/api/tools/chat"] = (signal) => sse(signal, [], true);
+    await renderComposer();
+    await sendAndStop(STOPPED);
+    expect(screen.getAllByText(STOPPED, { selector: "p" })).toHaveLength(1);
+
+    // An evidence read: the route stores its card, the composer reads the thread again.
+    threadFixture = withStoppedAsk(msg("m3", "assistant", "Read your chat."));
+    fireEvent.change(evidenceInput(), { target: { files: [new File(["me: hi"], "chat.txt", { type: "text/plain" })] } });
+    fireEvent.click(send());
+    await waitFor(() => expect(requests("/api/tools/profile")).toHaveLength(1));
+    expect(await screen.findByText("Read your chat.")).toBeInTheDocument();
+    await settle();
+
+    expect(screen.getAllByText(STOPPED, { selector: "p" })).toHaveLength(1);
+  });
+
+  it("…while a read that does not bring it in (the same words asked earlier) leaves the stopped turn on screen", async () => {
+    streams["/api/tools/chat"] = (signal) => sse(signal, [], true);
+    await renderComposer();
+    // The same words as the thread's earlier ask: that turn is not this one.
+    fireEvent.change(text(), { target: { value: "first ask" } });
+    fireEvent.click(send());
+    fireEvent.click(await waitFor(() => inField().getByRole("button", { name: "Stop the run" })));
+    await waitFor(() => expect(inField().queryByRole("button", { name: "Stop the run" })).toBeNull());
+    await settle();
+    expect(screen.getAllByText("first ask", { selector: "p" })).toHaveLength(2);
+
+    threadFixture = { ...historyThread(), messages: [...historyThread().messages, msg("m3", "assistant", "Read your chat.")] };
+    fireEvent.change(evidenceInput(), { target: { files: [new File(["me: hi"], "chat.txt", { type: "text/plain" })] } });
+    fireEvent.click(send());
+    expect(await screen.findByText("Read your chat.")).toBeInTheDocument();
+    await settle();
+
+    expect(screen.getAllByText("first ask", { selector: "p" })).toHaveLength(2);
+  });
+});
+
+describe("the account read has a message of its own: \"Read my account\"", () => {
+  it("while it reads: its own message once, the thread's earlier ask once (not again over the read); Stop keeps the message", async () => {
+    streams["/api/account-read"] = (signal) => sse(signal, [], true);
+    await renderComposer();
+    fireEvent.click(pill("More"));
+    const sheet = await screen.findByRole("dialog");
+    fireEvent.click(within(sheet).getByRole("button", { name: /^Read my account/ }));
+    await waitFor(() => expect(send()).toHaveAttribute("aria-label", "Read my account"));
+    fireEvent.click(send());
+    await waitFor(() => expect(requests("/api/account-read")).toHaveLength(1));
+    await waitFor(() => expect(threadText()).toContain("Reading your account"));
+
+    expect(screen.getAllByText("first ask", { selector: "p" })).toHaveLength(1);
+    expect(screen.getAllByText("Read my account", { selector: "p" })).toHaveLength(1);
+    // The route stores it with the read, once the read is in; the client stores nothing.
+    expect(requests("/api/threads/user-turn")).toHaveLength(0);
+
+    fireEvent.click(inField().getByRole("button", { name: "Stop the run" }));
+    await waitFor(() => expect(inField().queryByRole("button", { name: "Stop the run" })).toBeNull());
+    await settle();
+    expect(threadText()).not.toContain("Reading your account");
+    expect(screen.getAllByText("first ask", { selector: "p" })).toHaveLength(1);
+    expect(screen.getAllByText("Read my account", { selector: "p" })).toHaveLength(1);
+    expect(screen.getByText("First answer.")).toBeInTheDocument();
+  });
+});
+
+describe("a failed run refused again at once is the newest run, though its stream already held a failure", () => {
+  it("hooks fails, script fails, hooks is sent again and refused at once: the Retry on screen is the hooks run's", async () => {
+    streams["/api/tools/hooks"] = (_signal, n) => (n < 3 ? refused() : sse(_signal, [], true));
+    streams["/api/tools/script"] = () => refused();
+    await renderComposer();
+    const sendWith = async (skill: string, ask: string, path: string, count: number) => {
+      fireEvent.click(pill(skill));
+      fireEvent.change(text(), { target: { value: ask } });
+      fireEvent.click(send());
+      await waitFor(() => expect(requests(path)).toHaveLength(count));
+      expect(await screen.findByRole("button", { name: /retry/i })).toBeInTheDocument();
+      await settle();
+    };
+    await sendWith("Hooks", "meal prep", "/api/tools/hooks", 1);
+    await sendWith("Script", "desk stretches", "/api/tools/script", 1);
+    await sendWith("Hooks", "meal prep again", "/api/tools/hooks", 2);
+
+    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    await waitFor(() => expect(requests("/api/tools/hooks")).toHaveLength(3));
+    expect(requests("/api/tools/script")).toHaveLength(1);
+    expect(bodyOf(requests("/api/tools/hooks")[2]!).ask).toBe("meal prep again");
+    fireEvent.click(inField().getByRole("button", { name: "Stop the run" }));
+  });
+});
+
+describe("a failed run gives the live turn up once another run starts", () => {
+  it("a failed hooks run, then a chat: once the chat is in the thread, the failed run's Retry does not come back under the chat's ask", async () => {
+    streams["/api/tools/hooks"] = () => refused();
+    streams["/api/tools/chat"] = (signal) => {
+      threadFixture = {
+        ...historyThread(),
+        messages: [
+          ...historyThread().messages,
+          msg("u2", "user", "meal prep"),
+          msg("u3", "user", "what should I post this week?"),
+          msg("m3", "assistant", "Post the gym myth one."),
+        ],
+      };
+      return sse(signal, [["token", { delta: "Post the gym myth one." }], ["done", {}]], false, 30);
+    };
+    await renderComposer();
+    fireEvent.click(pill("Hooks"));
+    fireEvent.change(text(), { target: { value: "meal prep" } });
+    fireEvent.click(send());
+    expect(await screen.findByRole("button", { name: /retry/i })).toBeInTheDocument();
+
+    fireEvent.change(text(), { target: { value: "what should I post this week?" } });
+    fireEvent.click(send());
+    await waitFor(() => expect(requests("/api/tools/chat")).toHaveLength(1));
+    await waitFor(() => expect(requests("/api/threads/open").length).toBeGreaterThan(1));
+    await settle();
+    await settle();
+
+    expect(screen.getAllByText("what should I post this week?", { selector: "p" })).toHaveLength(1);
+    expect(screen.getAllByText("meal prep", { selector: "p" })).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: /retry/i })).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+});
+
+describe("the account read is stored in the chat, as a run's answer is", () => {
+  /** What the route stores with `persist`: one assistant row, the run's header and the read. */
+  /** What the route stores for a delivered read: its message, then the run's header and the read. */
+  const storedRead = { id: "m2", thread_id: "t1", role: "assistant", blocks: [{ type: "run-header", props: { skill: "account" } }, ACCOUNT_READ_FULL], created_at: at };
+  // Plus any message the client stored itself (`/api/threads/user-turn`), as the server would hold it.
+  const withRead = (...more: ReturnType<typeof msg>[]) => ({
+    ...historyThread(),
+    messages: [
+      ...historyThread().messages,
+      ...requests("/api/threads/user-turn").map((c, i) => msg(`ut${i}`, "user", String(bodyOf(c).text))),
+      msg("u2", "user", "Read my account"),
+      storedRead,
+      ...more,
+    ],
+  });
+  /** The turn before it keeps its answer, and the read's message is drawn once. */
+  const expectTurnsIntact = () => {
+    expect(screen.getByText("First answer.")).toBeInTheDocument();
+    expect(screen.getAllByText("Read my account", { selector: "p" })).toHaveLength(1);
+    expect(screen.getAllByText("first ask", { selector: "p" })).toHaveLength(1);
+  };
+  /** How many times the read is drawn (its follower count is on its card once). */
+  const readsDrawn = () => threadText().split("12.4K followers").length - 1;
+  const accountBodies = () => requests("/api/account-read").map(bodyOf);
+
+  async function readFromField() {
+    fireEvent.click(pill("More"));
+    const sheet = await screen.findByRole("dialog");
+    fireEvent.click(within(sheet).getByRole("button", { name: /^Read my account/ }));
+    await waitFor(() => expect(send()).toHaveAttribute("aria-label", "Read my account"));
+    fireEvent.click(send());
+    await waitFor(() => expect(requests("/api/account-read")).toHaveLength(1));
+  }
+
+  it("a read from the field asks the route to store it, folds into the thread once in, and is there after a reload", async () => {
+    streams["/api/account-read"] = (signal) => {
+      threadFixture = withRead();
+      return sse(signal, [["done", { block: ACCOUNT_READ_FULL }]], false, 30);
+    };
+    await renderComposer();
+    await readFromField();
+    expect(accountBodies()[0]).toEqual({ persist: true });
+    const opens = requests("/api/threads/open").length;
+    await waitFor(() => expect(requests("/api/threads/open").length).toBeGreaterThan(opens));
+    await settle();
+    expect(readsDrawn()).toBe(1);
+    expectTurnsIntact();
+
+    // A reload: the read comes back from the thread, under its own message.
+    cleanup();
+    await renderComposer();
+    await settle();
+    expect(readsDrawn()).toBe(1);
+    expectTurnsIntact();
+  });
+
+  it("a chip under it: the read keeps its place above the chip's turn, drawn once", async () => {
+    streams["/api/account-read"] = (signal) => {
+      threadFixture = withRead();
+      return sse(signal, [["done", { block: ACCOUNT_READ_FULL }]], false, 30);
+    };
+    streams["/api/tools/chat"] = (signal) => {
+      const ask = String(bodyOf(requests("/api/tools/chat").at(-1)!).ask);
+      threadFixture = withRead(msg("u3", "user", ask), msg("m3", "assistant", "Your hooks are the weakest part."));
+      return sse(signal, [["token", { delta: "Your hooks are the weakest part." }], ["done", {}]], false, 30);
+    };
+    await renderComposer();
+    await readFromField();
+    await waitFor(() => expect(readsDrawn()).toBe(1));
+    // Folded: the thread read again and the read in it. The chip is then the persisted turn's.
+    await waitFor(() => expect(requests("/api/threads/open").length).toBeGreaterThan(1));
+    await settle();
+    fireEvent.click(screen.getByRole("button", { name: /^Follow up: / }));
+    await waitFor(() => expect(requests("/api/tools/chat")).toHaveLength(1));
+    const ask = String(bodyOf(requests("/api/tools/chat")[0]!).ask);
+    // The answer's turn is swapped for its stored copy at the fold, so it is read off the text.
+    await waitFor(() => expect(threadText()).toContain("Your hooks are the weakest part."));
+    await settle();
+    await settle();
+
+    expect(readsDrawn()).toBe(1);
+    expect(screen.getAllByText(ask, { selector: "p" })).toHaveLength(1);
+    expectTurnsIntact();
+    // The read comes before the chip's ask, where it was.
+    const all = threadText();
+    expect(all.indexOf("12.4K followers")).toBeLessThan(all.indexOf(ask));
+  });
+
+  it("Retry on a failed read asks the route to store it too", async () => {
+    streams["/api/account-read"] = (signal, n) => (n === 1 ? refused() : sse(signal, [], true));
+    await renderComposer();
+    await readFromField();
+    fireEvent.click(await screen.findByRole("button", { name: /retry/i }));
+    await waitFor(() => expect(requests("/api/account-read")).toHaveLength(2));
+    expect(accountBodies()).toEqual([{ persist: true }, { persist: true }]);
+    // Its message is the route's to store, with a delivered read: nothing from the client.
+    expect(requests("/api/threads/user-turn")).toHaveLength(0);
+    fireEvent.click(inField().getByRole("button", { name: "Stop the run" }));
+  });
+
+  it("a scrape TikTok refused: the turn says so, and does not blame the handle", async () => {
+    streams["/api/account-read"] = (signal) =>
+      sse(signal, [["error", { message: "Couldn't read your account just now. Try again in a few minutes.", cause: "scrape_failed", retry: true }]], false);
+    await renderComposer();
+    await readFromField();
+    expect(await screen.findByText("Couldn’t read your account just now.")).toBeInTheDocument();
+    expect(screen.getByText(/TikTok didn’t let us load your posts this time/)).toBeInTheDocument();
+    expect(threadText()).not.toMatch(/check the handle/i);
+    expect(screen.getByRole("button", { name: /retry/i })).toBeInTheDocument();
+  });
+
+  it("leaving the chat while it reads cancels the read's request: nothing of it lands in the next chat", async () => {
+    // As over a network: the body errors once its request is aborted; else the read lands after a beat.
+    streams["/api/account-read"] = (signal) => {
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          signal?.addEventListener("abort", () => controller.error(new DOMException("The operation was aborted.", "AbortError")));
+          setTimeout(() => {
+            if (signal?.aborted) return;
+            controller.enqueue(new TextEncoder().encode(`event: done\ndata: ${JSON.stringify({ block: ACCOUNT_READ_FULL })}\n\n`));
+            controller.close();
+          }, 150);
+        },
+      });
+      return { ok: true, status: 200, body, json: async () => ({}) } as unknown as Response;
+    };
+    await renderComposer();
+    await readFromField();
+    await waitFor(() => expect(threadText()).toContain("Reading your account"));
+
+    threadFixture = { threadId: "t2", messages: [msg("u9", "user", "another chat"), msg("m9", "assistant", "Another answer.")], simSeals: {} };
+    act(() => useBoardStore.getState().switchThread());
+    expect(await screen.findByText("Another answer.")).toBeInTheDocument();
+    expect(requests("/api/account-read")[0]!.init?.signal?.aborted).toBe(true);
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 250));
+    });
+    expect(readsDrawn()).toBe(0);
+    expect(screen.queryByText("Read my account", { selector: "p" })).toBeNull();
+  });
+
+  it("a failed read: its message and the error with Retry live; after a reload nothing of it (nothing was stored)", async () => {
+    streams["/api/account-read"] = (signal) =>
+      sse(signal, [["error", { message: "Couldn't read your account. Check your handle is public and try again." }]], false);
+    await renderComposer();
+    await readFromField();
+    expect(await screen.findByRole("button", { name: /retry/i })).toBeInTheDocument();
+    expect(screen.getAllByText("Read my account", { selector: "p" })).toHaveLength(1);
+    expect(requests("/api/threads/user-turn")).toHaveLength(0);
+
+    cleanup();
+    await renderComposer();
+    await settle();
+    expect(screen.queryByText("Read my account", { selector: "p" })).toBeNull();
+    expect(screen.getByText("First answer.")).toBeInTheDocument();
+  });
+});
+
+describe("leaving a chat while a run streams: the run does not follow into the next chat", () => {
+  /** A stream the test writes to; its body errors once its request is aborted, as over a network. */
+  function writable() {
+    let ctrl: ReadableStreamDefaultController<Uint8Array> | null = null;
+    let signal: AbortSignal | null | undefined;
+    const respond = (sig: AbortSignal | null | undefined) => {
+      signal = sig;
+      const body = new ReadableStream<Uint8Array>({
+        start(c) {
+          ctrl = c;
+          sig?.addEventListener("abort", () => c.error(new DOMException("The operation was aborted.", "AbortError")));
+        },
+      });
+      return { ok: true, status: 200, body, json: async () => ({}) } as unknown as Response;
+    };
+    const push = async (event: string, data: unknown) => {
+      // A request the switch aborted gets no more frames, as over a network.
+      if (!signal?.aborted) ctrl?.enqueue(new TextEncoder().encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
+      await act(async () => {
+        await new Promise((r) => setTimeout(r, 30));
+      });
+    };
+    return { respond, push, aborted: () => !!signal?.aborted };
+  }
+  const nextChat = () => ({ threadId: "t2", messages: [msg("u9", "user", "another chat"), msg("m9", "assistant", "Another answer.")], simSeals: {} });
+  const switchAway = async () => {
+    threadFixture = nextChat();
+    act(() => useBoardStore.getState().switchThread());
+    expect(await screen.findByText("Another answer.")).toBeInTheDocument();
+  };
+
+  it("a hooks run: its request is aborted, and its later cards and closing line are not in the next chat", async () => {
+    const run = writable();
+    streams["/api/tools/hooks"] = (signal) => run.respond(signal);
+    await renderComposer();
+    fireEvent.click(pill("Hooks"));
+    fireEvent.change(text(), { target: { value: "meal prep" } });
+    fireEvent.click(send());
+    await waitFor(() => expect(requests("/api/tools/hooks")).toHaveLength(1));
+    await run.push("stage", { name: "Generating", status: "active" });
+
+    await switchAway();
+    expect(run.aborted()).toBe(true);
+    await run.push("stage", { name: "Generating", status: "done" });
+    await run.push("content", { blocks: [{ props: { hookLine: "Late hook from the old chat", rank: 1, scrollQuote: "x" } }] });
+    await run.push("followup", { text: "Late closing line." });
+    await settle();
+
+    expect(threadText()).not.toContain("Late hook from the old chat");
+    expect(threadText()).not.toContain("Late closing line.");
+    expect(threadText()).not.toContain("meal prep");
+    expect(inField().queryByRole("button", { name: "Stop the run" })).toBeNull();
+  });
+
+  it("a chat run: its request is aborted, and its later words are not in the next chat", async () => {
+    const run = writable();
+    streams["/api/tools/chat"] = (signal) => run.respond(signal);
+    await renderComposer();
+    fireEvent.change(text(), { target: { value: "what should I post this week?" } });
+    fireEvent.click(send());
+    await waitFor(() => expect(requests("/api/tools/chat")).toHaveLength(1));
+    await run.push("token", { delta: "Post the " });
+
+    await switchAway();
+    expect(run.aborted()).toBe(true);
+    await run.push("token", { delta: "gym myth one." });
+    await run.push("done", {});
+    await settle();
+
+    expect(threadText()).not.toContain("gym myth");
+    expect(threadText()).not.toContain("what should I post this week?");
+    expect(inField().queryByRole("button", { name: "Stop the run" })).toBeNull();
   });
 });

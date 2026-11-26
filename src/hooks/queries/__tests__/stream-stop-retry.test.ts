@@ -23,6 +23,8 @@ import { useHooksStream } from '@/hooks/queries/use-hooks-stream';
 import { useScriptStream } from '@/hooks/queries/use-script-stream';
 import { useRemixStream } from '@/hooks/queries/use-remix-stream';
 import { useExploreStream } from '@/hooks/queries/use-explore-stream';
+import { useAccountReadStream } from '@/hooks/queries/use-account-read-stream';
+import { RUN_FAILURE_SENTINEL } from '@/lib/net/run-failure';
 
 type Call = { url: string; init?: RequestInit };
 let calls: Call[] = [];
@@ -102,7 +104,17 @@ const STREAMS: Array<{ name: string; use: () => StopRetry; call: (h: never) => P
   },
 ];
 
-describe.each(STREAMS)('$name stream: Stop', ({ use, call }) => {
+/** The account read has no Retry of its own (the composer replays it with `start`), so it is in Stop only. */
+const STOP_STREAMS: Array<{ name: string; use: () => Omit<StopRetry, 'retry'>; call: (h: never) => Promise<void> }> = [
+  ...STREAMS,
+  {
+    name: 'account',
+    use: useAccountReadStream as unknown as () => Omit<StopRetry, 'retry'>,
+    call: ((h: ReturnType<typeof useAccountReadStream>) => h.start()) as never,
+  },
+];
+
+describe.each(STOP_STREAMS)('$name stream: Stop', ({ use, call }) => {
   it('Stop while the request is out: not streaming, and stopped', async () => {
     const { result } = renderHook(() => use());
     act(() => {
@@ -253,5 +265,53 @@ describe('Retry replays a refine as a refine, and "Find new outliers" with its s
     });
     expect(bodies()[1]!.body.allowScrape).toBe(true);
     expect(bodies()[2]).toEqual(bodies()[1]);
+  });
+});
+
+describe('account stream: reset() ends the read in flight', () => {
+  it('aborts the request, and is not a stopped run (a thread switch leaves nothing behind)', async () => {
+    const { result } = renderHook(() => useAccountReadStream());
+    act(() => {
+      void result.current.start({ persist: true });
+    });
+    await waitFor(() => expect(calls).toHaveLength(1));
+    act(() => result.current.reset());
+    expect(calls[0]!.init?.signal?.aborted).toBe(true);
+    await waitFor(() => expect(result.current.isStreaming).toBe(false));
+    expect(result.current.isStopped).toBe(false);
+    expect(result.current.error).toBeNull();
+  });
+});
+
+describe('account stream: the route names a scrape failure', () => {
+  const answering = (frames: string) => {
+    global.fetch = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      calls.push({ url: String(input), init });
+      const body = new ReadableStream<Uint8Array>({
+        start(c) {
+          c.enqueue(new TextEncoder().encode(frames));
+          c.close();
+        },
+      });
+      return { ok: true, status: 200, body, json: async () => ({}) } as unknown as Response;
+    }) as typeof fetch;
+  };
+
+  it('an error frame with cause scrape_failed sets the scrape sentinel', async () => {
+    answering(`event: error\ndata: ${JSON.stringify({ message: "Couldn't read your account just now.", cause: 'scrape_failed', retry: true })}\n\n`);
+    const { result } = renderHook(() => useAccountReadStream());
+    await act(async () => {
+      await result.current.start({ persist: true });
+    });
+    expect(result.current.error).toBe(RUN_FAILURE_SENTINEL.accountScrape);
+  });
+
+  it('an error frame with no cause keeps its own message', async () => {
+    answering(`event: error\ndata: ${JSON.stringify({ message: 'Something else broke.' })}\n\n`);
+    const { result } = renderHook(() => useAccountReadStream());
+    await act(async () => {
+      await result.current.start({ persist: true });
+    });
+    expect(result.current.error).toBe('Something else broke.');
   });
 });

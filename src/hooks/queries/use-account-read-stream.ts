@@ -28,6 +28,17 @@ export interface UseAccountReadStreamReturn {
   isStreaming: boolean;
   /** Hard error (scrape/network) — truthy renders the retryable error state. */
   error: string | null;
+  /**
+   * The creator pressed Stop while this read's request was out. A stopped run is still a run: its
+   * turn stays on screen even when Stop came before anything arrived, as it does for the other
+   * streams. Cleared by the next start and by reset().
+   */
+  isStopped: boolean;
+  /**
+   * How many runs this stream has started (a refine and a retry each count). A new number is a new
+   * run even when no render saw it streaming: a request refused at once ends in the render it began in.
+   */
+  runs: number;
   /** Honest thin-history fallback message (SELF-02) — a calm warning, not an error. */
   fallbackMessage: string | null;
   /**
@@ -46,7 +57,7 @@ export interface UseAccountReadStreamReturn {
   start: (opts?: { persist?: boolean }) => Promise<void>;
   /** Abort the in-flight stream. */
   stop: () => void;
-  /** Reset state for a fresh run (e.g. on tool switch). */
+  /** Reset state for a fresh run (e.g. on a thread switch), ending a read still in flight. */
   reset: () => void;
 }
 
@@ -54,10 +65,14 @@ export function useAccountReadStream(): UseAccountReadStreamReturn {
   const [block, setBlock] = useState<AccountReadBlock | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isStopped, setIsStopped] = useState(false);
+  const [runs, setRuns] = useState(0);
   const [fallbackMessage, setFallbackMessage] = useState<string | null>(null);
   const [evidence, setEvidence] = useState<RunEvidence | null>(null);
   const [stages, setStages] = useState<StageState[]>([]);
 
+  // The in-flight request's controller; null once its stream has ended, so Stop can tell a read it
+  // cut short from one that was already over.
   const abortRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
 
@@ -71,17 +86,28 @@ export function useAccountReadStream(): UseAccountReadStreamReturn {
   }, []);
 
   const reset = useCallback(() => {
+    // A read still out is ended with it: the composer resets every stream when the creator opens
+    // another chat, and a read left running would land its card in that chat's live turn. The route
+    // stores it in the chat it was asked in (resolved when the request came in), whatever happens here.
+    abortRef.current?.abort();
+    abortRef.current = null;
     setBlock(null);
     setIsStreaming(false);
     setError(null);
+    setIsStopped(false);
     setFallbackMessage(null);
     setEvidence(null);
     setStages([]);
   }, []);
 
   const stop = useCallback(() => {
-    abortRef.current?.abort();
-    if (isMountedRef.current) setIsStreaming(false);
+    const inFlight = abortRef.current;
+    inFlight?.abort();
+    abortRef.current = null;
+    if (isMountedRef.current) {
+      setIsStreaming(false);
+      if (inFlight) setIsStopped(true);
+    }
   }, []);
 
   const start = useCallback(async (opts?: { persist?: boolean }) => {
@@ -92,10 +118,12 @@ export function useAccountReadStream(): UseAccountReadStreamReturn {
 
     setBlock(null);
     setError(null);
+    setIsStopped(false);
     setFallbackMessage(null);
     setEvidence(null);
     setStages([]);
     setIsStreaming(true);
+    setRuns((r) => r + 1);
 
     try {
       // The own handle is resolved from the session (T-10-12), never from input. The optional
@@ -200,6 +228,9 @@ export function useAccountReadStream(): UseAccountReadStreamReturn {
 
           } else if (eventType === "error") {
             const msg = typeof data.message === "string" ? data.message : "Account Read error";
+            // The route names a scrape TikTok refused or answered empty, so the turn can say so
+            // rather than blame the handle (run-failure.ts, `accountScrape`).
+            if (data.cause === "scrape_failed") throw Object.assign(new Error(msg), { accountScrapeFailed: true });
             throw new Error(msg);
           }
           // event: status is transient — the shaped skeleton is the surface, nothing to store.
@@ -214,9 +245,10 @@ export function useAccountReadStream(): UseAccountReadStreamReturn {
       if (message === null) return;
       if (isMountedRef.current) setError(message);
     } finally {
+      if (abortRef.current === controller) abortRef.current = null;
       if (isMountedRef.current) setIsStreaming(false);
     }
   }, []);
 
-  return { block, isStreaming, error, fallbackMessage, evidence, stages, start, stop, reset };
+  return { block, isStreaming, error, isStopped, runs, fallbackMessage, evidence, stages, start, stop, reset };
 }
