@@ -65,6 +65,12 @@ export interface UseExploreStreamReturn {
   error: string | null;
   /** True once the stream has completed (done event received). */
   isDone: boolean;
+  /**
+   * The creator pressed Stop while this run's request was out. A stopped run is still a run: its
+   * turn (the creator's message above it) stays on screen even when Stop came before a single
+   * stage or card, as it does for a run stopped mid-way. Cleared by the next start and by reset().
+   */
+  isStopped: boolean;
   /** Pipeline stages — populated by SSE stage events. Ephemeral: shown during streaming. */
   stages: StageState[];
   /**
@@ -72,6 +78,11 @@ export interface UseExploreStreamReturn {
    * Re-expose as the retry entry point for the skill-run error state.
    */
   start: (params: ExploreStartParams) => Promise<void>;
+  /**
+   * Replay the last start() with the same params (the failed turn's Retry). No-op before the first
+   * start.
+   */
+  retry: () => Promise<void>;
   /** Abort the in-flight stream. */
   stop: () => void;
   /** Reset state for a new run. */
@@ -91,9 +102,14 @@ export function useExploreStream(): UseExploreStreamReturn {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDone, setIsDone] = useState(false);
+  const [isStopped, setIsStopped] = useState(false);
   const [stages, setStages] = useState<StageState[]>([]);
 
+  // The in-flight request's controller; null once its stream has ended, so Stop can tell a run it
+  // cut short from one that was already over.
   const abortRef = useRef<AbortController | null>(null);
+  // The last call as it was made, so Retry replays the run the creator asked for.
+  const lastCallRef = useRef<ExploreStartParams | null>(null);
   const isMountedRef = useRef(true);
   // Ref copy of stages so the upsert can patch without a stale closure.
   const stagesRef = useRef<StageState[]>([]);
@@ -114,14 +130,18 @@ export function useExploreStream(): UseExploreStreamReturn {
     setIsStreaming(false);
     setError(null);
     setIsDone(false);
+    setIsStopped(false);
     setStages([]);
     stagesRef.current = [];
   }, []);
 
   const stop = useCallback(() => {
-    abortRef.current?.abort();
+    const inFlight = abortRef.current;
+    inFlight?.abort();
+    abortRef.current = null;
     if (isMountedRef.current) {
       setIsStreaming(false);
+      if (inFlight) setIsStopped(true);
     }
   }, []);
 
@@ -130,12 +150,14 @@ export function useExploreStream(): UseExploreStreamReturn {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
+    lastCallRef.current = params;
 
     // Reset state for a new run.
     setStreamingBlock(null);
     setStatusMessage(null);
     setError(null);
     setIsDone(false);
+    setIsStopped(false);
     setIsStreaming(true);
     setStages([]);
     stagesRef.current = [];
@@ -250,11 +272,17 @@ export function useExploreStream(): UseExploreStreamReturn {
       if (message === null) return;
       if (isMountedRef.current) setError(message);
     } finally {
+      if (abortRef.current === controller) abortRef.current = null;
       if (isMountedRef.current) {
         setIsStreaming(false);
       }
     }
   }, []);
+
+  const retry = useCallback(async () => {
+    const last = lastCallRef.current;
+    if (last) await start(last);
+  }, [start]);
 
   /**
    * Convert the streaming block to an OutlierGridBlock[] for MessageBlocks rendering.
@@ -270,8 +298,10 @@ export function useExploreStream(): UseExploreStreamReturn {
     isStreaming,
     error,
     isDone,
+    isStopped,
     stages,
     start,
+    retry,
     stop,
     reset,
     toBlocks,

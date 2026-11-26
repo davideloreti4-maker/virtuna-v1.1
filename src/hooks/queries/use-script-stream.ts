@@ -107,6 +107,12 @@ export interface UseScriptStreamReturn {
   error: string | null;
   /** True once the stream has completed (done event received). */
   isDone: boolean;
+  /**
+   * The creator pressed Stop while this run's request was out. A stopped run is still a run: its
+   * turn (the creator's message above it) stays on screen even when Stop came before a single
+   * stage or card, as it does for a run stopped mid-way. Cleared by the next start and by reset().
+   */
+  isStopped: boolean;
   /** The SSE stream has closed — everything the run will ever persist is on disk. */
   isClosed: boolean;
   /** Pipeline stages — populated by SSE stage events (STUDIO-01). */
@@ -142,6 +148,11 @@ export interface UseScriptStreamReturn {
    * them into the cache (so the next normal run is grounded free). No-op before the first run.
    */
   findOutliers: () => Promise<void>;
+  /**
+   * Replay the last call exactly as it was made (the failed turn's Retry): its ask, platform, anchor
+   * hook and intent, "Find new outliers" with its scrape. No-op before the first call.
+   */
+  retry: () => Promise<void>;
   /** Abort the in-flight stream. */
   stop: () => void;
   /** Reset state for a new run. */
@@ -160,6 +171,7 @@ export function useScriptStream(): UseScriptStreamReturn {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDone, setIsDone] = useState(false);
+  const [isStopped, setIsStopped] = useState(false);
   /**
    * THE STREAM IS CLOSED — the server has finished sending, not merely finished the CARDS.
    *
@@ -186,7 +198,11 @@ export function useScriptStream(): UseScriptStreamReturn {
   const [outliersAvailable, setOutliersAvailable] = useState(false);
   const [warnings, setWarnings] = useState<string[]>([]);
 
+  // The in-flight request's controller; null once its stream has ended, so Stop can tell a run it
+  // cut short from one that was already over.
   const abortRef = useRef<AbortController | null>(null);
+  // The last call as it was made, so Retry replays the run the creator asked for.
+  const lastCallRef = useRef<Parameters<UseScriptStreamReturn['start']> | null>(null);
   const isMountedRef = useRef(true);
   // The last normal send's args, so findOutliers() can replay the SAME subject with a scrape
   // authorized. The scrape query is derived from ask/anchor, so replaying "" would scrape on the
@@ -209,6 +225,7 @@ export function useScriptStream(): UseScriptStreamReturn {
     setIsStreaming(false);
     setError(null);
     setIsDone(false);
+    setIsStopped(false);
     setIsClosed(false);
     setStages([]);
     setEvidence(null);
@@ -220,9 +237,12 @@ export function useScriptStream(): UseScriptStreamReturn {
   }, []);
 
   const stop = useCallback(() => {
-    abortRef.current?.abort();
+    const inFlight = abortRef.current;
+    inFlight?.abort();
+    abortRef.current = null;
     if (isMountedRef.current) {
       setIsStreaming(false);
+      if (inFlight) setIsStopped(true);
     }
   }, []);
 
@@ -236,6 +256,7 @@ export function useScriptStream(): UseScriptStreamReturn {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
+    lastCallRef.current = [ask, platform, anchor, intent, opts];
 
     // Remember this send so findOutliers() can replay the SAME subject with a scrape authorized.
     // The allowScrape flag itself is NOT stored — each findOutliers() sets it explicitly.
@@ -245,6 +266,7 @@ export function useScriptStream(): UseScriptStreamReturn {
     setError(null);
     setIsDone(false);
     setIsClosed(false);
+    setIsStopped(false);
     setIsStreaming(true);
     setStages([]);
     setEvidence(null);
@@ -442,6 +464,7 @@ export function useScriptStream(): UseScriptStreamReturn {
       if (message === null) return;
       if (isMountedRef.current) setError(message);
     } finally {
+      if (abortRef.current === controller) abortRef.current = null;
       if (isMountedRef.current) {
         setIsStreaming(false);
         setIsClosed(true);
@@ -453,6 +476,11 @@ export function useScriptStream(): UseScriptStreamReturn {
     const last = lastRunRef.current;
     if (!last) return;
     await start(last.ask, last.platform, last.anchor, last.intent, { allowScrape: true });
+  }, [start]);
+
+  const retry = useCallback(async () => {
+    const last = lastCallRef.current;
+    if (last) await start(...last);
   }, [start]);
 
   const toBlocks = useCallback((): ScriptCardBlock[] => {
@@ -490,6 +518,7 @@ export function useScriptStream(): UseScriptStreamReturn {
     isStreaming,
     error,
     isDone,
+    isStopped,
     isClosed,
     stages,
     evidence,
@@ -498,6 +527,7 @@ export function useScriptStream(): UseScriptStreamReturn {
     warnings,
     start,
     findOutliers,
+    retry,
     stop,
     reset,
     toBlocks,

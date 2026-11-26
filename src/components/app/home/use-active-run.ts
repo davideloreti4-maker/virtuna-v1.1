@@ -64,6 +64,11 @@ export interface ActiveRun {
   stop: () => void;
   /** Clear the stream so the persisted thread owns this run's history. */
   reset: () => void;
+  /**
+   * Run it again as it was asked (the failed turn's Retry). It rides the run, not its `skill`: a run
+   * the chat dispatched is named by the skill it ran, and retrying it is the chat's to do.
+   */
+  retry?: () => void;
 }
 
 /**
@@ -83,8 +88,14 @@ export interface RunCandidate {
   warnings?: string[];
   error?: string | null;
   outliersAvailable?: boolean;
+  /**
+   * The creator stopped this run while its request was out. Holds the tail on its own, so a run
+   * stopped before anything arrived keeps its turn (and the creator's message) on screen.
+   */
+  isStopped?: boolean;
   stop: () => void;
   reset: () => void;
+  retry?: () => void;
 }
 
 function normalize(c: RunCandidate): ActiveRun {
@@ -102,6 +113,7 @@ function normalize(c: RunCandidate): ActiveRun {
     outliersAvailable: c.outliersAvailable ?? false,
     stop: c.stop,
     reset: c.reset,
+    retry: c.retry,
   };
 }
 
@@ -127,13 +139,19 @@ function normalize(c: RunCandidate): ActiveRun {
  * BEFORE it sends the event, so the folded turn already carries the outro. And while a run is
  * genuinely live its blocks/stages/isStreaming already make it the tail — a follow-up has never
  * arrived before them.
+ *
+ * A stopped run is content too, so Stop pressed before a single word, stage or card keeps the turn
+ * (the live turn is what draws the creator's message). Only until another run starts: a stream is
+ * not reset when a different one runs next, and once that run has folded into history the stopped
+ * one would come back as the tail and draw the newest message a second time.
  */
-function hasContent(c: RunCandidate): boolean {
+function hasContent(c: RunCandidate, lastStarted: ChatTurnKind | null): boolean {
   return (
     c.isStreaming ||
     (c.blocks?.length ?? 0) > 0 ||
     (c.stages?.length ?? 0) > 0 ||
-    !!c.error
+    !!c.error ||
+    (!!c.isStopped && c.skill === lastStarted)
   );
 }
 
@@ -166,7 +184,7 @@ export function useActiveRun(candidates: RunCandidate[]): UseActiveRunResult {
   const streamingSkill = streaming?.skill ?? null;
   if (streamingSkill && streamingSkill !== lastStarted) setLastStarted(streamingSkill);
 
-  const settled = candidates.filter(hasContent);
+  const settled = candidates.filter((c) => hasContent(c, lastStarted));
   const preferred =
     streaming ??
     settled.find((c) => c.skill === lastStarted) ??

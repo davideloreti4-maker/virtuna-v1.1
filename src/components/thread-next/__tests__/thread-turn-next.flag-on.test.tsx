@@ -990,19 +990,38 @@ describe("while a run is live", () => {
     expect(screen.queryByTestId("followup-row")).toBeNull();
   });
 
-  // Fix round 1 (2), spec §4.8: before `dispatch` names the run, a guessed run's preamble is not an
-  // answer. "Thinking" (never the guess itself), no text, no chips, while the stream is open.
-  it("a guessed run (preGuess) says only \"Thinking\" while it streams, even with prose in, and draws no outline", () => {
+  // Spec §4.2 item 1 and §4.5: a guess names nothing. The guess pin is off in production, so most
+  // guessed asks are answered in plain words: "Thinking" before the first word (never the guess
+  // itself, no outline), then the words stream like any plain answer, not all at once at the end.
+  it("a guessed ask (preGuess) answered in plain words: \"Thinking\" before its first word, then its text streams", () => {
     const live = { skill: "chat" as const, isStreaming: true, stages: [], preGuess: "hooks" };
-    const { rerender } = renderTurn({ userTurn: "hooks for my app", blocks: [], live });
+    const { container, rerender } = renderTurn({ userTurn: "hooks for my app", blocks: [], live });
     expect(screen.getByRole("status")).toHaveTextContent(/^Thinking$/);
     expect(outline()).toBeNull();
     expect(screen.queryByText(/Looks like/)).toBeNull();
-    rerender({ userTurn: "hooks for my app", blocks: [md("On it, generating a few angles.")], live });
-    expect(screen.getByRole("status")).toHaveTextContent(/^Thinking$/);
+    rerender({ userTurn: "hooks for my app", blocks: [md("Which angle do you want: the price or the speed?")], live });
+    expect(screen.queryByText("Thinking")).toBeNull();
+    expect(screen.queryByRole("status")).toBeNull();
     expect(outline()).toBeNull();
-    expect(screen.queryByText("On it, generating a few angles.")).toBeNull();
+    expect(container.querySelector(".md")).toHaveTextContent("Which angle do you want: the price or the speed?");
     expect(screen.queryByTestId("followup-row")).toBeNull();
+  });
+
+  // Once `dispatch` names the run, the named-run wait takes over: the prose that streamed before it
+  // was a preamble and leaves, the outline shows.
+  it("a guessed ask whose prose streamed, then the run is named: the preamble leaves for the run's outline", () => {
+    const preamble = md("On it, generating a few angles.");
+    const { container, rerender } = renderTurn({
+      userTurn: ASK,
+      blocks: [preamble],
+      live: { skill: "chat", isStreaming: true, stages: [], preGuess: "hooks" },
+    });
+    expect(container.querySelector(".md")).toHaveTextContent("On it, generating a few angles.");
+    rerender({ userTurn: ASK, blocks: [preamble], live: { skill: "hooks", isStreaming: true, stages: [] } });
+    expect(screen.getByRole("status")).toHaveTextContent("Writing hooks");
+    expect(outline("pack")).not.toBeNull();
+    expect(container.querySelector(".md")).toBeNull();
+    expect(screen.queryByText("Thinking")).toBeNull();
   });
 
   it("a typed ask, then the run is named: the line becomes the run's outline", () => {

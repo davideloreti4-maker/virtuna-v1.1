@@ -124,6 +124,64 @@ export async function insertMessage(
   return data;
 }
 
+// ─── insertUserTurnUnlessRepeat ───────────────────────────────────────────────
+/**
+ * Store the creator's turn (one user block) before a run, unless the thread's LAST message is
+ * already that same turn. Every tool route stores the ask before its run starts; a run that fails
+ * after that and is retried (Retry replays the request exactly), or the same words sent again after
+ * a Stop, used to store the ask twice, and the thread showed the message twice, one under the
+ * other. A last message that is this same user turn has, by being last, no answer after it, so it
+ * already stands for this ask. The same words after an answer are a new turn and are stored.
+ *
+ * "Last" is the ordering `loadMessages` draws by (created_at). Two turns match when they are the
+ * same block type with the same text, and for a persona turn the same archetype.
+ *
+ * Validates the block before any read and stores it through `insertMessage` (same stamp, same
+ * error on a failed write); a failed read throws too, rather than guessing.
+ */
+export async function insertUserTurnUnlessRepeat(
+  threadId: string,
+  block: unknown,
+  kcGenVersion?: string,
+): Promise<MessageRow> {
+  if (!validateBlock(block).ok) {
+    throw new Error(
+      `insertMessage: block failed validation at write boundary: ${JSON.stringify(block)}`,
+    );
+  }
+
+  const supabase = createServiceClient();
+  const { data: last, error } = await supabase
+    .from("messages")
+    .select("*")
+    .eq("thread_id", threadId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      `insertUserTurnUnlessRepeat: reading the last message failed for thread_id=${threadId}: ${error.message}`,
+    );
+  }
+
+  if (last && last.role === "user") {
+    const blocks = unwrapBody(last.body);
+    if (blocks.length === 1 && sameUserTurn(blocks[0], block)) return last;
+  }
+
+  return insertMessage(threadId, "user", [block], kcGenVersion);
+}
+
+/** Same block type, same text and, for a persona turn, the same archetype. */
+function sameUserTurn(a: unknown, b: unknown): boolean {
+  const x = a as { type?: unknown; props?: { text?: unknown; archetype?: unknown } } | null;
+  const y = b as { type?: unknown; props?: { text?: unknown; archetype?: unknown } } | null;
+  if (!x || !y || x.type !== y.type) return false;
+  if (typeof x.props?.text !== "string" || x.props.text !== y.props?.text) return false;
+  return x.type !== "persona-chat-turn" || x.props.archetype === y.props?.archetype;
+}
+
 // ─── unwrapBody ────────────────────────────────────────────────────────────────
 /**
  * Normalise a persisted message body to its blocks array. Supports both the bare

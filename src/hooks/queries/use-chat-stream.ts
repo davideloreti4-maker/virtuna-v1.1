@@ -76,6 +76,12 @@ export interface UseChatStreamReturn {
   /** True once the stream has completed (done event received). */
   isDone: boolean;
   /**
+   * The creator pressed Stop while this run's request was out. A stopped run is still a run: its
+   * turn (the creator's message above it) stays on screen even when Stop came before a single
+   * word, as it does for a run stopped mid-answer. Cleared by the next start and by reset().
+   */
+  isStopped: boolean;
+  /**
    * True when the meta frame carried coldStart=true (D-08).
    * Resets to false on reset() (between sends).
    */
@@ -125,6 +131,11 @@ export interface UseChatStreamReturn {
     skill?: string,
     opts?: { anchor?: string; cards?: string[] },
   ) => Promise<void>;
+  /**
+   * Replay the last start() exactly as it was made (the failed turn's Retry): same ask, platform,
+   * skill and riders. No-op before the first start.
+   */
+  retry: () => Promise<void>;
   /** Abort the in-flight stream. */
   stop: () => void;
   /**
@@ -165,12 +176,17 @@ export function useChatStream(): UseChatStreamReturn {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDone, setIsDone] = useState(false);
+  const [isStopped, setIsStopped] = useState(false);
   const [coldStart, setColdStart] = useState(false);
   // Sticky session-level flag — set once when coldStart fires, never reset (D-08).
   const [nudgeShown, setNudgeShown] = useState(false);
 
+  // The in-flight request's controller; null once its stream has ended, so Stop can tell a run it
+  // cut short from one that was already over.
   const abortRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
+  // The last start()'s arguments, so Retry replays the run the creator asked for.
+  const lastCallRef = useRef<Parameters<UseChatStreamReturn['start']> | null>(null);
   // Ref copies so block/stage events patch without a stale closure (mirrors use-ideas-stream).
   const blocksRef = useRef<unknown[]>([]);
   const stagesRef = useRef<StageState[]>([]);
@@ -205,6 +221,7 @@ export function useChatStream(): UseChatStreamReturn {
     setIsStreaming(false);
     setError(null);
     setIsDone(false);
+    setIsStopped(false);
     setColdStart(false);
     textRef.current = '';
     blocksRef.current = [];
@@ -212,9 +229,12 @@ export function useChatStream(): UseChatStreamReturn {
   }, []);
 
   const stop = useCallback(() => {
-    abortRef.current?.abort();
+    const inFlight = abortRef.current;
+    inFlight?.abort();
+    abortRef.current = null;
     if (isMountedRef.current) {
       setIsStreaming(false);
+      if (inFlight) setIsStopped(true);
     }
   }, []);
 
@@ -228,6 +248,7 @@ export function useChatStream(): UseChatStreamReturn {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
+    lastCallRef.current = [ask, platform, skill, opts];
 
     // Reset state for a new run (clears error, coldStart, streamingText, dispatch blocks/stages)
     setStreamingText('');
@@ -239,6 +260,7 @@ export function useChatStream(): UseChatStreamReturn {
     setPreGuess(null);
     setError(null);
     setIsDone(false);
+    setIsStopped(false);
     setColdStart(false);
     setIsStreaming(true);
     textRef.current = '';
@@ -428,11 +450,17 @@ export function useChatStream(): UseChatStreamReturn {
       if (message === null) return;
       if (isMountedRef.current) setError(message);
     } finally {
+      if (abortRef.current === controller) abortRef.current = null;
       if (isMountedRef.current) {
         setIsStreaming(false);
       }
     }
   }, []);
+
+  const retry = useCallback(async () => {
+    const last = lastCallRef.current;
+    if (last) await start(...last);
+  }, [start]);
 
   /**
    * Convert the in-flight assistant turn to a single MarkdownBlock array.
@@ -460,9 +488,11 @@ export function useChatStream(): UseChatStreamReturn {
     isStreaming,
     error,
     isDone,
+    isStopped,
     coldStart,
     nudgeShown,
     start,
+    retry,
     stop,
     reset,
     toBlocks,

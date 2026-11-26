@@ -124,6 +124,12 @@ export interface UseHooksStreamReturn {
   error: string | null;
   /** True once the stream has completed (done event received). */
   isDone: boolean;
+  /**
+   * The creator pressed Stop while this run's request was out. A stopped run is still a run: its
+   * turn (the creator's message above it) stays on screen even when Stop came before a single
+   * stage or card, as it does for a run stopped mid-way. Cleared by the next start and by reset().
+   */
+  isStopped: boolean;
   /** The SSE stream has closed — everything the run will ever persist is on disk. */
   isClosed: boolean;
   /** Pipeline stages — populated by SSE stage events (STUDIO-01 / Plan 05-04). Ephemeral: shown during streaming. */
@@ -177,6 +183,12 @@ export interface UseHooksStreamReturn {
    * NEVER called on render — only called on an explicit user send (D-05).
    */
   startRefine: (body: { skill: 'hooks'; instruction: string; anchor: string; cardRef?: number; platform?: string }) => Promise<void>;
+  /**
+   * Replay the last call exactly as it was made (the failed turn's Retry): a send with its ask,
+   * platform and intent, a refine as that refine, "Find new outliers" with its scrape. No-op before
+   * the first call.
+   */
+  retry: () => Promise<void>;
   /** Abort the in-flight stream. */
   stop: () => void;
   /** Reset state for a new run. */
@@ -196,6 +208,7 @@ export function useHooksStream(): UseHooksStreamReturn {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDone, setIsDone] = useState(false);
+  const [isStopped, setIsStopped] = useState(false);
   /**
    * THE STREAM IS CLOSED — the server has finished sending, not merely finished the CARDS.
    *
@@ -223,7 +236,15 @@ export function useHooksStream(): UseHooksStreamReturn {
   const [warnings, setWarnings] = useState<string[]>([]);
   const [outliersAvailable, setOutliersAvailable] = useState(false);
 
+  // The in-flight request's controller; null once its stream has ended, so Stop can tell a run it
+  // cut short from one that was already over.
   const abortRef = useRef<AbortController | null>(null);
+  // The last call as it was made, so Retry replays the run the creator asked for.
+  const lastCallRef = useRef<
+    | { kind: 'start'; args: Parameters<UseHooksStreamReturn['start']> }
+    | { kind: 'refine'; body: Parameters<UseHooksStreamReturn['startRefine']>[0] }
+    | null
+  >(null);
   const isMountedRef = useRef(true);
   // The last normal send's args, so findOutliers() can replay the SAME subject with a scrape
   // authorized. Captured on every start(); the scrape query is derived from the ask, so replaying
@@ -252,6 +273,7 @@ export function useHooksStream(): UseHooksStreamReturn {
     setIsStreaming(false);
     setError(null);
     setIsDone(false);
+    setIsStopped(false);
     setIsClosed(false);
     setStages([]);
     setEvidence(null);
@@ -263,9 +285,12 @@ export function useHooksStream(): UseHooksStreamReturn {
   }, []);
 
   const stop = useCallback(() => {
-    abortRef.current?.abort();
+    const inFlight = abortRef.current;
+    inFlight?.abort();
+    abortRef.current = null;
     if (isMountedRef.current) {
       setIsStreaming(false);
+      if (inFlight) setIsStopped(true);
     }
   }, []);
 
@@ -279,6 +304,7 @@ export function useHooksStream(): UseHooksStreamReturn {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
+    lastCallRef.current = { kind: 'start', args: [ask, platform, intent, opts] };
 
     // Remember this send so findOutliers() can replay the SAME subject with a scrape authorized.
     // The allowScrape flag itself is NOT stored — each findOutliers() sets it explicitly, so a
@@ -291,6 +317,7 @@ export function useHooksStream(): UseHooksStreamReturn {
     setError(null);
     setIsDone(false);
     setIsClosed(false);
+    setIsStopped(false);
     setIsStreaming(true);
     setStages([]);
     setEvidence(null);
@@ -504,6 +531,7 @@ export function useHooksStream(): UseHooksStreamReturn {
       if (message === null) return;
       if (isMountedRef.current) setError(message);
     } finally {
+      if (abortRef.current === controller) abortRef.current = null;
       if (isMountedRef.current) {
         setIsStreaming(false);
         setIsClosed(true);
@@ -535,12 +563,14 @@ export function useHooksStream(): UseHooksStreamReturn {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
+    lastCallRef.current = { kind: 'refine', body };
 
     setStreamingCards([]);
     setStatusMessage(null);
     setError(null);
     setIsDone(false);
     setIsClosed(false);
+    setIsStopped(false);
     setIsStreaming(true);
     setStages([]);
     setEvidence(null);
@@ -711,12 +741,20 @@ export function useHooksStream(): UseHooksStreamReturn {
       if (message === null) return;
       if (isMountedRef.current) setError(message);
     } finally {
+      if (abortRef.current === controller) abortRef.current = null;
       if (isMountedRef.current) {
         setIsStreaming(false);
         setIsClosed(true);
       }
     }
   }, []);
+
+  const retry = useCallback(async () => {
+    const last = lastCallRef.current;
+    if (!last) return;
+    if (last.kind === 'refine') await startRefine(last.body);
+    else await start(...last.args);
+  }, [start, startRefine]);
 
   /**
    * Convert partial streaming cards to full HookCardBlock shapes.
@@ -766,6 +804,7 @@ export function useHooksStream(): UseHooksStreamReturn {
     isStreaming,
     error,
     isDone,
+    isStopped,
     isClosed,
     stages,
     evidence,
@@ -775,6 +814,7 @@ export function useHooksStream(): UseHooksStreamReturn {
     start,
     findOutliers,
     startRefine,
+    retry,
     stop,
     reset,
     toBlocks,

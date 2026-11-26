@@ -113,6 +113,12 @@ export interface UseRemixStreamReturn {
   error: string | null;
   /** True once the stream has completed (done event received). */
   isDone: boolean;
+  /**
+   * The creator pressed Stop while this run's request was out. A stopped run is still a run: its
+   * turn (the creator's message above it) stays on screen even when Stop came before a single
+   * stage or card, as it does for a run stopped mid-way. Cleared by the next start and by reset().
+   */
+  isStopped: boolean;
   /** The SSE stream has closed — everything the run will ever persist is on disk. */
   isClosed: boolean;
   /** Pipeline stages — populated by SSE stage events (STUDIO-01). */
@@ -133,6 +139,11 @@ export interface UseRemixStreamReturn {
    * never empty (the route reads a present brief as the adaptation target).
    */
   start: (url: string, platform: string, intent?: IntentLens, brief?: string) => Promise<void>;
+  /**
+   * Replay the last start() exactly as it was made (the failed turn's Retry): its link, platform,
+   * intent and brief. No-op before the first start.
+   */
+  retry: () => Promise<void>;
   /** Abort the in-flight stream. */
   stop: () => void;
   /** Reset state for a new run. */
@@ -151,6 +162,7 @@ export function useRemixStream(): UseRemixStreamReturn {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDone, setIsDone] = useState(false);
+  const [isStopped, setIsStopped] = useState(false);
   /**
    * THE STREAM IS CLOSED — the server has finished sending, not merely finished the CARDS.
    *
@@ -175,7 +187,11 @@ export function useRemixStream(): UseRemixStreamReturn {
   const [evidence, setEvidence] = useState<RunEvidence | null>(null);
   const [followupText, setFollowupText] = useState<string | null>(null);
 
+  // The in-flight request's controller; null once its stream has ended, so Stop can tell a run it
+  // cut short from one that was already over.
   const abortRef = useRef<AbortController | null>(null);
+  // The last call as it was made, so Retry replays the run the creator asked for.
+  const lastCallRef = useRef<Parameters<UseRemixStreamReturn['start']> | null>(null);
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -194,6 +210,7 @@ export function useRemixStream(): UseRemixStreamReturn {
     setIsStreaming(false);
     setError(null);
     setIsDone(false);
+    setIsStopped(false);
     setIsClosed(false);
     setStages([]);
     setEvidence(null);
@@ -203,9 +220,12 @@ export function useRemixStream(): UseRemixStreamReturn {
   }, []);
 
   const stop = useCallback(() => {
-    abortRef.current?.abort();
+    const inFlight = abortRef.current;
+    inFlight?.abort();
+    abortRef.current = null;
     if (isMountedRef.current) {
       setIsStreaming(false);
+      if (inFlight) setIsStopped(true);
     }
   }, []);
 
@@ -213,11 +233,13 @@ export function useRemixStream(): UseRemixStreamReturn {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
+    lastCallRef.current = [url, platform, intent, brief];
 
     setStreamingCards([]);
     setError(null);
     setIsDone(false);
     setIsClosed(false);
+    setIsStopped(false);
     setIsStreaming(true);
     setStages([]);
     setEvidence(null);
@@ -376,12 +398,18 @@ export function useRemixStream(): UseRemixStreamReturn {
       if (message === null) return;
       if (isMountedRef.current) setError(message);
     } finally {
+      if (abortRef.current === controller) abortRef.current = null;
       if (isMountedRef.current) {
         setIsStreaming(false);
         setIsClosed(true);
       }
     }
   }, []);
+
+  const retry = useCallback(async () => {
+    const last = lastCallRef.current;
+    if (last) await start(...last);
+  }, [start]);
 
   const toBlocks = useCallback((): RemixCardBlock[] => {
     return streamingCards.map((c): RemixCardBlock => ({
@@ -420,11 +448,13 @@ export function useRemixStream(): UseRemixStreamReturn {
     isStreaming,
     error,
     isDone,
+    isStopped,
     isClosed,
     stages,
     evidence,
     followupText,
     start,
+    retry,
     stop,
     reset,
     toBlocks,
