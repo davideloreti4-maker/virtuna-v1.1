@@ -1,6 +1,10 @@
 import { Skeleton } from "@/components/ui/skeleton";
+import { SettingsNextLoading } from "@/components/settings-next/settings-next";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 
 export default function SettingsLoading() {
+  // New look: the new page's own outline, so the page that replaces it is the same screen.
+  if (NEW_LOOK_ENABLED) return <SettingsNextLoading />;
   return (
     <div className="mx-auto max-w-4xl space-y-8 p-6">
       <Skeleton className="h-8 w-32" />

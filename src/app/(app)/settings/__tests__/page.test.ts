@@ -3,7 +3,9 @@
  * Flag off: exactly as before: `?tab=referrals` opens the Referrals tab, the link is shown to Pro and
  * Studio only, its code is made on first view (now through the moved `ensureReferralCode`), and the
  * numbers are the table counts. Flag on: `?tab=referrals` leads to /earn, and the page reads nothing of
- * the referrals. Real: the page, `getUserTier`, `hasAccessToTier`, the code loop, the link. Stood in for:
+ * the referrals. Flag on (spec 2026-11-26-settings, section 4): every other tab's address opens the one
+ * new page, `SettingsNext`, for a signed-in account; nothing for a visitor signed out or from /go. Real: the
+ * page, `getUserTier`, `hasAccessToTier`, the code loop, the link. Stood in for:
  * the build-time flag and the database behind the session client and the service client
  * (`fake-referral-db.ts`; the service client only writes a new code, ruling 36). Every id and code is made up.
  */
@@ -25,11 +27,12 @@ async function load(flag: boolean) {
   vi.doMock("@/lib/supabase/service", () => ({ createServiceClient: () => db.serviceClient() }));
   const page = await import("../page");
   const { SettingsPage } = await import("@/components/app/settings");
-  return { Page: page.default, SettingsPage };
+  const { SettingsNext } = await import("@/components/settings-next/settings-next");
+  return { Page: page.default, SettingsPage, SettingsNext };
 }
 const open = async (flag: boolean, tab?: string) => {
-  const { Page, SettingsPage } = await load(flag);
-  return { element: (await Page({ searchParams: Promise.resolve(tab === undefined ? {} : { tab }) })) as ReactElement<Record<string, unknown>>, SettingsPage };
+  const { Page, SettingsPage, SettingsNext } = await load(flag);
+  return { element: (await Page({ searchParams: Promise.resolve(tab === undefined ? {} : { tab }) })) as ReactElement<Record<string, unknown>>, SettingsPage, SettingsNext };
 };
 async function thrown(run: () => unknown): Promise<string> {
   try {
@@ -125,11 +128,25 @@ describe("/settings, flag on (ruling 3)", () => {
     expect(db.state.authCalls).toBe(0);
   });
 
-  it("any other tab opens as before, and the page reads nothing of the referrals (the tab is not listed)", async () => {
+  it.each([undefined, "profile", "billing", "connected", "nope"])("tab %s: the new page, and nothing of the old one is read", async (tab) => {
     plan("pro");
-    const { element, SettingsPage } = await open(true, "billing");
-    expect(isValidElement(element) && element.type).toBe(SettingsPage);
-    expect(element.props.defaultTab).toBe("billing");
-    expect(referralTables()).toEqual([]);
+    const { element, SettingsNext } = await open(true, tab);
+    expect(isValidElement(element) && element.type).toBe(SettingsNext);
+    expect(element.props).toEqual({});
+    // The page reads the session only: the plan, the referrals and the accounts are the client's or not read.
+    expect(db.state.authCalls).toBe(1);
+    expect(db.state.calls).toEqual([]);
+  });
+
+  it("signed out: nothing (the layout and the middleware send the visitor to log in)", async () => {
+    db.state.user = null;
+    const { element } = await open(true, "billing");
+    expect(element).toBeNull();
+  });
+
+  it("a /go visitor (an anonymous session): nothing", async () => {
+    db.state.user = { id: ME, is_anonymous: true };
+    const { element } = await open(true);
+    expect(element).toBeNull();
   });
 });

@@ -1,7 +1,9 @@
 import { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { SettingsPage } from "@/components/app/settings";
+import { SettingsNext } from "@/components/settings-next/settings-next";
 import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
+import { isSealedVisitor } from "@/lib/onboarding/verdict-seal";
 import { createClient } from "@/lib/supabase/server";
 import { ensureReferralCode, referralLink } from "@/lib/referral/ensure-code";
 import { getUserTier } from "@/lib/whop/subscription";
@@ -34,6 +36,19 @@ type ValidTab = (typeof VALID_TABS)[number];
 
 export default async function Settings({ searchParams }: PageProps) {
   const params = await searchParams;
+  // New look (spec 2026-11-26-settings, section 4): one page for every tab's address. The referral
+  // link lives on /earn (Earn, ruling 3), so that tab's address leads there before anything is read.
+  // Signed out or a /go visitor: nothing (as /you; the layout and the middleware send them on).
+  if (NEW_LOOK_ENABLED) {
+    if (params.tab === "referrals") redirect("/earn");
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user || isSealedVisitor(user)) return null;
+    return <SettingsNext />;
+  }
+
   const tabParam = params.tab || "";
   // New look (Earn, ruling 3): the referral link lives on /earn, for every account; Settings has no
   // Referrals tab there, so its address leads to Earn. Flag off: as before.
