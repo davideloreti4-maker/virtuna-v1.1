@@ -273,7 +273,7 @@ export function PackAnswer({
                 {tagRow === i && (
                   <span
                     data-part="lead-tag"
-                    className="inline-flex h-5 items-center whitespace-nowrap rounded-full bg-[color-mix(in_srgb,var(--color-foreground)_7%,transparent)] px-[7px] text-label font-[650] leading-none tracking-normal text-foreground"
+                    className="inline-flex h-5 items-center whitespace-nowrap rounded-sm bg-[color-mix(in_srgb,var(--color-foreground)_7%,transparent)] px-[7px] text-label font-[650] leading-none tracking-normal text-foreground"
                   >
                     {lead.best !== null ? "Best" : "Ahead"}
                   </span>

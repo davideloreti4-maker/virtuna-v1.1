@@ -71,8 +71,8 @@ const FIELD =
   "w-full min-w-0 rounded-2xl bg-surface-sunken px-4 text-title text-foreground placeholder:text-foreground-muted " +
   "motion-safe:transition-[background-color,box-shadow] focus:bg-surface focus:shadow-[var(--shadow-control)]";
 
-/** The ink button: full width, round (as the audience page's). */
-const PILL = "w-full next:rounded-full";
+/** The ink buttons: full width (their corners are the button's own, radius 10). */
+const WIDE = "w-full";
 
 /** The page's frame: the desk's title row over a column of 560. */
 function Frame({ children }: { children: ReactNode }) {
@@ -180,7 +180,7 @@ export function NewAudienceScreen({ door, field, onDoor, onField, onSubmit, fiel
           variant="primary"
           size="lg"
           aria-disabled={request === null || undefined}
-          className={cn(PILL, "aria-disabled:cursor-default aria-disabled:opacity-40")}
+          className={cn(WIDE, "aria-disabled:cursor-default aria-disabled:opacity-40")}
         >
           {S.build}
         </Button>

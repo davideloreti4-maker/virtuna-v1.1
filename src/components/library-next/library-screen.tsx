@@ -371,7 +371,7 @@ export function LibraryScreen({
           <button
             type="button"
             onClick={onNewChat}
-            className="tap-44 inline-flex h-11 items-center gap-2 rounded-full bg-action pl-4 pr-5 text-ui font-[600] text-action-foreground transition-[scale] duration-150 motion-safe:active:scale-[0.98]"
+            className="tap-44 inline-flex h-11 items-center gap-2 rounded-xl bg-action pl-4 pr-5 text-ui font-[600] text-action-foreground transition-[scale] duration-150 motion-safe:active:scale-[0.98]"
           >
             <PlusIcon size={18} aria-hidden />
             New chat
@@ -503,7 +503,7 @@ export function LibraryScreen({
             role="search"
             data-part="search"
             className={cn(
-              "h-11 cursor-text items-center gap-2.5 rounded-full bg-surface-sunken pl-3.5 pr-1 md:w-[280px] md:flex-none",
+              "h-11 cursor-text items-center gap-2.5 rounded-lg bg-surface-sunken pl-3.5 pr-1 md:w-[280px] md:flex-none",
               open ? "flex flex-1" : "hidden md:flex",
             )}
             onClick={(e) => {
@@ -538,7 +538,7 @@ export function LibraryScreen({
               aria-label="Clear search"
               onClick={clearSearch}
               className={cn(
-                "tap-44 flex size-9 shrink-0 items-center justify-center rounded-full text-foreground-secondary transition-colors duration-150 hover:text-foreground",
+                "tap-44 flex size-9 shrink-0 items-center justify-center rounded-lg text-foreground-secondary transition-colors duration-150 hover:text-foreground",
                 query === "" && "md:invisible",
               )}
             >

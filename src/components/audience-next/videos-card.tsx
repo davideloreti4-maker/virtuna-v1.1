@@ -54,7 +54,7 @@ export function VideosCard({ videos, whose }: { videos: NonNullable<AudiencePage
           <ul aria-label={postsAbout(whose)} className="flex flex-wrap gap-2 pt-1">
             {videos.topics.map((topic, i) => (
               // By place as well: two topics can be named alike.
-              <li key={`${i}:${topic}`} className="inline-flex h-8 min-w-0 max-w-full items-center rounded-full bg-surface-sunken px-3 text-meta font-[560] text-foreground">
+              <li key={`${i}:${topic}`} className="inline-flex h-8 min-w-0 max-w-full items-center rounded-lg bg-surface-sunken px-3 text-meta font-[560] text-foreground">
                 <span className="truncate">{topic}</span>
               </li>
             ))}

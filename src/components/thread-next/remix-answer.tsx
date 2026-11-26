@@ -199,7 +199,7 @@ function RemixFoot({
 
 function Pager({ index, count, onPage, style }: { index: number; count: number; onPage: (next: number) => void; style?: CSSProperties }) {
   const arrow =
-    "tap-44 flex size-11 shrink-0 items-center justify-center rounded-full text-foreground-secondary transition-colors duration-150 hover:text-foreground focus-visible:text-foreground disabled:cursor-default disabled:opacity-35 disabled:hover:text-foreground-secondary";
+    "tap-44 flex size-11 shrink-0 items-center justify-center rounded-lg text-foreground-secondary transition-colors duration-150 hover:text-foreground focus-visible:text-foreground disabled:cursor-default disabled:opacity-35 disabled:hover:text-foreground-secondary";
   return (
     <div className="land -mb-2 mt-1.5 flex items-center justify-center gap-1" style={style}>
       <button type="button" aria-label="Previous" disabled={index === 0} onClick={() => onPage(index - 1)} className={arrow}>

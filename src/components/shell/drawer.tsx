@@ -33,7 +33,7 @@ const PANEL = cn(
 /** "Close", out of sight until the keyboard reaches it (a screen reader on a touch screen has no
  *  Escape, and the scrim is not a control), below the safe area. */
 const CLOSE =
-  "sr-only focus-visible:not-sr-only focus-visible:absolute focus-visible:right-4 focus-visible:top-[calc(env(safe-area-inset-top)+16px)] focus-visible:z-[1] focus-visible:rounded-full focus-visible:bg-surface-sunken focus-visible:px-3 focus-visible:py-1.5 focus-visible:text-meta focus-visible:font-[560] focus-visible:text-foreground";
+  "sr-only focus-visible:not-sr-only focus-visible:absolute focus-visible:right-4 focus-visible:top-[calc(env(safe-area-inset-top)+16px)] focus-visible:z-[1] focus-visible:rounded-lg focus-visible:bg-surface-sunken focus-visible:px-3 focus-visible:py-1.5 focus-visible:text-meta focus-visible:font-[560] focus-visible:text-foreground";
 
 /**
  * The phone's left drawer (new look): what the desktop sidebar carries, over a scrim. Mounted once

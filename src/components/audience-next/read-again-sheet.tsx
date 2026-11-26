@@ -52,7 +52,7 @@ export function ReadAgainSheet({ open, onOpenChange, handle, onConfirm, returnFo
     <AnswerSheet open={open} onOpenChange={onOpenChange} title={S.readAgain} returnFocus={returnFocus}>
       <p className="mt-1 px-0.5 text-pretty break-words text-ui leading-[21px] text-foreground-secondary">{readAgainLine(handle)}</p>
       <div className="mt-5 flex flex-col gap-1">
-        <Button type="button" variant="primary" size="lg" className="w-full next:rounded-full" onClick={confirm}>
+        <Button type="button" variant="primary" size="lg" className="w-full" onClick={confirm}>
           {S.readAgain}
         </Button>
         <button

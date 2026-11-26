@@ -71,8 +71,8 @@ export function ErrorLine({ id, children }: { id?: string; children: React.React
   );
 }
 
-/** The drawing's `.btn`: 44 tall, round, 20 at the sides, 15. */
-export const PILL = "px-5 text-ui next:rounded-full";
+/** The drawing's `.btn`: 44 tall, 20 at the sides, 15 (its corners are the button's own, radius 10). */
+export const ROW_BUTTON = "px-5 text-ui";
 
 /**
  * Cancel and Save. `aria-disabled`, never `disabled`, while a save is out or there is nothing to
@@ -92,7 +92,7 @@ export function EditorActions({ count, countId, busy, saveDisabled = false, onCa
       <span id={countId} className="mr-auto text-meta tabular-nums text-foreground-secondary">
         {count}
       </span>
-      <Button type="button" variant="quiet" aria-disabled={busy || undefined} onClick={() => { if (!busy) onCancel(); }} className={PILL}>
+      <Button type="button" variant="quiet" aria-disabled={busy || undefined} onClick={() => { if (!busy) onCancel(); }} className={ROW_BUTTON}>
         Cancel
       </Button>
       <Button
@@ -101,7 +101,7 @@ export function EditorActions({ count, countId, busy, saveDisabled = false, onCa
         aria-disabled={holds || undefined}
         aria-busy={busy || undefined}
         onClick={() => { if (!holds) onSave(); }}
-        className={cn(PILL, "aria-disabled:opacity-40")}
+        className={cn(ROW_BUTTON, "aria-disabled:opacity-40")}
       >
         Save
       </Button>
@@ -113,7 +113,7 @@ export function EditorActions({ count, countId, busy, saveDisabled = false, onCa
 export function CancelButton({ busy, onCancel }: { busy: boolean; onCancel(): void }) {
   return (
     <div className="mt-2 flex justify-end">
-      <Button type="button" variant="quiet" aria-disabled={busy || undefined} onClick={() => { if (!busy) onCancel(); }} className={PILL}>
+      <Button type="button" variant="quiet" aria-disabled={busy || undefined} onClick={() => { if (!busy) onCancel(); }} className={ROW_BUTTON}>
         Cancel
       </Button>
     </div>

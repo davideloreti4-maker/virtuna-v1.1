@@ -90,8 +90,8 @@ const HEADING_STYLE: CSSProperties = { letterSpacing: "-0.035em" };
 /** The ring's card: the text result's stage (`STAGE`), the ring centred, 24 above and below. */
 const RING_STAGE = cn("flex justify-center overflow-hidden rounded-3xl py-6 shadow-[var(--shadow-rest)]", STAGE);
 
-/** The ink buttons: full width, round (the drawing's). */
-const PILL = "w-full next:rounded-full";
+/** The ink buttons: full width (their corners are the button's own, radius 10). */
+const WIDE = "w-full";
 
 /**
  * A desk's two columns (spec 3.4), from a body 920 wide as the result page's, without changing the DOM's
@@ -161,7 +161,7 @@ function Actions({
           size="lg"
           {...state("default")}
           onClick={unlessBusy("default", onUseForNewChats)}
-          className={cn(PILL, "aria-busy:cursor-progress aria-busy:opacity-70")}
+          className={cn(WIDE, "aria-busy:cursor-progress aria-busy:opacity-70")}
         >
           {S.useForNewChats}
         </Button>
@@ -172,7 +172,7 @@ function Actions({
         size="lg"
         {...state("simulate")}
         onClick={unlessBusy("simulate", onSimulate)}
-        className={cn(PILL, "aria-busy:cursor-progress aria-busy:opacity-70")}
+        className={cn(WIDE, "aria-busy:cursor-progress aria-busy:opacity-70")}
       >
         {S.simulate}
         <ArrowGlyph />
@@ -233,7 +233,7 @@ function NoneBody() {
           <h2 className="text-[20px] font-[720] leading-[26px] tracking-[-0.02em] text-foreground">{S.noneTitle}</h2>
           <p className="mt-1.5 text-ui text-foreground-secondary">{S.noneText}</p>
         </div>
-        <Button asChild variant="primary" size="lg" className={PILL}>
+        <Button asChild variant="primary" size="lg" className={WIDE}>
           <Link href={NEW_FROM_ACCOUNT_HREF}>{S.buildMine}</Link>
         </Button>
         <Link href={NEW_FROM_DESCRIPTION_HREF} className="mt-1 flex h-11 items-center justify-center text-ui font-[620] text-foreground">
@@ -256,7 +256,7 @@ function LoadingBody() {
       <Block name="ring" className={cn("h-[334px]", quiet)} />
       <Block name="source" className="h-16 rounded-[22px] bg-surface shadow-[var(--shadow-rest)]" />
       <Block name="figures" className="h-[62px] rounded-[18px] bg-surface-sunken" />
-      <Block name="actions" className="h-[50px] rounded-full bg-surface-sunken" />
+      <Block name="actions" className="h-[50px] rounded-xl bg-surface-sunken" />
       <Block name="groups" className={cn("h-[300px]", quiet)} />
     </>
   );

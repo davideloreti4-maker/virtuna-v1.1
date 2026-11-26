@@ -97,9 +97,9 @@ function SheetGaugeControl({ gauge }: { gauge: SheetGauge }) {
       aria-describedby={failed ? `${priceId} ${failedId}` : priceId}
       disabled={!onSimulate}
       onClick={onSimulate}
-      // The same outlined pill as a card's Simulate slot, at the sheet's gauge size: beside Copy and
+      // The same outlined button as a card's Simulate slot, at the sheet's gauge size: beside Copy and
       // Save (filled circles) a bare ring and two words looked like the least tappable thing there.
-      className="group flex cursor-pointer items-center gap-3 rounded-full pr-5 text-left inset-ring inset-ring-foreground/16 transition-colors duration-150 hover:bg-surface-sunken disabled:cursor-default disabled:hover:bg-transparent"
+      className="group flex cursor-pointer items-center gap-3 rounded-lg pr-5 text-left inset-ring inset-ring-foreground/16 transition-colors duration-150 hover:bg-surface-sunken disabled:cursor-default disabled:hover:bg-transparent"
     >
       <span
         aria-hidden
