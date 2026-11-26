@@ -82,9 +82,9 @@ async function load(flag: boolean) {
 
 const NO_BODY = Symbol("no body");
 
-async function call(body: unknown = { confirm: "DELETE" }, flag = true) {
+async function call(body: unknown = { confirm: "DELETE" }, flag = true, contentType: string | null = "application/json") {
   const POST = await load(flag);
-  const init: RequestInit = { method: "POST", headers: { "content-type": "application/json" } };
+  const init: RequestInit = { method: "POST", headers: contentType === null ? {} : { "content-type": contentType } };
   if (body !== NO_BODY) init.body = typeof body === "string" ? body : JSON.stringify(body);
   const res = await POST(new Request("http://localhost/api/settings/account/delete", init));
   return { status: res.status, body: await res.json() };
@@ -161,6 +161,25 @@ describe("POST /api/settings/account/delete", () => {
     expect(calls).toEqual([]);
   });
 
+  it.each([
+    ["text/plain (a cross-site form)", "text/plain"],
+    ["a form encoding", "application/x-www-form-urlencoded"],
+    ["multipart", "multipart/form-data; boundary=x"],
+    ["no content-type", null],
+  ])("%s: 415 content_type, the body not read, nothing touched", async (_name, contentType) => {
+    const res = await call({ confirm: "DELETE" }, true, contentType);
+    expect(res.status).toBe(415);
+    expect(res.body).toEqual({ error: "content_type" });
+    expect(calls).toEqual([]);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("application/json with a charset (any case): accepted", async () => {
+    const res = await call({ confirm: "DELETE" }, true, "Application/JSON; charset=utf-8");
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ deleted: true });
+  });
+
   it("a cancelled plan: 200 { deleted: true }; the files go, then the user", async () => {
     const { status, body } = await call();
     expect(status).toBe(200);
@@ -178,9 +197,19 @@ describe("POST /api/settings/account/delete", () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it("Whop has no such membership (404): 200", async () => {
+  it("Whop has no such membership (404) and our row says active: 503 whop_unreachable, nothing deleted", async () => {
+    subRow = { whop_membership_id: ID, status: "active", cancel_at_period_end: false };
     whop = async () => new Response("{}", { status: 404 });
-    expect((await call()).status).toBe(200);
+    const { status, body } = await call();
+    expect(status).toBe(503);
+    expect(body).toEqual({ error: "whop_unreachable" });
+    nothingTouched();
+  });
+
+  it("Whop 404 and our row says cancelled: 200", async () => {
+    subRow = { whop_membership_id: ID, status: "cancelled", cancel_at_period_end: false };
+    whop = async () => new Response("{}", { status: 404 });
+    expect((await call()).body).toEqual({ deleted: true });
   });
 
   it("a renewing plan: 409 plan_renews with renewsAt, nothing deleted", async () => {

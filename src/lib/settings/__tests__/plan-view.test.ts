@@ -74,8 +74,26 @@ describe("planViewOf", () => {
     expect(planViewOf(sub({ status: "past_due" }), null, NOW)).toMatchObject({ state: "pastDue" });
   });
 
-  it("past due outranks cancelled", () => {
-    expect(planViewOf(sub(), live({ status: "past_due", cancelAtPeriodEnd: true }), NOW)).toMatchObject({ state: "pastDue" });
+  it("past due but cancelled at the period's end: cancelled (it will not bill again), and delete is offered", () => {
+    const view = planViewOf(sub(), live({ status: "past_due", cancelAtPeriodEnd: true }), NOW);
+    expect(view).toMatchObject({ state: "cancelled", on: "14 Dec" });
+    expect(canDelete(view)).toBe(true);
+  });
+
+  it("past due and cancelled by the stored flag (Whop not asked): cancelled", () => {
+    expect(planViewOf(sub({ status: "past_due", cancelAtPeriodEnd: true }), null, NOW)).toMatchObject({ state: "cancelled" });
+  });
+
+  it.each(["canceled", "cancelled", "expired", "completed"])("a live %s status: cancelled, though the row still stores a paid tier that renews", (status) => {
+    const view = planViewOf(sub({ tier: "starter", status: "active", cancelAtPeriodEnd: false }), live({ status, cancelAtPeriodEnd: false }), NOW);
+    expect(view).toMatchObject({ kind: "plan", name: "Creator", state: "cancelled" });
+    expect(canDelete(view)).toBe(true);
+  });
+
+  it("a live unknown status: renews (not ended)", () => {
+    const view = planViewOf(sub(), live({ status: "unresolved" }), NOW);
+    expect(view).toMatchObject({ state: "renews" });
+    expect(canDelete(view)).toBe(false);
   });
 
   it("in the $1 trial: trial, on the trial's end, the trial's credits", () => {

@@ -108,7 +108,7 @@ describe("/dev/settings", () => {
   });
 
   it.each([
-    ["delete-failed", "Couldn't delete your account. Nothing was deleted. Try again."],
+    ["delete-failed", "Couldn't finish deleting your account. Try again."],
     ["delete-whop", "Couldn't check your plan with Whop. Try again in a minute."],
   ])("%s: a typed DELETE is answered with the sheet's words", async (state, words) => {
     await show(state);

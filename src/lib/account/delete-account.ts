@@ -4,8 +4,10 @@
  *
  * In order, stopping at the first refusal:
  *   1. The plan. A Whop membership that will bill again refuses (`plan_renews`); Whop not reachable
- *      refuses (`whop_unreachable`). Deleting the account would not stop Whop billing.
+ *      refuses (`whop_unreachable`), and so does Whop not knowing a stored membership id unless our row
+ *      already says the plan ended. Deleting the account would not stop Whop billing.
  *   2. The ledger. Any `wallet_transactions` row refuses (`ledger`): that table is ON DELETE RESTRICT.
+ *      A count that does not come back refuses (`delete_failed`).
  *   3. The files. `storage.objects` has no foreign key to users, so the caller's files are listed
  *      first (every listing before any removal: a failed listing removes nothing) and then removed.
  *      A failed removal refuses (`files_failed`) and the account stays, so a retry runs it again.
@@ -102,14 +104,15 @@ export async function deleteAccount(userId: string, deps: DeleteDeps): Promise<D
   // 1. The plan.
   const subscription = await service
     .from("user_subscriptions")
-    .select("whop_membership_id")
+    .select("whop_membership_id, status, cancel_at_period_end")
     .eq("user_id", userId)
     .maybeSingle();
   if (subscription.error) {
     log("delete: subscription read failed", { step: "plan" });
     return { ok: false, reason: "delete_failed" };
   }
-  const membershipId = (subscription.data as { whop_membership_id?: unknown } | null)?.whop_membership_id;
+  const row = subscription.data as { whop_membership_id?: unknown; status?: unknown; cancel_at_period_end?: unknown } | null;
+  const membershipId = row?.whop_membership_id;
   if (typeof membershipId === "string" && membershipId !== "") {
     let membership: LiveMembership | null;
     try {
@@ -118,7 +121,15 @@ export async function deleteAccount(userId: string, deps: DeleteDeps): Promise<D
       log("delete: whop unreachable", { step: "plan" });
       return { ok: false, reason: "whop_unreachable" };
     }
-    if (membership && membershipRenews(membership)) {
+    if (membership === null) {
+      // Whop says it has no such membership, for an id we stored. That can be a retired endpoint or a key
+      // for the wrong company as much as a gone membership, so only our row saying the plan ended lets it by.
+      const storedEnded = row?.status === "cancelled" || row?.status === "expired" || row?.cancel_at_period_end === true;
+      if (!storedEnded) {
+        log("delete: whop 404 for stored membership", { step: "plan" });
+        return { ok: false, reason: "whop_unreachable" };
+      }
+    } else if (membershipRenews(membership)) {
       log("delete: refused, plan renews", { step: "plan" });
       return { ok: false, reason: "plan_renews", renewsAt: membership.renewsAt };
     }
@@ -133,8 +144,13 @@ export async function deleteAccount(userId: string, deps: DeleteDeps): Promise<D
     log("delete: ledger read failed", { step: "ledger" });
     return { ok: false, reason: "delete_failed" };
   }
-  if ((ledger.count ?? 0) > 0) {
-    log("delete: refused, ledger rows", { step: "ledger", rows: ledger.count ?? 0 });
+  if (ledger.count == null) {
+    // No error but no count: we cannot tell the ledger is empty, so do not go on.
+    log("delete: ledger count missing", { step: "ledger" });
+    return { ok: false, reason: "delete_failed" };
+  }
+  if (ledger.count > 0) {
+    log("delete: refused, ledger rows", { step: "ledger", rows: ledger.count });
     return { ok: false, reason: "ledger" };
   }
 

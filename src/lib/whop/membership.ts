@@ -3,6 +3,7 @@
  * (`/api/cron/sync-whop`) and the live plan state (`/api/settings/plan-state`) both ask through here.
  * Spec: docs/superpowers/specs/2026-11-26-settings-design.md, 3.1.
  */
+import { isEndedStatus } from "./membership-status";
 
 /**
  * Whop's v1 membership resource.
@@ -40,9 +41,6 @@ export interface LiveMembership {
   /** ISO time of the period's end, or null. Whop sends seconds or an ISO string (`renewal_period_end`). */
   renewsAt: string | null;
 }
-
-/** Statuses Whop bills again (unless the membership cancels at the period's end). */
-const RENEWING_STATUSES = ["active", "trialing", "past_due"];
 
 /**
  * Whop's membership as sent. null: Whop has no such membership (404). Throws on any other failure
@@ -88,7 +86,7 @@ export async function fetchWhopMembership(
   };
 }
 
-/** active, trialing or past_due, and not cancel_at_period_end: Whop will bill again. */
+/** Whop will bill again: any status but an ended one (an unknown status renews), unless it cancels at the period's end. */
 export function membershipRenews(m: LiveMembership): boolean {
-  return RENEWING_STATUSES.includes(m.status) && !m.cancelAtPeriodEnd;
+  return !isEndedStatus(m.status) && !m.cancelAtPeriodEnd;
 }

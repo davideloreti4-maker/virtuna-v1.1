@@ -24,7 +24,7 @@ vi.mock("@/lib/supabase/client", () => ({ createClient: () => ({ auth }) }));
 import { SettingsNext } from "../settings-next";
 import { press, widthIs } from "./fixtures";
 
-interface Call { method: string; url: string; body: unknown }
+interface Call { method: string; url: string; body: unknown; contentType?: string | null }
 let calls: Call[];
 let subscription: Record<string, unknown>;
 let liveAnswer: () => Response | Promise<Response>;
@@ -70,6 +70,7 @@ beforeEach(() => {
         method: init?.method ?? "GET",
         url: String(input).split("?")[0]!,
         body: typeof init?.body === "string" ? JSON.parse(init.body) : (init?.body ?? null),
+        contentType: new Headers(init?.headers).get("content-type"),
       };
       calls.push(call);
       switch (`${call.method} ${call.url}`) {
@@ -295,6 +296,8 @@ describe("SettingsNext: delete", () => {
     await screen.findByText(/^Plans from/);
     await deleteNow();
     expect(sent("POST", "/api/settings/account/delete").map((c) => c.body)).toEqual([{ confirm: "DELETE" }]);
+    // The route answers 415 to anything but JSON.
+    expect(sent("POST", "/api/settings/account/delete").map((c) => c.contentType)).toEqual(["application/json"]);
     await waitFor(() => expect(assign).toHaveBeenCalledWith("/login?deleted=1"));
     expect(auth.signOut).toHaveBeenCalledTimes(1);
     expect(auth.signOut.mock.invocationCallOrder[0]).toBeLessThan(assign.mock.invocationCallOrder[0]!);
@@ -326,9 +329,9 @@ describe("SettingsNext: delete", () => {
 
   it.each([
     ["Whop could not be asked (503)", () => json({ error: "whop_unreachable" }, 503), "Couldn't check your plan with Whop. Try again in a minute."],
-    ["the ledger (409)", () => json({ error: "ledger" }, 409), "Couldn't delete your account. Nothing was deleted. Try again."],
-    ["a server failure (500)", () => json({ error: "delete_failed" }, 500), "Couldn't delete your account. Nothing was deleted. Try again."],
-    ["no answer (the network)", () => Promise.reject(new TypeError("Failed to fetch")), "Couldn't delete your account. Nothing was deleted. Try again."],
+    ["the ledger (409)", () => json({ error: "ledger" }, 409), "Couldn't finish deleting your account. Try again."],
+    ["a server failure (500)", () => json({ error: "delete_failed" }, 500), "Couldn't finish deleting your account. Try again."],
+    ["no answer (the network)", () => Promise.reject(new TypeError("Failed to fetch")), "Couldn't finish deleting your account. Try again."],
   ] as const)("%s: the sheet's words, nothing left", async (_case, answer, words) => {
     deleteAnswer = answer;
     renderSettings();

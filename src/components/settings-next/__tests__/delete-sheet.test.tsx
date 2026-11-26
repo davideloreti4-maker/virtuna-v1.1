@@ -247,7 +247,7 @@ describe("Delete account: the confirm", () => {
 
   it.each([
     ["whop_unreachable", "Couldn't check your plan with Whop. Try again in a minute."],
-    ["failed", "Couldn't delete your account. Nothing was deleted. Try again."],
+    ["failed", "Couldn't finish deleting your account. Try again."],
   ] as const)("%s: said in the sheet, and it can be tried again", async (result, words) => {
     const onDelete = vi.fn(async (): Promise<DeleteResult> => result);
     await openOn(NO_PLAN, { onDelete });
@@ -269,14 +269,14 @@ describe("Delete account: the confirm", () => {
     expect(sheet.getByRole("alert")).toHaveTextContent(words);
   });
 
-  it("a request that never reached the server reads as nothing deleted", async () => {
+  it("a request that never reached the server reads as the failed line", async () => {
     const onDelete = vi.fn(async (): Promise<DeleteResult> => {
       throw new Error("offline");
     });
     await openOn(NO_PLAN, { onDelete });
     type("DELETE");
     await act(async () => press(deleteButton()));
-    expect(within(screen.getByRole("dialog")).getByRole("alert")).toHaveTextContent("Couldn't delete your account. Nothing was deleted. Try again.");
+    expect(within(screen.getByRole("dialog")).getByRole("alert")).toHaveTextContent("Couldn't finish deleting your account. Try again.");
   });
 
   it("Cancel closes it; each opening starts empty", async () => {

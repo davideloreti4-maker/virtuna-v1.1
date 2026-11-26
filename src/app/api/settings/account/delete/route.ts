@@ -9,7 +9,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { fetchWhopMembership } from "@/lib/whop/membership";
 
 /**
- * POST /api/settings/account/delete — body { confirm: "DELETE" }. Deletes the caller's account: refused
+ * POST /api/settings/account/delete — body { confirm: "DELETE" } as application/json (anything else 415). Deletes the caller's account: refused
  * while a Whop plan renews or a ledger row exists; files first, then the user (rows cascade).
  * The steps live in `deleteAccount`. Spec: docs/superpowers/specs/2026-11-26-settings-design.md, 3.2.
  */
@@ -27,6 +27,11 @@ const STATUS: Record<Refusal, number> = {
 
 const log = createLogger({ module: "api/settings/account/delete" });
 
+/** The Content-Type's media type, lower case, without parameters such as charset. */
+function mediaTypeOf(request: Request): string {
+  return (request.headers.get("content-type") ?? "").split(";")[0]!.trim().toLowerCase();
+}
+
 export async function POST(request: Request) {
   if (!NEW_LOOK_ENABLED) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
@@ -36,6 +41,10 @@ export async function POST(request: Request) {
   } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   if (isSealedVisitor(user)) return NextResponse.json({ error: "visitor" }, { status: 403 });
+
+  // JSON only: a cross-site form can send text/plain or a form encoding, never application/json without a
+  // preflight. Checked before the body is read.
+  if (mediaTypeOf(request) !== "application/json") return NextResponse.json({ error: "content_type" }, { status: 415 });
 
   const parsed = Body.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: "confirm" }, { status: 400 });

@@ -101,7 +101,7 @@ One row "Delete account", line "Your account and everything in it". Pressed, a s
   - Deleting: the button "Deleting…", busy; the sheet cannot be closed by a tap outside.
   - Refused because a plan renews (the server's check, 3.2): the sheet becomes "Cancel your plan first".
   - Whop could not be asked: "Couldn't check your plan with Whop. Try again in a minute." in the sheet.
-  - Any other failure: "Couldn't delete your account. Nothing was deleted. Try again." in the sheet.
+  - Any other failure: "Couldn't finish deleting your account. Try again." in the sheet.
   - Done: sign out on the client, then `/login?deleted=1`, where one line above the form reads "Your
     account was deleted."
 
@@ -134,13 +134,19 @@ service client and by the caller's `user_id` only (the table is read-only to its
 
 ### 3.2 Delete: `POST /api/settings/account/delete`
 
-Body `{ confirm: "DELETE" }` (zod; anything else 400). Signed in, not an anonymous visitor. In order:
+Body `{ confirm: "DELETE" }` (zod; anything else 400), sent as `application/json` (any other
+Content-Type → 415 `{ error: "content_type" }`, the body not read). Signed in, not an anonymous visitor.
+In order:
 
 1. **The plan.** With a `whop_membership_id`, ask Whop live (3.1's helper). Whop not reachable → 503
-   `{ error: "whop_unreachable" }`, nothing deleted. A membership that is active, trialing or past due and
-   not `cancel_at_period_end` → 409 `{ error: "plan_renews", renewsAt }`, nothing deleted.
+   `{ error: "whop_unreachable" }`, nothing deleted; Whop answering "no such membership" for the stored id
+   is the same 503 unless our row already says the plan ended (`status` cancelled or expired, or
+   `cancel_at_period_end`). A membership whose status is anything but canceled, expired or completed (an
+   unknown status counts as renewing) and not `cancel_at_period_end` → 409
+   `{ error: "plan_renews", renewsAt }`, nothing deleted.
 2. **The ledger.** Any `wallet_transactions` row for the caller (an immutable money ledger, ON DELETE
-   RESTRICT; it holds no row today) → 409 `{ error: "ledger" }`, nothing deleted.
+   RESTRICT; it holds no row today) → 409 `{ error: "ledger" }`, nothing deleted. A count that does not
+   come back → 500 `{ error: "delete_failed" }`.
 3. **The files** (before the rows that name them go). Service client:
    - `avatars/{userId}/…` and `videos/{userId}/…`: every object under the prefix (paged `list`).
    - `clips` and `filmstrips` under the ids of the caller's `remix_blueprints` and `analysis_results`

@@ -157,7 +157,7 @@ export const DELETE_WORD = "DELETE";
 export const TYPE_DELETE = `Type ${DELETE_WORD}`;
 export const DELETING = "Deleting…";
 export const DELETE_WHOP_UNREACHABLE = "Couldn't check your plan with Whop. Try again in a minute.";
-export const DELETE_FAILED = "Couldn't delete your account. Nothing was deleted. Try again.";
+export const DELETE_FAILED = "Couldn't finish deleting your account. Try again.";
 
 /* ── 2.5 Foot ─────────────────────────────────────────────────────────────── */
 

@@ -140,7 +140,7 @@ describe("deleteAccount: the plan", () => {
     const outcome = await deleteAccount(USER, deps());
     expect(outcome).toEqual({ ok: false, reason: "plan_renews", renewsAt: "2026-12-14T10:00:00.000Z" });
     expect(asked).toEqual(["mem-test-1"]);
-    expect(calls).toEqual([`read user_subscriptions whop_membership_id user_id=${USER}`]);
+    expect(calls).toEqual([`read user_subscriptions whop_membership_id, status, cancel_at_period_end user_id=${USER}`]);
   });
 
   it("a trialing membership renews too", async () => {
@@ -160,7 +160,7 @@ describe("deleteAccount: the plan", () => {
       throw new Error("Whop API returned 503");
     };
     expect(await deleteAccount(USER, deps())).toEqual({ ok: false, reason: "whop_unreachable" });
-    expect(calls).toEqual([`read user_subscriptions whop_membership_id user_id=${USER}`]);
+    expect(calls).toEqual([`read user_subscriptions whop_membership_id, status, cancel_at_period_end user_id=${USER}`]);
   });
 
   it("active but cancelled at the period's end: proceeds", async () => {
@@ -185,9 +185,42 @@ describe("deleteAccount: the plan", () => {
     expect(asked).toEqual([]);
   });
 
-  it("Whop has no such membership (null): proceeds", async () => {
+  it("Whop has no such membership (404) and our row says active: whop_unreachable, nothing touched", async () => {
+    world.subRow = { whop_membership_id: "mem-test-1", status: "active", cancel_at_period_end: false };
+    membership = async () => null;
+    expect(await deleteAccount(USER, deps())).toEqual({ ok: false, reason: "whop_unreachable" });
+    expect(calls).toEqual([`read user_subscriptions whop_membership_id, status, cancel_at_period_end user_id=${USER}`]);
+    expect(logs).toContainEqual({ event: "delete: whop 404 for stored membership", fields: { step: "plan" } });
+  });
+
+  it("Whop 404 and our row says past_due, or carries no status: refused", async () => {
+    membership = async () => null;
+    world.subRow = { whop_membership_id: "mem-test-1", status: "past_due", cancel_at_period_end: false };
+    expect(await deleteAccount(USER, deps())).toEqual({ ok: false, reason: "whop_unreachable" });
+    world.subRow = { whop_membership_id: "mem-test-1" };
+    expect(await deleteAccount(USER, deps())).toEqual({ ok: false, reason: "whop_unreachable" });
+    expect(touched()).toEqual([]);
+  });
+
+  it("Whop 404 and our row says cancelled: proceeds", async () => {
+    world.subRow = { whop_membership_id: "mem-test-1", status: "cancelled", cancel_at_period_end: false };
     membership = async () => null;
     expect(await deleteAccount(USER, deps())).toEqual({ ok: true, removedFiles: 0 });
+    expect(calls.at(-1)).toBe(`deleteUser ${USER}`);
+  });
+
+  it("Whop 404 and our row says expired, or cancels at the period's end: proceeds", async () => {
+    membership = async () => null;
+    world.subRow = { whop_membership_id: "mem-test-1", status: "expired", cancel_at_period_end: false };
+    expect(await deleteAccount(USER, deps())).toEqual({ ok: true, removedFiles: 0 });
+    world.subRow = { whop_membership_id: "mem-test-1", status: "active", cancel_at_period_end: true };
+    expect(await deleteAccount(USER, deps())).toEqual({ ok: true, removedFiles: 0 });
+  });
+
+  it("an unknown live status renews: plan_renews", async () => {
+    membership = async () => live({ status: "unresolved" });
+    expect(await deleteAccount(USER, deps())).toMatchObject({ ok: false, reason: "plan_renews" });
+    expect(touched()).toEqual([]);
   });
 
   it("the subscription read fails: delete_failed before anything else, Whop not asked", async () => {
@@ -203,9 +236,15 @@ describe("deleteAccount: the ledger", () => {
     world.ledgerCount = 1;
     expect(await deleteAccount(USER, deps())).toEqual({ ok: false, reason: "ledger" });
     expect(calls).toEqual([
-      `read user_subscriptions whop_membership_id user_id=${USER}`,
+      `read user_subscriptions whop_membership_id, status, cancel_at_period_end user_id=${USER}`,
       `count wallet_transactions exact/true user_id=${USER}`,
     ]);
+  });
+
+  it("no count and no error: delete_failed, nothing listed or removed", async () => {
+    world.ledgerCount = null;
+    expect(await deleteAccount(USER, deps())).toEqual({ ok: false, reason: "delete_failed" });
+    expect(touched()).toEqual([]);
   });
 
   it("the ledger read fails: delete_failed, nothing listed or removed", async () => {

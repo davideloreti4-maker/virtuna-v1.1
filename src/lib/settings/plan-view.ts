@@ -9,6 +9,7 @@ import { readOn } from "@/lib/audience-next/audience-words";
 import { PLANS } from "@/lib/pricing";
 import type { NumenTier } from "@/lib/whop/config";
 import type { LiveMembership } from "@/lib/whop/membership";
+import { isEndedStatus } from "@/lib/whop/membership-status";
 
 export interface SubscriptionInput {
   tier: NumenTier;
@@ -44,8 +45,10 @@ export function planViewOf(sub: SubscriptionInput, live: LiveInput, now: Date): 
   if (!plan) return none;
 
   const membership = live && "membership" in live ? live.membership : null;
-  const cancelled = membership ? membership.cancelAtPeriodEnd : sub.cancelAtPeriodEnd;
-  const pastDue = membership ? membership.status === "past_due" : sub.status === "past_due";
+  // A live ended status (canceled, expired, completed) decides, whatever tier the row still stores.
+  const cancelled = membership ? isEndedStatus(membership.status) || membership.cancelAtPeriodEnd : sub.cancelAtPeriodEnd;
+  // Past due but cancelled at the period's end will not bill again: cancelled, as the delete check says.
+  const pastDue = !cancelled && (membership ? membership.status === "past_due" : sub.status === "past_due");
 
   const state: PlanState = pastDue ? "pastDue" : cancelled ? "cancelled" : sub.isTrial ? "trial" : "renews";
   const on = sub.isTrial && !cancelled ? day(sub.trialEndsAt, now) : day(membership?.renewsAt ?? sub.currentPeriodEnd, now);

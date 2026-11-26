@@ -110,10 +110,21 @@ describe("membershipRenews", () => {
     expect(membershipRenews(m("past_due"))).toBe(true);
   });
 
-  it("canceled, expired and completed do not", () => {
+  it("canceled (either spelling), expired and completed do not", () => {
     expect(membershipRenews(m("canceled"))).toBe(false);
+    expect(membershipRenews(m("cancelled"))).toBe(false);
     expect(membershipRenews(m("expired"))).toBe(false);
     expect(membershipRenews(m("completed"))).toBe(false);
+  });
+
+  it("an unknown status renews (fails closed): unresolved, drafted, empty", () => {
+    expect(membershipRenews(m("unresolved"))).toBe(true);
+    expect(membershipRenews(m("drafted"))).toBe(true);
+    expect(membershipRenews(m(""))).toBe(true);
+  });
+
+  it("an unknown status cancelled at the period's end does not renew", () => {
+    expect(membershipRenews(m("unresolved", true))).toBe(false);
   });
 
   it("a cancel at the period's end stops it renewing", () => {
