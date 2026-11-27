@@ -138,6 +138,36 @@ describe("AccountStep", () => {
     expect(events()).toEqual(["otp_start"]);
   });
 
+  it("while the code is checked the box and Change email are locked, and the save carries the box as it stands", async () => {
+    let finish!: (r: { ok: boolean }) => void;
+    vi.mocked(verifyOtp).mockImplementationOnce(() => new Promise((resolve) => (finish = resolve)));
+    render(<AccountStep answers={ANSWERS} account={null} />);
+    typeEmail("nia@hey.com");
+    await act(async () => press(W.sendCode));
+    const box = screen.getByRole("checkbox", { name: W.consentBox });
+    fireEvent.click(box);
+    await act(async () => typeCode("419207"));
+    expect(box).toBeDisabled();
+    expect(screen.getByRole("button", { name: W.changeEmail })).toBeDisabled();
+    fireEvent.click(box);
+    await act(async () => finish({ ok: true }));
+    await waitFor(() => expect(router.replace).toHaveBeenCalled());
+    expect(posts).toEqual([{ answers: ANSWERS, emailConsent: (box as HTMLInputElement).checked }]);
+    expect(__funnelBuffer().at(-1)!.payload).toMatchObject({ emailConsent: (box as HTMLInputElement).checked });
+  });
+
+  it("after a wrong code the code field has the focus again", async () => {
+    vi.mocked(verifyOtp).mockResolvedValueOnce({ ok: false, error: "That code isn't right. Check the digits and try again." });
+    render(<AccountStep answers={ANSWERS} account={null} />);
+    typeEmail("nia@hey.com");
+    await act(async () => press(W.sendCode));
+    const input = screen.getByLabelText(W.codeLabel);
+    act(() => input.blur());
+    await act(async () => typeCode("111111"));
+    await waitFor(() => expect(screen.getByRole("alert")).toBeInTheDocument());
+    expect(document.activeElement).toBe(input);
+  });
+
   it("Change email goes back to the email", async () => {
     render(<AccountStep answers={ANSWERS} account={null} />);
     typeEmail("nia@hey.com");

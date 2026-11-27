@@ -49,6 +49,8 @@ export function AccountStep({ answers, account }: { answers: StartAnswers; accou
   const [error, setError] = useState<string | null>(null);
   const [cooldown, setCooldown] = useState(0);
   const [emailConsent, setEmailConsent] = useState(false);
+  // What `save` sends: the box as it stands now, not as it stood in the render that started the code check.
+  const consentRef = useRef(false);
   const codeRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -57,9 +59,11 @@ export function AccountStep({ answers, account }: { answers: StartAnswers; accou
     return () => clearInterval(id);
   }, [cooldown]);
 
+  // Into the code field when it appears, and back into it once a check is over (a wrong code): while the check
+  // runs the field is disabled, and a disabled field cannot take the focus.
   useEffect(() => {
-    if (stage === "code") codeRef.current?.focus();
-  }, [stage]);
+    if (stage === "code" && busy === null) codeRef.current?.focus();
+  }, [stage, busy]);
 
   if (!complete) return null; // resolveStep never shows this step before every question is answered
 
@@ -67,9 +71,10 @@ export function AccountStep({ answers, account }: { answers: StartAnswers; accou
 
   async function save() {
     if (!complete) return;
+    const consent = consentRef.current;
     setBusy("saving");
     setError(null);
-    const result = await saveStart(complete, emailConsent);
+    const result = await saveStart(complete, consent);
     if (!result.ok) {
       setBusy(null);
       setError(W.saveFailed);
@@ -77,7 +82,7 @@ export function AccountStep({ answers, account }: { answers: StartAnswers; accou
     }
     track("profile_saved", {
       next: result.next,
-      emailConsent,
+      emailConsent: consent,
       nicheSource: complete.nicheSource,
       goal: complete.goal,
       platforms: complete.platforms.join("+"),
@@ -111,7 +116,6 @@ export function AccountStep({ answers, account }: { answers: StartAnswers; accou
       setBusy(null);
       setError(result.error ?? W.somethingWrong);
       setCode("");
-      codeRef.current?.focus();
       return;
     }
     track("otp_done", { where: "start" });
@@ -149,7 +153,11 @@ export function AccountStep({ answers, account }: { answers: StartAnswers; accou
           type="checkbox"
           name="email-consent"
           checked={emailConsent}
-          onChange={(e) => setEmailConsent(e.target.checked)}
+          disabled={busy !== null}
+          onChange={(e) => {
+            consentRef.current = e.target.checked;
+            setEmailConsent(e.target.checked);
+          }}
           className={CHECKBOX}
         />
         <svg
@@ -221,12 +229,13 @@ export function AccountStep({ answers, account }: { answers: StartAnswers; accou
             {stage === "code" ? (
               <button
                 type="button"
+                disabled={busy !== null}
                 onClick={() => {
                   setStage("email");
                   setCode("");
                   setError(null);
                 }}
-                className="shrink-0 text-meta font-[560] text-foreground-secondary hover:text-foreground"
+                className="shrink-0 text-meta font-[560] text-foreground-secondary hover:text-foreground disabled:opacity-40"
               >
                 {W.changeEmail}
               </button>
