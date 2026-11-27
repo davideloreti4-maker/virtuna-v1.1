@@ -10,6 +10,8 @@ import { initialOf, type Whose } from "@/lib/audience-next/audience-model";
 import { AUDIENCE_STRINGS, newChatsUse, stillReading } from "@/lib/audience-next/audience-words";
 import type { BuildRequest, NewDoor } from "@/lib/audience-next/build-request";
 import { isSessionExpiredRefusal } from "@/lib/auth/session-expired";
+import { browserStorage } from "@/lib/onboarding/browser-storage";
+import { takeFirstBuild } from "@/lib/onboarding/first-build";
 
 import { BuildingView } from "./building-view";
 import { NewAudienceScreen } from "./new-audience-screen";
@@ -35,6 +37,9 @@ import { NewAudienceScreen } from "./new-audience-screen";
  * - Failed: Try again sends the same request again; the way to try another goes back to the form with
  *   what was typed kept and focused, to correct a mistyped handle.
  * - An expired session: the hook goes back to idle, so the form returns as it was under the session dialog.
+ * - Guided (`/audience/new?guide=1`, the funnel's first visit, plan 01-start-and-profile): the first build
+ *   /start held is taken from session storage on the first mount and started at once, so the creator watches
+ *   it build here. Taking removes it: a reload shows the form and never sends a second paid read.
  */
 
 const S = AUDIENCE_STRINGS;
@@ -73,7 +78,17 @@ function tell(write: DefaultWrite, toast: Toast) {
 
 const doorOfRequest = (request: BuildRequest): NewDoor => ("handle" in request ? (request.type === "personal" ? "own" : "other") : "describe");
 
-export function NewAudienceNext({ initialDoor, prefill, inUse }: { initialDoor: NewDoor; prefill: string; inUse: boolean }) {
+export function NewAudienceNext({
+  initialDoor,
+  prefill,
+  inUse,
+  guided = false,
+}: {
+  initialDoor: NewDoor;
+  prefill: string;
+  inUse: boolean;
+  guided?: boolean;
+}) {
   const router = useRouter();
   const { toast } = useToast();
   const { mutateAsync: makeDefault } = useSetDefaultAudience();
@@ -167,6 +182,16 @@ export function NewAudienceNext({ initialDoor, prefill, inUse }: { initialDoor: 
     // Already on its way from a visit the creator left: nothing is sent, and the form stays.
     toast({ variant: "default", title: "handle" in request ? stillReading(request.handle) : S.stillBuilding });
   };
+
+  // Guided: the first build /start held starts once (see the header). The ref keeps development's second
+  // effect run from looking again; taking has already emptied the hold by then.
+  const tookFirstBuild = useRef(false);
+  useEffect(() => {
+    if (!guided || tookFirstBuild.current) return;
+    tookFirstBuild.current = true;
+    const request = takeFirstBuild(browserStorage("session"));
+    if (request) submit(request);
+  }, [guided]); // eslint-disable-line react-hooks/exhaustive-deps -- once per mount; `submit` is a fresh closure each render
 
   // The read's own door, not the form's: the form cannot change while the read shows.
   const readDoor = state ? doorOfRequest(state.request) : door;

@@ -32,13 +32,22 @@ export default async function NewAudiencePage({
     source?: string;
     handle?: string;
     mode?: string;
+    // The funnel's first visit (plan 01-start-and-profile): the screen starts the build /start held.
+    guide?: string;
   }>;
 }) {
   const sp = await searchParams;
   // The new look's page: the old addresses keep choosing a row, and may bring the handle. A name repeated in
   // the address comes as an array whatever the type says: no handle then.
   if (NEW_LOOK_ENABLED) {
-    return <NewAudienceNext initialDoor={doorOf(sp)} prefill={typeof sp.handle === "string" ? sp.handle : ""} inUse={await audienceInUse()} />;
+    return (
+      <NewAudienceNext
+        initialDoor={doorOf(sp)}
+        prefill={typeof sp.handle === "string" ? sp.handle : ""}
+        inUse={await audienceInUse()}
+        guided={sp.guide === "1"}
+      />
+    );
   }
 
   const initialDoor: CreateDoor | undefined = DOOR_VALUES.includes(sp.door as CreateDoor)
