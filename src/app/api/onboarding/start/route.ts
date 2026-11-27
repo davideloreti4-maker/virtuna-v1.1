@@ -88,11 +88,18 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   // `*`, as /api/subscription reads it: a missing column must not reject the whole select.
-  const { data: subscription } = await supabase.from("user_subscriptions").select("*").eq("user_id", user.id).maybeSingle();
+  // A failed read falls through (no plan, no audiences) so the creator goes on, but it is logged.
+  const { data: subscription, error: subscriptionError } = await supabase
+    .from("user_subscriptions")
+    .select("*")
+    .eq("user_id", user.id)
+    .maybeSingle();
+  if (subscriptionError) log.warn("subscription read failed", { error: subscriptionError.message });
   let audiences: Audience[] = [];
   try {
     audiences = await listAudiences(supabase);
-  } catch {
+  } catch (error) {
+    log.warn("audience list failed", { error: error instanceof Error ? error.message : String(error) });
     audiences = [];
   }
 

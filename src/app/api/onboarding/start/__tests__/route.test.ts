@@ -31,6 +31,8 @@ let subscription: Record<string, unknown> | null;
 let audienceRows: Record<string, unknown>[];
 let readFails: boolean;
 let writeFails: boolean;
+let subscriptionFails: boolean;
+let audiencesFail: boolean;
 let upserts: { row: Record<string, unknown>; options: unknown }[];
 
 function stub() {
@@ -51,10 +53,21 @@ function stub() {
         };
       }
       if (table === "user_subscriptions") {
-        return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: subscription, error: null }) }) }) };
+        return {
+          select: () => ({
+            eq: () => ({
+              maybeSingle: async () =>
+                subscriptionFails ? { data: null, error: { message: "relation unavailable" } } : { data: subscription, error: null },
+            }),
+          }),
+        };
       }
       if (table === "audiences") {
-        return { select: () => ({ order: async () => ({ data: audienceRows, error: null }) }) };
+        return {
+          select: () => ({
+            order: async () => (audiencesFail ? { data: null, error: { message: "timeout" } } : { data: audienceRows, error: null }),
+          }),
+        };
       }
       throw new Error(`unexpected table ${table}`);
     },
@@ -80,10 +93,15 @@ beforeEach(() => {
   audienceRows = [];
   readFails = false;
   writeFails = false;
+  subscriptionFails = false;
+  audiencesFail = false;
   upserts = [];
   stub();
 });
-afterEach(() => vi.useRealTimers());
+afterEach(() => {
+  vi.useRealTimers();
+  vi.restoreAllMocks();
+});
 
 describe("refused, nothing written", () => {
   it.each([
@@ -181,6 +199,24 @@ describe("saved", () => {
   it("the box left unticked: no consent written", async () => {
     await post({ answers: ANSWERS, emailConsent: false });
     expect(upserts[0]!.row.email_consent).toBe(false);
+  });
+
+  it("the plan cannot be read: counted as no plan, warned, still 200", async () => {
+    subscriptionFails = true;
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const res = await post({ answers: ANSWERS, emailConsent: true });
+    expect(res.status).toBe(200);
+    expect((await res.json()).next).toBe("/audience/new?guide=1");
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("subscription read failed"));
+  });
+
+  it("the audiences cannot be listed: counted as none, warned, still 200", async () => {
+    audiencesFail = true;
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const res = await post({ answers: ANSWERS, emailConsent: true });
+    expect(res.status).toBe(200);
+    expect((await res.json()).next).toBe("/audience/new?guide=1");
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("audience list failed"));
   });
 
   it("the write fails: 500", async () => {
