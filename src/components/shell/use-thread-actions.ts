@@ -64,6 +64,8 @@ export function useThreadActions(): ThreadActions {
       newThread: () => {
         // A new chat is not one opened from Library: its band shows the menu, not Back.
         useShellStore.getState().setThreadBack(null);
+        // An empty chat, not Home (owner 2026-11-26): the composer draws the new-chat screen.
+        useShellStore.getState().setNewChat(true);
         // New look: already on a blank Home, a new chat is this screen. Reloading it blinked the screen
         // through a loading outline; put the cursor in the field instead (the composer also starts the
         // field over). No pointer at all is a blank Home too, once nothing is on screen (while the
@@ -92,12 +94,14 @@ export function useThreadActions(): ThreadActions {
         // As `newThread` from inside a chat: its band shows the menu, not Back; the sentinel makes Home
         // blank.
         useShellStore.getState().setThreadBack(null);
+        useShellStore.getState().setNewChat(true);
         setActiveThreadCookie(NEW_THREAD_SENTINEL);
         setActiveThreadId(null);
         switchThread();
         router.push(href);
       },
       openThread: (id, opts) => {
+        useShellStore.getState().setNewChat(false);
         // Where the phone's Back in this chat goes, written once, here, before the navigation:
         // the caller's place when it gives one, else nothing; with it the row's name for an
         // untitled chat and Library's scroll. One write, so no other open can be left holding

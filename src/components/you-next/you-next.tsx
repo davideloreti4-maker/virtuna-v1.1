@@ -104,6 +104,7 @@ export function YouNext(): React.JSX.Element {
     handle: a.handle,
     primary: a.primary,
     line: accountLine(a.platform),
+    picture: a.picture,
   }));
   const read = you.data?.read ?? null;
   const row = creator.data;

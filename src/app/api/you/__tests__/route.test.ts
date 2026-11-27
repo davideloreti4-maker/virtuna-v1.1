@@ -154,7 +154,7 @@ describe("GET /api/you", () => {
 
   it("lists the caller's accounts, primary first then oldest, and no one else's; no sync time (rulings 4)", async () => {
     fake.state.tables.connected_accounts = [
-      account(3, { platform: "instagram" }),
+      account(3, { platform: "instagram", avatar_url: "https://proj.supabase.co/storage/v1/object/public/avatars/account/instagram/nia.tests3.jpg" }),
       account(1),
       account(2, { is_primary: true, last_synced_at: null }),
       account(4, { user_id: OTHER, is_primary: true }),
@@ -163,9 +163,15 @@ describe("GET /api/you", () => {
     expect(res.status).toBe(200);
     const text = await res.text();
     expect(JSON.parse(text).accounts).toEqual([
-      { id: id(2), platform: "tiktok", handle: "nia.tests2", primary: true },
-      { id: id(1), platform: "tiktok", handle: "nia.tests1", primary: false },
-      { id: id(3), platform: "instagram", handle: "nia.tests3", primary: false },
+      { id: id(2), platform: "tiktok", handle: "nia.tests2", primary: true, picture: null },
+      { id: id(1), platform: "tiktok", handle: "nia.tests1", primary: false, picture: null },
+      {
+        id: id(3),
+        platform: "instagram",
+        handle: "nia.tests3",
+        primary: false,
+        picture: "https://proj.supabase.co/storage/v1/object/public/avatars/account/instagram/nia.tests3.jpg",
+      },
     ]);
     expect(text).not.toContain(SYNCED);
     expect(text).not.toContain("nia.tests4");
@@ -219,7 +225,7 @@ describe("GET /api/you", () => {
     ];
     const connected = await (await (await load(true))()).json();
     expect(connected).toEqual({
-      accounts: [{ id: id(1), platform: "tiktok", handle: "nia.tests1", primary: true }],
+      accounts: [{ id: id(1), platform: "tiktok", handle: "nia.tests1", primary: true, picture: null }],
       followers: 12400,
       read: null,
     });

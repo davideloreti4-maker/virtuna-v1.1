@@ -2,6 +2,12 @@ import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { createScrapingProvider } from "@/lib/scraping";
 import { createLogger } from "@/lib/logger";
+import {
+  listConnectedAccounts,
+  type ConnectedAccount,
+  type Platform,
+} from "@/lib/connected-accounts/connected-accounts-repo";
+import { rehostCreatorAvatar } from "@/lib/connected-accounts/account-media";
 import { z } from "zod";
 
 const log = createLogger({ module: "profile" });
@@ -13,9 +19,29 @@ const updateProfileSchema = z.object({
   tiktok_handle: z.string().max(100).optional(),
 });
 
+/** The creator's own social account, as GET /api/profile returns it. */
+interface ProfileAccount {
+  platform: Platform;
+  handle: string;
+  displayName: string | null;
+  /** OUR storage URL (rehosted), or null. */
+  avatar: string | null;
+}
+
+const toProfileAccount = (a: ConnectedAccount): ProfileAccount => ({
+  platform: a.platform,
+  handle: a.handle,
+  displayName: a.display_name,
+  avatar: a.avatar_url,
+});
+
 /**
  * GET /api/profile
- * Returns the current user's profile settings + email.
+ * Returns the current user's profile settings + email, and their own social account (`account`:
+ * the primary connected account, else the oldest; null when none).
+ *
+ * avatar: the user's uploaded photo → the account's picture → creator_profiles → auth metadata.
+ * name: settings → creator_profiles → the account's display name → auth metadata.
  */
 export async function GET() {
   try {
@@ -36,13 +62,18 @@ export async function GET() {
     // Fallback to creator_profiles for display name
     const { data: creatorProfile } = await supabase
       .from("creator_profiles")
-      .select("display_name, tiktok_handle")
+      .select("display_name, tiktok_handle, avatar_url")
       .eq("user_id", user.id)
       .maybeSingle();
+
+    // Primary first, then oldest (listConnectedAccounts' order). [] on a read error.
+    const [first] = await listConnectedAccounts(supabase, user.id);
+    const account = first ? toProfileAccount(first) : null;
 
     const profile = {
       name: settings?.display_name
         || creatorProfile?.display_name
+        || account?.displayName
         || user.user_metadata?.full_name
         || "",
       email: user.email || "",
@@ -50,8 +81,11 @@ export async function GET() {
       role: settings?.role || "",
       tiktok_handle: creatorProfile?.tiktok_handle || "",
       avatar: settings?.avatar_url
+        || account?.avatar
+        || creatorProfile?.avatar_url
         || user.user_metadata?.avatar_url
         || null,
+      account,
       notifications: {
         emailUpdates: settings?.notification_email_updates ?? true,
         testResults: settings?.notification_test_results ?? true,
@@ -133,12 +167,16 @@ export async function PATCH(request: Request) {
         try {
           const scraper = createScrapingProvider();
           const profileData = await scraper.scrapeProfile(handle);
-          await service.from("creator_profiles").update({
+          // Store OUR rehosted copy of the avatar, never the signed CDN URL (it expires within
+          // days). A failed rehost leaves avatar_url out of the update — the old value stays.
+          const avatarUrl = await rehostCreatorAvatar(service, profileData.avatarUrl, handle);
+          const { error: writeError } = await service.from("creator_profiles").update({
             display_name: profileData.displayName,
             tiktok_followers: profileData.followerCount,
-            avatar_url: profileData.avatarUrl,
+            ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
             bio: profileData.bio,
           }).eq("user_id", user.id);
+          if (writeError) throw new Error(writeError.message);
           log.info("Background creator scrape complete", { handle });
         } catch (err) {
           log.warn("Background creator scrape failed (non-blocking)", {

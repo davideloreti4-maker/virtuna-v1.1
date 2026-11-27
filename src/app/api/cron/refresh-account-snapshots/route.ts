@@ -8,6 +8,7 @@ import {
   touchAccountSynced,
 } from "@/lib/connected-accounts/connected-accounts-repo";
 import { upsertAccountPosts } from "@/lib/account-metrics/account-posts-repo";
+import { persistAccountAvatar } from "@/lib/connected-accounts/account-media";
 import { clusterPillarsForAccount } from "@/lib/content-pillars/cluster";
 import { sumRecentViews } from "@/lib/account-metrics/account-metrics";
 import { createLogger } from "@/lib/logger";
@@ -92,11 +93,15 @@ export async function GET(request: Request) {
         } catch {
           /* non-fatal — the snapshot already landed */
         }
+        // Keep the profile picture fresh (rehosted — never the raw CDN URL). Best-effort.
+        await persistAccountAvatar(supabase, account, profile.avatarUrl);
         continue;
       }
 
       // ── TikTok — full bundle path (profile + recent-views video scrape + pillars) ──
       const profile = await scraper.scrapeProfile(account.handle);
+      // Keep the profile picture fresh (rehosted — never the raw CDN URL). Best-effort, never throws.
+      await persistAccountAvatar(supabase, account, profile.avatarUrl);
 
       // Views tile source: sum public views across the creator's recent posts. A
       // SECOND scrape, isolated so a video-only failure never loses the profile
@@ -125,6 +130,7 @@ export async function GET(request: Request) {
               account.platform,
               account.handle,
               videos,
+              { storage: supabase }, // covers rehosted with the service client we already hold
             );
           } catch (error) {
             log.error("Failed to persist account posts (snapshot still written)", {

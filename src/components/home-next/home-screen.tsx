@@ -18,6 +18,9 @@ import type { ShellIcon } from "@/components/shell/icons";
 import { ChevronIcon, DocIcon, LoopIcon, MoreIcon, PenIcon, PulseIcon, ScissorsIcon } from "@/components/thread-next/field-icons";
 import { creditsLabel } from "@/components/thread-next/thread-field";
 import { Badge } from "@/components/ui/badge";
+import { Chip } from "@/components/ui/chip";
+import { Avatar } from "@/components/ui/avatar";
+import { PlatformBadge, PlatformLogo, type PlatformId } from "@/components/brand/platform-logo";
 import { cn } from "@/lib/utils";
 
 /**
@@ -122,6 +125,53 @@ export interface HomeScreenProps {
   recentOnDesktop: boolean;                  // false while the sidebar lists the same chats
   onMore(): void;                            // "More skills": the More sheet (Ideas, Explore, Read my account)
   editOpen?: boolean;                        // the editor is open to this account: six cards, More the sixth (E3)
+  /**
+   * "home" (default): Home. "chat": the empty chat "New chat" opens (owner 2026-11-26): no greeting,
+   * no Money made, no carousel, no Recent; a heading, the field and the quick actions under it.
+   */
+  mode?: "home" | "chat";
+  /** The creator's connected account (owner 2026-11-26: their picture and name on Home). Null: none known. */
+  face?: HomeFace | null;
+}
+
+/** The creator as Home shows them: their picture (or initials), and the account's platform and handle. */
+export interface HomeFace {
+  picture: string | null;
+  initials: string;
+  platform: PlatformId | null;
+  handle: string | null;
+}
+
+/** The quick actions under the new chat's field: the skills, one tap each, and More. */
+const QUICK_ACTIONS: ReadonlyArray<{ id: HomeSkillId; label: string }> = [
+  { id: "test", label: "Simulate a video" },
+  { id: "hooks", label: "Write hooks" },
+  { id: "script", label: "Write a script" },
+  { id: "remix", label: "Remix a proven video" },
+  { id: "edit", label: "Edit a video" },
+];
+
+function FaceBlock({ face }: { face: HomeFace }) {
+  // Desktop: the picture above the greeting, centred, with the platform's mark at its corner; the
+  // handle under the greeting. The phone shows the picture in its top row (the opener) already.
+  return (
+    <div data-part="face" aria-hidden className="mb-4 hidden justify-center md:flex">
+      <span className="relative inline-flex">
+        <Avatar src={face.picture ?? undefined} alt="" fallback={face.initials} size="lg" className="size-14" />
+        {face.platform && <PlatformBadge platform={face.platform} size={20} className="absolute -bottom-0.5 -right-0.5" />}
+      </span>
+    </div>
+  );
+}
+
+function HandleLine({ face }: { face: HomeFace }) {
+  if (!face.handle) return null;
+  return (
+    <p data-part="handle" className="mt-1.5 flex items-center gap-1.5 px-1 text-ui text-foreground-secondary md:justify-center">
+      {face.platform && <PlatformLogo platform={face.platform} size={14} />}
+      <span className="truncate">@{face.handle}</span>
+    </p>
+  );
 }
 
 function SkillCard({ label, line, icon: Icon, onPick, popup = false }: { label: string; line: string; icon: ShellIcon; onPick(): void; popup?: boolean }) {
@@ -244,6 +294,8 @@ export function HomeScreen({
   recentOnDesktop,
   onMore,
   editOpen = false,
+  mode = "home",
+  face = null,
 }: HomeScreenProps): React.JSX.Element {
   const recentId = useId();
   // When a card was last picked (see PICK_SETTLE_MS): a click on Recent inside the window is the
@@ -258,6 +310,54 @@ export function HomeScreen({
     event.preventDefault();
     event.stopPropagation();
   };
+  if (mode === "chat") {
+    return (
+      <div
+        data-testid="home-next"
+        data-mode="chat"
+        className="@container flex w-full flex-1 flex-col max-md:-mt-[var(--mobile-nav-band)] md:pt-[clamp(72px,24vh,240px)]"
+      >
+        <div className="mx-auto flex w-full max-w-[752px] flex-col px-4 pb-6 md:pb-12">
+          <div className="flex h-[var(--mobile-nav-band)] items-end px-1 md:hidden">
+            {opener && (
+              <div data-part="opener" className="flex shrink-0">
+                {opener}
+              </div>
+            )}
+          </div>
+          <h1
+            className="mt-4 px-1 text-3xl font-bold leading-[35px] text-foreground md:mt-0 md:text-center md:text-4xl md:leading-10"
+            style={{ letterSpacing: "-0.035em" }}
+          >
+            New chat
+          </h1>
+          <p className="mt-1.5 px-1 text-ui text-foreground-secondary md:text-center">Ask anything, or start from a quick action.</p>
+          <div className="mt-5 w-full md:mt-7">{field}</div>
+          {!picked && (
+            <ul aria-label="Quick actions" className="mt-3 flex flex-wrap gap-2 md:mt-4 md:justify-center">
+              {QUICK_ACTIONS.filter((action) => action.id !== "edit" || editOpen).map((action) => {
+                const Icon = ICON_BY_SKILL[action.id];
+                return (
+                  <li key={action.id}>
+                    <Chip onClick={() => pickSkill(action.id)}>
+                      <Icon size={15} aria-hidden />
+                      {action.label}
+                    </Chip>
+                  </li>
+                );
+              })}
+              <li>
+                <Chip aria-haspopup="dialog" onClick={onMore}>
+                  <MoreIcon size={15} aria-hidden />
+                  More
+                </Chip>
+              </li>
+            </ul>
+          )}
+        </div>
+      </div>
+    );
+  }
   return (
     <div
       data-testid="home-next"
@@ -281,6 +381,7 @@ export function HomeScreen({
           )}
         </div>
 
+        {face && <FaceBlock face={face} />}
         {/* The global h1 tracking is unlayered and beats a utility: set inline. */}
         <h1
           className="mt-4 px-1 text-3xl font-bold leading-[35px] text-foreground md:mt-0 md:text-center md:text-4xl md:leading-10"
@@ -289,6 +390,7 @@ export function HomeScreen({
         >
           {greeting ?? "\u00A0"}
         </h1>
+        {face && <HandleLine face={face} />}
 
         {/* Nothing passed: nothing here (the place stays this child's, so the field is never remounted). */}
         {money && (
@@ -315,8 +417,10 @@ export function HomeScreen({
                 sixth card, three by two from 760; else the four and the "More skills" line, as before (no closed door, E11). */}
             <ul
               aria-label="Skills"
+              // In the field's 720 column, as the carousel, Money made and Recent are (it ran the
+              // page's full 980 before, 260 wider than the field above it).
               className={cn(
-                "mt-3 grid grid-cols-2 gap-2 @min-[760px]:mt-[18px] @min-[760px]:gap-4",
+                "mx-auto mt-3 grid w-full max-w-[720px] grid-cols-2 gap-2 @min-[760px]:mt-[18px] @min-[760px]:gap-3",
                 editOpen ? "@min-[760px]:grid-cols-3" : "@min-[760px]:grid-cols-4",
               )}
             >

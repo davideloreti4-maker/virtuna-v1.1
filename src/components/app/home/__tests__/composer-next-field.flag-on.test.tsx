@@ -45,8 +45,6 @@ vi.mock("@/lib/supabase/client", () => ({
 }));
 
 import { Composer } from "../composer";
-import { BILLABLE_BY_TOOL } from "../composer-controls";
-import { creditCost } from "@/lib/pricing";
 import { dropCardToRemixBlocks } from "@/lib/surfaces/drop-seed";
 import { useBoardStore } from "@/stores/board-store";
 import { ACTIVE_THREAD_COOKIE, NEW_THREAD_SENTINEL } from "@/lib/threads/active-thread-cookie";
@@ -162,7 +160,6 @@ const fieldBlock = () => field().parentElement!.parentElement!;
 const evidenceInput = () => document.querySelector('input[type="file"][accept*=".txt"]') as HTMLInputElement;
 /** The seeded remix card's gauge slot: on screen once the reloaded thread has drawn. */
 const remixSlot = () => screen.findByRole("button", { name: /^Simulate the hook: / });
-const priceOf = (tool: keyof typeof BILLABLE_BY_TOOL) => creditCost(BILLABLE_BY_TOOL[tool]!);
 
 /** The composer on the open thread, once its content has loaded: the field docked under it.
  *  (While the load is out the page is already the thread's: the loading outline, with the field
@@ -312,7 +309,8 @@ describe("the composer renders the new field under the flag", () => {
     expect(text()).toHaveAttribute("aria-label", "Paste a TikTok link");
     // Fix round 1, ruling A: under the flag the send button says what it does with Simulate.
     expect(send()).toHaveAttribute("aria-label", "Send to simulate");
-    expect(field().textContent).toContain(`· ${priceOf("test")}`);
+    // Owner 2026-11-26: the field never shows a credit cost.
+    expect(field().textContent).not.toMatch(/credit|· \d/);
     // Without a video or a link it cannot be sent.
     expect(send()).toBeDisabled();
 
@@ -461,11 +459,11 @@ describe("the composer renders the new field under the flag", () => {
     expect(requests("/api/tools/hooks")).toHaveLength(1);
   });
 
-  it("a skill picked in the menu shows on the toolbar's tag with its price", async () => {
+  it("a skill picked in the menu shows on the toolbar's tag, no price", async () => {
     await renderComposer();
     await pickSkill(/^Ideas/);
     expect(picked()).toBe("Ideas");
-    expect(within(pickedTag()!).getByRole("button", { name: "Ideas" }).textContent).toBe(`Ideas · ${priceOf("idea")}`);
+    expect(within(pickedTag()!).getByRole("button", { name: "Ideas" }).textContent).toBe("Ideas");
     expect(send()).toHaveAttribute("aria-label", "Generate ideas");
     expect(text().placeholder).toBe("A topic for ideas");
   });
@@ -963,13 +961,13 @@ describe("fix round 2", () => {
     expect(send()).toHaveAttribute("aria-label", "Read this evidence");
   });
 
-  it("Read my account picked from the menu reads \"Account · 5\" on the tag; the menu's row keeps its full name", async () => {
+  it("Read my account picked from the menu reads \"Account\" on the tag; the menu's row keeps its full name", async () => {
     await renderComposer();
     const sheet = await openSkills();
     expect(within(sheet).getByRole("button", { name: /^Read my account/ })).toBeInTheDocument();
     fireEvent.click(within(sheet).getByRole("button", { name: /^Read my account/ }));
     await waitFor(() => expect(picked()).toBe("Account"));
-    expect(within(pickedTag()!).getByRole("button", { name: "Account" }).textContent).toBe(`Account · ${priceOf("account")}`);
+    expect(within(pickedTag()!).getByRole("button", { name: "Account" }).textContent).toBe("Account");
     expect(send()).toHaveAttribute("aria-label", "Read my account");
   });
 });

@@ -1,7 +1,7 @@
 /**
- * read-audience-page.ts — the Audience page's one server read (spec 2026-11-25-audience, section 4). No
- * picture is read: a connected account stores none, so every face is the initial and `competitor_profiles`
- * is not touched. SERVER ONLY: the one module of `src/lib/audience-next/` that reads, through the caller's
+ * read-audience-page.ts — the Audience page's one server read (spec 2026-11-25-audience, section 4). A face's
+ * picture is the connected account's stored `avatar_url` (our rehosted copy) and a video's cover the post's
+ * stored `cover_url`; `competitor_profiles` is not touched. SERVER ONLY: the one module of `src/lib/audience-next/` that reads, through the caller's
  * session client (row-level security scopes every table to its owner). It reads with the existing
  * repository functions, handed in as `deps` so the tests can stand in at that boundary; the model it builds
  * is `audience-model.ts`.
@@ -72,7 +72,13 @@ function modelled<T>(make: () => T): T | typeof FAILED {
   }
 }
 
-const refOf = (a: ConnectedAccount): AccountRef => ({ id: a.id, handle: a.handle, platform: a.platform, is_primary: a.is_primary });
+const refOf = (a: ConnectedAccount): AccountRef => ({
+  id: a.id,
+  handle: a.handle,
+  platform: a.platform,
+  is_primary: a.is_primary,
+  picture: a.avatar_url ?? null,
+});
 
 export async function readAudiencePage(
   s: SupabaseClient,

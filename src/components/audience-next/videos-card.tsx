@@ -1,4 +1,6 @@
-import { useId } from "react";
+"use client";
+
+import { useCallback, useId, useState } from "react";
 
 import { Card } from "@/components/ui/card";
 import type { AudiencePage, ReadVideo, Whose } from "@/lib/audience-next/audience-model";
@@ -14,6 +16,9 @@ import { cn } from "@/lib/utils";
  *
  * The multiple's colour says only "against the usual": green above it, coral below, none around it
  * (After posting's rule, `toneOf`).
+ *
+ * Each row leads with the video's cover, 9:16 (our stored copy). No cover, or one that cannot be drawn: a
+ * blank tile of the same size, so the captions stay aligned.
  */
 
 const TONE: Record<NonNullable<ReadVideo["times"]>["tone"], string> = {
@@ -21,6 +26,34 @@ const TONE: Record<NonNullable<ReadVideo["times"]>["tone"], string> = {
   below: "text-below-text",
   around: "text-foreground-secondary",
 };
+
+/** A video's cover: decorative (the caption beside it is the name); a blank tile when it cannot be drawn. */
+function Thumb({ src }: { src: string | null }) {
+  // The address that failed; a new address is tried again.
+  const [failed, setFailed] = useState<string | null>(null);
+  // An image that failed before the page woke up fired its error before React listened for it.
+  const failedEarly = useCallback((img: HTMLImageElement | null) => {
+    if (img && img.complete && img.naturalWidth === 0) setFailed(img.getAttribute("src"));
+  }, []);
+  const shown = src && src !== failed ? src : null;
+  return (
+    <span data-thumb="" aria-hidden className="relative h-[58px] w-[44px] shrink-0 overflow-hidden rounded-lg bg-surface-sunken">
+      {shown && (
+        // eslint-disable-next-line @next/next/no-img-element -- a stored cover per row, not a static asset
+        <img
+          key={shown}
+          ref={failedEarly}
+          src={shown}
+          alt=""
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          onError={() => setFailed(shown)}
+          className="absolute inset-0 size-full object-cover"
+        />
+      )}
+    </span>
+  );
+}
 
 export function VideosCard({ videos, whose }: { videos: NonNullable<AudiencePage["videos"]>; whose: Whose }) {
   const headingId = useId();
@@ -35,6 +68,7 @@ export function VideosCard({ videos, whose }: { videos: NonNullable<AudiencePage
         <ul className="divide-y divide-border">
           {videos.rows.map((row) => (
             <li key={row.key} data-video="" className="flex items-start gap-3 py-3">
+              <Thumb src={row.cover} />
               <p className="line-clamp-2 min-w-0 flex-1 break-words text-ui font-[600] leading-5 text-foreground">{row.text}</p>
               <div className="shrink-0 text-right">
                 <span aria-hidden className="block text-ui font-bold leading-5 text-foreground tabular-nums">

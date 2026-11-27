@@ -544,6 +544,65 @@ describe("Face", () => {
     showing(OWN);
     expect(block("source")!.querySelector("[data-face]")!.textContent).toBe("N");
   });
+
+  it("a face with a platform carries its badge on the corner, outside the round clip; one with none carries none", () => {
+    const { container, rerender } = render(<Face face={{ initial: "N", picture: null, platform: "instagram" }} size={40} />);
+    const badge = container.querySelector("[data-platform-badge]")!;
+    expect(badge.getAttribute("data-platform-badge")).toBe("instagram");
+    expect(badge.closest("[data-face]")).toBeNull(); // not inside the clipped disc
+    expect(container.querySelector("[data-face]")!.textContent).toBe("N");
+    rerender(<Face face={{ initial: "N", picture: null, platform: null }} size={40} />);
+    expect(container.querySelector("[data-platform-badge]")).toBeNull();
+  });
+
+  it("the source card: the platform's badge on the face, and its mark right before the platform's name in the line", () => {
+    showing(OWN);
+    const source = block("source")!;
+    expect(source.querySelector("[data-platform-badge]")!.getAttribute("data-platform-badge")).toBe("tiktok");
+    const line = within(source).getByText("TikTok · read 14 Aug · 12 videos");
+    const logo = line.querySelector("[data-platform-logo]")!;
+    expect(logo.getAttribute("data-platform-logo")).toBe("tiktok");
+    expect(logo.nextSibling!.textContent).toBe("TikTok · read 14 Aug · 12 videos");
+  });
+
+  it("another creator's line: the mark sits before the platform's name, mid-line", () => {
+    const other = { ...OWN, face: { ...OWN.face, platform: "tiktok" as const }, source: { ...OWN.source, line: "Another creator · TikTok · 8 videos" } };
+    showing(other);
+    const line = within(block("source")!).getByText("Another creator · TikTok · 8 videos");
+    const logo = line.querySelector("[data-platform-logo]")!;
+    expect(logo.previousSibling!.textContent).toBe("Another creator · ");
+    expect(logo.nextSibling!.textContent).toBe("TikTok · 8 videos");
+  });
+});
+
+describe("VideosCard: covers", () => {
+  const COVER = "https://proj.supabase.co/storage/v1/object/public/covers/account/tiktok/1.jpg";
+  const withCovers = (covers: (string | null)[]): AudiencePage => ({
+    ...OWN,
+    videos: { ...OWN.videos!, rows: OWN.videos!.rows.map((r, i) => ({ ...r, cover: covers[i] ?? null })) },
+  });
+  const thumbs = () => Array.from(block("videos")!.querySelectorAll<HTMLElement>("[data-video] [data-thumb]"));
+
+  it("each row leads with a 9:16 tile; a stored cover is drawn in it, without a referrer", () => {
+    showing(withCovers([COVER, null, null]));
+    const tiles = thumbs();
+    expect(tiles).toHaveLength(3);
+    const img = tiles[0]!.querySelector("img")!;
+    expect(img.getAttribute("src")).toBe(COVER);
+    expect(img.getAttribute("alt")).toBe("");
+    expect(img.getAttribute("referrerpolicy")).toBe("no-referrer");
+    expect(hasClasses(tiles[0]!, "h-[58px]", "w-[44px]", "rounded-lg")).toBe(true);
+    // No cover: the blank tile alone, so the captions stay aligned.
+    expect(tiles[1]!.querySelector("img")).toBeNull();
+  });
+
+  it("a cover that fails to load leaves the blank tile, never a broken image", () => {
+    showing(withCovers([COVER]));
+    const tile = thumbs()[0]!;
+    fireEvent.error(tile.querySelector("img")!);
+    expect(tile.querySelector("img")).toBeNull();
+    expect(thumbs()).toHaveLength(3);
+  });
 });
 
 describe("AudienceScreen: fewer groups, missing parts, long words", () => {

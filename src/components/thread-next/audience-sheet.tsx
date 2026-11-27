@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { PlatformLogo, platformIdOf } from "@/components/brand/platform-logo";
 import { useId } from "react";
 
 import { PlusIcon } from "@/components/shell/icons";
@@ -54,7 +55,12 @@ function ChoiceRow({ choice, onSelect }: { choice: AudienceChoice; onSelect(audi
     >
       <span className="min-w-0 flex-1">
         <span id={`${id}-name`} className="block truncate text-ui font-[560] text-foreground">{choice.audience.name}</span>
-        <span id={`${id}-line`} className="block text-meta text-foreground-secondary">{choice.line}</span>
+        <span id={`${id}-line`} className="flex items-center gap-1.5 text-meta text-foreground-secondary">
+          {choice.audience.source_account_id && platformIdOf(choice.audience.platform) && (
+            <PlatformLogo platform={platformIdOf(choice.audience.platform)!} size={13} />
+          )}
+          <span className="min-w-0 truncate">{choice.line}</span>
+        </span>
       </span>
       {choice.selected && <CheckIcon size={18} aria-hidden className="shrink-0 text-foreground" />}
     </button>

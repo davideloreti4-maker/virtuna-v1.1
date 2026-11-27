@@ -449,7 +449,7 @@ describe("useConnectAccount", () => {
 // ─── An account's More: Make primary, Disconnect ─────────────────────────────
 
 const ID = (n: number) => `00000000-0000-4000-8000-00000000000${n}`;
-const account = (n: number, primary: boolean) => ({ id: ID(n), platform: "tiktok" as const, handle: `nia.tests.${n}`, primary });
+const account = (n: number, primary: boolean) => ({ id: ID(n), platform: "tiktok" as const, handle: `nia.tests.${n}`, primary, picture: null });
 /** Three accounts as the server lists them: the primary first, then the others oldest first (1, 2, 3). */
 const PAGE3: YouPage = { accounts: [account(1, true), account(2, false), account(3, false)], followers: 12400, read: null };
 /** The page's accounts as "n" or "n*" (the primary), in its order. */

@@ -619,3 +619,70 @@ describe("HomeScreen — order", () => {
     }
   });
 });
+
+describe("HomeScreen — the skills sit in the field's column (owner 2026-11-26)", () => {
+  it("from md up the skills row is as wide as the field (720), centred, not the page's 980", () => {
+    renderHome();
+    expect(screen.getByRole("list", { name: "Skills" })).toHaveClass("mx-auto", "w-full", "max-w-[720px]");
+  });
+});
+
+describe("HomeScreen — the creator's face (owner 2026-11-26)", () => {
+  it("draws the picture above the greeting with the platform's mark, and the handle with its logo", () => {
+    const { container } = render(
+      <HomeScreen {...props({ face: { picture: "https://example.test/nia.jpg", initials: "NL", platform: "tiktok", handle: "nia.cooks" } })} />,
+    );
+    expect(container.querySelector('[data-part="face"] [data-platform-badge="tiktok"]')).not.toBeNull();
+    const handle = container.querySelector('[data-part="handle"]') as HTMLElement;
+    expect(handle).toHaveTextContent("@nia.cooks");
+    expect(handle.querySelector('[data-platform-logo="tiktok"]')).not.toBeNull();
+  });
+
+  it("no face: nothing of it", () => {
+    const { container } = render(<HomeScreen {...props()} />);
+    expect(container.querySelector('[data-part="face"]')).toBeNull();
+    expect(container.querySelector('[data-part="handle"]')).toBeNull();
+  });
+});
+
+describe("HomeScreen — New chat (owner 2026-11-26: an empty chat, not Home)", () => {
+  const money: HomeMoney = { state: "shown", amount: "$0", goal: "$65k" };
+
+  it("draws a heading, the field and the quick actions; no greeting, Money made, carousel or Recent", () => {
+    const { container } = render(
+      <HomeScreen {...props({ mode: "chat", money, remixes: <div data-testid="carousel" />, recentOnDesktop: true })} />,
+    );
+    expect(screen.getByRole("heading", { level: 1, name: "New chat" })).toBeInTheDocument();
+    expect(screen.queryByText("Good morning, Nia.")).toBeNull();
+    expect(container.querySelector('[data-part="money"]')).toBeNull();
+    expect(screen.queryByTestId("carousel")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Recent" })).toBeNull();
+    expect(screen.getByTestId("slot")).toBeInTheDocument();
+    const actions = screen.getByRole("list", { name: "Quick actions" });
+    expect(within(actions).getAllByRole("button").map((b) => b.textContent)).toEqual([
+      "Simulate a video",
+      "Write hooks",
+      "Write a script",
+      "Remix a proven video",
+      "More",
+    ]);
+  });
+
+  it("a quick action picks its skill; More opens the More sheet", () => {
+    const p = renderHome({ mode: "chat" });
+    fireEvent.click(screen.getByRole("button", { name: "Write hooks" }));
+    expect(p.onPickSkill).toHaveBeenCalledWith("hooks");
+    fireEvent.click(screen.getByRole("button", { name: "More" }));
+    expect(p.onMore).toHaveBeenCalledTimes(1);
+  });
+
+  it("Edit is a quick action only for an account the editor is open to", () => {
+    renderHome({ mode: "chat", editOpen: true });
+    expect(screen.getByRole("button", { name: "Edit a video" })).toBeInTheDocument();
+  });
+
+  it("with a skill picked the quick actions go", () => {
+    renderHome({ mode: "chat", picked: true });
+    expect(screen.queryByRole("list", { name: "Quick actions" })).toBeNull();
+  });
+});

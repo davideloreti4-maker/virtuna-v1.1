@@ -51,11 +51,11 @@ function DevYouScreen({ state }: { state: Exclude<DevYouState, "signup"> }) {
   const accountsFor = (): YouAccount[] => {
     if (state === "full" || state === "failed") {
       return [
-        { id: "dev-a1", platform: "tiktok", handle: "nia.tests", primary: true },
-        { id: "dev-a2", platform: "instagram", handle: "nia.tests.kitchen", primary: false },
+        { id: "dev-a1", platform: "tiktok", handle: "nia.tests", primary: true, picture: null },
+        { id: "dev-a2", platform: "instagram", handle: "nia.tests.kitchen", primary: false, picture: null },
       ];
     }
-    if (state === "read" || state === "not-read") return [{ id: "dev-a1", platform: "tiktok", handle: "nia.tests", primary: true }];
+    if (state === "read" || state === "not-read") return [{ id: "dev-a1", platform: "tiktok", handle: "nia.tests", primary: true, picture: null }];
     return [];
   };
   // read-no-account: the read of an account since disconnected (ruling 11).
@@ -142,7 +142,7 @@ function DevYouScreen({ state }: { state: Exclude<DevYouState, "signup"> }) {
       onPhoto={() => wait("File too large. Maximum size is 2MB.")}
       onConnect={async (platform, handle) => {
         await wait(null);
-        setAccounts((list) => [...list, { id: `dev-${platform}-${handle}`, platform, handle: handle.toLowerCase(), primary: list.length === 0 }]);
+        setAccounts((list) => [...list, { id: `dev-${platform}-${handle}`, platform, handle: handle.toLowerCase(), primary: list.length === 0, picture: null }]);
         return null;
       }}
       initial={initial}

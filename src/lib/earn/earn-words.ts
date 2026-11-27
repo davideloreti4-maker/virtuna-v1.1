@@ -8,7 +8,20 @@
 import { EARN_RULE, WHOP_WAIT_DAYS, type EarnRule } from "./earn";
 
 export const EARN_STRINGS = {
+  /** The phone's pushed header, and the sidebar's name. */
   title: "Earn",
+  /** The page's own heading. */
+  pageTitle: "Your Earnings",
+  /** The left card's title. */
+  cardTitle: "Get paid for every creator you bring",
+  earningsLabel: "Earnings",
+  emptyTitle: "No earnings yet",
+  emptyHint: "Share your link or the card.",
+  statEarned: "Earned",
+  statJoined: "Creators joined",
+  statPaidBy: "Paid by",
+  notSetUp: "Payouts not set up",
+  /** Footer: what Whop does not credit. */
   yourLink: "Your link",
   copy: "Copy",
   copied: "Copied",
@@ -36,16 +49,11 @@ export function ratePct(rule: EarnRule = EARN_RULE): string {
   return `${rule.ratePct}%`;
 }
 
-/** The big words at the top: "Earn 50%". */
-export function headline(rule: EarnRule = EARN_RULE): string {
-  return `Earn ${ratePct(rule)}`;
-}
-
-/** Under the headline: "of a creator's first month, for every creator you bring." */
-export function rateLine(rule: EarnRule = EARN_RULE): string {
+/** The quiet line under the card's title: "50% of each referred creator's first month." */
+export function rateSubtitle(rule: EarnRule = EARN_RULE): string {
   return rule.firstPaymentOnly
-    ? "of a creator's first month, for every creator you bring."
-    : "of everything a creator pays, for every creator you bring.";
+    ? `${ratePct(rule)} of each referred creator's first month.`
+    : `${ratePct(rule)} of everything each referred creator pays.`;
 }
 
 /**
@@ -102,9 +110,30 @@ export function howItWorks(rule: EarnRule = EARN_RULE, opts: { paidByWhop?: bool
   ];
 }
 
-/** The top of the page once Whop reports a number (ruling 17): "$24.50 earned", in place of "Earn 50%". */
+/** "$24.50 earned". The page no longer headlines it (it shows the amount over the goal); kept for its test. */
 export function earnedLine(cents: number): string {
   return `${moneyWord(cents)} earned`;
+}
+
+/**
+ * The amount at the top of the page, by Home's "Money made" rule: the number Whop reported; "$0" when the
+ * creator is not enrolled or the payment side is unknown; null for an enrolled creator whose number could
+ * not be read (no amount is shown then, never a made-up zero).
+ */
+export function earnedAmount(whop: { username: string | null; earnedCents: number | null } | null): string | null {
+  const cents = typeof whop?.earnedCents === "number" ? whop.earnedCents : null;
+  if (Boolean(whop?.username) && cents === null) return null;
+  return moneyWord(cents ?? 0);
+}
+
+/** The muted tail of the amount line: " / $65k goal", or "$65k goal" when there is no amount. */
+export function goalWord(): string {
+  return `${shortMoneyWord(MONEY_GOAL_CENTS)} goal`;
+}
+
+/** Footer: when Whop pays: "Whop pays your share 14 to 30 days after a creator's first payment." */
+export function whopTimingLine(rule: EarnRule = EARN_RULE): string {
+  return `Whop pays your share ${whopWait} after ${rule.firstPaymentOnly ? "a creator's first payment" : "each payment"}.`;
 }
 
 /** The card `Get paid` (rulings 17, 33 and 43). */

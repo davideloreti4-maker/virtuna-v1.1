@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { platformIdOf } from "@/components/brand/platform-logo";
 import { usePathname } from "next/navigation";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { initialsOf } from "@/components/home-next/greeting";
@@ -73,6 +74,7 @@ export function Drawer({ actions }: { actions: ThreadActions }): React.JSX.Eleme
     name: profile?.name?.trim() || profile?.email?.trim() || "Account",
     picture,
     initials,
+    platform: platformIdOf(profile?.account?.platform),
   };
 
   // The shell is leaving (signed out, or Back out of the app): the store outlives it, so nothing of the

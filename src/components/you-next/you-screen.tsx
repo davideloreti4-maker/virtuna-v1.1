@@ -5,6 +5,7 @@ import * as React from "react";
 import { useId, useLayoutEffect, useRef, useState } from "react";
 
 import { usePushedTitle } from "@/components/result/use-pushed-title";
+import { PlatformBadge, PlatformLogo } from "@/components/brand/platform-logo";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -25,7 +26,6 @@ import {
   CONNECT_OFFLINE,
   FACTS,
   LOAD_FAILED,
-  PLATFORM_MARKS,
   READ_HINT,
   SAVE_FAILED,
   SET_UP_AUDIENCE,
@@ -61,6 +61,8 @@ export interface YouAccountRow {
   primary: boolean;
   /** "TikTok": the platform's name (`accountLine`, rulings 4 and 10). */
   line: string;
+  /** The account's profile picture (rehosted), or null: the platform's mark in its place. */
+  picture?: string | null;
 }
 
 export interface YouScreenProps {
@@ -193,18 +195,47 @@ export function YouScreen(props: YouScreenProps): React.JSX.Element {
 function AccountRow({ account, menu }: { account: YouAccountRow; menu: React.ReactNode }) {
   return (
     <div className="flex min-h-16 items-center gap-3 py-3.5">
-      <span aria-hidden className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-meta font-bold text-foreground">
-        {PLATFORM_MARKS[account.platform]}
-      </span>
+      <AccountFace account={account} />
       <span className="min-w-0 flex-1">
         <span className="flex min-w-0 items-center gap-2">
           <span className="truncate text-title font-[640] text-foreground">@{account.handle}</span>
           {account.primary && <Badge className="shrink-0">Primary</Badge>}
         </span>
-        <span className="block truncate text-ui text-foreground-secondary">{account.line}</span>
+        <span className="flex min-w-0 items-center gap-1.5 text-ui text-foreground-secondary">
+          <PlatformLogo platform={account.platform} size={14} />
+          <span className="truncate">{account.line}</span>
+        </span>
       </span>
       {menu}
     </div>
+  );
+}
+
+/**
+ * The account's face: its profile picture with the platform's mark at the corner (owner 2026-11-26),
+ * or, with no picture (or one that fails to load), the platform's logo on the sunken tile.
+ */
+function AccountFace({ account }: { account: YouAccountRow }) {
+  const [failed, setFailed] = useState(false);
+  if (account.picture && !failed) {
+    return (
+      <span aria-hidden className="relative flex size-10 shrink-0">
+        {/* eslint-disable-next-line @next/next/no-img-element -- our storage URL, sized here */}
+        <img
+          src={account.picture}
+          alt=""
+          referrerPolicy="no-referrer"
+          onError={() => setFailed(true)}
+          className="size-10 rounded-full object-cover"
+        />
+        <PlatformBadge platform={account.platform} size={16} className="absolute -bottom-0.5 -right-0.5" />
+      </span>
+    );
+  }
+  return (
+    <span aria-hidden className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-foreground">
+      <PlatformLogo platform={account.platform} size={18} />
+    </span>
   );
 }
 

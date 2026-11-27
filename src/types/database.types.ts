@@ -19,6 +19,7 @@ export type Database = {
           account_id: string
           caption: string
           comments: number
+          cover_url: string | null
           created_at: string
           handle: string
           hashtags: string[]
@@ -39,6 +40,7 @@ export type Database = {
           account_id: string
           caption?: string
           comments?: number
+          cover_url?: string | null
           created_at?: string
           handle: string
           hashtags?: string[]
@@ -59,6 +61,7 @@ export type Database = {
           account_id?: string
           caption?: string
           comments?: number
+          cover_url?: string | null
           created_at?: string
           handle?: string
           hashtags?: string[]
@@ -908,6 +911,7 @@ export type Database = {
       }
       connected_accounts: {
         Row: {
+          avatar_url: string | null
           connection_method: string
           created_at: string
           display_name: string | null
@@ -919,6 +923,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          avatar_url?: string | null
           connection_method?: string
           created_at?: string
           display_name?: string | null
@@ -930,6 +935,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          avatar_url?: string | null
           connection_method?: string
           created_at?: string
           display_name?: string | null

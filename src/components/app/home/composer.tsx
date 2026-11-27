@@ -91,7 +91,6 @@ import { useMediaQuery } from "@/hooks/useMediaQuery";
 import { useOnline } from "@/hooks/use-online";
 import { createClient } from "@/lib/supabase/client";
 import {
-  BILLABLE_BY_TOOL,
   ComposerControls,
   Ico,
   MAX_BILLABLE_BY_TOOL,
@@ -301,12 +300,10 @@ const PLACEHOLDER_BY_TOOL: Record<ToolId, string> = {
 };
 
 // ── The new look's field (NEW_LOOK_ENABLED — plan 2026-11-20, the thread field) ──────────────
-// What a skill costs, as the field's pills and More print it: CREDIT_COSTS through
-// BILLABLE_BY_TOOL, never a typed number. null = free (chat).
-function priceOfTool(tool: ToolId): number | null {
-  const action = BILLABLE_BY_TOOL[tool];
-  return action ? creditCost(action) : null;
-}
+// Owner 2026-11-26: the new look's field never shows what a send costs. Every price the field, the
+// "/" menu and More would print is null here (the parts print nothing for null); the balance stays
+// where it is (sidebar, drawer, Home's phone badge) and the server still charges as before.
+const NO_PRICE = (_tool?: ToolId): null => null;
 
 // Where the field sits (reference `.scratch/next-look/part3/design/field-boxes.json`): 16px from
 // the phone's edges and 720 wide from 752 up; 30px above the bottom on the phone, 24 from md up.
@@ -4212,6 +4209,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // (no content, nothing loading, no engaged start), and never while a send has claimed the thread.
   const nextHomeShown =
     NEW_LOOK_ENABLED && homeThreadMode && !rehydrating && !hasConversationContent && !startEngaged && !threadShown;
+  // "New chat" (owner 2026-11-26) draws the same blank `/home` as an empty chat, not Home.
+  const newChatShown = useShellStore((s) => s.newChat);
   // The send from Home's text (`sentFromTextRef`): the cursor follows the field block, which remounts
   // each time it moves. While the send is out (the latch is held or running), the thread showing
   // puts it in the docked field's text. Once the send has settled (the latch is off), it goes back
@@ -4933,7 +4932,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       picked:
         activeTool === DEFAULT_TOOL
           ? null
-          : { label: activeTool === "account" ? "Account" : fieldSkillLabel(activeTool), price: priceOfTool(activeTool) },
+          : { label: activeTool === "account" ? "Account" : fieldSkillLabel(activeTool), price: NO_PRICE() },
       onClearPicked: () => handleUserSelectTool(DEFAULT_TOOL),
       // A staged video with the editor open: Simulate or Edit, switched in the field.
       videoSkill:
@@ -4993,7 +4992,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             onSubmit={onSubmitNextField}
             tool={activeTool}
             onSelectTool={handleUserSelectTool}
-            priceOf={priceOfTool}
+            priceOf={NO_PRICE}
             // While the "/" skills are open the text is a search, not a message: Enter picks a skill,
             // and a tap on send must not send the slash.
             canSend={(evidenceFile ? !profiling : canSubmit) && nextSendLatch.phase === "off" && !slashActive}
@@ -5053,7 +5052,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
                 <SlashMenu
                   query={slashQuery}
                   onSelect={selectSkill}
-                  priceOf={priceOfTool}
+                  priceOf={NO_PRICE}
                   anchorRef={slashAnchorRef}
                   side={nextHomeShown ? "bottom" : "top"}
                 />
@@ -5085,13 +5084,13 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         <MoreSheet
           open={moreOpen}
           onOpenChange={setMoreOpen}
-          skills={SKILL_MENU.filter((s) => s.id !== "edit" || editOpen).map((s) => ({ ...s, price: priceOfTool(s.id) }))}
+          skills={SKILL_MENU.filter((s) => s.id !== "edit" || editOpen).map((s) => ({ ...s, price: NO_PRICE(s.id) }))}
           selected={activeTool}
           onSelectSkill={handleUserSelectTool}
           // The profile read: the evidence picker, clicked synchronously in the tap — never
           // `handleUserSelectTool("profile")` (the General verb).
           onReadFile={() => evidenceInputRef.current?.click()}
-          readFilePrice={creditCost("profile")}
+          readFilePrice={null}
           anchorRef={slashAnchorRef}
         />
         {buildChooser}
@@ -5378,6 +5377,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       <div data-testid="composer-shell" data-layout="home" className={cn("relative flex w-full flex-col", className)}>
         <HomeNext
           field={composerDock}
+          mode={newChatShown ? "chat" : "home"}
           // The old Home's shelf, as a row above the field (owner 2026-11-26), from the collection.
           // Remix arms the Remix skill with the video's link: nothing runs until the creator sends.
           remixes={

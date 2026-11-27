@@ -14,7 +14,7 @@ import type { SwitcherChoice } from "@/lib/audience-next/audience-model";
 import { AUDIENCE_STRINGS, pillLabel } from "@/lib/audience-next/audience-words";
 import { cn } from "@/lib/utils";
 
-import { Face } from "./face";
+import { Face, PlatformLine } from "./face";
 
 /**
  * The switch between a creator's audiences (spec 2026-11-25-audience, 3.5), in Audience's title: a pill with
@@ -87,7 +87,7 @@ function ChoiceRow({ choice, onPick }: { choice: SwitcherChoice; onPick(choice: 
         </span>
         {line && (
           <span id={`${id}-line`} className={LINE}>
-            {choice.line}
+            <PlatformLine line={choice.line} platform={choice.face.platform} />
           </span>
         )}
       </span>

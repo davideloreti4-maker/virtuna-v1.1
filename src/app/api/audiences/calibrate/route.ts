@@ -21,6 +21,8 @@
 
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
+import { persistAccountAvatar } from "@/lib/connected-accounts/account-media";
 import {
   calibrateFromScrape,
   type CalibrationStage,
@@ -252,6 +254,15 @@ export async function POST(request: Request): Promise<Response> {
           } catch (e) {
             /* connect is best-effort — calibration proceeds without a linked account */
             log.warn("connect account failed", { err: e instanceof Error ? e.message : String(e) });
+          }
+          // Its profile picture, as our storage copy (owner 2026-11-26: the picture everywhere).
+          // Best-effort and never thrown; the daily refresh fills it otherwise.
+          if (connectedAccount) {
+            try {
+              await persistAccountAvatar(createServiceClient(), connectedAccount, reveal.profile.avatarUrl, supabase);
+            } catch (e) {
+              log.warn("account avatar persist failed", { err: e instanceof Error ? e.message : String(e) });
+            }
           }
         }
 
