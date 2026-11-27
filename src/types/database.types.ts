@@ -1006,11 +1006,16 @@ export type Database = {
           creator_stage: string | null
           cuts_per_second: string | null
           display_name: string | null
+          email_consent: boolean
           engagement_rate: number | null
+          guide_dismissed_at: string | null
+          guide_step: number
           id: string
           instagram_followers: number | null
           instagram_handle: string | null
+          niche: string | null
           niche_primary: string | null
+          niche_source: string | null
           niche_sub: string | null
           niches: string[] | null
           onboarding_completed_at: string | null
@@ -1018,6 +1023,7 @@ export type Database = {
           pain_points: string | null
           past_flops: Json | null
           past_wins: Json | null
+          paywall_left_email_at: string | null
           posting_frequency: string | null
           primary_goal: string | null
           profile_interview_seen_at: string | null
@@ -1028,6 +1034,7 @@ export type Database = {
           tiktok_followers: number | null
           tiktok_handle: string | null
           time_of_day_aware: boolean | null
+          trial_reminder_sent_at: string | null
           twitter_followers: number | null
           twitter_handle: string | null
           updated_at: string | null
@@ -1044,11 +1051,16 @@ export type Database = {
           creator_stage?: string | null
           cuts_per_second?: string | null
           display_name?: string | null
+          email_consent?: boolean
           engagement_rate?: number | null
+          guide_dismissed_at?: string | null
+          guide_step?: number
           id?: string
           instagram_followers?: number | null
           instagram_handle?: string | null
+          niche?: string | null
           niche_primary?: string | null
+          niche_source?: string | null
           niche_sub?: string | null
           niches?: string[] | null
           onboarding_completed_at?: string | null
@@ -1056,6 +1068,7 @@ export type Database = {
           pain_points?: string | null
           past_flops?: Json | null
           past_wins?: Json | null
+          paywall_left_email_at?: string | null
           posting_frequency?: string | null
           primary_goal?: string | null
           profile_interview_seen_at?: string | null
@@ -1066,6 +1079,7 @@ export type Database = {
           tiktok_followers?: number | null
           tiktok_handle?: string | null
           time_of_day_aware?: boolean | null
+          trial_reminder_sent_at?: string | null
           twitter_followers?: number | null
           twitter_handle?: string | null
           updated_at?: string | null
@@ -1082,11 +1096,16 @@ export type Database = {
           creator_stage?: string | null
           cuts_per_second?: string | null
           display_name?: string | null
+          email_consent?: boolean
           engagement_rate?: number | null
+          guide_dismissed_at?: string | null
+          guide_step?: number
           id?: string
           instagram_followers?: number | null
           instagram_handle?: string | null
+          niche?: string | null
           niche_primary?: string | null
+          niche_source?: string | null
           niche_sub?: string | null
           niches?: string[] | null
           onboarding_completed_at?: string | null
@@ -1094,6 +1113,7 @@ export type Database = {
           pain_points?: string | null
           past_flops?: Json | null
           past_wins?: Json | null
+          paywall_left_email_at?: string | null
           posting_frequency?: string | null
           primary_goal?: string | null
           profile_interview_seen_at?: string | null
@@ -1104,6 +1124,7 @@ export type Database = {
           tiktok_followers?: number | null
           tiktok_handle?: string | null
           time_of_day_aware?: boolean | null
+          trial_reminder_sent_at?: string | null
           twitter_followers?: number | null
           twitter_handle?: string | null
           updated_at?: string | null
