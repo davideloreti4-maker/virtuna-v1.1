@@ -28,7 +28,7 @@
  * IdeaCardRenderer by passing fully-formed or "pending score" blocks.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { reportCredit402, CreditWallRefusal, isCreditWallRefusal } from '@/lib/billing/credit-wall';
 import { reportSession401, SessionExpiredRefusal } from '@/lib/auth/session-expired';
 import { resolveRunError } from '@/lib/net/run-failure';
@@ -37,6 +37,7 @@ import { parseProofProp, parseGroundedProp, parseTargetProp, parsePopulationProp
 import type { StageState } from '@/components/thread/progress-checklist';
 import { parseRunEvidence, type RunEvidence } from '@/lib/tools/evidence';
 import type { IntentLens } from '@/lib/audience/intent-lens';
+import { useLetGoRun } from '@/hooks/queries/use-let-go-run';
 
 /**
  * Parse the `provenance` prop off the SSE face. Only the two known literals survive; anything else
@@ -104,6 +105,17 @@ export interface UseIdeasStreamReturn {
   error: string | null;
   /** True once the stream has completed (done event received). */
   isDone: boolean;
+  /**
+   * The creator pressed Stop while this run's request was out. A stopped run is still a run: its
+   * turn (the creator's message above it) stays on screen even when Stop came before a single
+   * stage or card, as it does for a run stopped mid-way. Cleared by the next start and by reset().
+   */
+  isStopped: boolean;
+  /**
+   * How many runs this stream has started (a refine and a retry each count). A new number is a new
+   * run even when no render saw it streaming: a request refused at once ends in the render it began in.
+   */
+  runs: number;
   /** The SSE stream has closed — everything the run will ever persist is on disk. */
   isClosed: boolean;
   /** Pipeline stages — populated by SSE stage events (STUDIO-01 / Plan 05-04). Ephemeral: shown during streaming. */
@@ -146,8 +158,20 @@ export interface UseIdeasStreamReturn {
    * NEVER called on render — only on explicit user send (D-05).
    */
   startRefine: (body: { skill: 'idea'; instruction: string; anchor: string; cardRef?: number; platform?: string }) => Promise<void>;
+  /**
+   * Replay the last call exactly as it was made (the failed turn's Retry): a send with its ask,
+   * platform and intent, a refine as that refine, "Find new outliers" with its scrape. No-op before
+   * the first call.
+   */
+  retry: () => Promise<void>;
   /** Abort the in-flight stream. */
   stop: () => void;
+  /**
+   * Let go of the request in flight without ending it (a thread switch): it runs to its end in the
+   * background, so its route stays alive to store the result in the chat it was started in, and
+   * every frame it still sends is dropped. Stop is different: it ends the request (`stop`).
+   */
+  detach: () => void;
   /** Reset state for a new run. */
   reset: () => void;
   /**
@@ -166,6 +190,8 @@ export function useIdeasStream(): UseIdeasStreamReturn {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDone, setIsDone] = useState(false);
+  const [isStopped, setIsStopped] = useState(false);
+  const [runs, setRuns] = useState(0);
   /**
    * THE STREAM IS CLOSED — the server has finished sending, not merely finished the CARDS.
    *
@@ -192,23 +218,24 @@ export function useIdeasStream(): UseIdeasStreamReturn {
   const [followupText, setFollowupText] = useState<string | null>(null);
   const [outliersAvailable, setOutliersAvailable] = useState(false);
 
+  // The in-flight request's controller; null once its stream has ended, so Stop can tell a run it
+  // cut short from one that was already over.
   const abortRef = useRef<AbortController | null>(null);
+  // The last call as it was made, so Retry replays the run the creator asked for.
+  const lastCallRef = useRef<
+    | { kind: 'start'; args: Parameters<UseIdeasStreamReturn['start']> }
+    | { kind: 'refine'; body: Parameters<UseIdeasStreamReturn['startRefine']>[0] }
+    | null
+  >(null);
   const isMountedRef = useRef(true);
   // The last normal send's args, so findOutliers() can replay the SAME subject with a scrape
   // authorized. The scrape query is derived from the ask, so replaying "" (Auto) would scrape on
   // the niche only — we must re-send the real ask/platform/intent.
   const lastRunRef = useRef<{ ask: string; platform: string; intent?: IntentLens } | null>(null);
 
-  // WR-05: set isMountedRef = false on unmount so stream callbacks don't setState
-  // on an unmounted component. Without this the useRef(true) guard is permanently
-  // true and the "can't update state on unmounted component" leak is unguarded.
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-      abortRef.current?.abort();
-    };
-  }, []);
+  // The let-go machinery (`use-let-go-run`): each request's number and liveness, a thread switch or an
+  // unmount letting the run go on in the background, and the mount effect that owns `isMountedRef`.
+  const letGo = useLetGoRun(abortRef, isMountedRef);
 
   // Keep a ref copy of streamingCards so score events can patch without stale closure
   const cardsRef = useRef<PartialIdeaCard[]>([]);
@@ -222,6 +249,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
     setIsStreaming(false);
     setError(null);
     setIsDone(false);
+    setIsStopped(false);
     setIsClosed(false);
     setStages([]);
     setEvidence(null);
@@ -232,11 +260,18 @@ export function useIdeasStream(): UseIdeasStreamReturn {
   }, []);
 
   const stop = useCallback(() => {
-    abortRef.current?.abort();
+    const inFlight = abortRef.current;
+    inFlight?.abort();
+    abortRef.current = null;
     if (isMountedRef.current) {
       setIsStreaming(false);
+      if (inFlight) setIsStopped(true);
     }
   }, []);
+
+  // A thread switch lets the run go on in the background (see the interface): its request is left
+  // open and its number retired, so its reader drops what is still to come.
+  const detach = letGo.detach;
 
   const start = useCallback(async (
     ask: string,
@@ -248,6 +283,10 @@ export function useIdeasStream(): UseIdeasStreamReturn {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
+    // This request's number and liveness (`use-let-go-run`): once let go, every frame it still sends
+    // is read and dropped, so it reaches its end without touching the next chat's run.
+    const { gen, isLive } = letGo.begin();
+    lastCallRef.current = { kind: 'start', args: [ask, platform, intent, opts] };
 
     // Remember this send so findOutliers() can replay the SAME subject with a scrape authorized.
     // The allowScrape flag itself is NOT stored — each findOutliers() sets it explicitly.
@@ -260,7 +299,9 @@ export function useIdeasStream(): UseIdeasStreamReturn {
     setError(null);
     setIsDone(false);
     setIsClosed(false);
+    setIsStopped(false);
     setIsStreaming(true);
+    setRuns((r) => r + 1);
     setStages([]);
     setEvidence(null);
     setFollowupText(null);
@@ -306,6 +347,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+        if (!isLive()) continue; // detached: read on to the end, draw nothing
         buffer += decoder.decode(value, { stream: true });
 
         // Frames are delimited by \n\n (SSE spec)
@@ -334,7 +376,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
             // because a throw inside this read loop would kill the whole stream — cards, receipt
             // and closing line with it — over a decorative thumbnail rail.
             const parsedEvidence = parseRunEvidence(data);
-            if (parsedEvidence && isMountedRef.current) setEvidence(parsedEvidence);
+            if (parsedEvidence && isLive()) setEvidence(parsedEvidence);
 
           } else if (eventType === 'stage') {
             // Upsert stage by name — preserve order of first appearance (STUDIO-01)
@@ -353,30 +395,30 @@ export function useIdeasStream(): UseIdeasStreamReturn {
                 updated = [...stagesRef.current, { name: stageName, status: stageStatus }];
               }
               stagesRef.current = updated;
-              if (isMountedRef.current) setStages([...updated]);
+              if (isLive()) setStages([...updated]);
             }
 
           } else if (eventType === 'followup') {
             // Model-authored follow-up turn (D-03)
             const text = typeof data.text === 'string' ? data.text : null;
-            if (text && isMountedRef.current) setFollowupText(text);
+            if (text && isLive()) setFollowupText(text);
           } else if (eventType === 'warning') {
             // Run-level degrade notices (mirrors use-hooks-stream). The route has emitted these
             // since grounding shipped; this branch is what reads them at the glass.
             const list = Array.isArray(data.warnings)
               ? data.warnings.filter((w: unknown): w is string => typeof w === 'string')
               : [];
-            if (list.length > 0 && isMountedRef.current) setWarnings(list);
+            if (list.length > 0 && isLive()) setWarnings(list);
 
           } else if (eventType === 'status') {
             const msg = typeof data.message === 'string' ? data.message : null;
-            if (isMountedRef.current) setStatusMessage(msg);
+            if (isLive()) setStatusMessage(msg);
 
           } else if (eventType === 'outliers') {
             // The server says a live scrape could find proven outliers this run couldn't. Flip the
             // flag that drives the "Find new outliers" affordance. Only ever true here — the server
             // is the sole authority on whether a scrape would actually do anything.
-            if (data.available === true && isMountedRef.current) setOutliersAvailable(true);
+            if (data.available === true && isLive()) setOutliersAvailable(true);
 
           } else if (eventType === 'content') {
             // content event: card faces WITH scrollQuote; band/fraction absent until score
@@ -412,7 +454,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
               .filter((c: PartialIdeaCard) => c.title.length > 0);
 
             cardsRef.current = cards;
-            if (isMountedRef.current) setStreamingCards([...cards]);
+            if (isLive()) setStreamingCards([...cards]);
 
           } else if (eventType === 'score') {
             // score event: patch the matching card (match by seedHook)
@@ -441,7 +483,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
               });
             }
             cardsRef.current = patched;
-            if (isMountedRef.current) setStreamingCards([...patched]);
+            if (isLive()) setStreamingCards([...patched]);
 
           } else if (eventType === 'done') {
             // S2: unblock the UI on `done` rather than on stream-close. The server now
@@ -450,7 +492,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
             // + re-enables the composer immediately; the read loop below keeps consuming
             // until the server closes the stream, so the followup event still lands and
             // renders inline (gated on followupText && !isStreaming).
-            if (isMountedRef.current) {
+            if (isLive()) {
               setIsDone(true);
               setStatusMessage(null);
     setWarnings([]);
@@ -470,14 +512,16 @@ export function useIdeasStream(): UseIdeasStreamReturn {
       // null ⇒ draw nothing (an abort is the user's own Stop, not a failure).
       const message = resolveRunError(err, 'Ideas stream error');
       if (message === null) return;
-      if (isMountedRef.current) setError(message);
+      if (isLive()) setError(message);
     } finally {
-      if (isMountedRef.current) {
+      if (abortRef.current === controller) abortRef.current = null;
+      letGo.finish(gen);
+      if (isLive()) {
         setIsStreaming(false);
         setIsClosed(true);
       }
     }
-  }, []);
+  }, [letGo]);
 
   /**
    * Scoped refine re-run (Plan 05-05 / D-04).
@@ -497,6 +541,10 @@ export function useIdeasStream(): UseIdeasStreamReturn {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
+    // This request's number and liveness (`use-let-go-run`): once let go, every frame it still sends
+    // is read and dropped, so it reaches its end without touching the next chat's run.
+    const { gen, isLive } = letGo.begin();
+    lastCallRef.current = { kind: 'refine', body };
 
     setStreamingCards([]);
     setStatusMessage(null);
@@ -504,7 +552,9 @@ export function useIdeasStream(): UseIdeasStreamReturn {
     setError(null);
     setIsDone(false);
     setIsClosed(false);
+    setIsStopped(false);
     setIsStreaming(true);
+    setRuns((r) => r + 1);
     setStages([]);
     setEvidence(null);
     setFollowupText(null);
@@ -541,6 +591,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+        if (!isLive()) continue; // detached: read on to the end, draw nothing
         buffer += decoder.decode(value, { stream: true });
 
         const frames = buffer.split('\n\n');
@@ -568,7 +619,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
             // because a throw inside this read loop would kill the whole stream — cards, receipt
             // and closing line with it — over a decorative thumbnail rail.
             const parsedEvidence = parseRunEvidence(data);
-            if (parsedEvidence && isMountedRef.current) setEvidence(parsedEvidence);
+            if (parsedEvidence && isLive()) setEvidence(parsedEvidence);
 
           } else if (eventType === 'stage') {
             const stageName = typeof data.name === 'string' ? data.name : '';
@@ -586,11 +637,11 @@ export function useIdeasStream(): UseIdeasStreamReturn {
                 updated = [...stagesRef.current, { name: stageName, status: stageStatus }];
               }
               stagesRef.current = updated;
-              if (isMountedRef.current) setStages([...updated]);
+              if (isLive()) setStages([...updated]);
             }
           } else if (eventType === 'followup') {
             const text = typeof data.text === 'string' ? data.text : null;
-            if (text && isMountedRef.current) setFollowupText(text);
+            if (text && isLive()) setFollowupText(text);
           } else if (eventType === 'content') {
             const rawBlocks = Array.isArray(data.blocks) ? data.blocks : [];
             const cards: PartialIdeaCard[] = rawBlocks
@@ -623,7 +674,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
               })
               .filter((c: PartialIdeaCard) => c.title.length > 0);
             cardsRef.current = cards;
-            if (isMountedRef.current) setStreamingCards([...cards]);
+            if (isLive()) setStreamingCards([...cards]);
           } else if (eventType === 'score') {
             const scoreSeedHook = typeof data.seedHook === 'string' ? data.seedHook : '';
             const band = (['Strong', 'Mixed', 'Weak'] as const).find((b) => b === data.band) ?? 'Mixed';
@@ -644,7 +695,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
               });
             }
             cardsRef.current = patched;
-            if (isMountedRef.current) setStreamingCards([...patched]);
+            if (isLive()) setStreamingCards([...patched]);
           } else if (eventType === 'done') {
             // S2: unblock the UI on `done` rather than on stream-close. The server now
             // emits `done` BEFORE the follow-up chat turn, then keeps the SSE open to
@@ -652,7 +703,7 @@ export function useIdeasStream(): UseIdeasStreamReturn {
             // + re-enables the composer immediately; the read loop below keeps consuming
             // until the server closes the stream, so the followup event still lands and
             // renders inline (gated on followupText && !isStreaming).
-            if (isMountedRef.current) {
+            if (isLive()) {
               setIsDone(true);
               setStatusMessage(null);
     setWarnings([]);
@@ -670,14 +721,23 @@ export function useIdeasStream(): UseIdeasStreamReturn {
       if (isCreditWallRefusal(err)) return;
       const message = resolveRunError(err, 'Refine stream error');
       if (message === null) return;
-      if (isMountedRef.current) setError(message);
+      if (isLive()) setError(message);
     } finally {
-      if (isMountedRef.current) {
+      if (abortRef.current === controller) abortRef.current = null;
+      letGo.finish(gen);
+      if (isLive()) {
         setIsStreaming(false);
         setIsClosed(true);
       }
     }
-  }, []);
+  }, [letGo]);
+
+  const retry = useCallback(async () => {
+    const last = lastCallRef.current;
+    if (!last) return;
+    if (last.kind === 'refine') await startRefine(last.body);
+    else await start(...last.args);
+  }, [start, startRefine]);
 
   /**
    * Convert partial streaming cards to full IdeaCardBlock shapes.
@@ -725,6 +785,8 @@ export function useIdeasStream(): UseIdeasStreamReturn {
     isStreaming,
     error,
     isDone,
+    isStopped,
+    runs,
     isClosed,
     stages,
     evidence,
@@ -733,7 +795,9 @@ export function useIdeasStream(): UseIdeasStreamReturn {
     start,
     findOutliers,
     startRefine,
+    retry,
     stop,
+    detach,
     reset,
     toBlocks,
   };

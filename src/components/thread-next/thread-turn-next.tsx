@@ -100,12 +100,6 @@ const EMPTY: GaugeState = { kind: "empty" };
 const UNNAMED = "chat";
 
 /**
- * The runs the pre-router can guess before `dispatch` names one (`PreRouteGuess`, the keys of the
- * legacy turn's `PRE_GUESS_LABEL`). While such a guess stands, the stream's prose is a preamble.
- */
-const GUESSED_RUNS: ReadonlySet<string> = new Set(["ideas", "hooks", "script"]);
-
-/**
  * The persisted run stamp's skill, if the turn has one: the LAST `run-header` that names one. A turn can
  * hold two runs (an old chip-launched run saved no user turn, so it folded into the turn before), and
  * the chips, the wait and the error copy all belong to the latest run (Task 7 critic).
@@ -489,10 +483,10 @@ export function ThreadTurnNext({ userTurn, blocks, live, blockOrigins, showFollo
   const parts = partsOf(blocks);
   const cardsIn = hasResultCard(blocks);
   // A plain chat answer: no skill named and no result card. Only its text streams while live.
+  // The pre-router's guess (`live.preGuess`) is not read: it names nothing in this look (spec §4.2,
+  // §4.5). Most guessed asks are answered in plain words, so a guessed turn streams like any plain
+  // answer until `dispatch` names a run, which then shows its wait in the named-run branch below.
   const chatText = skill === "chat" && !cardsIn;
-  // The pre-router guessed a run that `dispatch` has not named yet (spec §4.8: "Thinking" before the
-  // run is named, no live preamble).
-  const guessedRun = skill === "chat" && !!live?.preGuess && GUESSED_RUNS.has(live.preGuess);
 
   // What the wait is for: the run's kind, or `UNNAMED` ("Thinking", no outline) before it is named.
   // The answer is in by the rule the composer's settle and field read too (`answerIsIn`): its cards
@@ -501,7 +495,7 @@ export function ThreadTurnNext({ userTurn, blocks, live, blockOrigins, showFollo
   let shown: AnswerPart[] = parts;
   let waitFor: string | null = null;
   if (isStreaming && !answerIsIn({ isStreaming, stages, blocks })) {
-    if (chatText && !guessedRun) {
+    if (chatText) {
       // A plain chat answer: its text as it streams (while the run is live), "Thinking" before its
       // first word, and the wait kept rather than an empty flash.
       if (runLive) shown = parts.filter((p) => p.kind === "text");
@@ -509,10 +503,9 @@ export function ThreadTurnNext({ userTurn, blocks, live, blockOrigins, showFollo
     } else {
       // A named run shows its wait and nothing else: no preamble, no half-landed cards. A
       // chat-dispatched run finishes its stages, then bills, then writes its cards, so for a round
-      // trip its blocks are only the streamed preamble. A guessed run's prose is a preamble too,
-      // until the stream ends (a turn that never dispatched shows its text once it settles).
+      // trip its blocks are only the streamed preamble.
       shown = [];
-      waitFor = guessedRun ? UNNAMED : skill;
+      waitFor = skill;
     }
   }
 

@@ -49,13 +49,15 @@ import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
 import { csrfGuard } from "@/lib/http/csrf-guard";
 import { billUsage, creditGate } from "@/lib/billing/credit-gate";
 import { rateLimitGuard } from "@/lib/http/rate-limit";
-import { createOpenThreadLazy } from "@/lib/threads/threads";
-import { insertMessage } from "@/lib/threads/messages";
+import { createOpenThreadLazy, setThreadTitleIfEmpty } from "@/lib/threads/threads";
+import { insertMessage, insertUserTurnUnlessRepeat } from "@/lib/threads/messages";
 import { runHeaderBlock } from "@/lib/tools/run-header";
 import { runIdeasPipeline } from "@/lib/tools/runners/ideas-runner";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { getQwenClient, QWEN_REASONING_MODEL } from "@/lib/engine/qwen/client";
 import { KC_CHAT_SYSTEM_PROMPT } from "@/lib/kc/compiled";
+import { withChatVoice, ideasClosingPrompt } from "@/lib/tools/chat-voice";
+import { plainDashes } from "@/lib/tools/plain-dashes";
 import { resolveThreadAudience } from "@/lib/audience/resolve-thread-audience";
 import { requireSocialsAudience } from "@/lib/audience/require-socials-audience";
 import { goalIntentToLens, parseIntentLens } from "@/lib/audience/intent-lens";
@@ -178,11 +180,11 @@ export async function POST(request: Request): Promise<Response> {
   // A pill-launched one-shot used to persist ONLY its assistant message; on reload the
   // turn grouping folded those cards into the PREVIOUS turn and the causal step vanished
   // from history. The action is now a real user row, as the chat route persists an ask.
+  // Not stored again when it is already the thread's last message (a Retry of a failed run).
   const userAction = rawAsk.trim() || "Generate video ideas";
-  await insertMessage(
+  await insertUserTurnUnlessRepeat(
     openThread.id,
-    "user",
-    [{ type: "markdown", props: { text: userAction } }],
+    { type: "markdown", props: { text: userAction } },
     kcStamp().kcGenVersion,
   );
 
@@ -294,6 +296,11 @@ export async function POST(request: Request): Promise<Response> {
             [runHeaderBlock({ skill: "ideas", audienceLabel: activeAudience?.name, platform }), ...blocks],
             kcStamp().kcGenVersion,
           );
+
+          // Title the thread as the hooks route does: typed ask > the top idea's title (ideas
+          // come out in rank order, so the first is the top one). Without this a chat started
+          // from Ideas stayed untitled. Write-once + best-effort — never fails the run.
+          await setThreadTitleIfEmpty(user.id, openThread.id, rawAsk.trim() || blocks[0]?.props.title);
         }
 
         // ── DONE (S2): emit BEFORE the follow-up turn ────────────────────────
@@ -318,23 +325,18 @@ export async function POST(request: Request): Promise<Response> {
         // Emitted via event: followup so the client renders it inline before reload.
         if (blocks.length > 0) {
           try {
-            // Build a compact run summary the model can reference (honesty spine: real data only)
-            const ideaLines = blocks
-              .slice(0, 3)
-              .map((b) => `Idea (${b.props.band}): "${b.props.title}" — ${b.props.angle}`)
-              .join("\n");
-            const followupPrompt = `You just generated ${blocks.length} idea card(s) for this creator. Here are the ideas:
-
-${ideaLines}
-
-Write ONE short sentence: a concrete observation about the strongest idea (what makes it stand out or why it fits this creator's audience), followed by a single offered next step (e.g. develop the top idea into hooks, or refine the angle). Be direct — reference the actual idea titles. Do not use bullet points. Keep it under 40 words.`;
+            // The cards' own words, no numbers or bands to read back (chat-voice.ts).
+            const followupPrompt = ideasClosingPrompt(
+              blocks.length,
+              blocks.slice(0, 3).map((b) => ({ title: b.props.title, angle: b.props.angle })),
+            );
 
             const ai = getQwenClient();
             let followupText = "";
             const followupParams = {
               model: QWEN_REASONING_MODEL,
               messages: [
-                { role: "system" as const, content: KC_CHAT_SYSTEM_PROMPT },
+                { role: "system" as const, content: withChatVoice(KC_CHAT_SYSTEM_PROMPT) },
                 { role: "user" as const, content: followupPrompt },
               ],
               stream: true as const,
@@ -347,6 +349,8 @@ Write ONE short sentence: a concrete observation about the strongest idea (what 
               followupText += chunk.choices[0]?.delta?.content ?? "";
             }
 
+            // No dash reaches the thread (plain-dashes.ts): stored and sent as the same text.
+            followupText = plainDashes(followupText);
             if (followupText.trim()) {
               // Persist as a second markdown message (THREAD-04 markdown path — no new block type)
               await insertMessage(

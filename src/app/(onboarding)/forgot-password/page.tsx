@@ -1,5 +1,8 @@
 import type { Metadata } from "next";
 
+import { ForgotPasswordNext } from "@/components/auth-next/password-reset-next";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
+
 import { ForgotPasswordForm } from "./forgot-password-form";
 
 export const metadata: Metadata = {
@@ -7,5 +10,5 @@ export const metadata: Metadata = {
 };
 
 export default function ForgotPasswordPage() {
-  return <ForgotPasswordForm />;
+  return NEW_LOOK_ENABLED ? <ForgotPasswordNext /> : <ForgotPasswordForm />;
 }

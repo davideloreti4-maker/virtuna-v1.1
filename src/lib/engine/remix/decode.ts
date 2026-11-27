@@ -23,6 +23,7 @@ import { getQwenClient, QWEN_REASONING_MODEL, QWEN_SEED } from "@/lib/engine/qwe
 import { stripModelOutput } from "@/lib/engine/utils/strip";
 import { DecodeResultZodSchema, BEAT_IDS } from "./decode-types";
 import { DECODE_SYSTEM_PROMPT, buildDecodeContext } from "./decode-prompts";
+import { plainDashes } from "@/lib/tools/plain-dashes";
 import type { OmniStructuralInput, DecodeResult } from "./decode-types";
 import type { OmniAnalysisOutput } from "@/lib/engine/qwen/omni-analysis";
 
@@ -93,7 +94,11 @@ export function coerceDecodeResponse(raw: unknown): unknown {
     luck.push({ category: "algorithmic_outlier", note: "[luck factor present but unspecified]" });
   }
 
-  return { beats, repeatable, luck };
+  // why_plain → whyPlain: the creator-facing line, trimmed and through the chat thread's dash pass.
+  // Missing or not text → no key: older decodes and a model that skipped it still parse.
+  const whyPlain = typeof obj.why_plain === "string" ? plainDashes(obj.why_plain.trim()) : "";
+
+  return { beats, repeatable, luck, ...(whyPlain ? { whyPlain } : {}) };
 }
 
 /**
@@ -133,7 +138,7 @@ export async function runDecode(
             { role: "user",   content: buildDecodeContext(omni) + extraInstruction },
           ],
           response_format: { type: "json_object" },
-          max_tokens: 1200,
+          max_tokens: 1400, // +200 for why_plain (two or three sentences)
           temperature: 0,
           seed: QWEN_SEED,
           // @ts-expect-error — DashScope extensions not in OpenAI SDK types

@@ -70,7 +70,7 @@ describe('useActiveRun — the tail turn', () => {
 
   it('a failed run keeps the tail on its error alone, so the retry stays reachable', () => {
     const { result } = renderHook(() =>
-      useActiveRun([candidate({ skill: 'hooks', error: 'Hooks stream error' })]),
+      useActiveRun([candidate({ skill: 'hooks', error: 'Hooks stream error', runs: 1 })]),
     );
     expect(result.current.activeRun?.error).toBe('Hooks stream error');
   });
@@ -96,6 +96,118 @@ describe('useActiveRun — the tail turn', () => {
     );
     expect(result.current.activeRun?.isDone).toBe(true);
     expect(result.current.activeRun?.isClosed).toBe(false);
+  });
+
+  it('a run stopped before anything arrived still holds the tail (its turn keeps the creator’s message)', () => {
+    // Stop while "Thinking": not streaming, no blocks, no stages, no error. Only the flag says a
+    // run was here.
+    const { result, rerender } = renderHook(({ list }) => useActiveRun(list), {
+      initialProps: { list: [candidate({ skill: 'chat', isStreaming: true })] },
+    });
+    rerender({ list: [candidate({ skill: 'chat', isStopped: true })] });
+    expect(result.current.activeRun?.skill).toBe('chat');
+    expect(result.current.activeRun?.isStreaming).toBe(false);
+    expect(result.current.activeRun?.isDone).toBe(false);
+    expect(result.current.isAnyStreaming).toBe(false);
+  });
+
+  it('a stopped run gives the tail up once another run starts, also after that run is reset', () => {
+    // A chat stopped while thinking, then a hooks run: streaming, then folded into history
+    // (`reset()`: nothing left in it). The stopped chat must not come back as the tail: it would
+    // draw the creator's newest message a second time, under the folded run.
+    const { result, rerender } = renderHook(({ list }) => useActiveRun(list), {
+      initialProps: { list: [candidate({ skill: 'chat', isStreaming: true }), candidate({ skill: 'hooks' })] },
+    });
+    rerender({ list: [candidate({ skill: 'chat', isStopped: true }), candidate({ skill: 'hooks' })] });
+    expect(result.current.activeRun?.skill).toBe('chat');
+    rerender({ list: [candidate({ skill: 'chat', isStopped: true }), candidate({ skill: 'hooks', isStreaming: true })] });
+    expect(result.current.activeRun?.skill).toBe('hooks');
+    rerender({ list: [candidate({ skill: 'chat', isStopped: true }), candidate({ skill: 'hooks' })] });
+    expect(result.current.activeRun).toBeNull();
+  });
+
+  it('a stopped run with words in it gives the tail up the same way', () => {
+    // Stopped mid-answer: its words are blocks. Once another run has started and folded, the stopped
+    // one must not come back as the tail: it would draw its words under the newer run's ask.
+    const words = [{ type: 'markdown', props: { text: 'Post the gym' } }];
+    const { result, rerender } = renderHook(({ list }) => useActiveRun(list), {
+      initialProps: { list: [candidate({ skill: 'chat', isStreaming: true, blocks: words }), candidate({ skill: 'hooks' })] },
+    });
+    rerender({ list: [candidate({ skill: 'chat', isStopped: true, blocks: words }), candidate({ skill: 'hooks' })] });
+    expect(result.current.activeRun?.skill).toBe('chat');
+    expect(result.current.activeRun?.isStopped).toBe(true);
+    rerender({ list: [candidate({ skill: 'chat', isStopped: true, blocks: words }), candidate({ skill: 'hooks', isStreaming: true })] });
+    expect(result.current.activeRun?.skill).toBe('hooks');
+    rerender({ list: [candidate({ skill: 'chat', isStopped: true, blocks: words }), candidate({ skill: 'hooks' })] });
+    expect(result.current.activeRun).toBeNull();
+  });
+
+  it('runs are told apart by their stream: a chat stopped on a run it dispatched gives the tail up to that skill run on its own', () => {
+    // The chat names its run by the skill it dispatched, so a stopped chat that dispatched hooks and
+    // the hooks stream's own run share a skill. The hooks stream starting is still another run.
+    const chat = (over: Partial<RunCandidate>) => candidate({ skill: 'hooks', stream: 'chat', ...over });
+    const { result, rerender } = renderHook(({ list }) => useActiveRun(list), {
+      initialProps: { list: [chat({ isStreaming: true }), candidate({ skill: 'hooks' })] },
+    });
+    rerender({ list: [chat({ isStopped: true }), candidate({ skill: 'hooks' })] });
+    expect(result.current.activeRun?.isStopped).toBe(true);
+    rerender({ list: [chat({ isStopped: true }), candidate({ skill: 'hooks', isStreaming: true })] });
+    expect(result.current.activeRun?.isStopped).toBe(false);
+    rerender({ list: [chat({ isStopped: true }), candidate({ skill: 'hooks' })] });
+    expect(result.current.activeRun).toBeNull();
+  });
+
+  it('a failed run gives the tail up once another run starts, also after that run is reset', () => {
+    // A hooks run that failed (its Retry on screen), then a chat run that folds into history. The
+    // failed run is never reset, and must not come back with its Retry under the chat's ask.
+    const { result, rerender } = renderHook(({ list }) => useActiveRun(list), {
+      initialProps: { list: [candidate({ skill: 'hooks', isStreaming: true }), candidate({ skill: 'chat' })] },
+    });
+    rerender({ list: [candidate({ skill: 'hooks', error: 'boom' }), candidate({ skill: 'chat' })] });
+    expect(result.current.activeRun?.error).toBe('boom');
+    rerender({ list: [candidate({ skill: 'hooks', error: 'boom' }), candidate({ skill: 'chat', isStreaming: true })] });
+    expect(result.current.activeRun?.skill).toBe('chat');
+    rerender({ list: [candidate({ skill: 'hooks', error: 'boom' }), candidate({ skill: 'chat' })] });
+    expect(result.current.activeRun).toBeNull();
+  });
+
+  it('a run refused before a render ever saw it streaming still holds the tail: it is the newest run', () => {
+    // A request refused at once can end in the same render it started in. It never streams on
+    // screen, yet it is the run the creator just sent (its stream counted a new start), newer than
+    // the folded one before it.
+    const { result, rerender } = renderHook(({ list }) => useActiveRun(list), {
+      initialProps: { list: [candidate({ skill: 'hooks', isStreaming: true, runs: 1 }), candidate({ skill: 'chat' })] },
+    });
+    rerender({ list: [candidate({ skill: 'hooks', runs: 1 }), candidate({ skill: 'chat' })] });
+    rerender({ list: [candidate({ skill: 'hooks', runs: 1 }), candidate({ skill: 'chat', error: 'refused', runs: 1 })] });
+    expect(result.current.activeRun?.skill).toBe('chat');
+    expect(result.current.activeRun?.error).toBe('refused');
+  });
+
+  it('…also when that stream already held an older failure: its new start is what counts, not what it holds', () => {
+    // Hooks fails, then script fails, then hooks is retried and refused at once. The hooks stream held
+    // an error before and after; only its count of starts says it ran again.
+    const hooks = (over: Partial<RunCandidate>) => candidate({ skill: 'hooks', ...over });
+    const script = (over: Partial<RunCandidate>) => candidate({ skill: 'script', ...over });
+    const { result, rerender } = renderHook(({ list }) => useActiveRun(list), {
+      initialProps: { list: [hooks({ isStreaming: true, runs: 1 }), script({})] },
+    });
+    rerender({ list: [hooks({ error: 'first', runs: 1 }), script({})] });
+    rerender({ list: [hooks({ error: 'first', runs: 1 }), script({ isStreaming: true, runs: 1 })] });
+    rerender({ list: [hooks({ error: 'first', runs: 1 }), script({ error: 'second', runs: 1 })] });
+    expect(result.current.activeRun?.skill).toBe('script');
+    rerender({ list: [hooks({ error: 'refused', runs: 2 }), script({ error: 'second', runs: 1 })] });
+    expect(result.current.activeRun?.skill).toBe('hooks');
+    expect(result.current.activeRun?.error).toBe('refused');
+  });
+
+  it('carries retry through, so Retry replays the stream that owns the tail', () => {
+    let replayed = 0;
+    const { result } = renderHook(() =>
+      useActiveRun([candidate({ skill: 'ideas', error: 'boom', runs: 1, retry: () => { replayed += 1; } })]),
+    );
+    result.current.activeRun?.retry?.();
+    expect(replayed).toBe(1);
   });
 
   it('an idle thread has no tail', () => {

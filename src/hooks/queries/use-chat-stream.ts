@@ -21,13 +21,14 @@
  * Mirrors use-hooks-stream.ts: mount-guard + abort discipline.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { reportCredit402 } from '@/lib/billing/credit-wall';
 import { reportSession401, SessionExpiredRefusal } from '@/lib/auth/session-expired';
 import { resolveRunError } from '@/lib/net/run-failure';
 import type { MarkdownBlock } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
 import { parseRunEvidence, type RunEvidence } from '@/lib/tools/evidence';
+import { useLetGoRun } from '@/hooks/queries/use-let-go-run';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -75,6 +76,17 @@ export interface UseChatStreamReturn {
   error: string | null;
   /** True once the stream has completed (done event received). */
   isDone: boolean;
+  /**
+   * The creator pressed Stop while this run's request was out. A stopped run is still a run: its
+   * turn (the creator's message above it) stays on screen even when Stop came before a single
+   * word, as it does for a run stopped mid-answer. Cleared by the next start and by reset().
+   */
+  isStopped: boolean;
+  /**
+   * How many runs this stream has started (a refine and a retry each count). A new number is a new
+   * run even when no render saw it streaming: a request refused at once ends in the render it began in.
+   */
+  runs: number;
   /**
    * True when the meta frame carried coldStart=true (D-08).
    * Resets to false on reset() (between sends).
@@ -125,8 +137,19 @@ export interface UseChatStreamReturn {
     skill?: string,
     opts?: { anchor?: string; cards?: string[] },
   ) => Promise<void>;
+  /**
+   * Replay the last start() exactly as it was made (the failed turn's Retry): same ask, platform,
+   * skill and riders. No-op before the first start.
+   */
+  retry: () => Promise<void>;
   /** Abort the in-flight stream. */
   stop: () => void;
+  /**
+   * Let go of the request in flight without ending it (a thread switch): it runs to its end in the
+   * background, so its route stays alive to store the result in the chat it was started in, and
+   * every frame it still sends is dropped. Stop is different: it ends the request (`stop`).
+   */
+  detach: () => void;
   /**
    * Reset state for a new run. Called by start() automatically before each
    * new send; can also be called externally (e.g. on error recovery).
@@ -165,12 +188,18 @@ export function useChatStream(): UseChatStreamReturn {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDone, setIsDone] = useState(false);
+  const [isStopped, setIsStopped] = useState(false);
+  const [runs, setRuns] = useState(0);
   const [coldStart, setColdStart] = useState(false);
   // Sticky session-level flag — set once when coldStart fires, never reset (D-08).
   const [nudgeShown, setNudgeShown] = useState(false);
 
+  // The in-flight request's controller; null once its stream has ended, so Stop can tell a run it
+  // cut short from one that was already over.
   const abortRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
+  // The last start()'s arguments, so Retry replays the run the creator asked for.
+  const lastCallRef = useRef<Parameters<UseChatStreamReturn['start']> | null>(null);
   // Ref copies so block/stage events patch without a stale closure (mirrors use-ideas-stream).
   const blocksRef = useRef<unknown[]>([]);
   const stagesRef = useRef<StageState[]>([]);
@@ -180,16 +209,9 @@ export function useChatStream(): UseChatStreamReturn {
   const revisedSheetsRef = useRef<Array<{ blueprintId: string; variant: number; nonce: number }>>([]);
   const revisedNonceRef = useRef<Record<string, number>>({});
 
-  // WR-05: set isMountedRef = false on unmount so stream callbacks don't setState
-  // on an unmounted component. Without this the useRef(true) guard is permanently
-  // true and the "can't update state on unmounted component" leak is unguarded.
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-      abortRef.current?.abort();
-    };
-  }, []);
+  // The let-go machinery (`use-let-go-run`): each request's number and liveness, a thread switch or an
+  // unmount letting the run go on in the background, and the mount effect that owns `isMountedRef`.
+  const letGo = useLetGoRun(abortRef, isMountedRef);
 
   // Keep a ref copy of accumulated text to avoid stale closures during streaming
   const textRef = useRef('');
@@ -205,6 +227,7 @@ export function useChatStream(): UseChatStreamReturn {
     setIsStreaming(false);
     setError(null);
     setIsDone(false);
+    setIsStopped(false);
     setColdStart(false);
     textRef.current = '';
     blocksRef.current = [];
@@ -212,11 +235,18 @@ export function useChatStream(): UseChatStreamReturn {
   }, []);
 
   const stop = useCallback(() => {
-    abortRef.current?.abort();
+    const inFlight = abortRef.current;
+    inFlight?.abort();
+    abortRef.current = null;
     if (isMountedRef.current) {
       setIsStreaming(false);
+      if (inFlight) setIsStopped(true);
     }
   }, []);
+
+  // A thread switch lets the run go on in the background (see the interface): its request is left
+  // open and its number retired, so its reader drops what is still to come.
+  const detach = letGo.detach;
 
   const start = useCallback(async (
     ask: string,
@@ -228,6 +258,10 @@ export function useChatStream(): UseChatStreamReturn {
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
+    // This request's number and liveness (`use-let-go-run`): once let go, every frame it still sends
+    // is read and dropped, so it reaches its end without touching the next chat's run.
+    const { gen, isLive } = letGo.begin();
+    lastCallRef.current = [ask, platform, skill, opts];
 
     // Reset state for a new run (clears error, coldStart, streamingText, dispatch blocks/stages)
     setStreamingText('');
@@ -239,8 +273,10 @@ export function useChatStream(): UseChatStreamReturn {
     setPreGuess(null);
     setError(null);
     setIsDone(false);
+    setIsStopped(false);
     setColdStart(false);
     setIsStreaming(true);
+    setRuns((r) => r + 1);
     textRef.current = '';
     blocksRef.current = [];
     stagesRef.current = [];
@@ -283,6 +319,7 @@ export function useChatStream(): UseChatStreamReturn {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+        if (!isLive()) continue; // detached: read on to the end, draw nothing
         buffer += decoder.decode(value, { stream: true });
 
         // Frames are delimited by \n\n (SSE spec)
@@ -309,7 +346,7 @@ export function useChatStream(): UseChatStreamReturn {
           if (eventType === 'meta') {
             // meta leads the stream — parse coldStart signal (D-08)
             const cs = data.coldStart === true;
-            if (isMountedRef.current) {
+            if (isLive()) {
               setColdStart(cs);
               // nudgeShown is sticky — once set, never cleared (session-level gate)
               if (cs) setNudgeShown(true);
@@ -320,7 +357,7 @@ export function useChatStream(): UseChatStreamReturn {
             const delta = typeof data.delta === 'string' ? data.delta : '';
             if (delta) {
               textRef.current += delta;
-              if (isMountedRef.current) setStreamingText(textRef.current);
+              if (isLive()) setStreamingText(textRef.current);
             }
 
           } else if (eventType === 'block') {
@@ -329,7 +366,7 @@ export function useChatStream(): UseChatStreamReturn {
             const block = (data as { block?: unknown }).block;
             if (block !== undefined) {
               blocksRef.current = [...blocksRef.current, block];
-              if (isMountedRef.current) setStreamingBlocks([...blocksRef.current]);
+              if (isLive()) setStreamingBlocks([...blocksRef.current]);
             }
 
           } else if (eventType === 'credit-wall') {
@@ -347,7 +384,7 @@ export function useChatStream(): UseChatStreamReturn {
             // full capsule now (same treatment as `dispatch`, which still follows and wins).
             // certain:false = a heuristic guess on a typed ask — a hint only, never the capsule.
             const skill = typeof data.skill === 'string' ? data.skill : '';
-            if (skill && isMountedRef.current) {
+            if (skill && isLive()) {
               if (data.certain === true) setDispatchedSkill(skill);
               else setPreGuess(skill);
             }
@@ -357,7 +394,7 @@ export function useChatStream(): UseChatStreamReturn {
             // stage event. A SECOND dispatch in one turn starts a fresh spine: clear the live
             // stages so run 2's plan isn't overlaid on run 1's finished steps.
             const skill = typeof data.skill === 'string' ? data.skill : '';
-            if (skill && isMountedRef.current) {
+            if (skill && isLive()) {
               stagesRef.current = [];
               setStages([]);
               setEvidence(null);
@@ -377,14 +414,14 @@ export function useChatStream(): UseChatStreamReturn {
                 ...revisedSheetsRef.current,
                 { blueprintId, variant, nonce: nextNonce },
               ];
-              if (isMountedRef.current) setRevisedSheets([...revisedSheetsRef.current]);
+              if (isLive()) setRevisedSheets([...revisedSheetsRef.current]);
             }
 
           } else if (eventType === 'warning') {
             // The dispatched runners' real warnings (Stage A) — same event shape the
             // dedicated skill routes emit ({ warnings: string[] }).
             const w = (data as { warnings?: unknown }).warnings;
-            if (Array.isArray(w) && isMountedRef.current) {
+            if (Array.isArray(w) && isLive()) {
               setWarnings(w.filter((x): x is string => typeof x === 'string'));
             }
 
@@ -393,7 +430,7 @@ export function useChatStream(): UseChatStreamReturn {
             // because a throw inside this read loop would kill the whole stream — cards, receipt
             // and closing line with it — over a decorative thumbnail rail.
             const parsedEvidence = parseRunEvidence(data);
-            if (parsedEvidence && isMountedRef.current) setEvidence(parsedEvidence);
+            if (parsedEvidence && isLive()) setEvidence(parsedEvidence);
 
           } else if (eventType === 'stage') {
             // Dispatched skill's real pipeline phase — upsert by name, preserve first-seen order
@@ -408,11 +445,11 @@ export function useChatStream(): UseChatStreamReturn {
                 ? stagesRef.current.map((s) => (s.name === stageName ? { ...s, status: stageStatus } : s))
                 : [...stagesRef.current, { name: stageName, status: stageStatus }];
               stagesRef.current = updated;
-              if (isMountedRef.current) setStages([...updated]);
+              if (isLive()) setStages([...updated]);
             }
 
           } else if (eventType === 'done') {
-            if (isMountedRef.current) {
+            if (isLive()) {
               setIsDone(true);
             }
 
@@ -426,13 +463,20 @@ export function useChatStream(): UseChatStreamReturn {
       // A null result means draw nothing: an abort is the user's own Stop, not a failure.
       const message = resolveRunError(err, 'Chat stream error');
       if (message === null) return;
-      if (isMountedRef.current) setError(message);
+      if (isLive()) setError(message);
     } finally {
-      if (isMountedRef.current) {
+      if (abortRef.current === controller) abortRef.current = null;
+      letGo.finish(gen);
+      if (isLive()) {
         setIsStreaming(false);
       }
     }
-  }, []);
+  }, [letGo]);
+
+  const retry = useCallback(async () => {
+    const last = lastCallRef.current;
+    if (last) await start(...last);
+  }, [start]);
 
   /**
    * Convert the in-flight assistant turn to a single MarkdownBlock array.
@@ -460,10 +504,14 @@ export function useChatStream(): UseChatStreamReturn {
     isStreaming,
     error,
     isDone,
+    isStopped,
+    runs,
     coldStart,
     nudgeShown,
     start,
+    retry,
     stop,
+    detach,
     reset,
     toBlocks,
   };

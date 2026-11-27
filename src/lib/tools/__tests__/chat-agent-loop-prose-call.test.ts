@@ -106,7 +106,7 @@ describe("the prose-call pin", () => {
 
     const streamed = onToken.mock.calls.map((c) => c[0]).join("");
     expect(streamed).not.toContain("generate_ideas");
-    expect(streamed).toContain("Sure — for a comedy podcast:");
+    expect(streamed).toContain("Sure. For a comedy podcast:"); // the dash pass ran on the released text
     // …and it is absent from what gets persisted, too — a malformed call in the transcript is
     // precedent for writing another one.
     expect(res.text).not.toContain("generate_ideas");
@@ -167,7 +167,8 @@ describe("the prose-call pin", () => {
     const res = await runChatAgentStream(baseInput({ onToken }), DEPS(stream.fn, { skills: [HOOKS(), IDEAS()] }));
 
     expect(stream.calls()).toBe(1);
-    expect(res.text).toBe(`Sure — for a comedy podcast:\ngenerate_ideas(topic="podcast")`);
+    // Byte-identical apart from the dash pass (plain-dashes.ts), which every stream gets.
+    expect(res.text).toBe(`Sure. For a comedy podcast:\ngenerate_ideas(topic="podcast")`);
     expect(onToken.mock.calls.map((c) => c[0]).join("")).toBe(res.text);
   });
 

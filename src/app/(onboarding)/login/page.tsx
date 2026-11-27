@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { LoginNext } from "@/components/auth-next/login-next";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = {
@@ -18,6 +20,18 @@ interface LoginPageProps {
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
+
+  if (NEW_LOOK_ENABLED) {
+    return (
+      <LoginNext
+        error={params.error}
+        expired={params.expired === "true"}
+        next={params.next}
+        message={params.message}
+        deleted={params.deleted === "1"}
+      />
+    );
+  }
 
   const form = (
     <LoginForm

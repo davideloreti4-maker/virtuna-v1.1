@@ -72,9 +72,12 @@ import { queryKeys } from "@/lib/queries/query-keys";
 import {
   setActiveThreadCookie,
   getActiveThreadCookie,
+  runChatIdFromCookie,
+  newRunNonce,
   NEW_THREAD_SENTINEL,
 } from "@/lib/threads/active-thread-cookie";
 import { opensIntoThread } from "@/lib/threads/opens-into-thread";
+import { ACCOUNT_READ_ASK } from "@/lib/threads/account-read-ask";
 import { Button } from "@/components/ui/button";
 import { VideoUpload } from "@/components/app/video-upload";
 import { useAnalysisStream } from "@/hooks/queries/use-analysis-stream";
@@ -135,6 +138,8 @@ import { takeRemixFrom, type RemixFrom } from "@/lib/thread-next/remix-from";
 import { REMIX_PLATFORMS } from "@/lib/discover-next/remix";
 import { useShellStore } from "@/stores/shell-store";
 import { answerIsIn } from "@/lib/thread-next/answer-in";
+import { subscribeLetGoRunsEnded } from "@/lib/thread-next/let-go-runs";
+import { noteRunEndedHere, runEndedHere } from "@/lib/thread-next/runs-ended-here";
 import { anySheetOpen, subscribeOpenSheets } from "@/lib/thread-next/open-sheets";
 import { cleanThreadTitle } from "@/lib/threads/title";
 import { shownThreadTitle } from "@/components/shell/use-thread-title";
@@ -335,10 +340,27 @@ const NEXT_FIELD_REST_HEIGHT = 96;
 // Thread feel §4.6: how long the field shows its send arrow (off) while a stream that has its answer
 // in still bills and closes (normally 3 to 4 s) before Stop comes back.
 const FINISHING_STOP_MS = 8_000;
+// Store a question as the open chat's message, for the skills whose route does not (USER_TURN_TOOLS).
+// Fire-and-forget: the live turn draws it from `lastUserTurn` meanwhile.
+function storeUserTurn(text: string): void {
+  void fetch("/api/threads/user-turn", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ text }),
+  }).catch(() => {
+    /* best-effort — a missed persist only loses the restored question bubble */
+  });
+}
 // Thread depth (Task 2): the longest a follow-up tapped in those seconds waits for that stream to
 // close and fold before it is sent anyway (a stream that hangs); set again while one of the look's
 // sheets is open (Task 3, `onHeldFollowupDue`).
 const HELD_FOLLOWUP_MAX_MS = 8_000;
+// A chat opened while its run still goes on, on the server (a creator who left mid-run and came
+// back): its last stored message is the question, with no answer yet. For this long after the
+// question was stored the run may still be going, so the chat shows the run's wait and is read
+// again every `REOPENED_POLL_MS` until the answer is stored; past it, the question alone, as before.
+const REOPENED_WAIT_MS = 2 * 60_000;
+const REOPENED_POLL_MS = 3_000;
 // The new look's short placeholders: `@/components/thread-next/field-copy` (shared with /dev/field).
 
 // Map an audience's platform to the composer Platform union (custom → tiktok).
@@ -956,53 +978,77 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
 
   // ⚠️ `skill` here is the DISPLAY namespace (ChatTurnKind — "ideas" PLURAL), never ToolId
   // ("idea" singular). The two differ in exactly this one id and a cast cannot fail (F-017).
+  const accountStart = account.start;
+  const retryAccountRead = useCallback(() => void accountStart({ persist: true }), [accountStart]);
+  // The reopened chat's wait (see `REOPENED_WAIT_MS`): the chat it is for, the question's turn (taken
+  // out of history while it waits, so the live turn draws it once with the wait under it), and until
+  // when. A ref holds the same, for the handlers that end it (`endReopenedWait`, the poll).
+  type ReopenedWait = { threadId: string; turn: RehydrateTurn; until: number };
+  const [reopenedWait, setReopenedWaitState] = useState<ReopenedWait | null>(null);
+  const reopenedWaitRef = useRef<ReopenedWait | null>(null);
+  const setReopenedWait = useCallback((wait: ReopenedWait | null) => {
+    reopenedWaitRef.current = wait;
+    setReopenedWaitState(wait);
+  }, []);
+  // The limit, or a send: the question goes back into history, alone. Read from the ref and set
+  // apart, so no state update runs another (StrictMode runs an updater twice).
+  const endReopenedWait = useCallback(() => {
+    const wait = reopenedWaitRef.current;
+    if (!wait) return;
+    setReopenedWait(null);
+    setPersistedChatTurns((turns) => [...turns, wait.turn]);
+  }, [setReopenedWait]);
   const { activeRun, isAnyStreaming, stopActive } = useActiveRun([
     { skill: "ideas", isStreaming: ideas.isStreaming, isDone: ideas.isDone, isClosed: ideas.isClosed, blocks: ideasBlocks,
       stages: ideas.stages, evidence: ideas.evidence, followupText: ideas.followupText, warnings: ideas.warnings,
-      error: ideas.error, outliersAvailable: ideas.outliersAvailable, stop: ideas.stop, reset: ideas.reset },
+      error: ideas.error, outliersAvailable: ideas.outliersAvailable, isStopped: ideas.isStopped, runs: ideas.runs,
+      stop: ideas.stop, reset: ideas.reset, retry: ideas.retry },
     { skill: "hooks", isStreaming: hooks.isStreaming, isDone: hooks.isDone, isClosed: hooks.isClosed, blocks: hooksBlocks,
       stages: hooks.stages, evidence: hooks.evidence, followupText: hooks.followupText, warnings: hooks.warnings,
-      error: hooks.error, outliersAvailable: hooks.outliersAvailable, stop: hooks.stop, reset: hooks.reset },
+      error: hooks.error, outliersAvailable: hooks.outliersAvailable, isStopped: hooks.isStopped, runs: hooks.runs,
+      stop: hooks.stop, reset: hooks.reset, retry: hooks.retry },
     { skill: "script", isStreaming: script.isStreaming, isDone: script.isDone, isClosed: script.isClosed, blocks: scriptBlocks,
       stages: script.stages, evidence: script.evidence, followupText: script.followupText, warnings: script.warnings,
-      error: script.error, outliersAvailable: script.outliersAvailable, stop: script.stop, reset: script.reset },
+      error: script.error, outliersAvailable: script.outliersAvailable, isStopped: script.isStopped, runs: script.runs,
+      stop: script.stop, reset: script.reset, retry: script.retry },
     { skill: "remix", isStreaming: remix.isStreaming, isDone: remix.isDone, isClosed: remix.isClosed, blocks: remixBlocks,
       stages: remix.stages, evidence: remix.evidence, followupText: remix.followupText, error: remix.error,
-      stop: remix.stop, reset: remix.reset },
+      isStopped: remix.isStopped, runs: remix.runs, stop: remix.stop, reset: remix.reset, retry: remix.retry },
     { skill: "explore", isStreaming: explore.isStreaming, isDone: explore.isDone, blocks: exploreBlocks,
-      stages: explore.stages, error: explore.error, stop: explore.stop, reset: explore.reset },
+      stages: explore.stages, error: explore.error, isStopped: explore.isStopped, runs: explore.runs,
+      stop: explore.stop, reset: explore.reset, retry: explore.retry },
     // The chat agent announces which skill it dispatched (the `dispatch` SSE frame) BEFORE the
     // first stage event. Naming it here is what gives an agent-routed run the SAME capsule label,
     // seeded plan, intro and outro as running that skill directly — the 1:1 the whole unification
     // is for. No dispatch ⇒ a plain conversational turn.
-    { skill: (chat.dispatchedSkill as ChatTurnKind | null) ?? "chat",
+    // Named by the skill it dispatched, so it says which stream it is: the skill's own stream is
+    // another run under the same name.
+    { skill: (chat.dispatchedSkill as ChatTurnKind | null) ?? "chat", stream: "chat",
       isStreaming: chat.isStreaming,
       // Cards ABOVE the co-pilot line: a dispatched skill's real cards, then the closing prose.
       blocks: [...chat.streamingBlocks, ...chatBlocks],
       // The dispatched runners' REAL warnings (Stage A) — the chat door used to be the one
       // stream that swallowed them.
       stages: chat.stages, evidence: chat.evidence, warnings: chat.warnings,
-      error: chat.error, stop: chat.stop, reset: chat.reset },
-    // Account emits no stages and no card stream — one block, delivered on done.
+      error: chat.error, isStopped: chat.isStopped, runs: chat.runs, stop: chat.stop, reset: chat.reset, retry: chat.retry },
+    // Account emits no stages and no card stream — one block, delivered on done. Its route stores
+    // that block in the chat (`persist`), so it is done once the block is in and the stream has
+    // ended: the run-completion fold reads the thread and resets it, as for every other run. Without
+    // that it was never folded: a chip under it took the live slot and the read came back after the
+    // chip's run, under the chip's ask, and a reload lost it. Retry stores it too.
     { skill: "account", isStreaming: account.isStreaming,
+      isDone: account.block !== null && !account.isStreaming,
       blocks: account.block ? [account.block] : [], error: account.error,
-      stop: account.stop, reset: account.reset },
+      // It has a message of its own, so a read stopped before it landed keeps its turn, as a stopped
+      // run of any other skill does.
+      isStopped: account.isStopped, runs: account.runs,
+      stop: account.stop, reset: account.reset, retry: retryAccountRead },
+    // A chat reopened while its run goes on, on the server: no stream of ours, its wait only. A chat
+    // turn not yet named, so its wait reads "Thinking" (nothing of the run is stored until it ends).
+    // It never holds the field (`waitOnly`): a send ends it and goes on.
+    { skill: "chat", stream: "reopened", isStreaming: reopenedWait !== null, waitOnly: true,
+      stop: endReopenedWait, reset: () => setReopenedWait(null) },
   ]);
-
-  // The Account starter card ARMS the skill and RUNS it in one tap. The other five cards arm
-  // and stop, because the other five skills need the field; Account takes no input, so arming
-  // alone would leave the creator in front of a composer with nothing to type. Declared here
-  // (after `account`, not up beside handleUserSelectTool) so it closes over a live binding
-  // rather than a TDZ one. It spends a Reading — so it fires from the creator's tap, never a
-  // render (D-05).
-  const handleStarterAccountRun = useCallback(() => {
-    // Arms AND runs in one tap, so it never passes through handleSubmit's armFired(). It has
-    // to do both halves itself: name the run, and leave the composer on chat.
-    noteRun("account");
-    setActiveTool(DEFAULT_TOOL);
-    setShowUpload(false);
-    void account.start();
-  }, [account]);
 
   /**
    * THE ACTIVATION CARD — the first-run action, and the one the intro now offers.
@@ -1058,7 +1104,12 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     persistedProfileBlocks.length > 0 || // profile-read / reaction-distribution (05-06)
     persistedChatTurns.length > 0 || // the unified persisted stream (thread-unification) — the SSOT for
     // "this thread has history"; the per-type persisted buckets above are retired in Phase 5, this term stays.
-    hasAccountContent;
+    hasAccountContent ||
+    // A run holding the tail is drawn as the thread's last turn, so it is the thread: one stopped
+    // before a word arrived, or one that failed with no cards, has no blocks and is not streaming.
+    // Without this a new chat's first such run drew its turn inside Home's layout, whose room under
+    // the sent turn grows the container it is sized from (the page grew without end).
+    activeRun !== null;
   // ⚠️ hasThread must never key off the ARMED SKILL. Arming a skill is not a thread. Three
   // per-skill view gates used to flip hasThread on TOOL SELECTION ALONE (they were the only
   // skills owning an idle view), which tore the empty
@@ -1400,6 +1451,23 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       // New look: a follow-up held for the last chat's stream belongs to that chat (thread depth,
       // Task 2). Dropped first, so the resets below cannot let it go into this one.
       if (NEW_LOOK_ENABLED) dropHeldFollowup();
+      // A run still out belongs to the chat it was sent in: its route stores it there. It is let go,
+      // not ended (`detach`): its request stays open to its end, which is what keeps the route alive
+      // to store the result (ending it lost the chat's run), while its later frames (cards, words,
+      // the closing line) are dropped instead of landing in this chat's live turn. Not in `reset()`,
+      // because the folds reset a stream whose closing line may still be coming. (The account read's
+      // `reset()` lets its read go itself.) Stop, the creator's own, still ends a run.
+      chat.detach();
+      ideas.detach();
+      hooks.detach();
+      script.detach();
+      remix.detach();
+      explore.detach();
+      // The chat being left may hold a run nothing on screen will fold (it goes on unseen), and only
+      // a fold read the chat list again: a chat left mid-run was missing from Recent, or kept its old
+      // line. So the list is read again as it is left, and again when such a run's request has ended
+      // (`let-go-runs`: every mounted list follows it, `useThreadList`).
+      void queryClient.invalidateQueries({ queryKey: queryKeys.threads.list() });
       chat.reset();
       ideas.reset();
       hooks.reset();
@@ -1407,6 +1475,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       remix.reset();
       explore.reset();
       account.reset();
+      setReopenedWait(null);
       setLastUserTurn(null);
       setPersistedIdeaBlocks([]);
       setPersistedHookBlocks([]);
@@ -1573,7 +1642,32 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         // view is active — selector threads restore to their own tool view and never read this), so a
         // pure plain-chat thread also rehydrates per-turn, not flattened. `chatAgentThread` still only
         // gates the restore-to-chat decision below (regression-safe for selector threads).
-        setPersistedChatTurns(orderedTurns(messages));
+        // A question stored a moment ago with no answer after it: its run is likely still going on
+        // the server (the creator left mid-run and came back). Its turn is the live one meanwhile,
+        // with the run's wait under it, until the answer is stored (`REOPENED_WAIT_MS`). Not for a
+        // run this tab already saw end with no answer (stopped, or failed: `runs-ended-here`). A
+        // stored time ahead of this clock counts as now.
+        const turns = orderedTurns(messages);
+        const last = messages[messages.length - 1] as { role?: string; created_at?: string } | undefined;
+        const storedAt = last?.role === "user" ? Date.parse(last.created_at ?? "") : Number.NaN;
+        const askedAt = Math.min(storedAt, Date.now());
+        const lastTurn = turns[turns.length - 1];
+        const chatId = data.threadId ?? null;
+        if (
+          chatId &&
+          lastTurn?.userTurn &&
+          lastTurn.blocks.length === 0 &&
+          Number.isFinite(askedAt) &&
+          Date.now() - askedAt < REOPENED_WAIT_MS &&
+          !runEndedHere(chatId, lastTurn.userTurn)
+        ) {
+          setPersistedChatTurns(turns.slice(0, -1));
+          setLastUserTurn(lastTurn.userTurn);
+          setReopenedWait({ threadId: chatId, turn: lastTurn, until: askedAt + REOPENED_WAIT_MS });
+        } else {
+          setPersistedChatTurns(turns);
+          setReopenedWait(null);
+        }
 
         // ── RESTORE on rehydration — but restore the RUN, never the ARM ─────────
         //
@@ -1920,18 +2014,23 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // the fold between them): reading the thread (its messages, or null for a failed or empty read)
   // and putting what was read on screen.
   type ChatThreadMessages = Array<{ role?: string; blocks?: Array<{ type?: string; props?: unknown }> }>;
-  const readChatThread = useCallback(async (): Promise<ChatThreadMessages | null> => {
+  // With the chat the read names: the pointer can move between reads (another tab, a switch), and a
+  // caller that holds a chat (the reopened wait) applies only its own.
+  const readOpenThread = useCallback(async (): Promise<{ threadId: string | null; messages: ChatThreadMessages } | null> => {
     try {
       const res = await fetch('/api/threads/open', { cache: 'no-store' });
       if (!res.ok) return null;
-      const data = (await res.json()) as { messages?: ChatThreadMessages };
+      const data = (await res.json()) as { threadId?: string; messages?: ChatThreadMessages };
       const messages = data.messages ?? [];
-      return messages.length === 0 ? null : messages;
+      return messages.length === 0 ? null : { threadId: data.threadId ?? null, messages };
     } catch {
       // Network error — leave current state; the next reload reconciles it.
       return null;
     }
   }, []);
+  const readChatThread = useCallback(async (): Promise<ChatThreadMessages | null> => {
+    return (await readOpenThread())?.messages ?? null;
+  }, [readOpenThread]);
   const applyChatThread = useCallback((messages: ChatThreadMessages) => {
     setPersistedChatTurns(orderedTurns(messages));
     setPersistedChatBlocks(orderedAssistantBlocks(messages).filter((b) => b.type === 'markdown'));
@@ -1942,6 +2041,59 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     applyChatThread(messages);
     return true;
   }, [readChatThread, applyChatThread]);
+
+  // The reopened chat's wait (see `REOPENED_WAIT_MS`): the chat is read again every few seconds (not
+  // while a read is out, nor while the page is hidden), and at once when a run let go here ends (it may
+  // be this chat's). Once a message follows the question (the run's answer, stored) in THIS chat (a
+  // read can name another, if the pointer moved), it goes on screen as a fold puts a run in history,
+  // and the wait ends. At the limit, the question alone. A thread switch ends it (reset).
+  const reopenedUntil = reopenedWait?.until ?? null;
+  useEffect(() => {
+    if (reopenedUntil === null) return;
+    let cancelled = false;
+    let reading = false;
+    const tick = () => {
+      if (Date.now() >= reopenedUntil) {
+        endReopenedWait();
+        return;
+      }
+      if (reading || (typeof document !== "undefined" && document.hidden)) return;
+      reading = true;
+      void (async () => {
+        try {
+          const read = await readOpenThread();
+          const wait = reopenedWaitRef.current;
+          if (cancelled || !read || !wait || read.threadId !== wait.threadId) return;
+          if (read.messages[read.messages.length - 1]?.role === "user") return;
+          applyChatThread(read.messages);
+          setReopenedWait(null);
+          void queryClient.invalidateQueries({ queryKey: queryKeys.threads.list() });
+        } finally {
+          reading = false;
+        }
+      })();
+    };
+    const timer = setInterval(tick, REOPENED_POLL_MS);
+    const stopHearing = subscribeLetGoRunsEnded(tick);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+      stopHearing();
+    };
+  }, [reopenedUntil, readOpenThread, applyChatThread, endReopenedWait, setReopenedWait, queryClient]);
+
+  // A send ends the wait and goes on (the field is never held by it): the question goes back into
+  // history before the new run's turn takes the live slot. Before paint, so it is never missing.
+  useLayoutEffect(() => {
+    if (isAnyStreaming && reopenedWaitRef.current) endReopenedWait();
+  }, [isAnyStreaming, endReopenedWait]);
+
+  // A run that ends here with no answer (stopped, or failed) is noted for its chat, so coming back to
+  // that chat shows no wait for it (`runs-ended-here`).
+  const endedWithoutAnswer = !!activeRun && !activeRun.isStreaming && (activeRun.isStopped || !!activeRun.error);
+  useEffect(() => {
+    if (endedWithoutAnswer && openThreadId && lastUserTurn?.trim()) noteRunEndedHere(openThreadId, lastUserTurn);
+  }, [endedWithoutAnswer, openThreadId, lastUserTurn]);
 
   // The in-thread input affordance (input-request block) reloads the chat thread on completion so its
   // result card surfaces in-place. Memoised so the block's context consumers don't re-render each pass.
@@ -2151,6 +2303,28 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     queryClient,
     runFoldRetry,
   ]);
+
+  // ── A stopped run whose ask has come into history ───────────────────────────
+  // A stopped run is never done, so neither fold above resets it, and it keeps the tail with the
+  // creator's ask above it. The route stores that ask before it answers, so any later read of the
+  // thread (a fold's, a profile read's, a video's seal) brings it into history, where it is drawn
+  // again: once as the persisted turn and once as the live one. History holds it now, so the stopped
+  // stream is reset, as a fold resets a finished run once its turn is in. Only a turn that came in
+  // after the stop counts: an earlier ask in the same words is another turn, and a read that brings
+  // nothing new leaves the stopped turn on screen. Before paint, so the ask is never drawn twice.
+  const stoppedTailReset = activeRun?.isStopped ? activeRun.reset : null;
+  const stoppedSinceRef = useRef<{ turns: number; ask: string | null } | null>(null);
+  useLayoutEffect(() => {
+    if (!stoppedTailReset) {
+      stoppedSinceRef.current = null;
+      return;
+    }
+    const since = (stoppedSinceRef.current ??= { turns: persistedChatTurns.length, ask: lastUserTurn?.trim() || null });
+    if (since.ask === null) return;
+    if (!persistedChatTurns.slice(since.turns).some((t) => t.userTurn?.trim() === since.ask)) return;
+    stoppedSinceRef.current = null;
+    stoppedTailReset();
+  }, [stoppedTailReset, persistedChatTurns, lastUserTurn]);
 
   // NOTE (2026-07-29): the "late follow-up → one more reload" effect that lived here is GONE, and
   // deliberately so. It existed because the fold above fired on `done` and therefore always reloaded
@@ -2408,6 +2582,20 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // there is genuinely nothing to card in-thread.
   const pendingSealRef = useRef(false);
   const sealHandledRef = useRef(false);
+  /**
+   * The chat this run was started in (2026-11-26, "Server adds the card"). Sent with the run, so
+   * `/api/analyze` adds the card to THIS chat when it completes, and sent with the seal, which is
+   * then idempotent (the server's card comes back). Before, the seal used the chat open at
+   * completion: a creator who moved to another chat mid-run got this run's card there.
+   */
+  const sealThreadRef = useRef<string | null>(null);
+  /** This run's own nonce, made when it is armed: sent with the run and its seal (one card per run). */
+  const runNonceRef = useRef<string | null>(null);
+  /** What a Test start carries besides its input: the run's chat and nonce. */
+  const runTags = () => ({
+    ...(sealThreadRef.current ? { thread_id: sealThreadRef.current } : {}),
+    ...(runNonceRef.current ? { run_nonce: runNonceRef.current } : {}),
+  });
   useEffect(() => {
     if (stream.phase !== "complete" || !stream.analysisId || !pendingSealRef.current || sealHandledRef.current) {
       return;
@@ -2415,6 +2603,10 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     sealHandledRef.current = true;
     pendingSealRef.current = false;
     const id = stream.analysisId;
+    const runChat = sealThreadRef.current;
+    const runNonce = runNonceRef.current;
+    /** Still looking at the chat the run belongs to (or it named none): only then navigate or reload. */
+    const inRunChat = () => runChat === null || runChatIdFromCookie() === runChat;
     // New look (final review 1): this run's inputs, as recorded when it was armed. Read now, not
     // after the awaits below, so a run armed while this one cards cannot lend it its inputs.
     const sent = NEW_LOOK_ENABLED ? nextRunInputsRef.current : null;
@@ -2424,12 +2616,17 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         const res = await fetch("/api/tools/test/card", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ analysisId: id }),
+          body: JSON.stringify({
+            analysisId: id,
+            ...(runChat ? { threadId: runChat } : {}),
+            ...(runNonce ? { runNonce } : {}),
+          }),
         });
         const data = (await res.json().catch(() => ({}))) as { degraded?: string };
         if (!res.ok || data.degraded) {
-          // No honest craft card to drop → the full breakdown page is the honest fallback.
-          router.push(resultHref(id));
+          // No honest craft card to drop → the full breakdown page is the honest fallback, but
+          // only for a creator still in the run's chat: one who moved on is not pulled away.
+          if (inRunChat()) router.push(resultHref(id));
           return;
         }
         // Surface the freshly-sealed card in the unified stream (no navigate-out).
@@ -2441,7 +2638,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           setTestBrief((b) => (b !== null && b === sent.brief ? null : b));
         }
       } catch {
-        router.push(resultHref(id));
+        if (inRunChat()) router.push(resultHref(id));
       } finally {
         setCarding(false);
         if (NEW_LOOK_ENABLED) setCardedId(id);
@@ -2483,6 +2680,35 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       // server-side, so the send is not lost.
     }
   }, [queryClient, setActiveThreadId, expectNewThread]);
+
+  // The Account starter card ARMS the skill and RUNS it in one tap. The other five cards arm
+  // and stop, because the other five skills need the field; Account takes no input, so arming
+  // alone would leave the creator in front of a composer with nothing to type. Declared here
+  // (after `account` and `ensureThreadForSend`, not up beside handleUserSelectTool) so it closes
+  // over live bindings rather than TDZ ones. It spends a Reading — so it fires from the creator's
+  // tap, never a render (D-05).
+  // One read per tap: the card stays on screen while the new chat is made, and a second tap there
+  // would make a second chat and start a second paid read (the first one's request aborted, the
+  // route still finishing and billing it). Held until the read has ended.
+  const starterAccountRunRef = useRef(false);
+  const handleStarterAccountRun = useCallback(async () => {
+    if (starterAccountRunRef.current) return;
+    starterAccountRunRef.current = true;
+    try {
+      // Arms AND runs in one tap, so it never passes through handleSubmit's armFired(). It has
+      // to do both halves itself: name the run, and leave the composer on chat.
+      noteRun("account");
+      setActiveTool(DEFAULT_TOOL);
+      setShowUpload(false);
+      // The read is stored in the chat (see the field's account send), so a new chat is made first.
+      await ensureThreadForSend();
+      setLastUserTurn(ACCOUNT_READ_ASK);
+      hintThreadTitle(ACCOUNT_READ_ASK);
+      await account.start({ persist: true });
+    } finally {
+      starterAccountRunRef.current = false;
+    }
+  }, [account, ensureThreadForSend, hintThreadTitle]);
 
   // ── Submit -> create (lifted/adapted from Board.tsx handleContentSubmit) ──
   // Slim: only the TikTok-URL and video-upload paths for Test; Ideas pipeline for Idea.
@@ -2568,6 +2794,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     // `test` belongs here since the D-05 seal-in-thread rework: the run ends as a
     // video-test-card IN the thread, so a reload without this shows a card with no
     // question above it (upload path persists the file name, URL path the URL).
+    // Not `account`: its route stores its message together with the read, and only once the read is
+    // in, so a refused, thin, failed or stopped read leaves no message in the chat with no answer.
     const USER_TURN_TOOLS: ToolId[] = ["remix", "explore", "simulate", "predict", "test"];
     const captureUserTurn = (raw: string) => {
       const t = raw.trim();
@@ -2580,15 +2808,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       // lastUserTurn independent of persisted order, so it never needs awaiting.
       // Must run AFTER the thread exists (ensureThreadForSend) so it targets the
       // right thread — guaranteed by call ordering in every branch below.
-      if (t && USER_TURN_TOOLS.includes(tool)) {
-        void fetch("/api/threads/user-turn", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text: t }),
-        }).catch(() => {
-          /* best-effort — a missed persist only loses the restored question bubble */
-        });
-      }
+      if (t && USER_TURN_TOOLS.includes(tool)) storeUserTurn(t);
     };
 
     // Skills that persist into the open chat thread create it lazily on first send.
@@ -2604,7 +2824,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       tool === "script" ||
       tool === "remix" ||
       tool === "explore" ||
-      tool === "test"
+      tool === "test" ||
+      tool === "account"
     ) {
       await ensureThreadForSend();
     }
@@ -2615,9 +2836,14 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
     // what D-05 requires — it is not an auto-fire on render.
     if (tool === "account") {
       setUrl(""); // the field was never an input here; don't leave a stale draft behind
+      // The read's own message on the live turn (it used to set none, so the live turn drew the
+      // thread's last ask a second time over the read). The route stores it with the read.
+      captureUserTurn(ACCOUNT_READ_ASK);
       armFired();
       armSentTurn("live"); // new look: the run starts here (see `armSentTurn`)
-      await account.start();
+      // `persist`: the route stores the read in the chat (one assistant row), so it folds into the
+      // thread like any run and is there after a reload. It used to live only in the live stream.
+      await account.start({ persist: true });
       return;
     }
 
@@ -2903,6 +3129,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         // sealHandledRef reset so this fresh run's complete fires the seal once.
         pendingSealRef.current = true;
         sealHandledRef.current = false;
+        sealThreadRef.current = runChatIdFromCookie();
+        runNonceRef.current = newRunNonce();
         // New look (final review 1): what this run sent, cleared at its seal (`nextRunInputsRef`).
         if (NEW_LOOK_ENABLED) nextRunInputsRef.current = { file, brief: testBrief };
         armFired();
@@ -2916,6 +3144,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
             input_mode: "video_upload",
             content_type: "video",
             video_storage_path: path,
+            ...runTags(),
           })
           .catch(() => {
             /* stream.phase -> error transition owns the UI */
@@ -2947,6 +3176,8 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
       // Arm the in-thread seal for this real submission (see upload path above).
       pendingSealRef.current = true;
       sealHandledRef.current = false;
+      sealThreadRef.current = runChatIdFromCookie();
+      runNonceRef.current = newRunNonce();
       // New look (final review 1): a link run sends no file; the brief is its own.
       if (NEW_LOOK_ENABLED) nextRunInputsRef.current = { file: null, brief: testBrief };
       armFired();
@@ -2955,6 +3186,7 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
           input_mode: "tiktok_url",
           content_type: "video",
           tiktok_url: trimmedUrl,
+          ...runTags(),
         })
         .catch(() => {
           /* stream.phase -> error transition owns the UI */
@@ -3461,14 +3693,19 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
         // Arm the in-thread seal for THIS run (a hydration-sourced complete never arms it).
         pendingSealRef.current = true;
         sealHandledRef.current = false;
+        sealThreadRef.current = runChatIdFromCookie();
+        runNonceRef.current = newRunNonce();
         // New look (final review 1): the brought video is not the field's clip, and carries no
         // brief, so its seal clears nothing staged in the field.
         if (NEW_LOOK_ENABLED) nextRunInputsRef.current = { file: null, brief: null };
         await stream
           .start(
-            storagePath
-              ? { input_mode: "video_upload", content_type: "video", video_storage_path: storagePath }
-              : { input_mode: "tiktok_url", content_type: "video", tiktok_url: url },
+            {
+              ...(storagePath
+                ? { input_mode: "video_upload" as const, content_type: "video", video_storage_path: storagePath }
+                : { input_mode: "tiktok_url" as const, content_type: "video", tiktok_url: url }),
+              ...runTags(),
+            },
           )
           .catch(() => {
             /* stream.phase -> error transition owns the UI */
@@ -3796,18 +4033,14 @@ export function Composer({ className, onThreadChange, onEngagedChange, onConvers
   // The in-flight run, shaped as the thread's last turn. Everything a per-skill view used to own —
   // the intro's inputs, the stage spine, the outro text, the degrade notices, retry, the outliers
   // offer — rides here, so <ThreadTurn> renders it with the SAME grammar it renders a reloaded turn
-  // with. The retry entry points are per-skill because each stream's `start` has its own signature.
+  // with. Retry is the run's own stream replaying its last call as it was made: the same ask,
+  // intent, anchor hook, link or params. It used to be `start("", platform)` per skill, which ran a
+  // different (Auto) run, sent a remix with no link, and for a run the chat dispatched (named by the
+  // skill it ran) started that skill's own route instead of the chat.
+  const activeRunRetry = activeRun?.retry;
   const retryActiveRun = useCallback(() => {
-    switch (activeRun?.skill) {
-      case "ideas": return void ideas.start("", platform);
-      case "hooks": return void hooks.start("", platform);
-      case "script": return void script.start("", platform);
-      case "remix": return void remix.start("", platform);
-      case "explore": return void explore.start({});
-      case "account": return void account.start();
-      default: return undefined;
-    }
-  }, [activeRun?.skill, ideas, hooks, script, remix, explore, account, platform]);
+    void activeRunRetry?.();
+  }, [activeRunRetry]);
 
   const findOutliersActiveRun = useCallback(() => {
     switch (activeRun?.skill) {

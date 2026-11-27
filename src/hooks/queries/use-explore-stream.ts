@@ -25,12 +25,13 @@
  * has neither).
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { reportCredit402, CreditWallRefusal, isCreditWallRefusal } from '@/lib/billing/credit-wall';
 import { reportSession401, SessionExpiredRefusal } from '@/lib/auth/session-expired';
 import { resolveRunError } from '@/lib/net/run-failure';
 import type { OutlierGridBlock } from '@/lib/tools/blocks';
 import type { StageState } from '@/components/thread/progress-checklist';
+import { useLetGoRun } from '@/hooks/queries/use-let-go-run';
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -65,6 +66,17 @@ export interface UseExploreStreamReturn {
   error: string | null;
   /** True once the stream has completed (done event received). */
   isDone: boolean;
+  /**
+   * The creator pressed Stop while this run's request was out. A stopped run is still a run: its
+   * turn (the creator's message above it) stays on screen even when Stop came before a single
+   * stage or card, as it does for a run stopped mid-way. Cleared by the next start and by reset().
+   */
+  isStopped: boolean;
+  /**
+   * How many runs this stream has started (a refine and a retry each count). A new number is a new
+   * run even when no render saw it streaming: a request refused at once ends in the render it began in.
+   */
+  runs: number;
   /** Pipeline stages — populated by SSE stage events. Ephemeral: shown during streaming. */
   stages: StageState[];
   /**
@@ -72,8 +84,19 @@ export interface UseExploreStreamReturn {
    * Re-expose as the retry entry point for the skill-run error state.
    */
   start: (params: ExploreStartParams) => Promise<void>;
+  /**
+   * Replay the last start() with the same params (the failed turn's Retry). No-op before the first
+   * start.
+   */
+  retry: () => Promise<void>;
   /** Abort the in-flight stream. */
   stop: () => void;
+  /**
+   * Let go of the request in flight without ending it (a thread switch): it runs to its end in the
+   * background, so its route stays alive to store the result in the chat it was started in, and
+   * every frame it still sends is dropped. Stop is different: it ends the request (`stop`).
+   */
+  detach: () => void;
   /** Reset state for a new run. */
   reset: () => void;
   /**
@@ -91,22 +114,22 @@ export function useExploreStream(): UseExploreStreamReturn {
   const [isStreaming, setIsStreaming] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDone, setIsDone] = useState(false);
+  const [isStopped, setIsStopped] = useState(false);
+  const [runs, setRuns] = useState(0);
   const [stages, setStages] = useState<StageState[]>([]);
 
+  // The in-flight request's controller; null once its stream has ended, so Stop can tell a run it
+  // cut short from one that was already over.
   const abortRef = useRef<AbortController | null>(null);
+  // The last call as it was made, so Retry replays the run the creator asked for.
+  const lastCallRef = useRef<ExploreStartParams | null>(null);
   const isMountedRef = useRef(true);
   // Ref copy of stages so the upsert can patch without a stale closure.
   const stagesRef = useRef<StageState[]>([]);
 
-  // WR-05: set isMountedRef = false on unmount so stream callbacks don't setState on an
-  // unmounted component (verbatim the use-hooks-stream guard).
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-      abortRef.current?.abort();
-    };
-  }, []);
+  // The let-go machinery (`use-let-go-run`): each request's number and liveness, a thread switch or an
+  // unmount letting the run go on in the background, and the mount effect that owns `isMountedRef`.
+  const letGo = useLetGoRun(abortRef, isMountedRef);
 
   const reset = useCallback(() => {
     setStreamingBlock(null);
@@ -114,29 +137,43 @@ export function useExploreStream(): UseExploreStreamReturn {
     setIsStreaming(false);
     setError(null);
     setIsDone(false);
+    setIsStopped(false);
     setStages([]);
     stagesRef.current = [];
   }, []);
 
   const stop = useCallback(() => {
-    abortRef.current?.abort();
+    const inFlight = abortRef.current;
+    inFlight?.abort();
+    abortRef.current = null;
     if (isMountedRef.current) {
       setIsStreaming(false);
+      if (inFlight) setIsStopped(true);
     }
   }, []);
+
+  // A thread switch lets the run go on in the background (see the interface): its request is left
+  // open and its number retired, so its reader drops what is still to come.
+  const detach = letGo.detach;
 
   const start = useCallback(async (params: ExploreStartParams) => {
     // Abort any prior in-flight stream.
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
+    // This request's number and liveness (`use-let-go-run`): once let go, every frame it still sends
+    // is read and dropped, so it reaches its end without touching the next chat's run.
+    const { gen, isLive } = letGo.begin();
+    lastCallRef.current = params;
 
     // Reset state for a new run.
     setStreamingBlock(null);
     setStatusMessage(null);
     setError(null);
     setIsDone(false);
+    setIsStopped(false);
     setIsStreaming(true);
+    setRuns((r) => r + 1);
     setStages([]);
     stagesRef.current = [];
 
@@ -172,6 +209,7 @@ export function useExploreStream(): UseExploreStreamReturn {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+        if (!isLive()) continue; // detached: read on to the end, draw nothing
         buffer += decoder.decode(value, { stream: true });
 
         // Frames are delimited by \n\n (SSE spec).
@@ -212,12 +250,12 @@ export function useExploreStream(): UseExploreStreamReturn {
                 updated = [...stagesRef.current, { name: stageName, status: stageStatus }];
               }
               stagesRef.current = updated;
-              if (isMountedRef.current) setStages([...updated]);
+              if (isLive()) setStages([...updated]);
             }
 
           } else if (eventType === 'status') {
             const msg = typeof data.message === 'string' ? data.message : null;
-            if (isMountedRef.current) setStatusMessage(msg);
+            if (isLive()) setStatusMessage(msg);
 
           } else if (eventType === 'content') {
             // content event: data.blocks is an array carrying the single outlier-grid block.
@@ -227,10 +265,10 @@ export function useExploreStream(): UseExploreStreamReturn {
               (b: unknown) =>
                 typeof b === 'object' && b !== null && (b as { type?: unknown }).type === 'outlier-grid',
             ) as OutlierGridBlock | undefined;
-            if (gridBlock && isMountedRef.current) setStreamingBlock(gridBlock);
+            if (gridBlock && isLive()) setStreamingBlock(gridBlock);
 
           } else if (eventType === 'done') {
-            if (isMountedRef.current) {
+            if (isLive()) {
               setIsDone(true);
               setStatusMessage(null);
             }
@@ -248,13 +286,20 @@ export function useExploreStream(): UseExploreStreamReturn {
       // A null result means draw nothing: an abort is the user's own Stop, not a failure.
       const message = resolveRunError(err, 'Explore stream error');
       if (message === null) return;
-      if (isMountedRef.current) setError(message);
+      if (isLive()) setError(message);
     } finally {
-      if (isMountedRef.current) {
+      if (abortRef.current === controller) abortRef.current = null;
+      letGo.finish(gen);
+      if (isLive()) {
         setIsStreaming(false);
       }
     }
-  }, []);
+  }, [letGo]);
+
+  const retry = useCallback(async () => {
+    const last = lastCallRef.current;
+    if (last) await start(last);
+  }, [start]);
 
   /**
    * Convert the streaming block to an OutlierGridBlock[] for MessageBlocks rendering.
@@ -270,9 +315,13 @@ export function useExploreStream(): UseExploreStreamReturn {
     isStreaming,
     error,
     isDone,
+    isStopped,
+    runs,
     stages,
     start,
+    retry,
     stop,
+    detach,
     reset,
     toBlocks,
   };

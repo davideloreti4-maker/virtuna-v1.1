@@ -32,6 +32,7 @@ import {
   type SlotKind,
 } from "@/lib/tools/composed-card-schema";
 import { materializeReceipts } from "@/lib/tools/composed-card-receipt";
+import { plainDashes } from "@/lib/tools/plain-dashes";
 import type { HookProof } from "@/lib/tools/proof-schema";
 
 /**
@@ -258,6 +259,52 @@ function receiptRefsOf(block: ComposedCardBlock): string[] {
 }
 
 /**
+ * The chat thread's dash pass (plain-dashes.ts) over a composed card's PROSE: labels, notes,
+ * bullets, beats, comparison points. The words a creator films or quotes keep the model's
+ * punctuation: a hook-set `line` deliverable, a `quote` slot's text, a `script_timeline` line.
+ * Ids and receipt refs are not text and are never touched.
+ */
+function plainSlot(slot: Slot): Slot {
+  switch (slot.kind) {
+    case "beats":
+      return { ...slot, items: slot.items.map((b) => ({ label: plainDashes(b.label), text: plainDashes(b.text) })) };
+    case "stat_row":
+      return { ...slot, stats: slot.stats.map((it) => ({ ...it, label: plainDashes(it.label) })) };
+    case "bullets":
+    case "chips":
+      return { ...slot, items: slot.items.map(plainDashes) };
+    case "quote":
+      return slot.attribution === undefined ? slot : { ...slot, attribution: plainDashes(slot.attribution) };
+    case "label_values":
+      return { ...slot, rows: slot.rows.map((r) => ({ label: plainDashes(r.label), value: plainDashes(r.value) })) };
+    case "comparison":
+      return {
+        ...slot,
+        columns: slot.columns.map((c) => ({ ...c, title: plainDashes(c.title), points: c.points.map(plainDashes) })),
+      };
+    case "note":
+      return { ...slot, text: plainDashes(slot.text) };
+    default:
+      return slot;
+  }
+}
+
+function plainCardProse(block: ComposedCardBlock): ComposedCardBlock {
+  const p = block.props;
+  return {
+    ...block,
+    props: {
+      ...p,
+      ...(p.eyebrow !== undefined ? { eyebrow: plainDashes(p.eyebrow) } : {}),
+      ...(p.why !== undefined ? { why: plainDashes(p.why) } : {}),
+      deliverable: p.deliverable.kind === "line" ? p.deliverable : { ...p.deliverable, text: plainDashes(p.deliverable.text) },
+      body: p.body.map(plainSlot),
+      ...(p.disclosure !== undefined ? { disclosure: p.disclosure.map(plainSlot) } : {}),
+    },
+  };
+}
+
+/**
  * Validate a model `emit_card` call and return renderable blocks.
  *
  * All-or-nothing by design. A set is one answer — three hooks where the creator asked for three —
@@ -312,7 +359,7 @@ export async function handleEmitCard(
   for (const card of cards) {
     const parsed = parseComposedCard({ type: "composed-card", props: card });
     if (!parsed.ok) return { blocks: [], error: parsed.reason };
-    blocks.push(parsed.block);
+    blocks.push(plainCardProse(parsed.block));
   }
 
   // D7 — one round-trip for the whole call, then attach. `materializeReceipts` already de-dupes,

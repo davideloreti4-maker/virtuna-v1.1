@@ -22,11 +22,22 @@ vi.mock("@/lib/supabase/service", () => ({
   createServiceClient: vi.fn(),
 }));
 
-vi.mock("@/lib/threads/messages", () => ({
-  insertMessage: vi.fn(),
-}));
+// The message store is stubbed in this file. A user turn reaches `insertMessage` as it did before
+// `insertUserTurnUnlessRepeat` (its repeat rule is tested against a real store in
+// src/lib/threads/__tests__/insert-user-turn.test.ts and the chat and ideas route-repeat-ask tests).
+vi.mock("@/lib/threads/messages", () => {
+  const insertMessage = vi.fn();
+  return {
+    insertMessage,
+    insertUserTurnUnlessRepeat: (threadId: string, block: unknown, kcGenVersion?: string) =>
+      insertMessage(threadId, "user", [block], kcGenVersion),
+  };
+});
 
-vi.mock("@/lib/threads/threads", () => ({
+// The real `setThreadTitleIfEmpty` runs (its write goes to the stubbed service client below);
+// only the thread lookup is stubbed.
+vi.mock("@/lib/threads/threads", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/threads/threads")>()),
   createOpenThreadLazy: vi.fn(),
   getOpenThread: vi.fn(),
 }));
@@ -257,6 +268,66 @@ describe("POST /api/tools/ideas (route)", () => {
 
     expect(rawOutput).toContain("scrollQuote");
     expect(rawOutput).toContain("This stopped me because 1");
+  });
+
+  // A chat started from Ideas used to stay untitled: the route never titled its thread. Like the
+  // hooks route: the typed ask, else the top idea's title, written once after the cards persist.
+  describe("titles the thread", () => {
+    async function runIdeas(body: unknown, blocks: IdeaCardBlock[]) {
+      const { createClient } = await import("@/lib/supabase/server");
+      const { createServiceClient } = await import("@/lib/supabase/service");
+      const { runIdeasPipeline } = await import("@/lib/tools/runners/ideas-runner");
+      const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+      const { insertMessage } = await import("@/lib/threads/messages");
+
+      // The database, stubbed: it records the title write and its guards.
+      const svc = {
+        from: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        update: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockResolvedValue({ data: { id: "thread-t" }, error: null }),
+      };
+      (createClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+        auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "u-t" } } }) },
+        from: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+      });
+      (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue(svc);
+      (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "thread-t" });
+      (runIdeasPipeline as ReturnType<typeof vi.fn>).mockResolvedValue({ blocks, warnings: [], seedHookPath: "structured" });
+      (insertMessage as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "msg-t" });
+
+      const { POST } = await import("@/app/api/tools/ideas/route");
+      const res = await POST(makeRequest(body));
+      await res.text();
+      return svc;
+    }
+
+    it("from the typed ask", async () => {
+      const svc = await runIdeas({ ask: "  meal prep for busy students  " }, [makeIdeaCard(1), makeIdeaCard(2)]);
+      expect(svc.update).toHaveBeenCalledTimes(1);
+      expect(svc.update).toHaveBeenCalledWith({ title: "meal prep for busy students" });
+      expect(svc.from).toHaveBeenCalledWith("threads");
+      expect(svc.eq).toHaveBeenCalledWith("id", "thread-t");
+      expect(svc.eq).toHaveBeenCalledWith("user_id", "u-t");
+      // Write-once: only an untitled thread takes it.
+      expect(svc.is).toHaveBeenCalledWith("title", null);
+    });
+
+    it("from the top idea's title when nothing was typed", async () => {
+      const svc = await runIdeas({}, [makeIdeaCard(1), makeIdeaCard(2)]);
+      expect(svc.update).toHaveBeenCalledTimes(1);
+      expect(svc.update).toHaveBeenCalledWith({ title: "Idea 1" });
+    });
+
+    it("not at all when the run made no ideas", async () => {
+      const svc = await runIdeas({ ask: "meal prep" }, []);
+      expect(svc.update).not.toHaveBeenCalled();
+    });
   });
 });
 

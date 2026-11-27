@@ -19,11 +19,26 @@ vi.mock("@/lib/supabase/server", () => ({
   createClient: vi.fn(),
 }));
 
-vi.mock("@/lib/threads/messages", () => ({
-  insertMessage: vi.fn(),
+// The message store is stubbed in this file. A user turn reaches `insertMessage` as it did before
+// `insertUserTurnUnlessRepeat` (its repeat rule is tested against a real store in
+// src/lib/threads/__tests__/insert-user-turn.test.ts and the chat and ideas route-repeat-ask tests).
+vi.mock("@/lib/threads/messages", () => {
+  const insertMessage = vi.fn();
+  return {
+    insertMessage,
+    insertUserTurnUnlessRepeat: (threadId: string, block: unknown, kcGenVersion?: string) =>
+      insertMessage(threadId, "user", [block], kcGenVersion),
+  };
+});
+
+vi.mock("@/lib/supabase/service", () => ({
+  createServiceClient: vi.fn(),
 }));
 
-vi.mock("@/lib/threads/threads", () => ({
+// The real `setThreadTitleIfEmpty` runs (its write goes to the stubbed service client);
+// only the thread lookup is stubbed.
+vi.mock("@/lib/threads/threads", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/threads/threads")>()),
   createOpenThreadLazy: vi.fn(),
 }));
 
@@ -328,5 +343,72 @@ describe("POST /api/tools/script (SSE route)", () => {
     expect(rawOutput).toContain("\"band\"");
     expect(rawOutput).toContain("\"fraction\"");
     expect(rawOutput).toContain("sim1-flash");
+  });
+
+  // A chat started from Script used to stay untitled: the route never titled its thread. Like the
+  // hooks route: the typed ask, else the hook it was written from, else the script's own opening
+  // line, written once after the card persists.
+  describe("titles the thread", () => {
+    async function runScript(body: unknown, blocks: ScriptCardBlock[]) {
+      const { createClient } = await import("@/lib/supabase/server");
+      const { createServiceClient } = await import("@/lib/supabase/service");
+      const { runScriptPipeline } = await import("@/lib/tools/runners/script-runner");
+      const { createOpenThreadLazy } = await import("@/lib/threads/threads");
+      const { insertMessage } = await import("@/lib/threads/messages");
+
+      // The database, stubbed: it records the title write and its guards.
+      const svc = {
+        from: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        update: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockResolvedValue({ data: { id: "thread-t" }, error: null }),
+      };
+      (createClient as ReturnType<typeof vi.fn>).mockResolvedValue({
+        auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: "u-t" } } }) },
+        from: vi.fn().mockReturnThis(),
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+      });
+      (createServiceClient as ReturnType<typeof vi.fn>).mockReturnValue(svc);
+      (createOpenThreadLazy as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "thread-t" });
+      (runScriptPipeline as ReturnType<typeof vi.fn>).mockResolvedValue({ blocks, warnings: [] });
+      (insertMessage as ReturnType<typeof vi.fn>).mockResolvedValue({ id: "msg-t" });
+
+      const { POST } = await import("@/app/api/tools/script/route");
+      const res = await POST(makeScriptRequest(body));
+      await res.text();
+      return svc;
+    }
+
+    it("from the typed ask", async () => {
+      const svc = await runScript({ ask: "  a script about meal prep  ", anchor: "The anchor hook" }, [makeScriptCard()]);
+      expect(svc.update).toHaveBeenCalledTimes(1);
+      expect(svc.update).toHaveBeenCalledWith({ title: "a script about meal prep" });
+      expect(svc.from).toHaveBeenCalledWith("threads");
+      expect(svc.eq).toHaveBeenCalledWith("id", "thread-t");
+      expect(svc.eq).toHaveBeenCalledWith("user_id", "u-t");
+      // Write-once: only an untitled thread takes it.
+      expect(svc.is).toHaveBeenCalledWith("title", null);
+    });
+
+    it("from the hook it was written from when nothing was typed", async () => {
+      const svc = await runScript({ anchor: "Nobody tells you this about meal prep" }, [makeScriptCard()]);
+      expect(svc.update).toHaveBeenCalledTimes(1);
+      expect(svc.update).toHaveBeenCalledWith({ title: "Nobody tells you this about meal prep" });
+    });
+
+    it("from the script's opening line when there is neither", async () => {
+      const svc = await runScript({}, [makeScriptCard()]);
+      expect(svc.update).toHaveBeenCalledTimes(1);
+      expect(svc.update).toHaveBeenCalledWith({ title: "Did you know 90% quit?" });
+    });
+
+    it("not at all when the run made no script", async () => {
+      const svc = await runScript({ ask: "a script" }, []);
+      expect(svc.update).not.toHaveBeenCalled();
+    });
   });
 });

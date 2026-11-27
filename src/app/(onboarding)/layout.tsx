@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { AuthFrame } from "@/components/auth-next/auth-frame";
 import { MavenLogo } from "@/components/brand/maven-logo";
+import { NEW_LOOK_ENABLED } from "@/lib/flags/new-look";
 
 /**
  * Onboarding layout — minimal centered layout for auth and welcome pages.
@@ -8,6 +10,8 @@ import { MavenLogo } from "@/components/brand/maven-logo";
 export default function OnboardingLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
+  // New look: the frame the auth screens are drawn for (lockup top left, the theme's ground).
+  if (NEW_LOOK_ENABLED) return <AuthFrame>{children}</AuthFrame>;
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-background px-4">
       <div className="mb-8">

@@ -256,6 +256,7 @@ describe("Test field (kind: upload — a video file OR a TikTok URL)", () => {
       input_mode: "tiktok_url",
       content_type: "video",
       tiktok_url: "https://tiktok.com/@x/video/1",
+      run_nonce: expect.any(String), // the run's own nonce: one card per run
     });
   });
 
@@ -271,6 +272,7 @@ describe("Test field (kind: upload — a video file OR a TikTok URL)", () => {
       input_mode: "tiktok_url",
       content_type: "video",
       tiktok_url: "https://tiktok.com/@x/video/7",
+      run_nonce: expect.any(String), // the run's own nonce: one card per run
     });
   });
 

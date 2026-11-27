@@ -38,13 +38,15 @@
 
 import { createClient } from "@/lib/supabase/server";
 import { maybeMockSkillRun } from "@/lib/tools/mock/mock-sse";
-import { createOpenThreadLazy } from "@/lib/threads/threads";
-import { insertMessage } from "@/lib/threads/messages";
+import { createOpenThreadLazy, setThreadTitleIfEmpty } from "@/lib/threads/threads";
+import { insertMessage, insertUserTurnUnlessRepeat } from "@/lib/threads/messages";
 import { runHeaderBlock } from "@/lib/tools/run-header";
 import { runScriptPipeline } from "@/lib/tools/runners/script-runner";
 import { kcStamp } from "@/lib/kc/kc-stamp";
 import { getQwenClient, QWEN_REASONING_MODEL } from "@/lib/engine/qwen/client";
 import { KC_CHAT_SYSTEM_PROMPT } from "@/lib/kc/compiled";
+import { withChatVoice, scriptClosingPrompt } from "@/lib/tools/chat-voice";
+import { plainDashes } from "@/lib/tools/plain-dashes";
 import { resolveThreadAudience } from "@/lib/audience/resolve-thread-audience";
 import { requireSocialsAudience } from "@/lib/audience/require-socials-audience";
 import { goalIntentToLens, parseIntentLens } from "@/lib/audience/intent-lens";
@@ -189,10 +191,10 @@ export async function POST(request: Request): Promise<Response> {
     (rawAnchor
       ? `Write a script from "${rawAnchor.length > 80 ? `${rawAnchor.slice(0, 80).trimEnd()}…` : rawAnchor}"`
       : "Write a script");
-  await insertMessage(
+  // Not stored again when it is already the thread's last message (a Retry of a failed run).
+  await insertUserTurnUnlessRepeat(
     openThread.id,
-    "user",
-    [{ type: "markdown", props: { text: userAction } }],
+    { type: "markdown", props: { text: userAction } },
     kcStamp().kcGenVersion,
   );
 
@@ -297,6 +299,16 @@ export async function POST(request: Request): Promise<Response> {
             ],
             kcStamp().kcGenVersion,
           );
+
+          // Title the thread as the hooks route does: typed ask > the hook it was written from >
+          // the script's opening line (the line the read-repair takes from a script card too).
+          // Without this a chat started from Script stayed untitled. Write-once + best-effort —
+          // never fails the run.
+          await setThreadTitleIfEmpty(
+            user.id,
+            openThread.id,
+            rawAsk.trim() || rawAnchor?.trim() || blocks[0]?.props.openingBeatSeed,
+          );
         }
 
         // ── DONE (S2): emit BEFORE the follow-up turn ────────────────────────
@@ -319,22 +331,16 @@ export async function POST(request: Request): Promise<Response> {
           try {
             const card = blocks[0];
             if (!card) throw new Error("no card");
-            const beatLabels = card.props.beats
-              .slice(0, 3)
-              .map((b) => `${b.label}: "${b.content.slice(0, 80)}"`)
-              .join("\n");
-            const followupPrompt = `You just generated a script for this creator. Here are the key beats:
-
-${beatLabels}
-
-Write ONE short sentence: a concrete observation about the script's structure (what's strong about the opener, an interesting beat transition, or a craft pattern), followed by a single offered next step (refine a beat, test the hook on SIM-1 Max, or turn this into a Remix). Be direct and specific — reference the actual beats. Do not use bullet points. Keep it under 40 words.`;
+            const followupPrompt = scriptClosingPrompt(
+              card.props.beats.slice(0, 3).map((b) => ({ label: b.label, content: b.content.slice(0, 80) })),
+            );
 
             const ai = getQwenClient();
             let followupText = "";
             const followupParams = {
               model: QWEN_REASONING_MODEL,
               messages: [
-                { role: "system" as const, content: KC_CHAT_SYSTEM_PROMPT },
+                { role: "system" as const, content: withChatVoice(KC_CHAT_SYSTEM_PROMPT) },
                 { role: "user" as const, content: followupPrompt },
               ],
               stream: true as const,
@@ -347,6 +353,8 @@ Write ONE short sentence: a concrete observation about the script's structure (w
               followupText += chunk.choices[0]?.delta?.content ?? "";
             }
 
+            // No dash reaches the thread (plain-dashes.ts): stored and sent as the same text.
+            followupText = plainDashes(followupText);
             if (followupText.trim()) {
               await insertMessage(
                 openThread.id,

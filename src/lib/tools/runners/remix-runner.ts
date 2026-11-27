@@ -435,6 +435,7 @@ export async function runRemixPipeline(input: RemixPipelineInput): Promise<Remix
       structure: beatBody("structure_pacing"),
       theTurn: beatBody("the_turn"),
       emotionalBeat: beatBody("emotional_beat"),
+      ...(decode.whyPlain ? { whyPlain: decode.whyPlain } : {}),
     };
 
     // The source receipt (§11f) — the SAME anatomy the grounded cards carry, so a remix names
