@@ -22,6 +22,8 @@ export interface YouAccount {
   /** No leading "@", lower case (as stored). */
   handle: string;
   primary: boolean;
+  /** Profile picture — our rehosted storage URL (`connected_accounts.avatar_url`), or null. */
+  picture: string | null;
 }
 
 export interface YouRead {
@@ -49,7 +51,7 @@ export interface YouPage {
 type Db = { from: (table: string) => any };
 type Result = { data: Record<string, unknown>[] | null; error: { message: string } | null };
 
-const ACCOUNT_COLUMNS = "id, platform, handle, is_primary";
+const ACCOUNT_COLUMNS = "id, platform, handle, is_primary, avatar_url";
 const READ_COLUMNS =
   "handle:calibration->>handle, scraped_at:calibration->>scraped_at, updated_at, " +
   "content_description:creator_persona->>content_description, context:creator_persona->>context";
@@ -121,6 +123,7 @@ export async function readYouPage(supabase: SupabaseClient, userId: string): Pro
     platform: row.platform as Platform,
     handle: String(row.handle),
     primary: row.is_primary === true,
+    picture: text(row.avatar_url),
   }));
   const primary = accounts.find((a) => a.primary) ?? null;
   const [followers, read] = await Promise.all([followersOf(db, userId, primary), readOf(db, userId, primary)]);

@@ -7,8 +7,9 @@
  * is given (`now`). What leaves here is serialisable (no Map, no Date): the server read hands it to the client.
  *
  * The counts a group shows are the ring's: `ringDots` decides them, so the ring and the text never disagree,
- * and they add up to 1,000. No stored picture is read (a connected account stores none), so every face is the
- * initial.
+ * and they add up to 1,000. A face shows the connected account's stored picture (`connected_accounts.avatar_url`,
+ * our rehosted copy) over its initial, and its platform's badge; an audience with no account behind it shows the
+ * initial. A video row carries its stored cover (`account_posts.cover_url`), or null.
  */
 import { accountForAudience, groupAudiences } from "@/components/audience/audience-display";
 import type { AccountSnapshot } from "@/lib/account-metrics/account-metrics";
@@ -32,15 +33,20 @@ export const SETTLE_MAX_MS = 30_000; // after `done`, wait at most this for the 
 
 export type AudienceKind = "own" | "other" | "described";
 export type Whose = "your" | "their" | "the";
+export type PagePlatform = "tiktok" | "instagram" | "youtube";
 export interface Face {
   initial: string;
   picture: string | null;
+  /** The platform whose badge sits on the face's corner; absent or null: none (a described audience). */
+  platform?: PagePlatform | null;
 }
 export interface AccountRef {
   id: string;
   handle: string;
-  platform: "tiktok" | "instagram" | "youtube";
+  platform: PagePlatform;
   is_primary: boolean;
+  /** The account's stored picture (our storage URL), or null/absent: none. */
+  picture?: string | null;
 }
 
 export interface PageGroup {
@@ -66,6 +72,7 @@ export interface ReadVideo {
   text: string; // the caption's first line without hashtags, or "No caption"
   views: string; // viewsWord(views): "259K"
   times: { words: string; tone: "above" | "around" | "below" } | null; // "20× your usual"; null without a usual
+  cover: string | null; // the stored cover (our storage URL); null: none, the screen draws a blank tile
 }
 export interface AudiencePage {
   id: string;
@@ -107,6 +114,7 @@ export interface ArchivedPost {
   caption: string;
   views: number;
   is_pinned: boolean;
+  cover_url?: string | null; // our rehosted cover, when one was stored
 }
 /** What the page reads of a topic the account posts about (`buildContentPillars`'s `Pillar` has these). */
 export interface PostedTopic {
@@ -345,6 +353,7 @@ function videosOf(
         text: captionLine(p.caption),
         views: viewsWord(views),
         times: usual === null ? null : { words: timesUsual(views / usual, whose), tone: toneOf(views / usual) },
+        cover: pictureOf(p.cover_url),
       };
     });
   const topics = pillars
@@ -373,6 +382,22 @@ export function splitFirst(value: unknown): SplitText | null {
 export function initialOf(label: string): string {
   const letter = /[\p{L}\p{N}]/u.exec(label)?.[0] ?? Array.from(label.trim())[0] ?? "";
   return letter.toUpperCase();
+}
+
+/** A stored image address the page may draw: an https URL, else null. */
+function pictureOf(value: unknown): string | null {
+  return typeof value === "string" && /^https:\/\/\S+$/.test(value.trim()) ? value.trim() : null;
+}
+
+const PLATFORMS: ReadonlySet<string> = new Set<PagePlatform>(["tiktok", "instagram", "youtube"]);
+
+/** The face of an audience: the account's picture (only an account's), the initial, the platform's badge. */
+function faceOf(kind: AudienceKind, label: string, account: AccountRef | undefined, platform: string): Face {
+  return {
+    initial: initialOf(label),
+    picture: pictureOf(account?.picture),
+    platform: kind !== "described" && PLATFORMS.has(platform) ? (platform as PagePlatform) : null,
+  };
 }
 
 interface Identity {
@@ -431,7 +456,7 @@ export function audiencePageOf(input: PageInput, now: Date): AudiencePage {
     kind,
     whose,
     handle,
-    face: { initial: initialOf(label), picture: null },
+    face: faceOf(kind, label, account, platform),
     source,
     wedges,
     groups,
@@ -469,13 +494,13 @@ export function switcherChoicesOf(
   defaultId: string | null,
 ): SwitcherChoice[] {
   const rows = ownAudiences(audiences).map((a) => {
-    const { kind, name, label, platform } = identityOf(a, accounts, audiences);
+    const { account, kind, name, label, platform } = identityOf(a, accounts, audiences);
     const choice: SwitcherChoice = {
       id: a.id,
       name,
       label,
       line: choiceLine(kind, platform, videosRead(a)),
-      face: { initial: initialOf(label), picture: null },
+      face: faceOf(kind, label, account, platform),
       selected: defaultId !== null && a.id === defaultId,
     };
     return { kind, choice };

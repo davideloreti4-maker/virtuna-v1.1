@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
+import { rehostCreatorAvatar } from "@/lib/connected-accounts/account-media";
 // `after` import removed (Plan 02, R9): scheduleDeferredCounterfactuals deleted; after() no longer used.
 import { nanoid } from "nanoid";
 import { createClient } from "@/lib/supabase/server";
@@ -88,15 +89,18 @@ function backfillCreatorFollowers(
     try {
       const scraper = createScrapingProvider();
       const profileData = await scraper.scrapeProfile(handle);
-      await service
+      // The picture as our storage copy, never the expiring CDN link; left as it was when the copy fails.
+      const avatarUrl = await rehostCreatorAvatar(service, profileData.avatarUrl, handle);
+      const { error } = await service
         .from("creator_profiles")
         .update({
           display_name: profileData.displayName,
           tiktok_followers: profileData.followerCount,
-          avatar_url: profileData.avatarUrl,
+          ...(avatarUrl ? { avatar_url: avatarUrl } : {}),
           bio: profileData.bio,
         })
         .eq("user_id", userId);
+      if (error) throw new Error(error.message);
       log.info("R11 follower backfill complete", { handle });
     } catch (err) {
       log.warn("R11 follower backfill failed (non-blocking)", {

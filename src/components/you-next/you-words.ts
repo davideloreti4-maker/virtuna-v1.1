@@ -104,8 +104,6 @@ export const countLabel = (length: number, limit: number): string => `${length} 
 
 export const PLATFORMS: readonly Platform[] = ["tiktok", "instagram", "youtube"];
 export const PLATFORM_NAMES: Record<Platform, string> = { tiktok: "TikTok", instagram: "Instagram", youtube: "YouTube" };
-/** The letters in an account row's tile (drawn, not read: the row's line names the platform). */
-export const PLATFORM_MARKS: Record<Platform, string> = { tiktok: "TT", instagram: "IG", youtube: "YT" };
 /** As the existing connect dialog words them (`connect-account-dialog.tsx`). */
 export const HANDLE_LABELS: Record<Platform, string> = { tiktok: "TikTok @handle", instagram: "Instagram @handle", youtube: "YouTube @handle" };
 export const HANDLE_PLACEHOLDERS: Record<Platform, string> = { tiktok: "@yourhandle", instagram: "@yourhandle", youtube: "@yourchannel" };

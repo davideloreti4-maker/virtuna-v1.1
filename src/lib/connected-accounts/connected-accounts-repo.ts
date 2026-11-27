@@ -22,6 +22,8 @@ export interface ConnectedAccount {
   platform: Platform;
   handle: string; // no leading '@', lowercased
   display_name: string | null;
+  /** Profile picture — OUR storage URL (rehosted), never a raw CDN URL. Null: none yet. */
+  avatar_url: string | null;
   is_primary: boolean;
   connection_method: "scrape" | "oauth";
   last_synced_at: string | null;
@@ -31,7 +33,7 @@ export interface ConnectedAccount {
 type UntypedClient = { from: (t: string) => any };
 
 const SELECT =
-  "id, user_id, platform, handle, display_name, is_primary, connection_method, last_synced_at";
+  "id, user_id, platform, handle, display_name, avatar_url, is_primary, connection_method, last_synced_at";
 
 function normalize(r: Record<string, unknown>): ConnectedAccount {
   return {
@@ -40,6 +42,7 @@ function normalize(r: Record<string, unknown>): ConnectedAccount {
     platform: r.platform as Platform,
     handle: String(r.handle),
     display_name: (r.display_name as string) ?? null,
+    avatar_url: typeof r.avatar_url === "string" && r.avatar_url ? r.avatar_url : null,
     is_primary: Boolean(r.is_primary),
     connection_method: (r.connection_method as "scrape" | "oauth") ?? "scrape",
     last_synced_at: (r.last_synced_at as string) ?? null,
@@ -171,6 +174,23 @@ export async function touchAccountSynced(
     .from("connected_accounts")
     .update({ last_synced_at: new Date().toISOString() })
     .eq("id", accountId);
+}
+
+/**
+ * Store an account's (already rehosted) profile picture. Pass only OUR storage URL — the caller
+ * rehosts first (see account-media.ts). Returns false on a write error (supabase-js returns errors,
+ * it does not throw); never throws.
+ */
+export async function setAccountAvatar(
+  client: SupabaseClient,
+  accountId: string,
+  avatarUrl: string,
+): Promise<boolean> {
+  const { error } = await (client as unknown as UntypedClient)
+    .from("connected_accounts")
+    .update({ avatar_url: avatarUrl })
+    .eq("id", accountId);
+  return !error;
 }
 
 /**

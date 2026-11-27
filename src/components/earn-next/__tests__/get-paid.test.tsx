@@ -63,7 +63,7 @@ const renderPage = async () => {
       <EarnNext />
     </QueryClientProvider>,
   );
-  await screen.findByRole("heading", { name: "Your link" });
+  await screen.findByRole("heading", { name: "Get paid for every creator you bring" });
   return view;
 };
 const card = () => screen.getByRole("heading", { name: "Get paid" }).closest("section")!;
@@ -296,26 +296,24 @@ describe("Change (ruling 13): the same enrolment with a new username", () => {
 });
 
 describe("The earned number and How it works (rulings 16 and 17)", () => {
-  it("a known number: the top says $24.50 earned in place of Earn 50%; the line under it stays", async () => {
+  it("a known number: the amount line says $24.50 over the goal; the joined line stays", async () => {
     page = { ...BASE, whop: enrolledAs("nia.cooks", 2450) };
     await renderPage();
-    expect(screen.getByText("$24.50 earned")).toBeInTheDocument();
-    expect(screen.queryByText("Earn 50%")).toBeNull();
-    expect(screen.getByText("of a creator's first month, for every creator you bring.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 }).nextElementSibling!.textContent).toBe("$24.50 / $65k goal");
     expect(screen.getByText("3 creators joined through your link")).toBeInTheDocument();
   });
 
-  it("a known zero is a number too: $0 earned", async () => {
+  it("a known zero is a number too: $0 / $65k goal", async () => {
     page = { ...BASE, whop: enrolledAs("nia.cooks", 0) };
     await renderPage();
-    expect(screen.getByText("$0 earned")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 }).nextElementSibling!.textContent).toBe("$0 / $65k goal");
   });
 
-  it("an unknown number: Earn 50%, and no money anywhere", async () => {
+  it("an unknown number: the goal alone, and no money anywhere else", async () => {
     page = { ...BASE, whop: enrolledAs("nia.cooks", null) };
     await renderPage();
-    expect(screen.getByText("Earn 50%")).toBeInTheDocument();
-    expect(document.body.textContent).not.toMatch(/\$|earned/);
+    expect(screen.getByText("$65k goal")).toBeInTheDocument();
+    expect(document.body.textContent!.replace("$65k goal", "")).not.toMatch(/\$/);
   });
 
   it("line 3 names Whop when Whop can pay", async () => {
@@ -333,36 +331,32 @@ describe("The earned number and How it works (rulings 16 and 17)", () => {
   });
 });
 
-describe("Layout (ruling 23) and reading order", () => {
-  it("desktop: the left column (Your link, Get paid, How it works) packs at the grid's gap; the share card spans it, the last row takes what is left", async () => {
+describe("Layout and reading order", () => {
+  it("two columns: the link and share card left; right, Get paid over How it works", async () => {
     await renderPage();
-    const link = screen.getByRole("heading", { name: "Your link" }).closest("section")!;
+    const link = screen.getByRole("heading", { name: "Get paid for every creator you bring" }).closest("section")!;
     const how = screen.getByRole("heading", { name: "How it works" }).closest("section")!;
-    const share = document.querySelector("[data-share-card]")!.closest("[data-earn-share]")!;
     const grid = link.parentElement!;
     expect(grid.className).toMatch(/(^|\s)gap-3(\s|$)/);
-    expect(grid.className).toContain("lg:grid-rows-[auto_auto_1fr]");
-    expect(link.className).toContain("lg:row-start-1");
-    expect(card().className).toContain("lg:row-start-2");
-    expect(how.className).toContain("lg:row-start-3");
-    for (const el of [link, card(), how]) expect(el.className).toContain("lg:col-start-1");
-    expect(share.className).toContain("lg:col-start-2");
-    expect(share.className).toContain("lg:row-span-3");
+    expect(grid.className).toContain("md:grid-cols-2");
+    const right = how.parentElement!;
+    expect(right.parentElement).toBe(grid);
+    expect(right.firstElementChild).toBe(card());
+    expect(right.lastElementChild).toBe(how);
+    expect(link.contains(document.querySelector("[data-share-card]"))).toBe(true);
   });
 
-  it("without the card: two rows, the same rule", async () => {
+  it("without the card: the right column is How it works alone", async () => {
     page = { ...BASE, whop: null };
     await renderPage();
-    const link = screen.getByRole("heading", { name: "Your link" }).closest("section")!;
-    expect(link.parentElement!.className).toContain("lg:grid-rows-[auto_1fr]");
-    expect(document.querySelector("[data-earn-share]")!.className).toContain("lg:row-span-2");
-    expect(screen.getByRole("heading", { name: "How it works" }).closest("section")!.className).toContain("lg:row-start-2");
+    const how = screen.getByRole("heading", { name: "How it works" }).closest("section")!;
+    expect(how.parentElement!.children).toHaveLength(1);
   });
 
-  it("the controls in reading order: the link, Copy, the card's field and Save, Save image", async () => {
+  it("the controls in reading order: the link, Copy, Save image, the card's field and Save", async () => {
     await renderPage();
-    const order = [...document.querySelectorAll<HTMLElement>("input, button, a[href]")].map((el) => (el.tagName === "INPUT" ? `field:${el.getAttribute("aria-labelledby") ? "link" : "whop"}` : el.textContent));
-    expect(order).toEqual(["field:link", "Copy", "field:whop", "Save", "Save image"]);
+    const order = [...document.querySelectorAll<HTMLElement>("input, button, a[href]")].map((el) => (el.tagName === "INPUT" ? `field:${el.getAttribute("aria-label") ? "link" : "whop"}` : el.textContent));
+    expect(order).toEqual(["field:link", "Copy", "Save image", "field:whop", "Save"]);
   });
 
   it("the field and its buttons are at least 44 tall", async () => {

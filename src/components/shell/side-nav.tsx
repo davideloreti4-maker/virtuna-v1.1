@@ -26,6 +26,7 @@ import { initialAutoRail } from "@/lib/shell/side-nav-default";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 import { useBoardStore } from "@/stores/board-store";
+import { PlatformBadge, platformIdOf } from "@/components/brand/platform-logo";
 import { useShellStore } from "@/stores/shell-store";
 import {
   EARN,
@@ -153,6 +154,9 @@ export function SideNav({ actions }: { actions: ThreadActions }) {
   const initials = profileName
     ? profileName.split(/\s+/).map((word) => word[0]).join("").slice(0, 2).toUpperCase()
     : "?";
+  // The connected account (primary first): its platform's mark on the picture, its handle under the name.
+  const accountPlatform = platformIdOf(profile?.account?.platform);
+  const accountHandle = profile?.account?.handle ?? null;
   // The balance, as the phone's Home shows it: only for a paid plan or a trial pool with a
   // countable limit (`shownBalance`). null = no plan, unlimited or not loaded: no tag.
   const left = shownBalance(usage, tier, isTrial);
@@ -225,6 +229,8 @@ export function SideNav({ actions }: { actions: ThreadActions }) {
               href={place.href}
               aria-current={active ? "page" : undefined}
               aria-label={collapsed ? place.label : undefined}
+              // Home is Home, never the empty new-chat screen ("New chat" is that).
+              onClick={place.id === "home" ? () => useShellStore.getState().setNewChat(false) : undefined}
               className={rowClass(active, collapsed)}
             >
               <Glyph size={18} aria-hidden />
@@ -288,10 +294,22 @@ export function SideNav({ actions }: { actions: ThreadActions }) {
                 collapsed ? "justify-center" : "w-full",
               )}
             >
-              <Avatar src={profile?.avatar ?? undefined} alt="" fallback={initials} size="sm" className="h-7 w-7" />
+              {/* The creator's picture (owner 2026-11-26: their connected account's, when they have not
+                  uploaded one; the profile read falls back to it) with the platform's mark at its corner. */}
+              <span className="relative inline-flex shrink-0">
+                <Avatar src={profile?.avatar ?? undefined} alt="" fallback={initials} size="sm" className="h-8 w-8" />
+                {accountPlatform && <PlatformBadge platform={accountPlatform} size={14} className="absolute -bottom-0.5 -right-0.5" />}
+              </span>
               {!collapsed && (
                 <>
-                  <span className="min-w-0 flex-1 truncate text-reading font-[560] text-foreground">{name}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-reading font-[560] text-foreground">{name}</span>
+                    {accountHandle && (
+                      <span data-part="handle" className="block truncate text-meta text-foreground-secondary">
+                        @{accountHandle}
+                      </span>
+                    )}
+                  </span>
                   {left !== null && <Badge className="tabular-nums">{creditsLabel(left)}</Badge>}
                 </>
               )}

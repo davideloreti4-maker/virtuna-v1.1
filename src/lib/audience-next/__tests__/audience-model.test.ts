@@ -404,6 +404,15 @@ describe("the videos Maven read", () => {
     expect(page.videos!.rows.map((r) => r.key)).toEqual(["7300000000000000011", "7300000000000000013", "7300000000000000014"]);
   });
 
+  it("a row's cover: the post's stored cover_url (https only), else null", () => {
+    const url = "https://proj.supabase.co/storage/v1/object/public/covers/account/tiktok/7300000000000000001.jpg";
+    const cover = (over: Parameters<typeof A.post>[0]) => ownPage({ posts: [A.post(over)] }).videos!.rows[0]!.cover;
+    expect(cover({ cover_url: url })).toBe(url);
+    expect(cover({ cover_url: null })).toBeNull();
+    expect(cover({})).toBeNull();
+    expect(cover({ cover_url: "http://insecure.test/a.jpg" })).toBeNull();
+  });
+
   it("a row's text: the caption's first line without hashtags, else No caption", () => {
     const rows = (caption: string) => ownPage({ posts: [A.post({ caption })] }).videos!.rows[0]!.text;
     expect(rows("Robots farm now #ai #tech\nsecond line")).toBe("Robots farm now");
@@ -551,15 +560,30 @@ describe("the rest of the page", () => {
     expect(ownPage().readAgain).not.toBeNull();
   });
 
-  it("the name, the label, the handle and the face; never a picture (no account stores one)", () => {
+  it("the name, the label, the handle and the face: the account's picture when it stores one, and its platform", () => {
     const mine = ownPage();
     expect([mine.id, mine.name, mine.label, mine.handle]).toEqual([A.uuid(1), "@nia.tests", "@nia.tests", "nia.tests"]);
-    expect(mine.face).toEqual({ initial: "N", picture: null });
+    expect(mine.face).toEqual({ initial: "N", picture: null, platform: "tiktok" });
+    const pictured = ownPage({ accounts: [A.account({ picture: "https://proj.supabase.co/storage/v1/object/public/avatars/account/tiktok/nia.tests.jpg" })] });
+    expect(pictured.face).toEqual({
+      initial: "N",
+      picture: "https://proj.supabase.co/storage/v1/object/public/avatars/account/tiktok/nia.tests.jpg",
+      platform: "tiktok",
+    });
+    // Only an https address is drawn.
+    expect(ownPage({ accounts: [A.account({ picture: "javascript:alert(1)" })] }).face.picture).toBeNull();
+    expect(ownPage({ accounts: [A.account({ picture: "" })] }).face.picture).toBeNull();
+    // Another creator's audience has no connected account behind it: the initial, with its platform's badge.
+    expect(pageOf({ audience: A.other(), accounts: [A.account({ picture: "https://x.test/a.jpg" })] }).face).toEqual({
+      initial: "L",
+      picture: null,
+      platform: "tiktok",
+    });
     const renamed = ownPage({ audience: A.own({ name: "My people" }) });
     expect([renamed.name, renamed.label]).toEqual(["My people", "@nia.tests"]);
     const desc = pageOf({ audience: A.described({ name: "busy parents" }) });
     expect([desc.name, desc.label, desc.handle]).toEqual(["busy parents", "busy parents", null]);
-    expect(desc.face).toEqual({ initial: "B", picture: null });
+    expect(desc.face).toEqual({ initial: "B", picture: null, platform: null });
     // The handle comes from the account, lower case and without "@".
     const shouting = pageOf({ audience: A.own(), accounts: [A.account({ handle: "@Nia.Tests" })] });
     expect(shouting.handle).toBe("nia.tests");
@@ -587,20 +611,27 @@ describe("switcherChoicesOf", () => {
   it("each with name, label, line and face; the check only on the default", () => {
     const choices = switcherChoicesOf(list, [ACCOUNT], leo.id);
     expect(choices).toEqual([
-      { id: mine.id, name: "@nia.tests", label: "@nia.tests", line: "TikTok · 12 videos read", face: { initial: "N", picture: null }, selected: false },
-      { id: second.id, name: "@nia.second", label: "@nia.second", line: "TikTok", face: { initial: "N", picture: null }, selected: false },
+      { id: mine.id, name: "@nia.tests", label: "@nia.tests", line: "TikTok · 12 videos read", face: { initial: "N", picture: null, platform: "tiktok" }, selected: false },
+      { id: second.id, name: "@nia.second", label: "@nia.second", line: "TikTok", face: { initial: "N", picture: null, platform: "tiktok" }, selected: false },
       {
         id: parents.id,
         name: "Busy parents who meal-prep",
         label: "Busy parents who meal-prep",
         line: "Described by you",
-        face: { initial: "B", picture: null },
+        face: { initial: "B", picture: null, platform: null },
         selected: false,
       },
-      { id: leo.id, name: "@leo.makes", label: "@leo.makes", line: "Another creator · TikTok", face: { initial: "L", picture: null }, selected: true },
+      { id: leo.id, name: "@leo.makes", label: "@leo.makes", line: "Another creator · TikTok", face: { initial: "L", picture: null, platform: "tiktok" }, selected: true },
     ]);
     expect(switcherChoicesOf(list, [ACCOUNT], null).every((c) => !c.selected)).toBe(true);
     expect(switcherChoicesOf(list, [ACCOUNT], "general").every((c) => !c.selected)).toBe(true);
+  });
+
+  it("an own-account row shows the account's stored picture", () => {
+    const url = "https://proj.supabase.co/storage/v1/object/public/avatars/account/tiktok/nia.tests.jpg";
+    const choices = switcherChoicesOf(list, [A.account({ picture: url })], null);
+    expect(choices.find((c) => c.id === mine.id)!.face.picture).toBe(url);
+    expect(choices.find((c) => c.id === leo.id)!.face.picture).toBeNull();
   });
 
   it("no audience of their own: no rows", () => {

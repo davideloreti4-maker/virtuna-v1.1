@@ -4,12 +4,23 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/lib/queries/query-keys";
 import type { UserProfile, NotificationPrefs } from "@/types/settings";
 
+/** The creator's own social account (GET /api/profile `account`): the primary connected account,
+ *  else the oldest. `avatar` is our rehosted storage URL, or null. */
+export interface ProfileAccount {
+  platform: "tiktok" | "instagram" | "youtube";
+  handle: string;
+  displayName: string | null;
+  avatar: string | null;
+}
+
 interface ProfileResponse {
   name: string;
   email: string;
   company: string;
   role: string;
   avatar: string | null;
+  /** Null when no account is connected. */
+  account: ProfileAccount | null;
   notifications: NotificationPrefs;
 }
 

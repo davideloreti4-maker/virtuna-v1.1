@@ -57,18 +57,21 @@ const renderPage = () =>
       <EarnNext />
     </QueryClientProvider>,
   );
-const ready = () => screen.findByRole("heading", { name: "Your link" });
+const ready = () => screen.findByRole("heading", { name: "Get paid for every creator you bring" });
 const field = () => screen.getByRole("textbox", { name: "Your link" });
 const button = (name: string) => screen.getByRole("button", { name });
 const shareCard = () => document.querySelector<HTMLElement>("[data-share-card]")!;
 
 describe("Earn: what it shows (ruling 10)", () => {
-  it("the top: a big Earn 50%, the first month, and how many creators joined", async () => {
+  it("the top: Your Earnings, $0 over the goal, the rate in the card's subtitle, and how many creators joined", async () => {
     renderPage();
     await ready();
-    expect(screen.getByText("Earn 50%")).toBeInTheDocument();
-    expect(screen.getByText("of a creator's first month, for every creator you bring.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent("Your Earnings");
+    const amountLine = screen.getByRole("heading", { level: 1 }).nextElementSibling!;
+    expect(amountLine.textContent).toBe("$0 / $65k goal");
+    expect(screen.getByText("50% of each referred creator's first month.")).toBeInTheDocument();
     expect(screen.getByText("3 creators joined through your link")).toBeInTheDocument();
+    expect(document.body.textContent).not.toContain("Earn 50%");
     expect(String((fetchMock.mock.calls[0] as unknown[])[0])).toBe("/api/earn");
   });
 
@@ -82,11 +85,11 @@ describe("Earn: what it shows (ruling 10)", () => {
     expect(screen.getByText(words)).toBeInTheDocument();
   });
 
-  it("names the screen in the phone's header and once on the page", async () => {
+  it("names the screen in the phone's header, and one h1 on the page", async () => {
     renderPage();
     await ready();
     expect(useShellStore.getState().pushedTitle).toBe("Earn");
-    expect(screen.getAllByRole("heading", { level: 1 }).map((h) => h.textContent)).toEqual(["Earn"]);
+    expect(screen.getAllByRole("heading", { level: 1 }).map((h) => h.textContent)).toEqual(["Your Earnings"]);
   });
 
   it("Your link: the link in a field, Copy; How it works: the three lines in order", async () => {
@@ -119,11 +122,30 @@ describe("Earn: what it shows (ruling 10)", () => {
     expect(shareCard().textContent).toBe("MavenYOU EARN50%K349Z4QP");
   });
 
-  it("no money amount, no list of creators, nothing of step B", async () => {
+  it("nothing earned and nobody joined: the EARNINGS card says No earnings yet", async () => {
+    page = { ...PAGE, joined: 0 };
     renderPage();
     await ready();
-    const text = document.body.textContent!;
-    expect(text).not.toMatch(/\$|earned|Your creators|Creator 1|Paying|pending|ready/);
+    const section = screen.getByRole("heading", { name: "Earnings" }).closest("section")!;
+    expect(within(section).getByText("No earnings yet")).toBeInTheDocument();
+    expect(within(section).getByText("Share your link or the card.")).toBeInTheDocument();
+  });
+
+  it("creators joined: the EARNINGS card shows Earned and Creators joined (no Paid by without a payment side)", async () => {
+    renderPage();
+    await ready();
+    const section = screen.getByRole("heading", { name: "Earnings" }).closest("section")!;
+    expect(within(section).queryByText("No earnings yet")).toBeNull();
+    expect([...section.querySelectorAll("dt")].map((dt) => dt.textContent)).toEqual(["Earned", "Creators joined"]);
+    expect([...section.querySelectorAll("dd")].map((dd) => dd.textContent)).toEqual(["$0", "3"]);
+  });
+
+  it("the payment side unreadable: no payouts card, no fine print about Whop", async () => {
+    renderPage();
+    await ready();
+    expect(screen.queryByRole("heading", { name: "Get paid" })).toBeNull();
+    expect(screen.getByRole("heading", { name: "How it works" })).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/Whop|not credited/);
   });
 
   it("has no accessibility violations", async () => {
@@ -258,14 +280,14 @@ describe("Earn: loading, failing, keyboard", () => {
     onNavigator("share", vi.fn(async () => {}));
     renderPage();
     await ready();
-    const order = [...document.querySelectorAll<HTMLElement>("input, button, a[href]")].map((el) => el.getAttribute("aria-label") ?? (el.tagName === "INPUT" ? "field" : el.textContent));
+    const order = [...document.querySelectorAll<HTMLElement>("input, button, a[href]")].map((el) => (el.tagName === "INPUT" ? "field" : el.textContent));
     expect(order).toEqual(["field", "Copy", "Share", "Save image"]);
   });
 
-  it("every control is at least 44 tall (48 here)", async () => {
+  it("every control is at least 44 tall (44 or 48 here)", async () => {
     onNavigator("share", vi.fn(async () => {}));
     renderPage();
     await ready();
-    for (const el of [field(), button("Copy"), button("Share"), button("Save image")]) expect(el.className).toMatch(/(^|\s)h-12(\s|$)/);
+    for (const el of [field(), button("Copy"), button("Share"), button("Save image")]) expect(el.className).toMatch(/(^|\s)h-1[1-2](\s|$)/);
   });
 });

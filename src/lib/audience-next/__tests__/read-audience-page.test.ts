@@ -26,6 +26,7 @@ const connected = (over: Partial<ConnectedAccount> = {}): ConnectedAccount => ({
   platform: "tiktok",
   handle: "nia.tests",
   display_name: null,
+  avatar_url: null,
   is_primary: true,
   connection_method: "scrape",
   last_synced_at: null,
@@ -267,6 +268,24 @@ describe("what is read for the page", () => {
     expect(r.page.videos?.topics).toEqual(["Future tech · 6"]);
     expect(r.page.removal).toEqual({ kind: "disconnect", accountId: NIA.id, handle: "nia.tests" });
     expect(r.page.isDefault).toBe(true);
+  });
+
+  it("the account's stored avatar_url is the face's picture, on the page and its switcher row; each post's cover_url its row's cover", async () => {
+    const avatar = "https://proj.supabase.co/storage/v1/object/public/avatars/account/tiktok/nia.tests.jpg";
+    const cover = "https://proj.supabase.co/storage/v1/object/public/covers/account/tiktok/7300000000000000012.jpg";
+    const [p1, p2, p3] = A.posts([12_000, 13_000, 12_800]);
+    const deps = depsOf({
+      resolveUserAudience: vi.fn(async () => MINE),
+      listConnectedAccounts: vi.fn(async () => [{ ...NIA, avatar_url: avatar }, NIA_SECOND, NO_AUDIENCE]),
+      listAllPosts: vi.fn(async () => [p1!, { ...p2!, cover_url: cover }, p3!]),
+    });
+    const r = pageOf(await read(index(), deps));
+    expect(r.page.face).toEqual({ initial: "N", picture: avatar, platform: "tiktok" });
+    expect(r.choices.find((c) => c.id === MINE.id)!.face.picture).toBe(avatar);
+    // The second account stores none: its audience's row keeps the initial.
+    expect(r.choices.find((c) => c.id === SECOND.id)!.face.picture).toBeNull();
+    // Most viewed first: 13K (the one with the cover), 12.8K, 12K.
+    expect(r.page.videos!.rows.map((row) => row.cover)).toEqual([cover, null, null]);
   });
 
   it("the snapshot read is the newest: the first row given", async () => {

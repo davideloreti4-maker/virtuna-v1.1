@@ -39,6 +39,14 @@ interface ShellState {
   fieldFocusSignal: number;
   focusField: () => void;
   /**
+   * New look (owner 2026-11-26): "New chat" (sidebar, drawer, ⌘N, the phone header) opens an empty
+   * chat, not Home: no greeting, no Money made, no carousel; quick actions and the field. Set by
+   * `newThread`; cleared by going Home (the Home row, the logo) and by opening a chat. The same
+   * `/home` with no chat open draws Home while this is false.
+   */
+  newChat: boolean;
+  setNewChat: (v: boolean) => void;
+  /**
    * New look: where the phone's Back in a thread goes, when the thread was opened from a screen the
    * creator should get back to (Library, plan 2026-11-23). Null: the thread's band shows the menu in
    * Back's place.
@@ -111,6 +119,8 @@ export const useShellStore = create<ShellState>()((set, get) => ({
   setThreadAudience: (audience) => set({ threadAudience: audience }),
   fieldFocusSignal: 0,
   focusField: () => set((s) => ({ fieldFocusSignal: s.fieldFocusSignal + 1 })),
+  newChat: false,
+  setNewChat: (v) => set({ newChat: v }),
   threadBack: null,
   threadTitleHint: null,
   libraryScroll: null,

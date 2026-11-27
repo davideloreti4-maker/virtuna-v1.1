@@ -12,6 +12,8 @@ import {
   rehostCover,
   rehostCovers,
   rehostAvatar,
+  rehostAccountAvatar,
+  rehostAccountCovers,
   COVERS_BUCKET,
   AVATARS_BUCKET,
 } from "../rehost-cover";
@@ -216,5 +218,49 @@ describe("rehostAvatar", () => {
     const { service } = makeService();
     expect(await rehostAvatar(service, "https://evil.example.com/a.jpg", "x")).toBeNull();
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe("rehostAccountAvatar / rehostAccountCovers — the creator's own account", () => {
+  it("an account avatar goes to avatars under account/<platform>/<handle>, apart from competitors", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(imageResponse("image/jpeg"));
+    const { service, uploads } = makeService();
+    const out = await rehostAccountAvatar(service, ALLOWED, "tiktok", "@Nia.Tests");
+    expect(uploads).toEqual([{ bucket: AVATARS_BUCKET, path: "account/tiktok/nia.tests.jpg" }]);
+    expect(out).toBe(`https://proj.supabase.co/storage/v1/object/public/${AVATARS_BUCKET}/account/tiktok/nia.tests.jpg`);
+  });
+
+  it("a YouTube channel avatar host is allowed by exact name; a lookalike under googleusercontent is not", async () => {
+    const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(imageResponse("image/jpeg"));
+    const { service } = makeService();
+    expect(await rehostAccountAvatar(service, "https://yt3.ggpht.com/abc=s176", "youtube", "chan")).not.toBeNull();
+    fetchSpy.mockClear();
+    expect(await rehostAccountAvatar(service, "https://evil.googleusercontent.com/x.jpg", "youtube", "chan")).toBeNull();
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it("covers: order kept, each degrades alone, never more than `concurrency` fetches in flight", async () => {
+    let inFlight = 0;
+    let peak = 0;
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => {
+      inFlight++;
+      peak = Math.max(peak, inFlight);
+      await new Promise((r) => setTimeout(r, 5));
+      inFlight--;
+      return imageResponse("image/jpeg");
+    });
+    const { service, uploads } = makeService();
+    const items = Array.from({ length: 9 }, (_, i) => ({ postId: `p${i}`, sourceUrl: i === 4 ? "https://evil.example.com/x.jpg" : ALLOWED }));
+    const out = await rehostAccountCovers(service, "tiktok", items, 3);
+    expect(peak).toBeLessThanOrEqual(3);
+    expect(out[4]).toBeNull();
+    expect(out[0]).toBe(`https://proj.supabase.co/storage/v1/object/public/${COVERS_BUCKET}/account/tiktok/p0.jpg`);
+    expect(out.filter(Boolean)).toHaveLength(8);
+    expect(uploads.map((u) => u.path)).toContain("account/tiktok/p8.jpg");
+  });
+
+  it("covers: an empty list makes no call", async () => {
+    const { service } = makeService();
+    expect(await rehostAccountCovers(service, "tiktok", [])).toEqual([]);
   });
 });

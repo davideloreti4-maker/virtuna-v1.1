@@ -24,6 +24,8 @@ import { createClient } from "@/lib/supabase/server";
 import { ApifyScrapingProvider } from "@/lib/scraping/apify-provider";
 import { upsertAccountSnapshot } from "@/lib/account-metrics/account-metrics-repo";
 import { getOrCreateConnectedAccount } from "@/lib/connected-accounts/connected-accounts-repo";
+import { persistAccountAvatar } from "@/lib/connected-accounts/account-media";
+import { createServiceClient } from "@/lib/supabase/service";
 
 // A single profile scrape is usually quick, but allow headroom (Apify cold starts).
 export const maxDuration = 300;
@@ -105,6 +107,19 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
+  // ── (4b) Keep the profile picture (best-effort) ──────────────────────────────
+  // The scraped avatar is a signed CDN URL that expires within days: rehost it into our
+  // `avatars` bucket (service client — storage policies refuse the session client there) and
+  // store only OUR URL. The row write itself stays on the session client (RLS-scoped).
+  let avatarUrl = account.avatar_url;
+  try {
+    avatarUrl =
+      (await persistAccountAvatar(createServiceClient(), account, profile.avatarUrl, supabase)) ??
+      account.avatar_url;
+  } catch {
+    /* avatar is best-effort — the account is connected regardless */
+  }
+
   // ── (5) Seed the first snapshot (best-effort — the row already exists) ────────
   try {
     await upsertAccountSnapshot(supabase, {
@@ -125,13 +140,13 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   return Response.json({
-    account,
+    account: { ...account, avatar_url: avatarUrl },
     reveal: {
       profile: {
         platform: account.platform,
         handle: profile.handle,
         displayName: profile.displayName,
-        avatarUrl: profile.avatarUrl,
+        avatarUrl: avatarUrl ?? profile.avatarUrl, // ours when the rehost landed
         verified: profile.verified,
         followerCount: profile.followerCount,
         heartCount: profile.heartCount,

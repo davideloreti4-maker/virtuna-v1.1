@@ -223,7 +223,7 @@ describe("Home's door to the editor", () => {
     const simulate = within(await choice()).getByRole("button", { name: "Simulate" });
     const edit = within(await choice()).getByRole("button", { name: "Edit" });
     expect(simulate).toHaveAttribute("aria-pressed", "true");
-    expect(simulate).toHaveTextContent("Simulate · 10 credits");
+    expect(simulate.textContent).toBe("Simulate");
     expect(text().placeholder).toBe("Send to simulate this video");
     fireEvent.click(edit);
     expect(edit).toHaveAttribute("aria-pressed", "true");
@@ -272,7 +272,7 @@ describe("Home's door to the editor", () => {
     expect(within(field()).getByRole("alert").textContent).toMatch(/^File too large/);
     expect(screen.queryByTestId("field-video")).toBeNull();
     pick(clip());
-    expect(field().querySelector('[data-part="picked-skill"] [hidden]')?.textContent).toBe("Simulate · 10 credits");
+    expect(field().querySelector('[data-part="picked-skill"] [hidden]')?.textContent).toBe("Simulate");
     expect(screen.queryByRole("group", { name: "What to do with this video" })).toBeNull();
   });
 });

@@ -10,7 +10,7 @@ import type { AudiencePage } from "@/lib/audience-next/audience-model";
 import { AUDIENCE_STRINGS } from "@/lib/audience-next/audience-words";
 import { cn } from "@/lib/utils";
 
-import { Face } from "./face";
+import { Face, PlatformLine } from "./face";
 
 /**
  * Where the audience came from (spec 3.2.3): the face, the account's handle or the audience's name (two
@@ -92,7 +92,11 @@ export function SourceCard({ page, onReadAgain }: { page: AudiencePage; onReadAg
             {title}
           </h2>
           {/* Nothing known about the source (no platform, date or count): no line. */}
-          {line !== "" && <p className="text-meta text-foreground-secondary tabular-nums">{line}</p>}
+          {line !== "" && (
+            <p className="text-meta text-foreground-secondary tabular-nums">
+              <PlatformLine line={line} platform={page.face.platform} />
+            </p>
+          )}
         </div>
         {onReadAgain && page.readAgain && (
           <IconButton surface="card" aria-label={S.readAgain} onClick={(e) => onReadAgain(e.currentTarget)}>

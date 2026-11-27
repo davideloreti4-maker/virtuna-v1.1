@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import { GearSix, SignOut } from "@phosphor-icons/react";
 import { MavenLogo } from "@/components/brand/maven-logo";
 import { creditsLabel } from "@/components/thread-next/thread-field";
+import { PlatformBadge, type PlatformId } from "@/components/brand/platform-logo";
 import { Avatar } from "@/components/ui/avatar";
 import { useThreadList } from "@/hooks/queries";
 import { useSubscription } from "@/hooks/use-subscription";
@@ -43,6 +44,8 @@ export interface DrawerAccount {
   name: string;
   picture: string | null;
   initials: string;
+  /** The connected account's platform: its mark at the picture's corner. Absent: none. */
+  platform?: PlatformId | null;
 }
 
 export interface DrawerRowsProps {
@@ -85,6 +88,8 @@ function LinkRow({
       href={href}
       aria-current={lit ? "page" : undefined}
       onClick={(event) => {
+        // Home is Home, never the empty new-chat screen ("New chat" is that).
+        if (href === "/home") useShellStore.getState().setNewChat(false);
         if (instead) {
           event.preventDefault();
           instead();
@@ -147,6 +152,8 @@ export function DrawerRows({ actions, account, choose, balanceRef }: DrawerRowsP
   // (no cursor sent to the field). Elsewhere Home is the plain link.
   const leaveChat = () => {
     actions.newThread();
+    // Out of a chat by Home lands on Home, not the empty new-chat screen `newThread` opens.
+    useShellStore.getState().setNewChat(false);
     choose({ kind: "go" });
   };
 
@@ -261,7 +268,10 @@ export function DrawerRows({ actions, account, choose, balanceRef }: DrawerRowsP
         {/* One height whether the balance is there, on its way or absent, so nothing around it moves;
             without the balance the name sits centred on the picture. Not a control. */}
         <div data-part="account" className="flex h-14 shrink-0 items-center gap-2.5 px-1.5">
-          <Avatar src={account.picture ?? undefined} alt="" fallback={account.initials} size="sm" className="h-[30px] w-[30px]" />
+          <span className="relative inline-flex shrink-0">
+            <Avatar src={account.picture ?? undefined} alt="" fallback={account.initials} size="sm" className="h-[30px] w-[30px]" />
+            {account.platform && <PlatformBadge platform={account.platform} size={13} className="absolute -bottom-0.5 -right-0.5" />}
+          </span>
           <div className="flex min-w-0 flex-1 flex-col justify-center">
             <span className="truncate text-ui font-[640] text-foreground">{account.name}</span>
             <Balance balanceRef={balanceRef} />

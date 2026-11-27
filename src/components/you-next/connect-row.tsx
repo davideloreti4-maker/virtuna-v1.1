@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useId, useLayoutEffect, useRef } from "react";
 
+import { PlatformLogo } from "@/components/brand/platform-logo";
 import { PlusIcon } from "@/components/shell/icons";
 import { Button } from "@/components/ui/button";
 import { Chip } from "@/components/ui/chip";
@@ -71,6 +72,7 @@ function ConnectEditor({ platform, handle, busy, error, onPlatform, onHandle, on
               if (!busy) onPlatform(p);
             }}
           >
+            <PlatformLogo platform={p} size={15} />
             {PLATFORM_NAMES[p]}
           </Chip>
         ))}

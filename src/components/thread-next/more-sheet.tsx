@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { PlatformLogo } from "@/components/brand/platform-logo";
 import { useId } from "react";
 
 import { getSkill, type ToolId } from "@/components/app/home/composer-controls";
@@ -38,7 +39,7 @@ export interface MoreSheetProps {
   selected?: ToolId;
   onSelectSkill(id: ToolId): void;                                      // closes the sheet
   onReadFile(): void;                                                   // the profile read: must click the evidence input synchronously
-  readFilePrice: number;                                                // creditCost("profile")
+  readFilePrice: number | null;                                         // creditCost("profile"); null: not shown
   /** The field's outer element (the same ref the field takes as `anchorRef`): on desktop the
    *  popover stands on it. Added to the planned props; absent, More is the bottom sheet. */
   anchorRef?: React.RefObject<HTMLElement | null>;
@@ -100,7 +101,10 @@ export function LensControl({ lens, onLensChange }: { lens: Lens; onLensChange(l
               : "text-foreground-secondary hover:text-foreground",
           )}
         >
-          {label}
+          <span className="flex items-center gap-1.5">
+            <PlatformLogo platform={id} size={14} />
+            {label}
+          </span>
         </button>
       ))}
     </div>

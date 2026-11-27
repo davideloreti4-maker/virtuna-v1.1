@@ -4,12 +4,23 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { EARN_STRINGS, MONEY_GOAL_CENTS, headline, howItWorks, joinedLine, ratePct, rateLine, shortMoneyWord } from "../earn-words";
+import { EARN_STRINGS, MONEY_GOAL_CENTS, earnedAmount, goalWord, howItWorks, joinedLine, ratePct, rateSubtitle, shortMoneyWord, whopTimingLine } from "../earn-words";
 
 describe("the words at the top of the page", () => {
-  it("are Earn 50%, the rate line, and the joined line", () => {
-    expect(headline()).toBe("Earn 50%");
-    expect(rateLine()).toBe("of a creator's first month, for every creator you bring.");
+  it("are the rate subtitle, the goal, and the footer's timing", () => {
+    expect(rateSubtitle()).toBe("50% of each referred creator's first month.");
+    expect(goalWord()).toBe("$65k goal");
+    expect(whopTimingLine()).toBe("Whop pays your share 14 to 30 days after a creator's first payment.");
+  });
+
+  it.each([
+    ["not enrolled", { username: null, earnedCents: null }, "$0"],
+    ["payment side unknown", null, "$0"],
+    ["enrolled, a number", { username: "nia", earnedCents: 2450 }, "$24.50"],
+    ["enrolled, a known zero", { username: "nia", earnedCents: 0 }, "$0"],
+    ["enrolled, unreadable", { username: "nia", earnedCents: null }, null],
+  ])("earnedAmount, %s", (_why, whop, amount) => {
+    expect(earnedAmount(whop)).toBe(amount);
   });
 
   it.each([
@@ -37,10 +48,10 @@ describe("every sentence follows the constants", () => {
 
   it("another rate and another link time change every sentence that states them", () => {
     expect(ratePct(other)).toBe("30%");
-    expect(headline(other)).toBe("Earn 30%");
     expect(howItWorks(other)[1]).toBe("A creator opens it and subscribes within 60 days, on the same device.");
     expect(howItWorks(other)[2]).toBe("When they start paying, you earn 30% of each payment they make.");
-    expect(rateLine(other)).toBe("of everything a creator pays, for every creator you bring.");
+    expect(rateSubtitle(other)).toBe("30% of everything each referred creator pays.");
+    expect(whopTimingLine(other)).toBe("Whop pays your share 14 to 30 days after each payment.");
   });
 
   it("a one-day link says day, not days", () => {
@@ -52,6 +63,15 @@ describe("the fixed words", () => {
   it("are the ones ruling 10 and the plan name", () => {
     expect(EARN_STRINGS).toEqual({
       title: "Earn",
+      pageTitle: "Your Earnings",
+      cardTitle: "Get paid for every creator you bring",
+      earningsLabel: "Earnings",
+      emptyTitle: "No earnings yet",
+      emptyHint: "Share your link or the card.",
+      statEarned: "Earned",
+      statJoined: "Creators joined",
+      statPaidBy: "Paid by",
+      notSetUp: "Payouts not set up",
       yourLink: "Your link",
       copy: "Copy",
       copied: "Copied",

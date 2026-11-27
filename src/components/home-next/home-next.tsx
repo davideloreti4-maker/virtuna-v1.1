@@ -18,8 +18,9 @@ import { MONEY_GOAL_CENTS, moneyWord, shortMoneyWord } from "@/lib/earn/earn-wor
 import type { LibraryChat, LibraryPage } from "@/lib/library/library-page";
 import { whenLabel } from "@/lib/time-ago";
 
-import { firstNameOf, greetingFor } from "./greeting";
-import { HomeScreen, type HomeMoney, type HomeRecentRow, type HomeSkillId } from "./home-screen";
+import { firstNameOf, greetingFor, initialsOf } from "./greeting";
+import { HomeScreen, type HomeFace, type HomeMoney, type HomeRecentRow, type HomeSkillId } from "./home-screen";
+import { platformIdOf } from "@/components/brand/platform-logo";
 
 /**
  * Home with its data (spec 2026-11-23 §3): the greeting's name from the profile, the last chats,
@@ -141,9 +142,32 @@ export interface HomeNextProps {
   onMore(): void;
   /** The editor is open to this account: Home shows its six cards (plan 2026-11-24-editor-screens-a). */
   editOpen?: boolean;
+  /** "chat": the empty chat "New chat" opens; "home" (default): Home. */
+  mode?: "home" | "chat";
 }
 
-export function HomeNext({ field, remixes, credits, picked, onPickSkill, onMore, editOpen = false }: HomeNextProps): React.JSX.Element {
+/** The creator's face on Home from the profile: their picture, initials, and the connected account. */
+export interface ProfileFace {
+  name?: string;
+  avatar?: string | null;
+  account?: { platform: string; handle: string; displayName: string | null; avatar: string | null } | null;
+}
+
+export function faceOf(profile: ProfileFace | undefined): HomeFace | null {
+  if (!profile) return null;
+  const account = profile.account ?? null;
+  const picture = profile.avatar ?? account?.avatar ?? null;
+  const handle = account?.handle ?? null;
+  if (!picture && !handle) return null;
+  return {
+    picture,
+    initials: initialsOf(profile.name || account?.displayName || handle || ""),
+    platform: platformIdOf(account?.platform),
+    handle,
+  };
+}
+
+export function HomeNext({ field, remixes, credits, picked, onPickSkill, onMore, editOpen = false, mode = "home" }: HomeNextProps): React.JSX.Element {
   // Until the profile has answered, the heading holds: "Good morning." growing a name a moment
   // later reads as a flicker on the first screen.
   // Only while the first attempt is out: the query stays pending through its retries, and a
@@ -204,6 +228,8 @@ export function HomeNext({ field, remixes, credits, picked, onPickSkill, onMore,
       recentOnDesktop={collapsed}
       onMore={onMore}
       editOpen={editOpen}
+      mode={mode}
+      face={faceOf(profile)}
     />
   );
 }

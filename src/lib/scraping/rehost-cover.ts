@@ -43,9 +43,14 @@ const FETCH_TIMEOUT_MS = 8_000;
  *  still anchored to a `.com` TikTok CDN suffix so this stays an allowlist, not a wildcard. */
 const TIKTOK_REGIONAL_CDN = /(^|\.)tiktokcdn(-[a-z0-9]+)?\.com$/;
 
+/** YouTube channel avatars (connected YouTube accounts, added 2026-11-26). EXACT hostnames, not
+ *  suffixes: `googleusercontent.com` as a suffix would admit arbitrary user-hosted content. */
+const EXACT_IMAGE_HOSTS = new Set(["yt3.ggpht.com", "yt3.googleusercontent.com"]);
+
 function isAllowedCoverHost(u: URL): boolean {
   if (u.protocol !== "https:") return false;
   if (TIKTOK_REGIONAL_CDN.test(u.hostname)) return true;
+  if (EXACT_IMAGE_HOSTS.has(u.hostname)) return true;
   return COVER_HOST_SUFFIXES.some(
     (s) => u.hostname === s.slice(1) || u.hostname.endsWith(s),
   );
@@ -151,4 +156,56 @@ export async function rehostAvatar(
   handle: string,
 ): Promise<string | null> {
   return rehostImage(service, sourceUrl, `competitor/${handle}`, AVATARS_BUCKET);
+}
+
+/** Object-key segment for a connected account's handle / a post id: lower case, no leading "@". */
+const accountSegment = (value: string) => value.replace(/^@/, "").toLowerCase();
+
+/**
+ * Re-host a CONNECTED ACCOUNT's profile picture (the creator's own TikTok/IG/YouTube account) into
+ * the public `avatars` bucket under `account/<platform>/<handle>`. Separate namespace from
+ * competitors (`competitor/<handle>`) and from user uploads (`<userId>/…`) so neither overwrites
+ * the other. Returns our permanent public URL, or null on any failure.
+ */
+export async function rehostAccountAvatar(
+  service: SupabaseClient,
+  sourceUrl: string | null | undefined,
+  platform: string,
+  handle: string,
+): Promise<string | null> {
+  return rehostImage(
+    service,
+    sourceUrl,
+    `account/${accountSegment(platform)}/${accountSegment(handle)}`,
+    AVATARS_BUCKET,
+  );
+}
+
+/**
+ * Re-host a connected account's post covers into the public `covers` bucket under
+ * `account/<platform>/<postId>`, at most `concurrency` downloads in flight (an account archive
+ * is ~30 posts; unbounded Promise.all would open 30 CDN fetches at once). Order preserved; each
+ * entry degrades to null independently and the call never throws.
+ */
+export async function rehostAccountCovers(
+  service: SupabaseClient,
+  platform: string,
+  items: Array<{ postId: string; sourceUrl: string | null | undefined }>,
+  concurrency = 4,
+): Promise<Array<string | null>> {
+  const out: Array<string | null> = new Array(items.length).fill(null);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      const it = items[i]!;
+      out[i] = await rehostCover(
+        service,
+        it.sourceUrl,
+        `account/${accountSegment(platform)}/${it.postId}`,
+      ).catch(() => null);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.max(1, Math.min(concurrency, items.length)) }, worker));
+  return out;
 }
