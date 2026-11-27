@@ -56,7 +56,8 @@ export function NicheStep({ answers, onDone }: { answers: StartAnswers; onDone: 
           setError(null);
         }}
         onKeyDown={(e) => {
-          if (e.key === "Enter") {
+          // An input method's Enter confirms the word being composed; it must not submit.
+          if (e.key === "Enter" && !e.nativeEvent.isComposing) {
             e.preventDefault();
             submit();
           }

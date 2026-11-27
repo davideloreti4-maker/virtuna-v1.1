@@ -119,6 +119,16 @@ describe("What are your videos about?", () => {
     expect(kept()).toEqual({ ...TIKTOK, nicheSource: "account", step: "goal" });
   });
 
+  it("Enter while an input method is composing does not go on", async () => {
+    await open("/start", { ...TIKTOK, step: "niche" });
+    const field = screen.getByLabelText(W.nicheLabel);
+    fireEvent.change(field, { target: { value: "budget meals" } });
+    fireEvent.keyDown(field, { key: "Enter", isComposing: true });
+    expect(title()).toBe(W.nicheTitle);
+    fireEvent.keyDown(field, { key: "Enter" });
+    expect(title()).toBe(W.goalTitle);
+  });
+
   it("Back returns to the platform, with what was picked", async () => {
     await open("/start", { ...TIKTOK, step: "niche" });
     press(W.back);
@@ -139,6 +149,28 @@ describe("Your 90-day goal", () => {
     expect(title()).toBe(W.accountTitle);
     expect(bar()).toBeNull();
     expect(kept()).toMatchObject({ goal: "engagement", step: "account" });
+  });
+});
+
+describe("focus and scroll on a step change", () => {
+  it("the first render leaves focus alone", async () => {
+    await open();
+    expect(document.activeElement).toBe(document.body);
+  });
+
+  it("going on puts focus on the new step's title and the page at the top", async () => {
+    await open();
+    press("TikTok");
+    window.scrollTo(0, 400);
+    press(W.continue);
+    expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1, name: W.nicheTitle }));
+    expect(window.scrollY).toBe(0);
+  });
+
+  it("the screen's Back does the same", async () => {
+    await open("/start", { ...TIKTOK, step: "niche" });
+    press(W.back);
+    expect(document.activeElement).toBe(screen.getByRole("heading", { level: 1, name: W.platformTitle }));
   });
 });
 

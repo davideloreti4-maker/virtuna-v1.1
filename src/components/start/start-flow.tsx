@@ -56,10 +56,21 @@ function StartBody({ account }: { account: StartAccount | null }) {
   const [answers, setAnswers] = useState<StartAnswers>(first.answers);
   const [step, setStep] = useState<StartStep>(first.step);
   const latest = useRef(first.answers);
+  const body = useRef<HTMLDivElement>(null);
+  const shownStep = useRef(first.step);
 
   useEffect(() => {
     latest.current = answers;
   }, [answers]);
+
+  // A step change (not the first render): the page back to the top and focus on the new step's title, so a
+  // screen reader says the new screen instead of losing focus to the body with the old step's button.
+  useEffect(() => {
+    if (shownStep.current === step) return;
+    shownStep.current = step;
+    window.scrollTo(0, 0);
+    body.current?.querySelector<HTMLElement>("h1")?.focus({ preventScroll: true });
+  }, [step]);
 
   // The address says the step shown from the first paint on.
   useEffect(() => {
@@ -104,7 +115,7 @@ function StartBody({ account }: { account: StartAccount | null }) {
   };
 
   return (
-    <div className="mx-auto flex min-h-dvh w-full max-w-[440px] flex-col px-5 pb-[calc(env(safe-area-inset-bottom)+28px)] md:min-h-0 md:py-16">
+    <div ref={body} className="mx-auto flex min-h-dvh w-full max-w-[440px] flex-col px-5 pb-[calc(env(safe-area-inset-bottom)+28px)] md:min-h-0 md:py-16">
       <StartHeader onBack={back} filled={barOf(step)} />
       {step === "platform" ? <PlatformStep answers={answers} onDone={(patch) => go("niche", patch)} /> : null}
       {step === "niche" ? <NicheStep answers={answers} onDone={(patch) => go("goal", patch)} /> : null}

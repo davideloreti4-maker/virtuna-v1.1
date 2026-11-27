@@ -10,11 +10,14 @@ import { cn } from "@/lib/utils";
 /** -0.035em inline: the app-wide `h1 { letter-spacing: -0.02em }` (unlayered) beats a tracking utility. */
 const TITLE_TRACKING: CSSProperties = { letterSpacing: "-0.035em" };
 
-/** A step's title (screen title 30 / 35, bold) and the line under it. */
+/**
+ * A step's title (screen title 30 / 35, bold) and the line under it. `tabIndex={-1}`: the flow moves focus
+ * here on a step change so the new screen is announced; not in the tab order, and no ring (not a control).
+ */
 export function StepTitle({ title, line }: { title: string; line?: string }) {
   return (
     <div className="mt-7">
-      <h1 style={TITLE_TRACKING} className="text-3xl font-bold leading-[35px] text-foreground">
+      <h1 tabIndex={-1} style={TITLE_TRACKING} className="text-3xl font-bold leading-[35px] text-foreground outline-none">
         {title}
       </h1>
       {line ? <p className="mt-2 text-ui text-foreground-secondary">{line}</p> : null}
