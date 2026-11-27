@@ -31,6 +31,9 @@ export const FUNNEL_EVENTS = [
   "reveal_shown", // the withheld fix, honored before anything is asked
   "otp_start",
   "otp_done",
+  // /start (funnel 2026-11-26, part 1): a step shown, the answers written to the profile.
+  "start_step",
+  "profile_saved",
   // the real platform
   "start_landed",
   "handle_submit",
