@@ -26,7 +26,9 @@ const PROTECTED_PREFIXES = [
   "/saved",
   "/library",
   "/feed",
-  "/start",
+  // /start: the funnel's questions (plan 01-start-and-profile) are public under the new look; with the flag
+  // off the route only redirects to /home and stays behind sign-in, as before.
+  ...(NEW_LOOK_ENABLED ? [] : ["/start"]),
   "/analytics",
   "/calendar",
   "/discover",
@@ -44,6 +46,12 @@ const PROTECTED_PREFIXES = [
  * bypass the public-path fast-return below so the authed-redirect check can run.
  */
 const AUTH_PAGES = ["/login", "/signup"];
+
+/**
+ * Where a signed-in account without onboarding is sent: under the new look the funnel's questions (/start,
+ * which also saves the profile), else /welcome as before.
+ */
+const ONBOARDING_HREF = NEW_LOOK_ENABLED ? "/start" : "/welcome";
 
 /**
  * Public paths that skip auth checks entirely.
@@ -162,6 +170,15 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(new URL("/home", request.url));
   }
 
+  // Under the new look /start replaces /welcome (funnel spec §3.2): every visit goes there, its query kept.
+  // The login and signup actions and the auth callback still send new accounts to /welcome; this is what
+  // brings them to the questions. /start sends an onboarded account on to the app itself.
+  if (NEW_LOOK_ENABLED && pathname === "/welcome") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/start";
+    return NextResponse.redirect(url);
+  }
+
   // Skip auth checks for public paths (incl. an unauthenticated visitor to an auth page).
   if (isPublicPath(pathname)) {
     return supabaseResponse;
@@ -200,7 +217,7 @@ export async function updateSession(request: NextRequest) {
     }
 
     if (!profile || !profile.onboarding_completed_at) {
-      return NextResponse.redirect(new URL("/welcome", request.url));
+      return NextResponse.redirect(new URL(ONBOARDING_HREF, request.url));
     }
   }
 
